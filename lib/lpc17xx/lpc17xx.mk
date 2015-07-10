@@ -1,0 +1,37 @@
+OBJS+= \
+	lib/lpc17xx/src/adc_17xx_40xx.o     \
+	lib/lpc17xx/src/can_17xx_40xx.o     \
+	lib/lpc17xx/src/chip_17xx_40xx.o    \
+	lib/lpc17xx/src/clock_17xx_40xx.o   \
+	lib/lpc17xx/src/cmp_17xx_40xx.o     \
+	lib/lpc17xx/src/crc_17xx_40xx.o     \
+	lib/lpc17xx/src/dac_17xx_40xx.o     \
+	lib/lpc17xx/src/eeprom_17xx_40xx.o  \
+	lib/lpc17xx/src/emc_17xx_40xx.o     \
+	lib/lpc17xx/src/enet_17xx_40xx.o    \
+	lib/lpc17xx/src/gpdma_17xx_40xx.o   \
+	lib/lpc17xx/src/gpio_17xx_40xx.o    \
+	lib/lpc17xx/src/gpioint_17xx_40xx.o \
+	lib/lpc17xx/src/i2c_17xx_40xx.o     \
+	lib/lpc17xx/src/i2s_17xx_40xx.o     \
+	lib/lpc17xx/src/iap.o               \
+	lib/lpc17xx/src/iocon_17xx_40xx.o   \
+	lib/lpc17xx/src/lcd_17xx_40xx.o     \
+	lib/lpc17xx/src/pmu_17xx_40xx.o     \
+	lib/lpc17xx/src/ring_buffer.o       \
+	lib/lpc17xx/src/ritimer_17xx_40xx.o \
+	lib/lpc17xx/src/rtc_17xx_40xx.o     \
+	lib/lpc17xx/src/sdc_17xx_40xx.o     \
+	lib/lpc17xx/src/sdmmc_17xx_40xx.o   \
+	lib/lpc17xx/src/spi_17xx_40xx.o     \
+	lib/lpc17xx/src/ssp_17xx_40xx.o     \
+	lib/lpc17xx/src/stopwatch_17xx_40xx.o \
+	lib/lpc17xx/src/sysctl_17xx_40xx.o  \
+	lib/lpc17xx/src/sysinit_17xx_40xx.o \
+	lib/lpc17xx/src/timer_17xx_40xx.o   \
+	lib/lpc17xx/src/uart_17xx_40xx.o    \
+	lib/lpc17xx/src/wwdt_17xx_40xx.o \
+	arch/$(ARCH)/src/board.o             \
+	arch/$(ARCH)/src/board_sysinit.o     \
+	arch/$(ARCH)/src/sysinit.o
+

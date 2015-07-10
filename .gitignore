@@ -30,3 +30,7 @@
 
 # Debug files
 *.dSYM/
+*.lst
+.gdbinit
+*.d
+tags
