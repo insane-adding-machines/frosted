@@ -10,13 +10,19 @@ LDFLAGS:=-nostartfiles -lc -lm -lrdimon -ggdb
 CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-OBJS:=sched.o frosted.o lib/$(FAMILY)/$(FAMILY).o systick.o syscall.o timer.o scheduler.o
+OBJS:=svc.o frosted.o lib/$(FAMILY)/$(FAMILY).o systick.o syscall.o timer.o scheduler.o syscall_table.o
+
 
 include lib/$(FAMILY)/$(FAMILY).mk
 
 all: image.elf
 
-image.elf: $(OBJS) $(LIBS)
+syscall_table.c: syscall_table_gen.py
+	python2 $^
+
+syscall_table.h: syscall_table.c
+
+image.elf: syscall_table.h $(OBJS) $(LIBS)
 	$(CC) -o $@   -Wl,--start-group  $(OBJS) $(LIBS) -Wl,--end-group  -Tlib/$(FAMILY)/$(FAMILY).ld  -Wl,-Map,image.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.elf

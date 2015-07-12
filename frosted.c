@@ -36,6 +36,7 @@ void main(void)
     volatile int ret = 0;
     frosted_Init();
 
+    sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
     //sys_sleep(3000);
     //ret = sys_setclock(10);
 

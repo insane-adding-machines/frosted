@@ -1,4 +1,5 @@
 #include "frosted.h"
+#include "syscall_table.h"
 
 #define MAX_TASKS 16
 #define PRIO 2
@@ -202,7 +203,7 @@ void pendsv_enable(void)
    *((uint32_t volatile *)0xE000ED04) = 0x10000000; 
 }
 
-int __attribute__((signal)) SVC_Handler(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3)
+int __attribute__((signal)) SVC_Handler(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     struct nvic_stack_frame *nvic_frame;
     struct extra_stack_frame *extra_frame;

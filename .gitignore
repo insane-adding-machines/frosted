@@ -27,6 +27,7 @@
 *.i*86
 *.x86_64
 *.hex
+*.map
 
 # Debug files
 *.dSYM/
@@ -34,3 +35,6 @@
 .gdbinit
 *.d
 tags
+
+#python compiled
+*.pyc

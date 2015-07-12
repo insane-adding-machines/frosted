@@ -19,27 +19,7 @@ void SysTick_off(void);
 
 /* scheduler */
 void pendsv_enable(void);
-
-
-
-
-/* System Calls */
-#define SYS_START 0x00
-int sys_start(void);
-
-#define SYS_STOP 0x01
-int sys_stop(void);
-
-#define SYS_SLEEP 0x03
-int sys_sleep(unsigned int ms);
-
-
-#define SYS_SETCLOCK 0x99
-int sys_setclock(unsigned int n);
-
-#define SYS_THREAD_CREATE 0xa0
-int sys_thread_create(void (*init)(void *), void *arg, int prio);
-
+int syscall(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
 
 #ifdef DEBUG
 static void irq_off(void)
