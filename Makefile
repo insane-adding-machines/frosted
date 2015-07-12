@@ -10,7 +10,7 @@ LDFLAGS:=-nostartfiles -lc -lm -lrdimon -ggdb
 CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-OBJS:=svc.o frosted.o lib/$(FAMILY)/$(FAMILY).o systick.o syscall.o timer.o scheduler.o syscall_table.o
+OBJS:=svc.o frosted.o lib/$(FAMILY)/$(FAMILY).o  sys.o systick.o syscall.o timer.o scheduler.o syscall_table.o
 
 
 include lib/$(FAMILY)/$(FAMILY).mk

@@ -3,12 +3,13 @@
 #define IDLE() while(1){do{}while(0);}
 
 
-void frosted_Init(void)
+void frosted_init(void)
 {
     SystemInit(); /* SystemInit() -> Board_SystemInit() */
     SystemCoreClockUpdate();
     SysTick_Config(SystemCoreClock / 1000);
     Board_Init();
+    syscalls_init();
 }
 
 
@@ -34,7 +35,7 @@ void task1(void *arg)
 void main(void) 
 {
     volatile int ret = 0;
-    frosted_Init();
+    frosted_init();
 
     sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
     //sys_sleep(3000);

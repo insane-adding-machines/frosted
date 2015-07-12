@@ -8,7 +8,7 @@
 /* generics */
 volatile unsigned int jiffies;
 volatile int _syscall_retval;
-void frosted_Init(void);
+void frosted_init(void);
 
 /* Systick & co. */
 int _clock_interval;
@@ -19,7 +19,14 @@ void SysTick_off(void);
 
 /* scheduler */
 void pendsv_enable(void);
+
+
+/* System */
+int sys_register_handler(uint32_t n, int (*_sys_c)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t));
 int syscall(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
+void syscalls_init(void);
+
+
 
 #ifdef DEBUG
 static void irq_off(void)

@@ -3,18 +3,20 @@
 #
 #
 # Add your syscalls here
+#
+# Syntax: [ "name", number_of_args, "name_of_kernelspace_handler" ]
 #######
  #####
   ###
    #
 
 syscalls = [
-    ("setclock", 1),
-    ("start", 0),
-    ("stop", 0),
-    ("sleep", 1),
-    ("thread_create", 3),
-    ("test", 5)
+    ["setclock", 1, "sys_setclock_hdlr"],
+    ["start", 0, "sys_start_hdlr"],
+    ["stop", 0, "sys_stop_hdlr"],
+    ["sleep", 1, "sys_sleep_hdlr"],
+    ["thread_create", 3, "sys_thread_create_hdlr"],
+    ["test", 5, "sys_test_hdlr"]
 ]
 
    #
@@ -36,7 +38,6 @@ hdr.write("#define _SYSCALLS_NR %d\n" % len(syscalls))
 for n in range(len(syscalls)):
     name = syscalls[n][0]
     tp = syscalls[n][1]
-    code.write("\n\n")
     code.write( "/* Syscall: %s(%d arguments) */\n" % (name, tp))
     if (tp == 0):
         code.write( "int sys_%s(void){\n" % name)
@@ -68,9 +69,18 @@ for n in range(len(syscalls)):
         code.write( "    syscall(SYS_%s, arg1, arg2, arg3, arg4, arg5); \n" % name.upper())
         code.write( "}\n")
         code.write("\n")
-    code.write( "int __attribute__((weak)) _sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){\n" % name)
-    code.write( "   return -1;\n")
-    code.write( "}\n")
-    code.write("\n")
 
 
+
+code.write("/* External handlers (defined elsewhere) : */ \n")
+for n in range(len(syscalls)):
+    name = syscalls[n][0]
+    call = syscalls[n][2]
+    code.write( "extern %s(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);\n" % call)
+code.write("\n")
+
+code.write("void syscalls_init(void) {\n")
+for n in range(len(syscalls)):
+    call = syscalls[n][2]
+    code.write( "\tsys_register_handler(%d, %s);\n" % (n, call) );
+code.write("}\n")

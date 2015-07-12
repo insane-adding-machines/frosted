@@ -203,41 +203,4 @@ void pendsv_enable(void)
    *((uint32_t volatile *)0xE000ED04) = 0x10000000; 
 }
 
-int __attribute__((signal)) SVC_Handler(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
-{
-    struct nvic_stack_frame *nvic_frame;
-    struct extra_stack_frame *extra_frame;
-    volatile void *tmp;
-    //irq_off();
-    switch(syscall_nr) {
-        case SYS_START:
-            _top_stack = msp_read();
-            
-            _cur_task = &tasklist[0];
-            _cur_task->state = TASK_RUNNING;
-            *_top_stack = RUN_USER;
-            _syscall_retval = 0;
-            frosted_scheduler_on();
-            asm volatile ( "ldmfd %0!, {r4-r11}\n" "msr psp, %0\n" : "+r" (_cur_task->sp));
-            break;
-        case SYS_STOP:
-            frosted_scheduler_off();
-            _syscall_retval = 0;
-            break;
-        case SYS_SETCLOCK:
-            _syscall_retval = SysTick_interval(arg1);
-            break;
-        case SYS_SLEEP:
-            Timer_on(arg1);
-            _syscall_retval = 0;
-            break;
-        case SYS_THREAD_CREATE:
-            _syscall_retval = task_create((void (*)(void *))arg1, (void *)arg2, arg3);
-            break;
-        default: 
-            _syscall_retval = -1;
-    }
-    //irq_on();
-    //asm ("bx lr\n");
-}
 
