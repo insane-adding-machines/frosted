@@ -34,18 +34,16 @@ SECTIONS
         __bss_start__ = .;
         *(.bss*)
         *(COMMON)
+        . = ALIGN(32 / 8);
         _ebss = .;
-        __bss_end__ = .;
-        end = .;
-        __end__ = .;
+        _end = .;
+        _bss_end__ = . ; __bss_end__ = . ; __end__ = . ;
+        PROVIDE (end = .);
     } > SRAM
 
     .heap :
     {
         /* heap starts after BSS */
-        __end__ = .;
-        /* "end" is used by newlib's syscalls!!! */
-        end = __end__;
-        PROVIDE(_heap_start = end );
+        PROVIDE(_heap_start = __end );
     } > SRAM
 }

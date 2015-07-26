@@ -1,5 +1,7 @@
 FAMILY?=lpc17xx
 ARCH?=seedpro
+#FAMILY?=stellaris
+#ARCH?=stellaris_qemu
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
@@ -10,7 +12,7 @@ LDFLAGS:=-nostartfiles -lc -lm -lrdimon -ggdb
 CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-OBJS:=svc.o frosted.o lib/$(FAMILY)/$(FAMILY).o  sys.o systick.o syscall.o timer.o scheduler.o syscall_table.o
+OBJS:=svc.o frosted.o lib/$(FAMILY)/$(FAMILY).o  sys.o systick.o syscall.o timer.o scheduler.o syscall_table.o sbrk.o
 
 
 include lib/$(FAMILY)/$(FAMILY).mk
@@ -26,8 +28,7 @@ image.elf: syscall_table.h $(OBJS) $(LIBS)
 	$(CC) -o $@   -Wl,--start-group  $(OBJS) $(LIBS) -Wl,--end-group  -Tlib/$(FAMILY)/$(FAMILY).ld  -Wl,-Map,image.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.elf
-	sudo qemu-system-arm  -rtc base=localtime -d int,ioport,guest_errors,unimp -M lm3s6965evb -cpu cortex-m3 -m 1 -serial stdio -net nic,model=stellaris -net tap -kernel $< -name stellaris-qemu -s
-
+	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.elf --serial null -nographic -S -s
 
 clean:
 	@rm -f $(OBJS)
