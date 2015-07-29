@@ -16,6 +16,19 @@ void frosted_init(void)
 }
 
 
+/* This comes up again ! */
+void task2(void *arg)
+{
+    volatile int i = (int)arg;
+    volatile int pid;
+    int fd = sys_open("/dev/null", 0, 0);
+    while(1) {
+        i = jiffies;
+        pid = sys_getpid();
+    }
+    (void)i;
+}
+
 void task1(void *arg)
 {
     volatile int i = (int)arg;
@@ -29,20 +42,11 @@ void task1(void *arg)
     /* open/close test */
     fd = sys_open("/dev/null", 0, 0);
     sys_close(fd);
+    
+    /* Thread create test */
+    if (sys_thread_create(task2, (void *)42, 1) < 0)
+        IDLE();
 
-
-    while(1) {
-        i = jiffies;
-        pid = sys_getpid();
-    }
-    (void)i;
-}
-
-void task2(void *arg)
-{
-    volatile int i = (int)arg;
-    volatile int pid;
-    int fd = sys_open("/dev/null", 0, 0);
     while(1) {
         i = jiffies;
         pid = sys_getpid();
@@ -64,8 +68,6 @@ void main(void)
     //ret = sys_setclock(10);
 
     if (task_create(task1, (void *)42, 2) < 0)
-        IDLE();
-    if (task_create(task2, (void *)42, 1) < 0)
         IDLE();
 
     /* Start the scheduler */
