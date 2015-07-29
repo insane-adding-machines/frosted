@@ -38,6 +38,11 @@ int sys_getpid(void){
     syscall(SYS_GETPID, 0, 0, 0, 0, 0); 
 }
 
+/* Syscall: getppid(0 arguments) */
+int sys_getppid(void){
+    syscall(SYS_GETPPID, 0, 0, 0, 0, 0); 
+}
+
 /* Syscall: open(3 arguments) */
 int sys_open(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_OPEN, arg1, arg2, arg3, 0,  0); 
@@ -56,6 +61,7 @@ extern sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_thread_create_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_test_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_getpid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_getppid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_open_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_close_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
@@ -67,6 +73,7 @@ void syscalls_init(void) {
 	sys_register_handler(4, sys_thread_create_hdlr);
 	sys_register_handler(5, sys_test_hdlr);
 	sys_register_handler(6, sys_getpid_hdlr);
-	sys_register_handler(7, sys_open_hdlr);
-	sys_register_handler(8, sys_close_hdlr);
+	sys_register_handler(7, sys_getppid_hdlr);
+	sys_register_handler(8, sys_open_hdlr);
+	sys_register_handler(9, sys_close_hdlr);
 }

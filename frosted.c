@@ -20,11 +20,12 @@ void frosted_init(void)
 void task2(void *arg)
 {
     volatile int i = (int)arg;
-    volatile int pid;
+    volatile int pid, ppid;
     int fd = sys_open("/dev/null", 0, 0);
     while(1) {
         i = jiffies;
         pid = sys_getpid();
+        ppid = sys_getppid();
     }
     (void)i;
 }

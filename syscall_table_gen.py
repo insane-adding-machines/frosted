@@ -18,6 +18,7 @@ syscalls = [
     ["thread_create", 3, "sys_thread_create_hdlr"],
     ["test", 5, "sys_test_hdlr"],
     ["getpid", 0, "sys_getpid_hdlr"],
+    ["getppid", 0, "sys_getppid_hdlr"],
     ["open", 3, "sys_open_hdlr"],
     ["close",1, "sys_close_hdlr"]
 ]

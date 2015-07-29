@@ -54,12 +54,13 @@ static void * _top_stack;
 #define TASK_WAITING    4
 #define TASK_OVER 0xFF
 
-struct task {
+struct __attribute__((packed)) task {
     void (*start)(void *);
     void *arg;
     int state;
     int timeslice;
-    int pid;
+    uint16_t pid;
+    uint16_t ppid;
     void *sp;
     uint32_t stack[STACK_SIZE / 4];
 };
@@ -129,9 +130,18 @@ static __inl void task_switch(void)
     _cur_task->state = TASK_RUNNING;
 }
 
-void task_end(void)
+uint16_t scheduler_get_cur_pid(void)
 {
-    /* TODO: schedule again. */
+    if (!_cur_task)
+        return 0;
+    return _cur_task->pid;
+}
+
+uint16_t scheduler_get_cur_ppid(void)
+{
+    if (!_cur_task)
+        return 0;
+    return _cur_task->ppid;
 }
 
 int task_create(void (*init)(void *), void *arg, unsigned int prio)
@@ -144,6 +154,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
         return -1;
     irq_off();
     tasklist[pid].pid = pid;
+    tasklist[pid].ppid = scheduler_get_cur_pid();
     tasklist[pid].start = init;
     tasklist[pid].arg = arg;
     tasklist[pid].timeslice = TIMESLICE((&tasklist[pid]));
@@ -238,9 +249,3 @@ void kernel_task_init(void)
     _cur_task = &tasklist[0];
 }
 
-int scheduler_get_cur_pid(void)
-{
-    if (!_cur_task)
-        return -1;
-    return _cur_task->pid;
-}

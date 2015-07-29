@@ -10,6 +10,7 @@
 #define SYS_THREAD_CREATE 			(4)
 #define SYS_TEST 			(5)
 #define SYS_GETPID 			(6)
-#define SYS_OPEN 			(7)
-#define SYS_CLOSE 			(8)
-#define _SYSCALLS_NR 9
+#define SYS_GETPPID 			(7)
+#define SYS_OPEN 			(8)
+#define SYS_CLOSE 			(9)
+#define _SYSCALLS_NR 10
