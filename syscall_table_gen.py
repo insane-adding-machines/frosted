@@ -16,7 +16,8 @@ syscalls = [
     ["stop", 0, "sys_stop_hdlr"],
     ["sleep", 1, "sys_sleep_hdlr"],
     ["thread_create", 3, "sys_thread_create_hdlr"],
-    ["test", 5, "sys_test_hdlr"]
+    ["test", 5, "sys_test_hdlr"],
+    ["open", 3, "sys_open_hdlr"]
 ]
 
    #

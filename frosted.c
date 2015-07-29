@@ -49,7 +49,11 @@ void main(void)
     struct fnode *dev = fno_create(NULL, "dev",fno_search("/"));
     struct fnode *null = fno_create(NULL, "null", dev);
 
-    struct fnode *devnull = fno_search("/dev/null");
+    int fd = sys_open("/dev/null", 0, 0);
+    int fd1 = sys_open("/dev/null", 0, 0);
+    int fd2 = sys_open("/dev/null", 0, 0);
+    int fdno = sys_open("/dev/nsss", 0, 0);
+
     
 
 

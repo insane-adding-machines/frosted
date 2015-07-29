@@ -1,5 +1,9 @@
 #include "frosted.h"
 
+
+/* ROOT entity ("/")
+ *.
+ */
 static struct fnode FNO_ROOT = {
     .owner = NULL,
     .fname = "/",
@@ -8,6 +12,24 @@ static struct fnode FNO_ROOT = {
     .children = NULL,
     .next = NULL 
 };
+
+
+/* Table of open files */
+#define MAXFILES 10
+static struct fnode *filedesc[MAXFILES];
+
+
+static int filedesc_new(struct fnode *f)
+{
+    int i;
+    for (i = 0; i < MAXFILES; i++) {
+        if (filedesc[i] == NULL) {
+            filedesc[i] = f;
+            return i;
+        }
+    }
+    return NULL; /* XXX: not enough resources! */
+}
 
 
 static const char *path_walk(const char *path)
@@ -129,4 +151,16 @@ void fno_unlink(struct fnode *fno)
     }
     kfree(fno->fname);
     kfree(fno);
+}
+
+
+sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    const char *path = (const char *)arg1;
+    struct fnode *f;
+
+    f = fno_search(path);
+    if (f == NULL)
+        return -1; /* XXX: ENOENT */
+    return filedesc_new(f); 
 }
