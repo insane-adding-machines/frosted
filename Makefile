@@ -1,7 +1,7 @@
-FAMILY?=lpc17xx
-ARCH?=seedpro
-#FAMILY?=stellaris
-#ARCH?=stellaris_qemu
+#FAMILY?=lpc17xx
+#ARCH?=seedpro
+FAMILY?=stellaris
+ARCH?=stellaris_qemu
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as

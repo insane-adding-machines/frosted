@@ -31,11 +31,15 @@ void task1(void *arg)
     (void)i;
 }
 
-
 void main(void) 
 {
     volatile int ret = 0;
+
     frosted_init();
+
+    /* c-lib and init test */
+    uint32_t * temp = malloc(32);
+
 
     sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
     //sys_sleep(3000);
@@ -45,9 +49,12 @@ void main(void)
         IDLE();
     if (task_create(task1, (void *)42, 1) < 0)
         IDLE();
+
+    free(temp);
     
     /* Start the scheduler */
     sys_start();
 
     while(1) ;
 }
+

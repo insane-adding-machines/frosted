@@ -3,30 +3,30 @@
 // startup.c - Startup code for use with GNU tools.
 //
 //*****************************************************************************
- 
+
 //*****************************************************************************
 //
 // Forward declaration of the default fault handlers.
 //
 //*****************************************************************************
-void ResetISR(void);
-static void NmiSR(void);
-static void FaultISR(void);
-static void IntDefaultHandler(void);
- 
+void Reset_Handler(void);
+void NMI_Handler(void);
+void HardFault_Handler(void);
+void MemManage_Handler(void);
+void BusFault_Handler(void);
+void UsageFault_Handler(void);
+void SVC_Handler(void);
+void DebugMon_Handler(void);
+void PendSV_Handler(void);
+void SysTick_Handler(void);
+
 //*****************************************************************************
 //
 // The entry point for the application.
 //
 //*****************************************************************************
 extern int main(void);
- 
-//*****************************************************************************
-//
-// Reserve space for the system stack.
-//
-//*****************************************************************************
-static unsigned long pulStack[64];
+extern unsigned int __StackTop; /* provided by linker script */
  
 //*****************************************************************************
 //
@@ -37,23 +37,22 @@ static unsigned long pulStack[64];
 __attribute__ ((section(".isr_vector")))
 void (* const g_pfnVectors[])(void) =
 {
-    (void (*)(void))((unsigned long)pulStack + sizeof(pulStack)),
-                                            // The initial stack pointer
-    ResetISR,                               // The reset handler
-    NmiSR,                                  // The NMI handler
-    FaultISR,                               // The hard fault handler
-    IntDefaultHandler,                      // The MPU fault handler
-    IntDefaultHandler,                      // The bus fault handler
-    IntDefaultHandler,                      // The usage fault handler
+    (void *)&__StackTop,                    // The initial stack pointer
+    Reset_Handler,                          // The reset handler
+    NMI_Handler,                            // The NMI handler
+    HardFault_Handler,                      // The hard fault handler
+    MemManage_Handler,                      // The MPU fault handler
+    BusFault_Handler,                       // The bus fault handler
+    UsageFault_Handler,                     // The usage fault handler
     0,                                      // Reserved
     0,                                      // Reserved
     0,                                      // Reserved
     0,                                      // Reserved
-    IntDefaultHandler,                      // SVCall handler
-    IntDefaultHandler,                      // Debug monitor handler
+    SVC_Handler,                            // SVCall handler
+    DebugMon_Handler,                       // Debug monitor handler
     0,                                      // Reserved
-    IntDefaultHandler,                      // The PendSV handler
-    IntDefaultHandler                       // The SysTick handler
+    PendSV_Handler,                         // The PendSV handler
+    SysTick_Handler                         // The SysTick handler
 };
  
 //*****************************************************************************
@@ -76,33 +75,31 @@ extern unsigned long _ebss;
 // after which the application supplied entry() routine is called. 
 //
 //*****************************************************************************
-void ResetISR(void)
+void Reset_Handler(void)
 {
     unsigned long *pulSrc, *pulDest;
+    unsigned char * bssDest;
  
     //
     // Copy the data segment initializers from flash to SRAM.
     //
     pulSrc = &_etext;
     pulDest = &_data; 
- 
+
     while(pulDest < &_edata)
     {
         *pulDest++ = *pulSrc++;
     }
- 
+
     //
-    // Zero fill the bss segment.
+    // Zero-init the BSS section
     //
-    __asm("    ldr     r0, =_bss\n"
-          "    ldr     r1, =_ebss\n"
-          "    mov     r2, #0\n"
-          "    .thumb_func\n"
-          "zero_loop:\n"
-          "        cmp     r0, r1\n"
-          "        it      lt\n"
-          "        strlt   r2, [r0], #4\n"
-          "        blt     zero_loop");
+    bssDest = (unsigned char *)&_bss;
+
+    while(bssDest < (unsigned char *)&_ebss)
+    {
+        *bssDest++ = 0u;
+    }
  
     //
     // Call the application's entry point.
@@ -110,38 +107,49 @@ void ResetISR(void)
     main();
 }
  
-//*****************************************************************************
-//
-// This is the code that gets called when the processor receives a NMI.  This
-// simply enters an infinite loop, preserving the system state for examination
-// by a debugger.
-//
-//*****************************************************************************
-static void NmiSR(void)
+void __attribute__((weak)) NMI_Handler(void)
 {
-    //
-    // Enter an infinite loop.
-    //
-    while(1) {
-        ;
-    }
+    while(1);
 }
- 
-//*****************************************************************************
-//
-// This is the code that gets called when the processor receives a fault
-// interrupt.  This simply enters an infinite loop, preserving the system state
-// for examination by a debugger.
-//
-//*****************************************************************************
-static void FaultISR(void)
+
+void __attribute__((weak)) HardFault_Handler(void)
 {
-    //
-    // Enter an infinite loop.
-    //
-    while(1) {
-        ;
-    }
+    while(1);
+}
+
+void __attribute__((weak)) MemManage_Handler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) BusFault_Handler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) UsageFault_Handler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) SVC_Handler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) DebugMon_Handler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) PendSV_Handler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) SysTick_Handler(void)
+{
+    while(1);
 }
  
 //*****************************************************************************
@@ -151,7 +159,7 @@ static void FaultISR(void)
 // for examination by a debugger.
 //
 //*****************************************************************************
-static void IntDefaultHandler(void)
+void __attribute__((weak)) IntDefaultHandler(void)
 {
     //
     // Go into an infinite loop.

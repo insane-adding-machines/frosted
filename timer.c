@@ -4,6 +4,7 @@ unsigned long timer_val = 0;
  
 void TIMER1_IRQHandler(void)
 {
+#if 0
     if (Chip_TIMER_MatchPending(LPC_TIMER1, 1)) {
         Chip_TIMER_ClearMatch(LPC_TIMER1, 1);
     }
@@ -11,10 +12,12 @@ void TIMER1_IRQHandler(void)
     NVIC_DisableIRQ(TIMER1_IRQn);
     jiffies+= timer_val;
     SysTick_on();
+#endif
 }
 
 int Timer_on(unsigned int n)
 {
+#if 0
     unsigned long timerFreq = Chip_Clock_GetPeripheralClockRate(SYSCTL_PCLK_TIMER1);
     timer_val = n;
     Chip_TIMER_Reset(LPC_TIMER1);
@@ -26,5 +29,6 @@ int Timer_on(unsigned int n)
     NVIC_EnableIRQ(TIMER1_IRQn);
     NVIC_ClearPendingIRQ(TIMER1_IRQn);
     SysTick_off();
+#endif
     return 0;
 }

@@ -2,8 +2,9 @@
 #define FROSTED_INCLUDED_H
 //#define DEBUG
 
+#include <stdlib.h>
 #include <stdint.h>
-#include "chip.h"
+#include "system.h"
 
 /* generics */
 volatile unsigned int jiffies;

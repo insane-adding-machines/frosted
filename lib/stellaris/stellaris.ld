@@ -3,12 +3,14 @@
  * standalone.ld - Linker script for applications using startup.c 
  *
  *****************************************************************************/
-ENTRY(ResetISR) 
+ENTRY(Reset_Handler) 
 MEMORY
 {
     FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 256K
     SRAM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
 }
+
+__StackTop = ORIGIN(SRAM) + LENGTH(SRAM) - 4;
  
 SECTIONS
 {

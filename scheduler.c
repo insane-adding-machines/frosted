@@ -109,10 +109,10 @@ static __inl void task_switch(void)
         return;
     if (_cur_task) {
         pid = _cur_task->pid;
-        *_top_stack = RUN_USER;
+        _top_stack = RUN_USER;
     } else {
         pid = 0;
-        *_top_stack = RUN_KERNEL;
+        _top_stack = RUN_KERNEL;
     }
 
     for (i = pid + 1 ;; i++) {
