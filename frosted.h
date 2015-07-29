@@ -28,6 +28,22 @@ int sys_register_handler(uint32_t n, int (*_sys_c)(uint32_t, uint32_t, uint32_t,
 int syscall(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
 void syscalls_init(void);
 
+/* VFS */
+void vfs_init(void);
+struct module {
+    /* TODO: place syscalls endpoints */
+
+};
+
+struct fnode {
+    struct module *owner;
+    char *fname;
+    uint32_t mask;
+    struct fnode *parent;
+    struct fnode *children;
+    struct fnode *next;
+};
+
 
 
 #ifdef DEBUG
@@ -56,19 +72,6 @@ static __attribute__((always_inline)) void irq_on(void)
 void task_run(void);
 void kernel_task_init(void);
 
-struct module {
-    /* TODO: place syscalls endpoints */
-
-};
-
-struct fnode {
-    struct module *owner;
-    char *fname;
-    uint32_t mask;
-    struct fnode *parent;
-    struct fnode *children;
-    struct fnode *next;
-};
 
 
 #define kalloc malloc

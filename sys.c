@@ -47,7 +47,12 @@ int sys_test_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 int sys_thread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    return -1;
+    void (*init)(void *arg);
+    void *arg = (void *) arg2;
+    unsigned int prio = (unsigned int) arg2;
+
+    init = (void (*)(void *)) arg1;
+    return task_create(init, arg, prio);
 }
 
 int sys_getpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)

@@ -9,8 +9,9 @@ void frosted_init(void)
     SystemCoreClockUpdate();
     SysTick_Config(SystemCoreClock / 1000);
     Board_Init();
-    syscalls_init();
 
+    syscalls_init();
+    vfs_init();
     kernel_task_init();
 }
 
@@ -19,6 +20,17 @@ void task1(void *arg)
 {
     volatile int i = (int)arg;
     volatile int pid;
+    int fd;
+    uint32_t *temp;
+    /* c-lib and init test */
+    temp = malloc(32);
+    free(temp);
+
+    /* open/close test */
+    fd = sys_open("/dev/null", 0, 0);
+    sys_close(fd);
+
+
     while(1) {
         i = jiffies;
         pid = sys_getpid();
@@ -30,6 +42,7 @@ void task2(void *arg)
 {
     volatile int i = (int)arg;
     volatile int pid;
+    int fd = sys_open("/dev/null", 0, 0);
     while(1) {
         i = jiffies;
         pid = sys_getpid();
@@ -46,19 +59,6 @@ void main(void)
 
     frosted_init();
 
-    /* c-lib and init test */
-    uint32_t * temp = malloc(32);
-
-    /* VFS test */
-    struct fnode *dev = fno_create(NULL, "dev",fno_search("/"));
-    struct fnode *null = fno_create(NULL, "null", dev);
-
-    int fd = sys_open("/dev/null", 0, 0);
-    int fd1 = sys_open("/dev/null", 0, 0);
-    sys_close(fd1);
-    int fd2 = sys_open("/dev/null", 0, 0);
-    int fdno = sys_open("/dev/nsss", 0, 0);
-
     sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
     //sys_sleep(3000);
     //ret = sys_setclock(10);
@@ -68,8 +68,6 @@ void main(void)
     if (task_create(task2, (void *)42, 1) < 0)
         IDLE();
 
-    free(temp);
-    
     /* Start the scheduler */
     sys_start();
 

@@ -173,3 +173,12 @@ sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint3
     }
     return -1; /* XXX: EINVAL */
 }
+    
+
+void vfs_init(void) 
+{
+    struct fnode *dev = fno_create(NULL, "dev",fno_search("/"));
+    struct fnode *null = fno_create(NULL, "null", dev);
+    /* For now, we just create a fake /dev/null */
+}
+
