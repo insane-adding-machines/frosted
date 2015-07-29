@@ -9,6 +9,7 @@
 #define SYS_SLEEP 			(3)
 #define SYS_THREAD_CREATE 			(4)
 #define SYS_TEST 			(5)
-#define SYS_OPEN 			(6)
-#define SYS_CLOSE 			(7)
-#define _SYSCALLS_NR 8
+#define SYS_GETPID 			(6)
+#define SYS_OPEN 			(7)
+#define SYS_CLOSE 			(8)
+#define _SYSCALLS_NR 9

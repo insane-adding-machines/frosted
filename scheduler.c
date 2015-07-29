@@ -237,3 +237,10 @@ void kernel_task_init(void)
     tasklist[0].sp = msp_read(); // but SP needs to be current SP
     _cur_task = &tasklist[0];
 }
+
+int scheduler_get_cur_pid(void)
+{
+    if (!_cur_task)
+        return -1;
+    return _cur_task->pid;
+}

@@ -20,6 +20,7 @@ void SysTick_off(void);
 
 /* scheduler */
 void pendsv_enable(void);
+int scheduler_get_cur_pid(void);
 
 
 /* System */
