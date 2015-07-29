@@ -164,3 +164,12 @@ sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32
         return -1; /* XXX: ENOENT */
     return filedesc_new(f); 
 }
+
+sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    if (filedesc[arg1] != NULL) {
+        filedesc[arg1] = NULL;
+        return 0;
+    }
+    return -1; /* XXX: EINVAL */
+}

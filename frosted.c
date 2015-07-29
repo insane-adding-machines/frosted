@@ -51,6 +51,7 @@ void main(void)
 
     int fd = sys_open("/dev/null", 0, 0);
     int fd1 = sys_open("/dev/null", 0, 0);
+    sys_close(fd1);
     int fd2 = sys_open("/dev/null", 0, 0);
     int fdno = sys_open("/dev/nsss", 0, 0);
 

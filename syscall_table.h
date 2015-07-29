@@ -10,4 +10,5 @@
 #define SYS_THREAD_CREATE 			(4)
 #define SYS_TEST 			(5)
 #define SYS_OPEN 			(6)
-#define _SYSCALLS_NR 7
+#define SYS_CLOSE 			(7)
+#define _SYSCALLS_NR 8
