@@ -1,6 +1,9 @@
 #include "frosted.h"
 #include "syscall_table.h"
 
+/* TEMP for memset */
+#include "string.h"
+
 #define MAX_TASKS 16
 #define PRIO 2
 #define BASE_TIMESLICE (20)
@@ -32,17 +35,17 @@ struct __attribute__((packed)) extra_stack_frame {
 #define EXTRA_FRAME_SIZE ((sizeof(struct extra_stack_frame)))
 
 
-static uint32_t * _top_stack;
+static void * _top_stack;
 //#define EXT_RETURN ((struct nvic_stack_frame *)(_top_stack))->pc
 
+//#define __inl __attribute__((always_inline))
+#define __inl inline
+#define __naked __attribute__((naked))
 
-#define __inl __attribute__((always_inline))
-//#define __inl inline
 
-
-#define RUN_HNDLER 0xfffffff1u
-#define RUN_KERNEL 0xfffffff9u
-#define RUN_USER   0xfffffffdu
+#define RUN_HANDLER (0xfffffff1u)
+#define RUN_KERNEL  (0xfffffff9u)
+#define RUN_USER    (0xfffffffdu)
 
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1
@@ -70,50 +73,57 @@ static int pid_max = 0;
 static __inl void * psp_read(void)
 {
     void * ret=NULL;
-    asm ("mrs %0, psp" : "=r" (ret));
-    return ret;
-}
-
-static __inl void * msp_read(void)
-{
-    void * ret=NULL;
-    asm ("mrs %0, msp" : "=r" (ret));
+    asm volatile ("mrs %0, psp" : "=r" (ret));
     return ret;
 }
 
 static __inl void psp_write(void *in)
 {
-    asm ("msr psp, %0" :: "r" (in));
+    asm volatile ("msr psp, %0" :: "r" (in));
+}
+
+static __inl void * msp_read(void)
+{
+    void * ret=NULL;
+    asm volatile ("mrs %0, msp" : "=r" (ret));
+    return ret;
+}
+
+static __inl void msp_write(void *in)
+{
+    asm volatile ("msr msp, %0" :: "r" (in));
 }
 
 static __inl void save_context(void)
 {
-    asm ("mrs %0, psp\n"
-            "stmdb %0!, {r4-r11}\n"
-            "msr psp, %0\n" : "=r" (tmp));
+    uint32_t tmp;
+    asm volatile ("mrs %0, msp           \n" /* could be changed to msp or psp later */
+         "stmdb %0!, {r4-r11}   \n"
+         "msr msp, %0           \n" : "=r" (tmp));
 }
 
 
-static __inl void load_context(void)
+static __inl void restore_context(void)
 {
-    asm ("mrs %0, psp\n"
-            "ldmfd %0!, {r4-r11}\n"
-            "msr psp, %0\n" : "=r" (tmp));
+    uint32_t tmp;
+    asm volatile ("mrs %0, msp           \n"
+          "ldmfd %0!, {r4-r11}  \n"
+          "msr msp, %0          \n" : "=r" (tmp));
 }
 
 
 static int i, pid;
 static __inl void task_switch(void)
 {
-    if (!_cur_task && (pid_max == 0))
-        return;
-    if (_cur_task) {
-        pid = _cur_task->pid;
-        _top_stack = RUN_USER;
-    } else {
-        pid = 0;
-        _top_stack = RUN_KERNEL;
-    }
+    //if (!_cur_task && (pid_max == 0))
+    //    return;
+    //if (_cur_task) {
+    //    pid = _cur_task->pid;
+    //    //_top_stack = (void *)RUN_USER;
+    //} else {
+    //    pid = 0;
+    //    //_top_stack = (void *)RUN_KERNEL;
+    //}
 
     for (i = pid + 1 ;; i++) {
         if (i >= pid_max)
@@ -126,8 +136,6 @@ static __inl void task_switch(void)
     _cur_task->timeslice = TIMESLICE(_cur_task);
     _cur_task->state = TASK_RUNNING;
 }
-
-
 
 void task_end(void)
 {
@@ -143,6 +151,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     if (pid_max >= MAX_TASKS)
         return -1;
     irq_off();
+    tasklist[pid].pid = pid;
     tasklist[pid].start = init;
     tasklist[pid].arg = arg;
     tasklist[pid].timeslice = TIMESLICE((&tasklist[pid]));
@@ -154,7 +163,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     memset(nvic_frame, 0, NVIC_FRAME_SIZE);
     nvic_frame->r0 = (uint32_t) arg;
     nvic_frame->pc = (uint32_t) init;
-    nvic_frame->lr = (uint32_t) task_end;
+    nvic_frame->lr = (uint32_t) RUN_HANDLER;
     nvic_frame->psr = 0x21000000ul;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
@@ -163,44 +172,82 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     tasklist[pid].state = TASK_RUNNABLE;
     pid_max++;
     irq_on();
+
+    return 0;
 } 
 
 
-
-
-//void __attribute__((naked)) PendSV_Handler(void)
-void PendSV_Handler(void)
+/* C ABI cannot mess with the stack, we will */
+void __naked  PendSV_Handler(void)
 {
-    _top_stack = msp_read();
-    if (_cur_task) {
-        asm volatile ("mrs %0, psp\n"
-                "stmdb %0!, {r4-r11}\n"
-                "msr psp, %0\n" :: "r" (_cur_task->sp)
-                );
+    /* disable interrupts */
+    /// XXX TODO
 
+    /* save current context on current stack */
+    //save_context();
+    //
+    asm volatile (  "mrs r3, msp           \n" /* could be changed to msp or psp later */
+                    "stmdb r3!, {r4-r11}   \n"
+                    "msr msp, r3           \n" );
+
+    /* save current SP to TCB */
+    //_top_stack = msp_read();
+    asm volatile ("mrs r3, msp" : "=r" (_top_stack));
+
+    _cur_task->sp = _top_stack;
+
+    /* choose next task */
+    pid = _cur_task->pid;
+
+    switch (pid) 
+    {
+        case 0: /* KERNEL mode */
+            //next_tcb = &tcb_user;
+            _cur_task = &tasklist[1];
+            break;
+
+        case 1: /* USER mode, thread 1 */
+            _cur_task = &tasklist[0];
+            break;
+
+        default:
+            while(1);
+            break;
     }
 
-    task_switch();
-    /* 
-    if (_cur_task)
-        _cur_task->timeslice -= _clock_interval;
-    if (!_cur_task || (_cur_task->timeslice <= 0)) {
-        task_switch();
-    }
-    */
+    /* write new stack pointer */
+    //msp_write(next_tcb->sp);
+    asm volatile ("msr msp, r3" :: "r" (_cur_task->sp));
 
-    asm volatile ("mrs %0, psp\n"
-            "ldmfd %0!, {r4-r11}\n"
-            "msr psp, %0\n" : "=r" (_cur_task->sp)
-            );
-
-    //asm ("bx lr\n");
-
+    /* restore context */
+    //restore_context();
+    asm volatile (  "mrs r3, msp          \n"
+                    "ldmfd r3!, {r4-r11}  \n"
+                    "msr msp, r3          \n" );
+    
+    /* enable interrupts */
+    /// XXX TODO
+    
+    asm volatile (  "bx lr          \n" );
 }
 
-void pendsv_enable(void)
+void __inl pendsv_enable(void)
 {
    *((uint32_t volatile *)0xE000ED04) = 0x10000000; 
+}
+
+
+
+void tcb_init(void)
+{
+    struct nvic_stack_frame *nvic_frame;
+
+    /* initialize TCBs */
+
+    /* task0 = kernel */
+    task_create(0x0, 0x1337, 0); // kernel init value does not matter
+    tasklist[0].sp = msp_read(); // but SP needs to be current SP
+    _cur_task = &tasklist[0];
 }
 
 

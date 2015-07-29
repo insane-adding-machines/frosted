@@ -7,6 +7,7 @@ static int _sched_active = 0;
 
 void frosted_scheduler_on(void)
 {
+    NVIC_SetPriority(PendSV_IRQn, 0x80); //XXX: Todo, figure out max prio bits per platform
     _sched_active = 1;
 }
 
@@ -21,16 +22,16 @@ void __attribute__((weak)) SysTick_Hook(void)
 
 void SysTick_Handler(void)
 {
-   irq_off();
+    //irq_off(); // XXX Fixme
     SysTick_Hook();
     jiffies+= _clock_interval;
     _n_int++;
-    
+
     if (_sched_active) {
         *((uint32_t volatile *)0xE000ED04) = 0x10000000; 
         //pendsv_enable();
     }
-   irq_on();
+    //irq_on();
 }
 
 void SysTick_on(void)

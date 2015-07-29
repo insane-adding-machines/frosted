@@ -13,15 +13,6 @@ void frosted_init(void)
 }
 
 
-void task0(void *arg)
-{
-    volatile int i = (int)arg;
-    while(1) {
-        i = jiffies;
-    }
-    (void)i;
-}
-
 void task1(void *arg)
 {
     volatile int i = (int)arg;
@@ -31,11 +22,25 @@ void task1(void *arg)
     (void)i;
 }
 
+void task2(void *arg)
+{
+    volatile int i = (int)arg;
+    while(1) {
+        i = jiffies;
+    }
+    (void)i;
+}
+
+
+extern void tcb_init(void);
+
 void main(void) 
 {
     volatile int ret = 0;
 
     frosted_init();
+
+    tcb_init();
 
     /* c-lib and init test */
     uint32_t * temp = malloc(32);
@@ -52,10 +57,10 @@ void main(void)
     //sys_sleep(3000);
     //ret = sys_setclock(10);
 
-    if (task_create(task0, (void *)42, 1) < 0)
+    if (task_create(task1, (void *)42, 2) < 0)
         IDLE();
-    if (task_create(task1, (void *)42, 1) < 0)
-        IDLE();
+    //if (task_create(task2, (void *)42, 1) < 0)
+    //    IDLE();
 
     free(temp);
     
