@@ -40,6 +40,13 @@ void main(void)
     /* c-lib and init test */
     uint32_t * temp = malloc(32);
 
+    /* VFS test */
+    struct fnode *dev = fno_create(NULL, "dev",fno_search("/"));
+    struct fnode *null = fno_create(NULL, "null", dev);
+
+    struct fnode *devnull = fno_search("/dev/null");
+    
+
 
     sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
     //sys_sleep(3000);

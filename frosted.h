@@ -54,5 +54,23 @@ static __attribute__((always_inline)) void irq_on(void)
 
 void task_run(void);
 
+struct module {
+    /* TODO: place syscalls endpoints */
+
+};
+
+struct fnode {
+    struct module *owner;
+    char *fname;
+    uint32_t mask;
+    struct fnode *parent;
+    struct fnode *children;
+    struct fnode *next;
+};
+
+
+#define kalloc malloc
+#define kfree  free
+
 #endif /* BSP_INCLUDED_H */
 

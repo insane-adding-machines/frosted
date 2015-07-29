@@ -46,6 +46,6 @@ SECTIONS
     .heap :
     {
         /* heap starts after BSS */
-        PROVIDE(_heap_start = __end );
+        PROVIDE(_heap_start = _end );
     } > SRAM
 }
