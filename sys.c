@@ -50,15 +50,21 @@ int sys_thread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t
     return -1;
 }
 
-int __attribute__((signal)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int __attribute__((signal,naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
+    asm volatile (" push {r0-r3, r7, r12, lr}\n");
 
+    int retval;
     int (*call)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5) = NULL;
+
     if (n >= _SYSCALLS_NR)
         return -1;
     if (sys_syscall_handlers[n] == NULL)
         return -1;
 
     call = sys_syscall_handlers[n];
-    return call(arg1, arg2, arg3, arg4, arg5);
+    retval = call(arg1, arg2, arg3, arg4, arg5);
+    asm volatile ( "mov r9, r0"); // save return value (r0) in r9
+    asm volatile (" pop {r0-r3, r7, r12, lr}");
+    asm volatile ( "bx lr");
 }
