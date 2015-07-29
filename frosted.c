@@ -10,6 +10,8 @@ void frosted_init(void)
     SysTick_Config(SystemCoreClock / 1000);
     Board_Init();
     syscalls_init();
+
+    kernel_task_init();
 }
 
 
@@ -40,8 +42,6 @@ void main(void)
 
     frosted_init();
 
-    tcb_init();
-
     /* c-lib and init test */
     uint32_t * temp = malloc(32);
 
@@ -54,17 +54,14 @@ void main(void)
     int fd2 = sys_open("/dev/null", 0, 0);
     int fdno = sys_open("/dev/nsss", 0, 0);
 
-    
-
-
     sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
     //sys_sleep(3000);
     //ret = sys_setclock(10);
 
     if (task_create(task1, (void *)42, 2) < 0)
         IDLE();
-    //if (task_create(task2, (void *)42, 1) < 0)
-    //    IDLE();
+    if (task_create(task2, (void *)42, 1) < 0)
+        IDLE();
 
     free(temp);
     

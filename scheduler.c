@@ -112,18 +112,10 @@ static __inl void restore_context(void)
 }
 
 
-static int i, pid;
 static __inl void task_switch(void)
 {
-    //if (!_cur_task && (pid_max == 0))
-    //    return;
-    //if (_cur_task) {
-    //    pid = _cur_task->pid;
-    //    //_top_stack = (void *)RUN_USER;
-    //} else {
-    //    pid = 0;
-    //    //_top_stack = (void *)RUN_KERNEL;
-    //}
+    int i, pid = _cur_task->pid;
+    _cur_task->state = TASK_RUNNABLE;
 
     for (i = pid + 1 ;; i++) {
         if (i >= pid_max)
@@ -196,24 +188,26 @@ void __naked  PendSV_Handler(void)
 
     _cur_task->sp = _top_stack;
 
+    asm volatile ("mov r7, lr");
     /* choose next task */
-    pid = _cur_task->pid;
+    task_switch();
+    asm volatile ("mov lr, r7");
 
-    switch (pid) 
-    {
-        case 0: /* KERNEL mode */
-            //next_tcb = &tcb_user;
-            _cur_task = &tasklist[1];
-            break;
+    //switch (pid) 
+    //{
+    //    case 0: /* KERNEL mode */
+    //        //next_tcb = &tcb_user;
+    //        _cur_task = &tasklist[1];
+    //        break;
 
-        case 1: /* USER mode, thread 1 */
-            _cur_task = &tasklist[0];
-            break;
+    //    case 1: /* USER mode, thread 1 */
+    //        _cur_task = &tasklist[0];
+    //        break;
 
-        default:
-            while(1);
-            break;
-    }
+    //    default:
+    //        while(1);
+    //        break;
+    //}
 
     /* write new stack pointer */
     //msp_write(next_tcb->sp);
@@ -236,18 +230,10 @@ void __inl pendsv_enable(void)
    *((uint32_t volatile *)0xE000ED04) = 0x10000000; 
 }
 
-
-
-void tcb_init(void)
+void kernel_task_init(void)
 {
-    struct nvic_stack_frame *nvic_frame;
-
-    /* initialize TCBs */
-
     /* task0 = kernel */
     task_create(0x0, 0x1337, 0); // kernel init value does not matter
     tasklist[0].sp = msp_read(); // but SP needs to be current SP
     _cur_task = &tasklist[0];
 }
-
-

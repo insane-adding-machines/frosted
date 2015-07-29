@@ -53,6 +53,7 @@ static __attribute__((always_inline)) void irq_on(void)
 #endif
 
 void task_run(void);
+void kernel_task_init(void);
 
 struct module {
     /* TODO: place syscalls endpoints */
