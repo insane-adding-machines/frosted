@@ -50,6 +50,7 @@ void task1(void *arg)
 
     while(1) {
         i = jiffies;
+        //sys_sleep(500); /* Work in progress... */
         pid = sys_getpid();
     }
     (void)i;
@@ -65,7 +66,6 @@ void main(void)
     frosted_init();
 
     sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
-    //sys_sleep(3000);
     //ret = sys_setclock(10);
 
     if (task_create(task1, (void *)42, 2) < 0)

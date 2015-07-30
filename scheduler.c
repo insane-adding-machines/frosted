@@ -116,14 +116,19 @@ static __inl void restore_context(void)
 static __inl void task_switch(void)
 {
     int i, pid = _cur_task->pid;
-    _cur_task->state = TASK_RUNNABLE;
 
     for (i = pid + 1 ;; i++) {
         if (i >= pid_max)
             i = 0;
-        if (tasklist[i].state == TASK_RUNNABLE) {
+        if ((i == 0) || (tasklist[i].state == TASK_RUNNABLE)) {
             _cur_task = &tasklist[i];
             break;
+        }
+        if ((tasklist[i].state == TASK_RUNNABLE)) {
+            if (tasklist[i].timeslice <= jiffies) {
+                _cur_task = &tasklist[i];
+                break;
+            }
         }
     }
     _cur_task->timeslice = TIMESLICE(_cur_task);
@@ -198,27 +203,12 @@ void __naked  PendSV_Handler(void)
     asm volatile ("mrs r3, msp" : "=r" (_top_stack));
 
     _cur_task->sp = _top_stack;
+    _cur_task->state = TASK_RUNNABLE;
 
     asm volatile ("mov r7, lr");
     /* choose next task */
     task_switch();
     asm volatile ("mov lr, r7");
-
-    //switch (pid) 
-    //{
-    //    case 0: /* KERNEL mode */
-    //        //next_tcb = &tcb_user;
-    //        _cur_task = &tasklist[1];
-    //        break;
-
-    //    case 1: /* USER mode, thread 1 */
-    //        _cur_task = &tasklist[0];
-    //        break;
-
-    //    default:
-    //        while(1);
-    //        break;
-    //}
 
     /* write new stack pointer */
     //msp_write(next_tcb->sp);
@@ -247,5 +237,23 @@ void kernel_task_init(void)
     task_create(0x0, 0x1337, 0); // kernel init value does not matter
     tasklist[0].sp = msp_read(); // but SP needs to be current SP
     _cur_task = &tasklist[0];
+}
+
+int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    uint16_t pid = scheduler_get_cur_pid();
+
+    if (arg1 < 0)
+        return -1;
+
+    if (pid > 0) {
+        _cur_task->state = TASK_SLEEPING;
+        _cur_task->timeslice = jiffies + arg1;
+        schedule();
+
+        while(jiffies < _cur_task->timeslice)
+            __WFI();
+    }
+    return 0;
 }
 
