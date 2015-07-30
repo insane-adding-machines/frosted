@@ -1,7 +1,25 @@
 #include "frosted.h"
 #include "syscall_table.h"
 
-/* TEMP for memset */
+
+/* Full kernel space separation */
+#define RUN_HANDLER (0xfffffff1u)
+#ifdef USERSPACE
+#   define MSP "msp"
+#   define PSP "psp"
+#define RUN_KERNEL  (0xfffffff9u)
+#define RUN_USER    (0xfffffffdu)
+
+/* Separation is emulated */
+#else
+#   define MSP "msp"
+#   define PSP "msp"
+#define RUN_KERNEL  RUN_HANDLER
+#define RUN_USER    RUN_HANDLER
+#endif
+
+
+/* XXX TEMP for memset */
 #include "string.h"
 
 #define MAX_TASKS 16
@@ -43,9 +61,6 @@ static void * _top_stack;
 #define __naked __attribute__((naked))
 
 
-#define RUN_HANDLER (0xfffffff1u)
-#define RUN_KERNEL  (0xfffffff9u)
-#define RUN_USER    (0xfffffffdu)
 
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1
@@ -53,6 +68,7 @@ static void * _top_stack;
 #define TASK_SLEEPING   3
 #define TASK_WAITING    4
 #define TASK_OVER 0xFF
+
 
 struct __attribute__((packed)) task {
     void (*start)(void *);
@@ -70,6 +86,10 @@ static volatile uint32_t tmp;
 
 static struct task tasklist[MAX_TASKS] __attribute__((section(".task"), __used__)) = {}; 
 static int pid_max = 0;
+static __inl int in_kernel(void)
+{
+    return (_cur_task == tasklist);
+}
 
 static __inl void * psp_read(void)
 {
@@ -167,37 +187,57 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     return 0;
 } 
 
-static __naked void save_context(void)
+static __naked void save_kernel_context(void)
 {
-    asm volatile ("mrs r3, msp           ");
-    asm volatile ("stmdb r3!, {r4-r11}   ");
-    asm volatile ("msr msp, r3           ");
+    asm volatile ("mrs r0, "MSP"           ");
+    asm volatile ("stmdb r0!, {r4-r11}   ");
+    asm volatile ("msr "MSP", r0           ");
     asm volatile ("bx lr                 ");
-
 }
 
-
-static __naked void restore_context(void)
+static __naked void save_task_context(void)
 {
-    uint32_t tmp;
-    asm volatile ("mrs r3, msp          ");
-    asm volatile ("ldmfd r3!, {r4-r11}  ");
-    asm volatile ("msr msp, r3          ");
+    asm volatile ("mrs r0, "PSP"           ");
+    asm volatile ("stmdb r0!, {r4-r11}   ");
+    asm volatile ("msr "PSP", r0           ");
     asm volatile ("bx lr                 ");
 }
 
 
 static uint32_t runnable = RUN_HANDLER;
+
+static __naked void restore_kernel_context(void)
+{
+    asm volatile ("mrs r0, "MSP"          ");
+    asm volatile ("ldmfd r0!, {r4-r11}  ");
+    asm volatile ("msr "MSP", r0          ");
+    asm volatile ("bx lr                 ");
+}
+
+static __naked void restore_task_context(void)
+{
+    asm volatile ("mrs r0, "PSP"          ");
+    asm volatile ("ldmfd r0!, {r4-r11}  ");
+    asm volatile ("msr "PSP", r0          ");
+    asm volatile ("bx lr                 ");
+}
+
+
 /* C ABI cannot mess with the stack, we will */
 void __naked  PendSV_Handler(void)
 {
 
     /* save current context on current stack */
-    save_context();
+    if (in_kernel()) {
+        save_kernel_context();
+        asm volatile ("mrs %0, "MSP"" : "=r" (_top_stack));
+    } else {
+        save_task_context();
+        asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
+    }
 
     /* save current SP to TCB */
     //_top_stack = msp_read();
-    asm volatile ("mrs r3, msp" : "=r" (_top_stack));
 
     _cur_task->sp = _top_stack;
     _cur_task->state = TASK_RUNNABLE;
@@ -205,13 +245,18 @@ void __naked  PendSV_Handler(void)
     /* choose next task */
     task_switch();
 
-    /* write new stack pointer */
-    asm volatile ("msr msp, r3" :: "r" (_cur_task->sp));
+    /* write new stack pointer and restore context */
+    if (in_kernel()) {
+        asm volatile ("msr "MSP", %0" :: "r" (_cur_task->sp));
+        restore_kernel_context();
+        runnable = RUN_KERNEL;
+    } else {
+        asm volatile ("msr "PSP", %0" :: "r" (_cur_task->sp));
+        restore_task_context();
+        runnable = RUN_USER;
+    }
 
-    /* restore context */
-    restore_context();
-    
-    /* Set return value */ 
+    /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
 
     /* return (function is naked) */ 
