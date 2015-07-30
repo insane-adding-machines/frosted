@@ -95,23 +95,6 @@ static __inl void msp_write(void *in)
     asm volatile ("msr msp, %0" :: "r" (in));
 }
 
-static __inl void save_context(void)
-{
-    uint32_t tmp;
-    asm volatile ("mrs %0, msp           \n" /* could be changed to msp or psp later */
-         "stmdb %0!, {r4-r11}   \n"
-         "msr msp, %0           \n" : "=r" (tmp));
-}
-
-
-static __inl void restore_context(void)
-{
-    uint32_t tmp;
-    asm volatile ("mrs %0, msp           \n"
-          "ldmfd %0!, {r4-r11}  \n"
-          "msr msp, %0          \n" : "=r" (tmp));
-}
-
 
 static __inl void task_switch(void)
 {
@@ -184,19 +167,33 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     return 0;
 } 
 
+static __naked void save_context(void)
+{
+    asm volatile ("mrs r3, msp           ");
+    asm volatile ("stmdb r3!, {r4-r11}   ");
+    asm volatile ("msr msp, r3           ");
+    asm volatile ("bx lr                 ");
 
+}
+
+
+static __naked void restore_context(void)
+{
+    uint32_t tmp;
+    asm volatile ("mrs r3, msp          ");
+    asm volatile ("ldmfd r3!, {r4-r11}  ");
+    asm volatile ("msr msp, r3          ");
+    asm volatile ("bx lr                 ");
+}
+
+
+static uint32_t runnable = RUN_HANDLER;
 /* C ABI cannot mess with the stack, we will */
 void __naked  PendSV_Handler(void)
 {
-    /* disable interrupts */
-    /// XXX TODO
 
     /* save current context on current stack */
-    //save_context();
-    //
-    asm volatile (  "mrs r3, msp           \n" /* could be changed to msp or psp later */
-                    "stmdb r3!, {r4-r11}   \n"
-                    "msr msp, r3           \n" );
+    save_context();
 
     /* save current SP to TCB */
     //_top_stack = msp_read();
@@ -205,25 +202,20 @@ void __naked  PendSV_Handler(void)
     _cur_task->sp = _top_stack;
     _cur_task->state = TASK_RUNNABLE;
 
-    asm volatile ("mov r7, lr");
     /* choose next task */
     task_switch();
-    asm volatile ("mov lr, r7");
 
     /* write new stack pointer */
-    //msp_write(next_tcb->sp);
     asm volatile ("msr msp, r3" :: "r" (_cur_task->sp));
 
     /* restore context */
-    //restore_context();
-    asm volatile (  "mrs r3, msp          \n"
-                    "ldmfd r3!, {r4-r11}  \n"
-                    "msr msp, r3          \n" );
+    restore_context();
     
-    /* enable interrupts */
-    /// XXX TODO
-    
-    asm volatile (  "bx lr          \n" );
+    /* Set return value */ 
+    asm volatile ("mov lr, %0" :: "r" (runnable));
+
+    /* return (function is naked) */ 
+    asm volatile ("bx lr          \n" );
 }
 
 void __inl pendsv_enable(void)
