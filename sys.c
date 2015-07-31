@@ -22,18 +22,6 @@ int sys_setclock_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4
     return SysTick_interval(arg1);
 }
 
-int sys_start_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
-{
-    frosted_scheduler_on();
-    return 0;
-}
-
-int sys_stop_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
-{
-    frosted_scheduler_off();
-    return 0;
-}
-
 int sys_suspend_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     Timer_on(arg1);

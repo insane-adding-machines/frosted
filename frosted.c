@@ -13,6 +13,7 @@ void frosted_init(void)
     syscalls_init();
     vfs_init();
     kernel_task_init();
+    frosted_scheduler_on();
 }
 
 
@@ -65,15 +66,11 @@ void main(void)
 
     frosted_init();
 
-    sys_test(0xaa, 0xbb, 0xcc, 0xdd, 0xee);
-    //ret = sys_setclock(10);
-
     if (task_create(task1, (void *)42, 2) < 0)
         IDLE();
 
-    /* Start the scheduler */
-    sys_start();
-
-    while(1) ;
+    while(1) {
+        /* This is the kernel main loop */   
+    }
 }
 
