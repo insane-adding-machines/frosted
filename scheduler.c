@@ -22,6 +22,24 @@
 /* XXX TEMP for memset */
 #include "string.h"
 
+/* Array of syscalls */
+static void *sys_syscall_handlers[_SYSCALLS_NR] = {
+
+};
+
+int sys_register_handler(uint32_t n, int(*_sys_c)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5))
+{
+    if (n >= _SYSCALLS_NR)
+        return -1; /* Attempting to register non-existing syscall */
+
+    if (sys_syscall_handlers[n] != NULL)
+        return -1; /* Syscall already registered */
+
+    sys_syscall_handlers[n] = _sys_c;
+    return 0;
+} 
+
+
 #define MAX_TASKS 16
 #define BASE_TIMESLICE (20)
 #define TIMESLICE(x) ((BASE_TIMESLICE) + (x->prio << 2))
@@ -277,7 +295,7 @@ void __inl pendsv_enable(void)
 void kernel_task_init(void)
 {
     /* task0 = kernel */
-    task_create(0x0, 0x1337, 0); // kernel init value does not matter
+    task_create(0x0, (void *)0x1337, 0); // kernel init value does not matter
     tasklist[0].sp = msp_read(); // but SP needs to be current SP
     _cur_task = &tasklist[0];
 }
@@ -292,11 +310,52 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     if (pid > 0) {
         _cur_task->state = TASK_SLEEPING;
         _cur_task->timeslice = jiffies + arg1;
-        schedule();
-
-        while(jiffies < _cur_task->timeslice)
-            __WFI();
     }
     return 0;
 }
 
+int __attribute__((signal,naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    /* save current context on current stack */
+    save_task_context();
+    asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
+
+    /* save current SP to TCB */
+    _cur_task->sp = _top_stack;
+
+    /* Execute syscall */
+    int retval;
+    int (*call)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5) = NULL;
+
+    if (n >= _SYSCALLS_NR)
+        return -1;
+    if (sys_syscall_handlers[n] == NULL)
+        return -1;
+
+    call = sys_syscall_handlers[n];
+    retval = call(arg1, arg2, arg3, arg4, arg5);
+
+    if ((_cur_task->state == TASK_SLEEPING) || (_cur_task->state == TASK_WAITING))
+        task_switch();
+    else {
+        asm volatile ( "mov %0, r0" : "=r" 
+                (*((uint32_t *)(_cur_task->sp + EXTRA_FRAME_SIZE))) );
+    }
+
+    /* write new stack pointer and restore context */
+    if (in_kernel()) {
+        asm volatile ("msr "MSP", %0" :: "r" (_cur_task->sp));
+        restore_kernel_context();
+        runnable = RUN_KERNEL;
+    } else {
+        asm volatile ("msr "PSP", %0" :: "r" (_cur_task->sp));
+        restore_task_context();
+        runnable = RUN_USER;
+    }
+
+    /* Set return value selected by the restore procedure */ 
+    asm volatile ("mov lr, %0" :: "r" (runnable));
+
+    /* return (function is naked) */ 
+    asm volatile ( "bx lr");
+}
