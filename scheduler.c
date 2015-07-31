@@ -144,7 +144,7 @@ static __inl void task_switch(void)
             _cur_task = &tasklist[i];
             break;
         }
-        if ((tasklist[i].state == TASK_RUNNABLE)) {
+        if ((tasklist[i].state == TASK_SLEEPING)) {
             if (tasklist[i].timeslice <= jiffies) {
                 _cur_task = &tasklist[i];
                 break;

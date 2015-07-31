@@ -51,7 +51,7 @@ void task1(void *arg)
 
     while(1) {
         i = jiffies;
-        //sys_sleep(500); /* Work in progress... */
+        sys_sleep(500);
         pid = sys_getpid();
     }
     (void)i;
