@@ -21,6 +21,7 @@ void SysTick_off(void);
 /* scheduler */
 uint16_t scheduler_get_cur_pid(void);
 uint16_t scheduler_get_cur_ppid(void);
+int task_timeslice(void);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 

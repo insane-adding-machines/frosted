@@ -28,7 +28,7 @@ void SysTick_Handler(void)
     jiffies+= _clock_interval;
     _n_int++;
 
-    if (_sched_active) {
+    if (_sched_active && (task_timeslice() == 0)) {
         schedule();
     }
     //irq_on();

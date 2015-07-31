@@ -23,9 +23,8 @@
 #include "string.h"
 
 #define MAX_TASKS 16
-#define PRIO 2
 #define BASE_TIMESLICE (20)
-#define TIMESLICE(x) ((BASE_TIMESLICE) + (PRIO << 2))
+#define TIMESLICE(x) ((BASE_TIMESLICE) + (x->prio << 2))
 #define STACK_SIZE (996)
 
 struct __attribute__((packed)) nvic_stack_frame {
@@ -73,7 +72,8 @@ static void * _top_stack;
 struct __attribute__((packed)) task {
     void (*start)(void *);
     void *arg;
-    int state;
+    uint16_t state;
+    uint16_t prio;
     int timeslice;
     uint16_t pid;
     uint16_t ppid;
@@ -81,8 +81,7 @@ struct __attribute__((packed)) task {
     uint32_t stack[STACK_SIZE / 4];
 };
 
-static volatile struct task *_cur_task = NULL;
-static volatile uint32_t tmp;
+volatile struct task *_cur_task = NULL;
 
 static struct task tasklist[MAX_TASKS] __attribute__((section(".task"), __used__)) = {}; 
 static int pid_max = 0;
@@ -152,6 +151,12 @@ uint16_t scheduler_get_cur_ppid(void)
     return _cur_task->ppid;
 }
 
+
+int task_timeslice(void) 
+{
+    return (--_cur_task->timeslice);
+}
+
 int task_create(void (*init)(void *), void *arg, unsigned int prio)
 {
     struct nvic_stack_frame *nvic_frame;
@@ -163,6 +168,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     irq_off();
     tasklist[pid].pid = pid;
     tasklist[pid].ppid = scheduler_get_cur_pid();
+    tasklist[pid].prio = prio;
     tasklist[pid].start = init;
     tasklist[pid].arg = arg;
     tasklist[pid].timeslice = TIMESLICE((&tasklist[pid]));
