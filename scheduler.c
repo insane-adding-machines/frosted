@@ -314,6 +314,9 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     return 0;
 }
 
+static uint32_t *a4 = NULL;
+static uint32_t *a5 = NULL;
+
 int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     /* save current context on current stack */
@@ -322,6 +325,8 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
 
     /* save current SP to TCB */
     _cur_task->sp = _top_stack;
+    a4 = (uint32_t *)((uint8_t *)_cur_task->sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
+    a5 = (uint32_t *)((uint8_t *)_cur_task->sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 4));
 
     /* Execute syscall */
     int retval;
@@ -333,7 +338,7 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
         return -1;
 
     call = sys_syscall_handlers[n];
-    retval = call(arg1, arg2, arg3, arg4, arg5);
+    retval = call(arg1, arg2, arg3, *a4, *a5);
 
     if ((_cur_task->state == TASK_SLEEPING) || (_cur_task->state == TASK_WAITING))
         task_switch();
