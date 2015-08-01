@@ -61,12 +61,12 @@ static void irq_on(void)
 #else
 
 /* Inline kernel utils */
-static __attribute__((always_inline)) void irq_off(void)
+static inline void irq_off(void)
 {
     asm volatile ("cpsid i\n");
 }
 
-static __attribute__((always_inline)) void irq_on(void)
+static inline void irq_on(void)
 {
     asm volatile ("cpsie i\n");
 }

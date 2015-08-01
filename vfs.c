@@ -1,4 +1,5 @@
 #include "frosted.h"
+#include <string.h>
 
 
 /* ROOT entity ("/")
@@ -28,7 +29,7 @@ static int filedesc_new(struct fnode *f)
             return i;
         }
     }
-    return NULL; /* XXX: not enough resources! */
+    return -1; /* XXX: not enough resources! */
 }
 
 
