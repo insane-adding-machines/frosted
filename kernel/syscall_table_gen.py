@@ -19,7 +19,8 @@ syscalls = [
     ["getpid", 0, "sys_getpid_hdlr"],
     ["getppid", 0, "sys_getppid_hdlr"],
     ["open", 3, "sys_open_hdlr"],
-    ["close",1, "sys_close_hdlr"]
+    ["close",1, "sys_close_hdlr"],
+    ["gettimeofday",1, "sys_gettimeofday_hdlr"]
 ]
 
    #
@@ -27,8 +28,8 @@ syscalls = [
  #####
 #######
 #################################################################
-hdr = open("syscall_table.h", "w")
-code = open("syscall_table.c", "w")
+hdr = open("kernel/syscall_table.h", "w")
+code = open("kernel/syscall_table.c", "w")
 
 hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n\n")
 code.write("/* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n#include \"syscall_table.h\"\n")

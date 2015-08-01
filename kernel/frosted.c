@@ -24,8 +24,9 @@ void task2(void *arg)
     volatile int pid, ppid;
     int fd = sys_open("/dev/null", 0, 0);
     volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
+    volatile uint32_t now; 
     while(1) {
-        i = jiffies;
+        now = sys_gettimeofday(NULL);
         pid = sys_getpid();
         ppid = sys_getppid();
     }

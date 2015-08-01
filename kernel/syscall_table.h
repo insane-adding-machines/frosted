@@ -12,4 +12,5 @@
 #define SYS_GETPPID 			(6)
 #define SYS_OPEN 			(7)
 #define SYS_CLOSE 			(8)
-#define _SYSCALLS_NR 9
+#define SYS_GETTIMEOFDAY 			(9)
+#define _SYSCALLS_NR 10
