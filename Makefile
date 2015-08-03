@@ -12,7 +12,19 @@ LDFLAGS:=-nostartfiles -lc -lm -lrdimon -ggdb
 CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-OBJS:=kernel/svc.o kernel/frosted.o port/$(FAMILY)/$(FAMILY).o  kernel/sys.o kernel/systick.o kernel/syscall.o kernel/timer.o kernel/scheduler.o kernel/syscall_table.o kernel/sbrk.o kernel/vfs.o
+OBJS:=	kernel/svc.o			\
+	kernel/frosted.o			\
+	port/$(FAMILY)/$(FAMILY).o	\
+	kernel/sys.o				\
+	kernel/systick.o			\
+	kernel/syscall.o			\
+	kernel/timer.o				\
+	kernel/scheduler.o			\
+	kernel/syscall_table.o		\
+	kernel/sbrk.o				\
+	kernel/vfs.o				\
+	kernel/newlib_redirect.o	\
+	kernel/malloc.o
 
 
 include port/$(FAMILY)/$(FAMILY).mk
