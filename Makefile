@@ -21,7 +21,6 @@ OBJS:=	kernel/svc.o			\
 	kernel/timer.o				\
 	kernel/scheduler.o			\
 	kernel/syscall_table.o		\
-	kernel/sbrk.o				\
 	kernel/vfs.o				\
 	kernel/newlib_redirect.o	\
 	kernel/malloc.o

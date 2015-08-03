@@ -1,13 +1,27 @@
 /* 
- * This will redirect newlib's malloc(), calloc(), realloc() and free() functions
- * to the Frosted heap allocator
- *
- * Author: Maxime Vincent
+ * This will redirect newlib syscalls
+ *      malloc(), calloc(), realloc(), free(), sbrk()
+ *      to the Frosted heap allocator
  *
  */
 
 #include "malloc.h"
 #include "stdint.h"
+
+void * _sbrk(int incr)
+{
+   extern char   end;           /* Set by linker */
+   static char * heap_end;
+   char *        prev_heap_end;
+
+   if (heap_end == 0)
+     heap_end = &end;
+
+   prev_heap_end = heap_end;
+   heap_end += incr;
+
+   return (void *) prev_heap_end;
+}
 
 void * _realloc_r(struct _reent *re, void * old_addr, size_t new_size)
 {
