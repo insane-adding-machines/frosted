@@ -20,7 +20,9 @@ syscalls = [
     ["getppid", 0, "sys_getppid_hdlr"],
     ["open", 3, "sys_open_hdlr"],
     ["close",1, "sys_close_hdlr"],
-    ["gettimeofday",1, "sys_gettimeofday_hdlr"]
+    ["gettimeofday",1, "sys_gettimeofday_hdlr"],
+    ["malloc",1, "sys_malloc_hdlr"],
+    ["free",1, "sys_free_hdlr"]
 ]
 
    #

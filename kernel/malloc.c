@@ -156,6 +156,17 @@ void f_free(void * ptr)
     }
 }
 
+int sys_malloc_hdlr(int size)
+{
+    return (int)f_malloc(size);
+}
+
+int sys_free_hdlr(int addr)
+{
+    f_free((void *)addr);
+    return 0;
+}
+
 
 /*------------------*/
 /* Test functions   */
@@ -187,3 +198,6 @@ int main(int argc, char ** argv)
     return 0;
 }
 #endif
+
+
+

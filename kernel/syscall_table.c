@@ -53,6 +53,16 @@ int sys_gettimeofday(uint32_t arg1){
     syscall(SYS_GETTIMEOFDAY, arg1, 0, 0, 0, 0); 
 }
 
+/* Syscall: malloc(1 arguments) */
+int sys_malloc(uint32_t arg1){
+    syscall(SYS_MALLOC, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: free(1 arguments) */
+int sys_free(uint32_t arg1){
+    syscall(SYS_FREE, arg1, 0, 0, 0, 0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -64,6 +74,8 @@ extern sys_getppid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_open_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_close_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_gettimeofday_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_malloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_free_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -76,4 +88,6 @@ void syscalls_init(void) {
 	sys_register_handler(7, sys_open_hdlr);
 	sys_register_handler(8, sys_close_hdlr);
 	sys_register_handler(9, sys_gettimeofday_hdlr);
+	sys_register_handler(10, sys_malloc_hdlr);
+	sys_register_handler(11, sys_free_hdlr);
 }

@@ -13,4 +13,6 @@
 #define SYS_OPEN 			(7)
 #define SYS_CLOSE 			(8)
 #define SYS_GETTIMEOFDAY 			(9)
-#define _SYSCALLS_NR 10
+#define SYS_MALLOC 			(10)
+#define SYS_FREE 			(11)
+#define _SYSCALLS_NR 12
