@@ -23,7 +23,9 @@ OBJS:=	kernel/svc.o			\
 	kernel/syscall_table.o		\
 	kernel/vfs.o				\
 	kernel/newlib_redirect.o	\
-	kernel/malloc.o
+	kernel/malloc.o				\
+	kernel/module.o				\
+	kernel/null.o
 
 
 include port/$(FAMILY)/$(FAMILY).mk

@@ -23,11 +23,17 @@ void task2(void *arg)
     volatile int i = (int)arg;
     volatile int pid, ppid;
     void *addr;
-    int fd = sys_open("/dev/null", 0, 0);
+    int fdn = sys_open("/dev/null", 0, 0);
+    int fdz = sys_open("/dev/zero", 0, 0);
     volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
     volatile uint32_t now; 
+    volatile int ret;
     while(1) {
         addr = (void *)sys_malloc(20);
+        ret = sys_read(fdz, addr, 20);
+        ret = sys_write(fdn, addr, 20);
+        sys_close(fdn);
+        sys_close(fdz);
         now = sys_gettimeofday(NULL);
         pid = sys_getpid();
         ppid = sys_getppid();

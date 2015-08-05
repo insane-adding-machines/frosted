@@ -6,12 +6,6 @@
  *.
  */
 static struct fnode FNO_ROOT = {
-    .owner = NULL,
-    .fname = "/",
-    .mask = 0,
-    .parent = &FNO_ROOT,
-    .children = NULL,
-    .next = NULL 
 };
 
 
@@ -133,6 +127,13 @@ struct fnode *fno_create(struct module *owner, const char *name, struct fnode *p
     return fno;
 }
 
+struct fnode *fno_get(int fd)
+{
+    if (fd < 0)
+        return NULL;
+    return filedesc[fd];
+}
+
 void fno_unlink(struct fnode *fno)
 {
     struct fnode *dir = fno->parent;
@@ -178,8 +179,19 @@ sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint3
 
 void vfs_init(void) 
 {
-    struct fnode *dev = fno_create(NULL, "dev",fno_search("/"));
-    struct fnode *null = fno_create(NULL, "null", dev);
-    /* For now, we just create a fake /dev/null */
+    struct fnode *dev = NULL;
+    /* Initialize "/" */
+    FNO_ROOT.owner = NULL;
+    FNO_ROOT.fname = "/";
+    FNO_ROOT.mask = 0;
+    FNO_ROOT.parent = &FNO_ROOT;
+    FNO_ROOT.children = NULL;
+    FNO_ROOT.next = NULL ;
+
+    /* Init "/dev" dir */
+    dev = fno_create(NULL, "dev", NULL);
+
+    /* Hook modules */
+    devnull_init(dev);
 }
 

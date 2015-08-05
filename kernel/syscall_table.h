@@ -12,7 +12,9 @@
 #define SYS_GETPPID 			(6)
 #define SYS_OPEN 			(7)
 #define SYS_CLOSE 			(8)
-#define SYS_GETTIMEOFDAY 			(9)
-#define SYS_MALLOC 			(10)
-#define SYS_FREE 			(11)
-#define _SYSCALLS_NR 12
+#define SYS_READ 			(9)
+#define SYS_WRITE 			(10)
+#define SYS_GETTIMEOFDAY 			(11)
+#define SYS_MALLOC 			(12)
+#define SYS_FREE 			(13)
+#define _SYSCALLS_NR 14

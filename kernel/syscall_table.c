@@ -48,6 +48,16 @@ int sys_close(uint32_t arg1){
     syscall(SYS_CLOSE, arg1, 0, 0, 0, 0); 
 }
 
+/* Syscall: read(3 arguments) */
+int sys_read(uint32_t arg1, uint32_t arg2, uint32_t arg3){
+    syscall(SYS_READ, arg1, arg2, arg3, 0,  0); 
+}
+
+/* Syscall: write(3 arguments) */
+int sys_write(uint32_t arg1, uint32_t arg2, uint32_t arg3){
+    syscall(SYS_WRITE, arg1, arg2, arg3, 0,  0); 
+}
+
 /* Syscall: gettimeofday(1 arguments) */
 int sys_gettimeofday(uint32_t arg1){
     syscall(SYS_GETTIMEOFDAY, arg1, 0, 0, 0, 0); 
@@ -73,6 +83,8 @@ extern sys_getpid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_getppid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_open_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_close_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_read_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_write_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_gettimeofday_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_malloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_free_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -87,7 +99,9 @@ void syscalls_init(void) {
 	sys_register_handler(6, sys_getppid_hdlr);
 	sys_register_handler(7, sys_open_hdlr);
 	sys_register_handler(8, sys_close_hdlr);
-	sys_register_handler(9, sys_gettimeofday_hdlr);
-	sys_register_handler(10, sys_malloc_hdlr);
-	sys_register_handler(11, sys_free_hdlr);
+	sys_register_handler(9, sys_read_hdlr);
+	sys_register_handler(10, sys_write_hdlr);
+	sys_register_handler(11, sys_gettimeofday_hdlr);
+	sys_register_handler(12, sys_malloc_hdlr);
+	sys_register_handler(13, sys_free_hdlr);
 }
