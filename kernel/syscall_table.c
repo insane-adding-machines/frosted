@@ -38,9 +38,9 @@ int sys_getppid(void){
     syscall(SYS_GETPPID, 0, 0, 0, 0, 0); 
 }
 
-/* Syscall: open(3 arguments) */
-int sys_open(uint32_t arg1, uint32_t arg2, uint32_t arg3){
-    syscall(SYS_OPEN, arg1, arg2, arg3, 0,  0); 
+/* Syscall: open(2 arguments) */
+int sys_open(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_OPEN, arg1, arg2, 0, 0, 0); 
 }
 
 /* Syscall: close(1 arguments) */

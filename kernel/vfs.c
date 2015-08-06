@@ -155,6 +155,10 @@ struct fnode *fno_get(int fd)
 void fno_unlink(struct fnode *fno)
 {
     struct fnode *dir = fno->parent;
+
+    if (fno && fno->owner && fno->owner->ops.unlink)
+        fno->owner->ops.unlink(fno);
+
     if (dir) {
         struct fnode *child = dir->children;
         while (child) {
@@ -211,8 +215,8 @@ sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint3
 
 sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    /* TODO */
-    return -1; /* XXX: EINVAL */
+    fno_unlink(fno_search((char *)arg1));
+    return 0;
 }
 
 void vfs_init(void) 

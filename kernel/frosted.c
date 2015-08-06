@@ -23,8 +23,8 @@ void task2(void *arg)
     volatile int i = (int)arg;
     volatile int pid, ppid;
     void *addr;
-    int fdn = sys_open("/dev/null", 0, 0);
-    int fdz = sys_open("/dev/zero", 0, 0);
+    int fdn = sys_open("/dev/null", 0);
+    int fdz = sys_open("/dev/zero", 0);
     int fdm;
     volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
     volatile uint32_t now; 
@@ -39,12 +39,14 @@ void task2(void *arg)
         pid = sys_getpid();
         ppid = sys_getppid();
 
-        fdm = sys_open("/mem/test", 0, 0);
+        fdm = sys_open("/mem/test", 0);
         ret = sys_write(fdm, "hello", 5);
         sys_close(fdm);
 
-        fdm = sys_open("/mem/test", 0, 0);
+        fdm = sys_open("/mem/test", 0);
         ret = sys_read(fdm, addr, 20);
+
+        sys_unlink("/mem/test");
         sys_close(fdm);
 
         sys_free(addr);
@@ -63,7 +65,7 @@ void task1(void *arg)
     free(temp);
 
     /* open/close test */
-    fd = sys_open("/dev/null", 0, 0);
+    fd = sys_open("/dev/null", 0);
     sys_close(fd);
     
     /* Thread create test */

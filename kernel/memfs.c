@@ -137,9 +137,6 @@ static int memfs_unlink(struct fnode *fno)
     return 0;
 }
 
-
-
-
 void memfs_init(void)
 {
     struct fnode *test_file;
