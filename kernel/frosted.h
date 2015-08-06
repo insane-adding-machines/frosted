@@ -43,6 +43,15 @@ struct fnode {
     void *priv;
     struct fnode *next;
 };
+
+#define O_RDONLY 0x01
+#define O_WRONLY 0x02
+#define O_RDWR   (O_RDONLY | O_WRONLY)
+#define O_CREAT  0x04
+#define O_EXCL   0x08
+#define O_TRUNC  0x10
+
+
 struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent);
 void fno_unlink(struct fnode *fno);
