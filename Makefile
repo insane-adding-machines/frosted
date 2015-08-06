@@ -25,6 +25,7 @@ OBJS:=	kernel/svc.o			\
 	kernel/newlib_redirect.o	\
 	kernel/malloc.o				\
 	kernel/module.o				\
+	kernel/memfs.o				\
 	kernel/null.o
 
 

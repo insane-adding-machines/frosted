@@ -2,7 +2,6 @@
 
 struct module *MODS = NULL;
 
-
 int register_module(struct module *m)
 {
     m->next = MODS;

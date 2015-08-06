@@ -99,7 +99,7 @@ struct fnode *fno_search(const char *path)
     return _fno_search(path, cur);
 }
 
-struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent)
+static struct fnode *_fno_create(struct module *owner, const char *name, struct fnode *parent)
 {
     struct fnode *fno = kalloc(sizeof(struct fnode));
     int nlen = strlen(name);
@@ -117,6 +117,7 @@ struct fnode *fno_create(struct module *owner, const char *name, struct fnode *p
         parent = &FNO_ROOT;
     }
 
+
     fno->parent = parent;
     fno->next = fno->parent->children;
     fno->parent->children = fno;
@@ -124,6 +125,23 @@ struct fnode *fno_create(struct module *owner, const char *name, struct fnode *p
     fno->children = NULL;
     fno->owner = owner;
     fno->mask = 0;
+    return fno;
+}
+
+struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent)
+{
+    struct fnode *fno = _fno_create(owner, name, parent);
+    if (fno && parent && parent->owner && parent->owner->ops.creat)
+        parent->owner->ops.creat(fno);
+    return fno;
+}
+
+struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent)
+{
+    struct fnode *fno = _fno_create(owner, name, parent);
+    fno->is_dir = 1;
+    if (parent && parent->owner && parent->owner->ops.creat)
+        parent->owner->ops.creat(fno);
     return fno;
 }
 
@@ -164,18 +182,38 @@ sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32
     f = fno_search(path);
     if (f == NULL)
         return -1; /* XXX: ENOENT */
+    
     return filedesc_new(f); 
 }
 
 sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     if (filedesc[arg1] != NULL) {
+        if (filedesc[arg1]->owner && filedesc[arg1]->owner->ops.close)
+            filedesc[arg1]->owner->ops.close(arg1);
         filedesc[arg1] = NULL;
         return 0;
     }
     return -1; /* XXX: EINVAL */
 }
     
+sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    /* TODO */
+    return -1; /* XXX: EINVAL */
+}
+
+sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    /* TODO */
+    return -1; /* XXX: EINVAL */
+}
+
+sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    /* TODO */
+    return -1; /* XXX: EINVAL */
+}
 
 void vfs_init(void) 
 {
@@ -193,5 +231,6 @@ void vfs_init(void)
 
     /* Hook modules */
     devnull_init(dev);
+    memfs_init();
 }
 

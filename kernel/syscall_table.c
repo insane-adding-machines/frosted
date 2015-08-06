@@ -58,6 +58,21 @@ int sys_write(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_WRITE, arg1, arg2, arg3, 0,  0); 
 }
 
+/* Syscall: seek(3 arguments) */
+int sys_seek(uint32_t arg1, uint32_t arg2, uint32_t arg3){
+    syscall(SYS_SEEK, arg1, arg2, arg3, 0,  0); 
+}
+
+/* Syscall: mkdir(1 arguments) */
+int sys_mkdir(uint32_t arg1){
+    syscall(SYS_MKDIR, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: unlink(1 arguments) */
+int sys_unlink(uint32_t arg1){
+    syscall(SYS_UNLINK, arg1, 0, 0, 0, 0); 
+}
+
 /* Syscall: gettimeofday(1 arguments) */
 int sys_gettimeofday(uint32_t arg1){
     syscall(SYS_GETTIMEOFDAY, arg1, 0, 0, 0, 0); 
@@ -85,6 +100,9 @@ extern sys_open_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_close_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_read_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_write_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_seek_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_mkdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_unlink_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_gettimeofday_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_malloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_free_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -101,7 +119,10 @@ void syscalls_init(void) {
 	sys_register_handler(8, sys_close_hdlr);
 	sys_register_handler(9, sys_read_hdlr);
 	sys_register_handler(10, sys_write_hdlr);
-	sys_register_handler(11, sys_gettimeofday_hdlr);
-	sys_register_handler(12, sys_malloc_hdlr);
-	sys_register_handler(13, sys_free_hdlr);
+	sys_register_handler(11, sys_seek_hdlr);
+	sys_register_handler(12, sys_mkdir_hdlr);
+	sys_register_handler(13, sys_unlink_hdlr);
+	sys_register_handler(14, sys_gettimeofday_hdlr);
+	sys_register_handler(15, sys_malloc_hdlr);
+	sys_register_handler(16, sys_free_hdlr);
 }

@@ -22,9 +22,13 @@ syscalls = [
     ["close",1, "sys_close_hdlr"],
     ["read", 3, "sys_read_hdlr"],
     ["write", 3, "sys_write_hdlr"],
+    ["seek", 3, "sys_seek_hdlr"],
+    ["mkdir", 1, "sys_mkdir_hdlr"],
+    ["unlink", 1, "sys_unlink_hdlr"],
     ["gettimeofday",1, "sys_gettimeofday_hdlr"],
     ["malloc",1, "sys_malloc_hdlr"],
     ["free",1, "sys_free_hdlr"]
+
 ]
 
    #

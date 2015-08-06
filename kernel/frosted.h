@@ -31,6 +31,25 @@ int sys_register_handler(uint32_t n, int (*_sys_c)(uint32_t, uint32_t, uint32_t,
 int syscall(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
 void syscalls_init(void);
 
+/* VFS */
+void vfs_init(void);
+struct fnode {
+    struct module *owner;
+    char *fname;
+    uint32_t mask;
+    int is_dir;
+    struct fnode *parent;
+    struct fnode *children;
+    void *priv;
+    struct fnode *next;
+};
+struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);
+struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent);
+void fno_unlink(struct fnode *fno);
+
+struct fnode *fno_search(const char *path);
+struct fnode *fno_get(int fd);
+
 
 /* Modules (for files/sockets) */
 
@@ -52,6 +71,8 @@ struct module {
         /* Files only (NULL == socket) */
         int (*open)(const char *path, int flags);
         int (*seek)(int fd, int offset);
+        int (*creat)(struct fnode *fno);
+        int (*unlink)(struct fnode *fno);
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);
@@ -64,20 +85,6 @@ struct module {
     } ops;
     struct module *next;
 };
-
-/* VFS */
-void vfs_init(void);
-struct fnode {
-    struct module *owner;
-    char *fname;
-    uint32_t mask;
-    struct fnode *parent;
-    struct fnode *children;
-    struct fnode *next;
-};
-struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);
-struct fnode *fno_search(const char *path);
-struct fnode *fno_get(int fd);
 
 
 
@@ -110,6 +117,7 @@ void kernel_task_init(void);
 
 
 #define kalloc malloc
+#define krealloc realloc
 #define kfree  free
 
 #endif /* BSP_INCLUDED_H */

@@ -14,7 +14,10 @@
 #define SYS_CLOSE 			(8)
 #define SYS_READ 			(9)
 #define SYS_WRITE 			(10)
-#define SYS_GETTIMEOFDAY 			(11)
-#define SYS_MALLOC 			(12)
-#define SYS_FREE 			(13)
-#define _SYSCALLS_NR 14
+#define SYS_SEEK 			(11)
+#define SYS_MKDIR 			(12)
+#define SYS_UNLINK 			(13)
+#define SYS_GETTIMEOFDAY 			(14)
+#define SYS_MALLOC 			(15)
+#define SYS_FREE 			(16)
+#define _SYSCALLS_NR 17
