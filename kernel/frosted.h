@@ -33,14 +33,22 @@ void syscalls_init(void);
 
 /* VFS */
 void vfs_init(void);
+
+#define FL_RDONLY 0x01
+#define FL_WRONLY 0x02
+#define FL_RDWR   (FL_RDONLY | FL_WRONLY)
+#define FL_DIR    0x04
+#define FL_INUSE  0x08
+
 struct fnode {
     struct module *owner;
     char *fname;
-    uint32_t mask;
-    int is_dir;
+    uint32_t flags;
     struct fnode *parent;
     struct fnode *children;
     void *priv;
+    uint32_t size;
+    uint32_t off;
     struct fnode *next;
 };
 
@@ -50,6 +58,7 @@ struct fnode {
 #define O_CREAT  0x04
 #define O_EXCL   0x08
 #define O_TRUNC  0x10
+#define O_APPEND 0x20
 
 
 struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);

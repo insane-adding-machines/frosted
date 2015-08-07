@@ -13,6 +13,47 @@ static struct fnode FNO_ROOT = {
 #define MAXFILES 10
 static struct fnode *filedesc[MAXFILES];
 
+static void basename_r(const char *path, char *res)
+{
+    char *p;
+    strncpy(res, path, strlen(path) - 1);
+    p = res + strlen(res) - 1;
+    while (p > res) {
+        if (*p == '/') {
+            *p = '\0';
+            return;
+        }
+        p--;
+    }
+}
+
+static char *filename(char *path)
+{
+    int len = strlen(path);
+    char *p = path + len - 1;
+    while (p > path) {
+        if (*p == '/')
+            return (p + 1);
+        p--;
+    }
+    return path;
+}
+
+static struct fnode *fno_create_file(char *path)
+{
+    char *base = kalloc(strlen(path) + 1);
+    struct module *owner = NULL;
+    struct fnode *parent;
+    if (!base)
+        return NULL;
+    basename_r(path, base);
+    parent = fno_search(base);
+    kfree(base);
+    if (parent)
+        owner = parent->owner;
+    return fno_create(owner, filename(path), parent);
+}
+
 
 static int filedesc_new(struct fnode *f)
 {
@@ -124,7 +165,6 @@ static struct fnode *_fno_create(struct module *owner, const char *name, struct 
 
     fno->children = NULL;
     fno->owner = owner;
-    fno->mask = 0;
     return fno;
 }
 
@@ -139,7 +179,7 @@ struct fnode *fno_create(struct module *owner, const char *name, struct fnode *p
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent)
 {
     struct fnode *fno = _fno_create(owner, name, parent);
-    fno->is_dir = 1;
+    fno->flags |= FL_DIR;
     if (parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
     return fno;
@@ -180,13 +220,32 @@ void fno_unlink(struct fnode *fno)
 
 sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    const char *path = (const char *)arg1;
+    char *path = (char *)arg1;
     struct fnode *f;
+    uint32_t flags = arg2;
 
-    f = fno_search(path);
+    if ((flags & O_CREAT) == 0) {
+        f = fno_search(path);
+    } else {
+        if (flags & O_EXCL) {
+            f = fno_search(path);
+            if (f != NULL)
+                return -1; /* XXX: EEXIST */
+        }
+        if (flags & O_TRUNC) {
+            fno_unlink(fno_search(path));
+        }
+        f = fno_create_file(path);
+    }
     if (f == NULL)
-        return -1; /* XXX: ENOENT */
-    
+       return -1; /* XXX: ENOENT */
+    if (f->flags & FL_INUSE)
+        return -1; /* XXX: EBUSY */
+    if (flags & O_APPEND) {
+        f->off = f->size;
+    }
+    f->flags = flags & O_RDWR;
+
     return filedesc_new(f); 
 }
 
@@ -225,7 +284,6 @@ void vfs_init(void)
     /* Initialize "/" */
     FNO_ROOT.owner = NULL;
     FNO_ROOT.fname = "/";
-    FNO_ROOT.mask = 0;
     FNO_ROOT.parent = &FNO_ROOT;
     FNO_ROOT.children = NULL;
     FNO_ROOT.next = NULL ;
