@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <assert.h>
 
+#include "malloc.h"
+
 /*------------------*/
 /* Defines          */
 /*------------------*/
@@ -135,17 +137,51 @@ static struct f_malloc_block * f_find_best_fit(size_t size, struct f_malloc_bloc
 /*------------------*/
 /* Public functions */
 /*------------------*/
-
-// XXX: TODO
 void * f_calloc(size_t num, size_t size)
 {
-  return NULL;
+    void * ptr = f_malloc(num * size);
+    if (ptr)
+        memset(ptr, 0, num * size);
+    return ptr;
 }
 
-// XXX: TODO
 void* f_realloc(void* ptr, size_t size)
 {
-  return NULL;
+    void * out;
+    struct f_malloc_block * blk;
+
+    /* size zero and valid ptr -> act as regular free() */
+    if (!size && ptr)
+        goto realloc_free;
+    
+    blk = (struct f_malloc_block *)(((uint8_t*)ptr) - sizeof(struct f_malloc_block));
+
+    if (!ptr)
+    {
+        /* f ptr is not valid, act as regular malloc() */
+        out = f_malloc(size);
+    }
+    else if (blk->magic == 0xDECEA5ED)
+    {
+        /* copy over old block, if valid pointer */
+        size_t new_size, copy_size;
+        if (size > blk->size)
+        {
+            new_size = size;
+            copy_size = blk->size;
+        } else {
+            new_size = blk->size;
+            copy_size = size;
+        }
+        out = f_malloc(size);
+
+        copy_size = (size > blk->size) ? blk->size : size; // copy smallest of two
+        memcpy(out, ptr, copy_size);
+    }
+
+realloc_free:
+    f_free(ptr);
+    return out;
 }
 
 void * f_malloc(size_t size)
