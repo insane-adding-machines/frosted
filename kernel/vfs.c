@@ -49,9 +49,24 @@ static struct fnode *fno_create_file(char *path)
     basename_r(path, base);
     parent = fno_search(base);
     kfree(base);
-    if (parent)
+    if (!parent)
+        return NULL;
+    if ((parent->flags & FL_DIR) == 0)
+        return NULL;
+
+    if (parent) {
         owner = parent->owner;
+    }
     return fno_create(owner, filename(path), parent);
+}
+
+static struct fnode *fno_create_dir(char *path)
+{
+    struct fnode *fno = fno_create_file(path);
+    if (fno) {
+        fno->flags |= FL_DIR;
+    }
+    return fno;
 }
 
 
@@ -179,7 +194,7 @@ struct fnode *fno_create(struct module *owner, const char *name, struct fnode *p
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent)
 {
     struct fnode *fno = _fno_create(owner, name, parent);
-    fno->flags |= FL_DIR;
+    fno->flags |= (FL_DIR | FL_RDWR);
     if (parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
     return fno;
@@ -241,11 +256,11 @@ sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32
        return -1; /* XXX: ENOENT */
     if (f->flags & FL_INUSE)
         return -1; /* XXX: EBUSY */
+    if (f->flags & FL_DIR)
+        return -1; /* XXX: is a dir */
     if (flags & O_APPEND) {
         f->off = f->size;
     }
-    f->flags = flags & O_RDWR;
-
     return filedesc_new(f); 
 }
 
@@ -268,8 +283,9 @@ sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32
 
 sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    /* TODO */
-    return -1; /* XXX: EINVAL */
+    if (fno_create_dir((char *)arg1))
+        return 0;
+    return -1;
 }
 
 sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -287,9 +303,10 @@ void vfs_init(void)
     FNO_ROOT.parent = &FNO_ROOT;
     FNO_ROOT.children = NULL;
     FNO_ROOT.next = NULL ;
+    FNO_ROOT.flags = FL_DIR | FL_RDWR;
 
     /* Init "/dev" dir */
-    dev = fno_create(NULL, "dev", NULL);
+    dev = fno_mkdir(NULL, "dev", NULL);
 
     /* Hook modules */
     devnull_init(dev);

@@ -29,6 +29,9 @@ void task2(void *arg)
     volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
     volatile uint32_t now; 
     volatile int ret;
+
+    ret = sys_mkdir("/mem/test");
+
     while(1) {
         addr = (void *)sys_malloc(20);
         ret = sys_read(fdz, addr, 20);
@@ -39,11 +42,11 @@ void task2(void *arg)
         pid = sys_getpid();
         ppid = sys_getppid();
 
-        fdm = sys_open("/mem/test", O_RDWR|O_CREAT|O_TRUNC);
+        fdm = sys_open("/mem/test/test", O_RDWR|O_CREAT|O_TRUNC);
         ret = sys_write(fdm, "hello", 5);
         sys_close(fdm);
 
-        fdm = sys_open("/mem/test", O_RDWR);
+        fdm = sys_open("/mem/test/test", O_RDWR);
         ret = sys_read(fdm, addr, 20);
 
         sys_unlink("/mem/test");

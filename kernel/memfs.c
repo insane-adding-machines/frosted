@@ -145,7 +145,7 @@ void memfs_init(void)
     mod_memfs.ops.unlink = memfs_unlink;
     mod_memfs.ops.close = memfs_close;
 
-    memfs = fno_create(&mod_memfs, "mem", NULL);
+    memfs = fno_mkdir(&mod_memfs, "mem", NULL);
     register_module(&mod_memfs);
 }
 
