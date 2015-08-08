@@ -1,7 +1,9 @@
 #include "frosted.h"
 #define IDLE() while(1){do{}while(0);}
 
-
+/* The following needs to be defined by
+ * the application code
+ */
 extern void init(void *arg);
 
 
