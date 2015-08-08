@@ -74,7 +74,12 @@ struct fnode *fno_get(int fd);
 
 #define FAMILY_UNIX 0x0000
 #define FAMILY_INET 0x0001
+#define FAMILY_DEV  0x0DEF
 #define FAMILY_FILE 0xFFFF
+
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 struct module {
     uint16_t family;
@@ -88,7 +93,7 @@ struct module {
 
         /* Files only (NULL == socket) */
         int (*open)(const char *path, int flags);
-        int (*seek)(int fd, int offset);
+        int (*seek)(int fd, int offset, int whence);
         int (*creat)(struct fnode *fno);
         int (*unlink)(struct fnode *fno);
 

@@ -277,8 +277,10 @@ sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint3
     
 sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    /* TODO */
-    return -1; /* XXX: EINVAL */
+    struct fnode *fno = fno_get(arg1);
+    if (fno && fno->owner->ops.seek) {
+        fno->owner->ops.seek(arg1, arg2, arg3);
+    } else return -1;
 }
 
 sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)

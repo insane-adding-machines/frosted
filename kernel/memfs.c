@@ -80,7 +80,7 @@ static int memfs_poll(int fd, uint16_t events)
     return 1;
 }
 
-static int memfs_seek(int fd, int off)
+static int memfs_seek(int fd, int off, int whence)
 {
     struct fnode *fno;
     struct memfs_fnode *mfno;
@@ -89,7 +89,19 @@ static int memfs_seek(int fd, int off)
         return -1;
 
     mfno = fno->priv;
-    new_off = fno->off + off;
+    switch(whence) {
+        case SEEK_CUR:
+            new_off = fno->off + off;
+            break;
+        case SEEK_SET:
+            new_off = off;
+            break;
+        case SEEK_END:
+            new_off = fno->size + off;
+            break;
+        default:
+            return -1;
+    }
 
     if (new_off < 0)
         new_off = 0;
