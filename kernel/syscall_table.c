@@ -88,6 +88,16 @@ int sys_free(uint32_t arg1){
     syscall(SYS_FREE, arg1, 0, 0, 0, 0); 
 }
 
+/* Syscall: calloc(2 arguments) */
+int sys_calloc(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_CALLOC, arg1, arg2, 0, 0, 0); 
+}
+
+/* Syscall: realloc(2 arguments) */
+int sys_realloc(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_REALLOC, arg1, arg2, 0, 0, 0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -106,6 +116,8 @@ extern sys_unlink_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_gettimeofday_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_malloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_free_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_calloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_realloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -125,4 +137,6 @@ void syscalls_init(void) {
 	sys_register_handler(14, sys_gettimeofday_hdlr);
 	sys_register_handler(15, sys_malloc_hdlr);
 	sys_register_handler(16, sys_free_hdlr);
+	sys_register_handler(17, sys_calloc_hdlr);
+	sys_register_handler(18, sys_realloc_hdlr);
 }

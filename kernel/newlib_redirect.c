@@ -32,7 +32,7 @@ void * _realloc_r(struct _reent *re, void * ptr, size_t size)
 void * _calloc_r(struct _reent *re, size_t num, size_t size)
 {
     (void)re;
-    return f_calloc(num*size);
+    return f_calloc(num, size);
 }
 
 void * _malloc_r(struct _reent *re, size_t size)

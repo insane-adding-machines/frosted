@@ -270,6 +270,8 @@ void f_free(void * ptr)
     }
 }
 
+
+/* Syscalls back-end (for userspace memory call handling) */
 int sys_malloc_hdlr(int size)
 {
     return (int)f_malloc(size);
@@ -279,6 +281,16 @@ int sys_free_hdlr(int addr)
 {
     f_free((void *)addr);
     return 0;
+}
+
+int sys_calloc_hdlr(int n, int size)
+{
+    return (int)f_calloc(n, size);
+}
+
+int sys_realloc_hdlr(int addr, int size)
+{
+    return (int)f_realloc((void *)addr, size);
 }
 
 

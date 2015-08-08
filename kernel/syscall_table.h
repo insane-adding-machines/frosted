@@ -20,4 +20,6 @@
 #define SYS_GETTIMEOFDAY 			(14)
 #define SYS_MALLOC 			(15)
 #define SYS_FREE 			(16)
-#define _SYSCALLS_NR 17
+#define SYS_CALLOC 			(17)
+#define SYS_REALLOC 			(18)
+#define _SYSCALLS_NR 19
