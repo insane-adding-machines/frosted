@@ -27,7 +27,8 @@ OBJS:=	kernel/svc.o			\
 	kernel/module.o				\
 	kernel/drivers/memfs.o		\
 	kernel/drivers/null.o		\
-	kernel/drivers/uart.o
+	kernel/drivers/uart.o 		\
+	apps/test.o
 
 
 include port/$(FAMILY)/$(FAMILY).mk
