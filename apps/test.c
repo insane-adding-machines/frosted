@@ -1,4 +1,4 @@
-#include "frosted.h"
+#include "frosted_api.h"
 #include <string.h>
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
@@ -54,8 +54,8 @@ void init(void *arg)
     int fd;
     uint32_t *temp;
     /* c-lib and init test */
-    temp = malloc(32);
-    free(temp);
+    temp = (uint32_t *)sys_malloc(32);
+    sys_free(temp);
 
     /* open/close test */
     fd = sys_open("/dev/null", 0);
@@ -66,7 +66,6 @@ void init(void *arg)
         IDLE();
 
     while(1) {
-        i = jiffies;
         sys_sleep(500);
         pid = sys_getpid();
     }

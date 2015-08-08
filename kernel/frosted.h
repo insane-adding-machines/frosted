@@ -1,5 +1,9 @@
 #ifndef FROSTED_INCLUDED_H
 #define FROSTED_INCLUDED_H
+
+#define KERNEL
+#include "frosted_api.h"
+
 //#define DEBUG
 
 #include <stdlib.h>
@@ -52,13 +56,6 @@ struct fnode {
     struct fnode *next;
 };
 
-#define O_RDONLY 0x01
-#define O_WRONLY 0x02
-#define O_RDWR   (O_RDONLY | O_WRONLY)
-#define O_CREAT  0x04
-#define O_EXCL   0x08
-#define O_TRUNC  0x10
-#define O_APPEND 0x20
 
 
 struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);
@@ -77,9 +74,6 @@ struct fnode *fno_get(int fd);
 #define FAMILY_DEV  0x0DEF
 #define FAMILY_FILE 0xFFFF
 
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
 
 struct module {
     uint16_t family;
