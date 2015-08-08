@@ -28,12 +28,6 @@ static int devnull_poll(int fd, uint16_t events)
     return 1;
 }
 
-static int devnull_seek(int fd, int off)
-{
-    return -1;
-}
-
-
 
 static struct fnode *devnull;
 static struct fnode *devzero;
@@ -48,7 +42,6 @@ void devnull_init(struct fnode *dev)
     mod_devnull.ops.read = devnull_read; 
     mod_devnull.ops.poll = devnull_poll;
     mod_devnull.ops.write = devnull_write;
-    mod_devnull.ops.seek = devnull_seek;
 
     devnull = fno_create(&mod_devnull, "null", dev);
     devzero = fno_create(&mod_devnull, "zero", dev);

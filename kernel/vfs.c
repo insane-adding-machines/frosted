@@ -312,6 +312,7 @@ void vfs_init(void)
 
     /* Hook modules */
     devnull_init(dev);
+    devuart_init(dev);
     memfs_init();
 }
 

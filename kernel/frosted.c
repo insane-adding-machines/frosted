@@ -1,6 +1,8 @@
 #include "frosted.h"
+#include <string.h>
 
 #define IDLE() while(1){do{}while(0);}
+#define GREETING "Welcome to frosted!\n"
 
 
 void frosted_init(void)
@@ -26,9 +28,13 @@ void task2(void *arg)
     int fdn = sys_open("/dev/null", O_RDONLY);
     int fdz = sys_open("/dev/zero", O_WRONLY);
     int fdm;
+    int ser;
     volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
     volatile uint32_t now; 
     volatile int ret;
+
+    ser = sys_open("/dev/ttyS0", O_RDWR);
+    sys_write(ser, GREETING, strlen(GREETING));
 
     ret = sys_mkdir("/mem/test");
 
