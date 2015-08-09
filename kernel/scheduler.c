@@ -175,6 +175,12 @@ int task_timeslice(void)
     return (--_cur_task->timeslice);
 }
 
+void task_end(void)
+{
+    _cur_task->state = TASK_IDLE;
+    while(1);
+}
+
 int task_create(void (*init)(void *), void *arg, unsigned int prio)
 {
     struct nvic_stack_frame *nvic_frame;
@@ -198,7 +204,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     memset(nvic_frame, 0, NVIC_FRAME_SIZE);
     nvic_frame->r0 = (uint32_t) arg;
     nvic_frame->pc = (uint32_t) init;
-    nvic_frame->lr = (uint32_t) RUN_HANDLER;
+    nvic_frame->lr = (uint32_t) task_end;
     nvic_frame->psr = 0x21000000ul;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;

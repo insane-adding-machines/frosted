@@ -19,6 +19,7 @@ void task2(void *arg)
 
     ser = sys_open("/dev/ttyS0", O_RDWR);
     sys_write(ser, GREETING, strlen(GREETING));
+    close(ser);
 
     ret = sys_mkdir("/mem/test");
 
@@ -47,6 +48,20 @@ void task2(void *arg)
     (void)i;
 }
 
+void task3(void *arg) {
+    volatile uint32_t now; 
+    int ser;
+    do {
+        now = sys_gettimeofday(NULL);
+    } while (now < 1000) ;
+    ser = sys_open("/dev/ttyS0", O_RDWR);
+    sys_write(ser, "task3: exited.\n", 15 );
+    close(ser);
+
+}
+
+
+
 void init(void *arg)
 {
     volatile int i = (int)arg;
@@ -63,6 +78,8 @@ void init(void *arg)
     
     /* Thread create test */
     if (sys_thread_create(task2, (void *)42, 1) < 0)
+        IDLE();
+    if (sys_thread_create(task3, (void *)42, 1) < 0)
         IDLE();
 
     while(1) {
