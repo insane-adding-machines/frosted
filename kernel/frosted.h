@@ -6,6 +6,7 @@
 
 //#define DEBUG
 
+#include <stdlib.h>
 #include <stdint.h>
 #include "system.h"
 
@@ -131,15 +132,10 @@ void task_run(void);
 void kernel_task_init(void);
 
 
-void * f_calloc(size_t num, size_t size);
-void* f_realloc(void* ptr, size_t size);
-void * f_malloc(size_t size);
-void f_free(void * ptr);
 
-
-#define kalloc f_malloc
-#define krealloc f_realloc
-#define kfree  f_free
+#define kalloc malloc
+#define krealloc realloc
+#define kfree  free
 
 #endif /* BSP_INCLUDED_H */
 

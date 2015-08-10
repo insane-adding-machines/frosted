@@ -1,4 +1,5 @@
 #include "frosted.h"
+#include <string.h>
 
 
 

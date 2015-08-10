@@ -19,6 +19,8 @@
 #endif
 
 
+/* XXX TEMP for memset */
+#include "string.h"
 
 /* Array of syscalls */
 static void *sys_syscall_handlers[_SYSCALLS_NR] = {

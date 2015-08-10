@@ -1,4 +1,5 @@
 #include "frosted_api.h"
+#include <string.h>
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
