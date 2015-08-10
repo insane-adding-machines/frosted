@@ -16,7 +16,6 @@ void task2(void *arg)
     volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
     volatile uint32_t now; 
     volatile int ret;
-
     ser = sys_open("/dev/ttyS0", O_RDWR);
     sys_write(ser, GREETING, strlen(GREETING));
     close(ser);
@@ -40,8 +39,8 @@ void task2(void *arg)
         fdm = sys_open("/mem/test/test", O_RDWR);
         ret = sys_read(fdm, addr, 20);
 
-        sys_unlink("/mem/test");
         sys_close(fdm);
+        sys_unlink("/mem/test/test");
 
         sys_free(addr);
     }
@@ -51,11 +50,22 @@ void task2(void *arg)
 void task3(void *arg) {
     volatile uint32_t now; 
     int ser;
+    struct dirent *ep;
+    DIR *d;
     do {
         now = sys_gettimeofday(NULL);
     } while (now < 1000) ;
-    ser = sys_open("/dev/ttyS0", O_RDWR);
-    sys_write(ser, "task3: exited.\n", 15 );
+
+    do {
+        ser = sys_open("/dev/ttyS0", O_RDWR);
+    } while (ser < 0);
+
+    d = sys_opendir("/");
+    while (ep = sys_readdir(d)) {
+        sys_write(ser, ep->d_name, strlen(ep->d_name));
+        sys_write(ser, "\n", 1);
+    }
+    sys_closedir(d);
     close(ser);
 
 }

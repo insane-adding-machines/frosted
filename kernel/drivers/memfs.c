@@ -12,7 +12,7 @@ struct memfs_fnode {
 
 static int memfs_check_fd(int fd, struct fnode **fno)
 {
-    *fno = fno_get(fd);
+    *fno = task_filedesc_get(fd);
     
     if (!fno)
         return -1;

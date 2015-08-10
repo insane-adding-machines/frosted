@@ -8,11 +8,6 @@
 static struct fnode FNO_ROOT = {
 };
 
-
-/* Table of open files */
-#define MAXFILES 10
-static struct fnode *filedesc[MAXFILES];
-
 static void basename_r(const char *path, char *res)
 {
     char *p;
@@ -67,19 +62,6 @@ static struct fnode *fno_create_dir(char *path)
         fno->flags |= FL_DIR;
     }
     return fno;
-}
-
-
-static int filedesc_new(struct fnode *f)
-{
-    int i;
-    for (i = 0; i < MAXFILES; i++) {
-        if (filedesc[i] == NULL) {
-            filedesc[i] = f;
-            return i;
-        }
-    }
-    return -1; /* XXX: not enough resources! */
 }
 
 
@@ -200,13 +182,6 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
     return fno;
 }
 
-struct fnode *fno_get(int fd)
-{
-    if (fd < 0)
-        return NULL;
-    return filedesc[fd];
-}
-
 void fno_unlink(struct fnode *fno)
 {
     struct fnode *dir = fno->parent;
@@ -233,7 +208,7 @@ void fno_unlink(struct fnode *fno)
 }
 
 
-sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     char *path = (char *)arg1;
     struct fnode *f;
@@ -261,38 +236,77 @@ sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32
     if (flags & O_APPEND) {
         f->off = f->size;
     }
-    return filedesc_new(f); 
+    return task_filedesc_add(f); 
 }
 
-sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    if (filedesc[arg1] != NULL) {
-        if (filedesc[arg1]->owner && filedesc[arg1]->owner->ops.close)
-            filedesc[arg1]->owner->ops.close(arg1);
-        filedesc[arg1] = NULL;
+    struct fnode *f = task_filedesc_get(arg1);
+    if (f != NULL) {
+        if (f->owner && f->owner->ops.close)
+            f->owner->ops.close(arg1);
+        task_filedesc_del(arg1);
         return 0;
     }
     return -1; /* XXX: EINVAL */
 }
     
-sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    struct fnode *fno = fno_get(arg1);
+    struct fnode *fno = task_filedesc_get(arg1);
     if (fno && fno->owner->ops.seek) {
         fno->owner->ops.seek(arg1, arg2, arg3);
     } else return -1;
 }
 
-sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     if (fno_create_dir((char *)arg1))
         return 0;
     return -1;
 }
 
-sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     fno_unlink(fno_search((char *)arg1));
+    return 0;
+}
+
+static struct dirent readdir_retval;
+
+int sys_opendir_hdlr(uint32_t arg1)
+{
+    struct fnode *fno = fno_search((char *)arg1);
+    if (fno && (fno->flags & FL_DIR)) {
+        if (fno->flags & FL_INUSE)
+            return (int)NULL; /* XXX EBUSY */
+        /* Use .off to store current readdir ptr */
+        fno->off = (int)fno->children;
+        fno->flags |= FL_INUSE;
+        return (int)fno;
+    } else {
+        return (int)NULL;
+    }
+}
+
+int sys_readdir_hdlr(uint32_t arg1)
+{
+    struct fnode *fno = (struct fnode *)arg1;
+    struct fnode *next = (struct fnode *)fno->off;
+    if (!next) {
+        return (int)NULL;
+    }
+    fno->off = (int)next->next;
+    readdir_retval.d_ino = 0; /* TODO: populate with inode? */
+    strncpy(readdir_retval.d_name, next->fname, 256);
+    return (int)(&readdir_retval);
+}
+
+int sys_closedir_hdlr(uint32_t arg1)
+{
+    struct fnode *fno = (struct fnode *)arg1;
+    fno->off = 0;
+    fno->flags &= ~(FL_INUSE);
     return 0;
 }
 

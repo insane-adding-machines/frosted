@@ -98,6 +98,21 @@ int sys_realloc(uint32_t arg1, uint32_t arg2){
     syscall(SYS_REALLOC, arg1, arg2, 0, 0, 0); 
 }
 
+/* Syscall: opendir(1 arguments) */
+int sys_opendir(uint32_t arg1){
+    syscall(SYS_OPENDIR, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: readdir(1 arguments) */
+int sys_readdir(uint32_t arg1){
+    syscall(SYS_READDIR, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: closedir(1 arguments) */
+int sys_closedir(uint32_t arg1){
+    syscall(SYS_CLOSEDIR, arg1, 0, 0, 0, 0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -118,6 +133,9 @@ extern sys_malloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_free_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_calloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_realloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_opendir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_readdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_closedir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -139,4 +157,7 @@ void syscalls_init(void) {
 	sys_register_handler(16, sys_free_hdlr);
 	sys_register_handler(17, sys_calloc_hdlr);
 	sys_register_handler(18, sys_realloc_hdlr);
+	sys_register_handler(19, sys_opendir_hdlr);
+	sys_register_handler(20, sys_readdir_hdlr);
+	sys_register_handler(21, sys_closedir_hdlr);
 }

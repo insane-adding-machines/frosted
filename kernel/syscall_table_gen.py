@@ -29,8 +29,10 @@ syscalls = [
     ["malloc",1, "sys_malloc_hdlr"],
     ["free",1, "sys_free_hdlr"],
     ["calloc",2, "sys_calloc_hdlr"],
-    ["realloc",2, "sys_realloc_hdlr"]
-
+    ["realloc",2, "sys_realloc_hdlr"],
+    ["opendir",1, "sys_opendir_hdlr"],
+    ["readdir",1, "sys_readdir_hdlr"],
+    ["closedir",1, "sys_closedir_hdlr"]
 ]
 
    #

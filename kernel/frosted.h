@@ -10,6 +10,10 @@
 #include <stdint.h>
 #include "system.h"
 
+/* Types */
+struct task;
+struct fnode;
+
 /* generics */
 volatile unsigned int jiffies;
 volatile int _syscall_retval;
@@ -26,6 +30,9 @@ void SysTick_off(void);
 uint16_t scheduler_get_cur_pid(void);
 uint16_t scheduler_get_cur_ppid(void);
 int task_timeslice(void);
+int task_filedesc_add(struct fnode *f);
+struct fnode *task_filedesc_get(int fd);
+int task_filedesc_del(int fd);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 

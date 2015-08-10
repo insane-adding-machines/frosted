@@ -43,7 +43,7 @@ int sys_register_handler(uint32_t n, int(*_sys_c)(uint32_t arg1, uint32_t arg2, 
 #define MAX_TASKS 16
 #define BASE_TIMESLICE (20)
 #define TIMESLICE(x) ((BASE_TIMESLICE) + (x->prio << 2))
-#define STACK_SIZE (996)
+#define STACK_SIZE (992)
 
 struct __attribute__((packed)) nvic_stack_frame {
     uint32_t r0;
@@ -92,9 +92,11 @@ struct __attribute__((packed)) task {
     void *arg;
     uint16_t state;
     uint16_t prio;
-    int timeslice;
+    uint16_t timeslice;
     uint16_t pid;
     uint16_t ppid;
+    uint16_t n_files;
+    struct fnode **filedesc;
     void *sp;
     uint32_t stack[STACK_SIZE / 4];
 };
@@ -103,6 +105,51 @@ volatile struct task *_cur_task = NULL;
 
 static struct task tasklist[MAX_TASKS] __attribute__((section(".task"), __used__)) = {}; 
 static int pid_max = 0;
+
+/* Handling of file descriptors */
+
+int task_filedesc_add(struct fnode *f)
+{
+    int i;
+    void *re;
+    volatile struct task *t = _cur_task;
+    if (!t)
+        return -1;
+    for (i = 0; i < t->n_files; i++) {
+        if (t->filedesc[i] == NULL) {
+            t->filedesc[i] = f;
+            return i;
+        }
+    }
+    t->n_files++;
+    re = (void *)f_realloc(t->filedesc, t->n_files * sizeof(struct fnode *));
+    if (!re)
+        return -1;
+    t->filedesc = re;
+    t->filedesc[t->n_files - 1] = f;
+    return t->n_files - 1;
+}
+
+struct fnode *task_filedesc_get(int fd)
+{
+    volatile struct task *t = _cur_task;
+    if (fd < 0)
+        return NULL;
+    if (!t)
+        return NULL;
+    if (!t->filedesc || (( t->n_files - 1) < fd))
+        return NULL;
+    return t->filedesc[fd];
+}
+
+int task_filedesc_del(int fd)
+{
+    volatile struct task *t = _cur_task;
+    if (!t)
+        return -1;
+    t->filedesc[fd] = NULL;
+}
+
 static __inl int in_kernel(void)
 {
     return (_cur_task == tasklist);
@@ -195,6 +242,8 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     tasklist[pid].prio = prio;
     tasklist[pid].start = init;
     tasklist[pid].arg = arg;
+    tasklist[pid].filedesc = NULL;
+    tasklist[pid].n_files = 0;
     tasklist[pid].timeslice = TIMESLICE((&tasklist[pid]));
     tasklist[pid].state = TASK_RUNNABLE;
     sp = (((uint8_t *)(&tasklist[pid].stack)) + STACK_SIZE - NVIC_FRAME_SIZE);

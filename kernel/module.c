@@ -20,7 +20,7 @@ int unregister_module(struct module *m)
 
 int sys_read_hdlr(int fd, void *buf, int len)
 {
-    struct fnode *fno = fno_get(fd);
+    struct fnode *fno = task_filedesc_get(fd);
     if (fno) {
         return fno->owner->ops.read(fd, buf, len);
     }
@@ -29,7 +29,7 @@ int sys_read_hdlr(int fd, void *buf, int len)
 
 int sys_write_hdlr(int fd, void *buf, int len)
 {
-    struct fnode *fno = fno_get(fd);
+    struct fnode *fno = task_filedesc_get(fd);
     if (fno) {
         return fno->owner->ops.write(fd, buf, len);
     }

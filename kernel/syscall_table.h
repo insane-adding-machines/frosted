@@ -22,4 +22,7 @@
 #define SYS_FREE 			(16)
 #define SYS_CALLOC 			(17)
 #define SYS_REALLOC 			(18)
-#define _SYSCALLS_NR 19
+#define SYS_OPENDIR 			(19)
+#define SYS_READDIR 			(20)
+#define SYS_CLOSEDIR 			(21)
+#define _SYSCALLS_NR 22
