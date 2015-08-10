@@ -4,7 +4,7 @@
  *      to the Frosted heap allocator
  *
  */
-
+#include "frosted.h"
 #include "malloc.h"
 #include "stdint.h"
 

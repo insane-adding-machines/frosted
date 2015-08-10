@@ -2,6 +2,20 @@
 #define INC_FROSTED_API
 #include <stdint.h>
 
+typedef unsigned long size_t;
+#define NULL 0
+
+static inline void memset(void *ptr, uint8_t byte, size_t count)
+{
+    register int i;
+    uint8_t *array = (uint8_t *)ptr;
+    for (i = 0; i < count; i++)
+    {
+        array[i] = byte;
+    }
+}
+
+
 /* Constants */
 
 #define O_RDONLY 0x01

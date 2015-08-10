@@ -7,7 +7,6 @@
  * stack collision.
  */
 
-#include <stdlib.h>
 #include <errno.h>
 
 /* Register name faking - works in collusion with the linker.  */
