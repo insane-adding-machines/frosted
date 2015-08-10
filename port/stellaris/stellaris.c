@@ -163,11 +163,6 @@ void __attribute__((weak)) TIMER2_IRQHandler(void)
     while(1);
 }
 
-void __attribute__((weak)) TIMER3_IRQHandler(void)
-{
-    while(1);
-}
-
 void __attribute__((weak)) UART0_IRQHandler(void)
 {
     while(1);
@@ -183,12 +178,22 @@ void __attribute__((weak)) UART2_IRQHandler(void)
     while(1);
 }
 
-void __attribute__((weak)) UART3_IRQHandler(void)
+void __attribute__((weak)) PWMFault_IRQHandler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) PWM0_IRQHandler(void)
 {
     while(1);
 }
 
 void __attribute__((weak)) PWM1_IRQHandler(void)
+{
+    while(1);
+}
+
+void __attribute__((weak)) PWM2_IRQHandler(void)
 {
     while(1);
 }
@@ -208,52 +213,27 @@ void __attribute__((weak)) I2C2_IRQHandler(void)
     while(1);
 }
 
-void __attribute__((weak)) SPI_IRQHandler(void)
+void __attribute__((weak)) SSI0_IRQHandler(void)
 {
     while(1);
 }
 
-void __attribute__((weak)) SSP0_IRQHandler(void)
+void __attribute__((weak)) ADC0_IRQHandler(void)
 {
     while(1);
 }
 
-void __attribute__((weak)) SSP1_IRQHandler(void)
+void __attribute__((weak)) ADC1_IRQHandler(void)
 {
     while(1);
 }
 
-void __attribute__((weak)) PLL0_IRQHandler(void)
+void __attribute__((weak)) ADC2_IRQHandler(void)
 {
     while(1);
 }
 
-void __attribute__((weak)) RTC_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) EINT0_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) EINT1_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) EINT2_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) EINT3_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) ADC_IRQHandler(void)
+void __attribute__((weak)) ADC3_IRQHandler(void)
 {
     while(1);
 }
@@ -264,21 +244,6 @@ void __attribute__((weak)) BOD_IRQHandler(void)
 }
 
 void __attribute__((weak)) USB_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) CAN_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) DMA_IRQHandler(void)
-{
-    while(1);
-}
-
-void __attribute__((weak)) I2S_IRQHandler(void)
 {
     while(1);
 }
@@ -313,33 +278,48 @@ void (* const g_pfnVectors[])(void) =
     0,                                      // Reserved
     PendSV_Handler,                         // The PendSV handler
     SysTick_Handler,                        // The SysTick handler
-    WDT_IRQHandler,
-    TIMER0_IRQHandler,
-    TIMER1_IRQHandler,
-    TIMER2_IRQHandler,
-    TIMER3_IRQHandler,
-    UART0_IRQHandler,
-    UART1_IRQHandler,
-    UART2_IRQHandler,
-    UART3_IRQHandler,
-    PWM1_IRQHandler,
-    I2C0_IRQHandler,
-    I2C1_IRQHandler,
-    I2C2_IRQHandler,
-    SPI_IRQHandler,
-    SSP0_IRQHandler,
-    SSP1_IRQHandler,
-    PLL0_IRQHandler,
-    RTC_IRQHandler,
-    EINT0_IRQHandler,
-    EINT1_IRQHandler,
-    EINT2_IRQHandler,
-    EINT3_IRQHandler,
-    ADC_IRQHandler,
-    BOD_IRQHandler,
-    USB_IRQHandler,
-    CAN_IRQHandler,
-    DMA_IRQHandler,
-    I2S_IRQHandler,
-    ENET_IRQHandler,
+    IntDefaultHandler,                      // GPIO Port A
+    IntDefaultHandler,                      // GPIO Port B
+    IntDefaultHandler,                      // GPIO Port C
+    IntDefaultHandler,                      // GPIO Port D
+    IntDefaultHandler,                      // GPIO Port E
+    UART0_IRQHandler,                       // UART0
+    UART1_IRQHandler,                       // UART1
+    SSI0_IRQHandler,                        // SSI0
+    I2C0_IRQHandler,                        // I2C0
+    PWMFault_IRQHandler,                    // PWM Fault
+    PWM0_IRQHandler,                        // PWM Generator 0
+    PWM1_IRQHandler,                        // PWM Generator 1
+    PWM2_IRQHandler,                        // PWM Generator 2
+    IntDefaultHandler,                      // QEI0
+    ADC0_IRQHandler,                        // ADC Sequence 0
+    ADC1_IRQHandler,                        // ADC Sequence 1
+    ADC2_IRQHandler,                        // ADC Sequence 2
+    ADC3_IRQHandler,                        // ADC Sequence 3
+    WDT_IRQHandler,                         // Watchdog timer 0
+    TIMER0_IRQHandler,                      // Timer 0A
+    TIMER0_IRQHandler,                      // Timer 0B
+    TIMER1_IRQHandler,                      // Timer 1A
+    TIMER1_IRQHandler,                      // Timer 1B
+    TIMER2_IRQHandler,                      // Timer 2A
+    TIMER2_IRQHandler,                      // Timer 2B
+    IntDefaultHandler,                      // Analog Comparator 0
+    IntDefaultHandler,                      // Analog Comparator 1
+    IntDefaultHandler,                      // Reserved
+    IntDefaultHandler,                      // System Control
+    IntDefaultHandler,                      // Flash Memory Control
+    IntDefaultHandler,                      // GPIO Port F
+    IntDefaultHandler,                      // GPIO Port G
+    IntDefaultHandler,                      // Reserved
+    UART2_IRQHandler,                       // UART2
+    IntDefaultHandler,                      // Reserved
+    IntDefaultHandler,                      // Timer 3A
+    IntDefaultHandler,                      // Timer 3B
+    I2C1_IRQHandler,                        // I2C1
+    IntDefaultHandler,                      // QEI1
+    IntDefaultHandler,                      // Reserved
+    IntDefaultHandler,                      // Reserved
+    0,                                      // Reserved
+    ENET_IRQHandler,                        // Ethernet
+    IntDefaultHandler                       // Hibernate
 };
