@@ -97,7 +97,7 @@ void task3(void *arg) {
     } while (ser < 0);
 
     sys_write(ser, LS_HDR, strlen(LS_HDR));
-    print_files(ser, "/", 0);
+    /* print_files(ser, "/", 0); */ /* Stat: work inprogress */
     close(ser);
 }
 
