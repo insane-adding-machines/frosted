@@ -310,6 +310,25 @@ int sys_closedir_hdlr(uint32_t arg1)
     return 0;
 }
 
+
+int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
+{
+    char *path = (char *)arg1;
+    struct stat *st = (struct stat *)arg2;
+    struct fnode *fno = fno_search((char *)arg1);
+    if (!fno)
+        return -1;
+    st->st_owner = fno->owner;
+    if (fno->flags & FL_DIR) {
+        st->st_mode = S_IFDIR;
+        st->st_size = 0;
+    } else {
+        st->st_mode = S_IFREG;
+        st->st_size = fno->size;
+    }
+    return 0;
+}
+
 void vfs_init(void) 
 {
     struct fnode *dev = NULL;

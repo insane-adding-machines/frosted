@@ -24,6 +24,28 @@ struct dirent {
     char d_name[256];
 };
 
+struct stat {
+    uint32_t st_size;
+    uint32_t st_mode;
+    struct module *st_owner;
+};
+
+#define S_IFMT     0170000   // bit mask for the file type bit fields
+
+#define S_IFSOCK   0140000   // socket
+#define S_IFLNK    0120000   // symbolic link
+#define S_IFREG    0100000   // regular file
+#define S_IFBLK    0060000   // block device
+#define S_IFDIR    0040000   // directory
+#define S_IFCHR    0020000   // character device
+#define S_IFIFO    0010000   // FIFO
+
+#define S_ISREG(m)  (((m) & S_IFMT) == S_IFREG)    // is it a regular file?
+#define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)    // directory?
+#define S_ISCHR(m)  (((m) & S_IFMT) == S_IFCHR)    // character device?
+
+
+
 /* Syscalls API for frosted. 
  * Any Application may link to the OS using these system calls.
  *
@@ -42,6 +64,7 @@ DIR *sys_opendir(const char *path);
 struct dirent *sys_readdir(DIR *d);
 int sys_closedir(DIR *d);
 unsigned int sys_gettimeofday(unsigned int *ms);
+int sys_stat(const char *path, struct stat *st);
 #endif /* KERNEL */
 
 #endif

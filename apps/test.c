@@ -1,5 +1,6 @@
 #include "frosted_api.h"
 #include <string.h>
+#include <stdio.h>
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
@@ -47,27 +48,57 @@ void task2(void *arg)
     (void)i;
 }
 
-void task3(void *arg) {
-    volatile uint32_t now; 
-    int ser;
+#define LS_HDR "VFS Content:\n"
+
+static void print_files(int ser, char *start, int level)
+{
+    char _fname[256];
+    char *fname = _fname;
     struct dirent *ep;
     DIR *d;
-    do {
-        now = sys_gettimeofday(NULL);
-    } while (now < 1000) ;
+    struct stat st;
+    char size[10];
+    char type;
+    int i;
+
+    d = sys_opendir(start);
+    while(ep = sys_readdir(d)) {
+        snprintf(fname, 256, "%s/%s", start, ep->d_name);    
+
+        while (fname[0] == '/' && fname[1] == '/')
+            fname++;
+
+        sys_stat(fname, &st);
+        for(i = 0; i < level; i++)
+            sys_write(ser, "\t", 1);
+
+        sys_write(ser, fname, strlen(fname));
+        sys_write(ser, "\t", 1);
+        if (S_ISDIR(st.st_mode))
+            type = 'd';
+        else
+            type = 'f';
+        snprintf(size, 10, "%c\t%d", type, st.st_size);
+        sys_write(ser, size, strlen(size));
+        sys_write(ser, "\n", 1);
+        if (type == 'd') {
+            print_files(ser, fname, level + 1);
+        }
+    }
+    sys_closedir(d);
+}
+
+
+void task3(void *arg) {
+    int ser;
 
     do {
         ser = sys_open("/dev/ttyS0", O_RDWR);
     } while (ser < 0);
 
-    d = sys_opendir("/");
-    while (ep = sys_readdir(d)) {
-        sys_write(ser, ep->d_name, strlen(ep->d_name));
-        sys_write(ser, "\n", 1);
-    }
-    sys_closedir(d);
+    sys_write(ser, LS_HDR, strlen(LS_HDR));
+    print_files(ser, "/", 0);
     close(ser);
-
 }
 
 

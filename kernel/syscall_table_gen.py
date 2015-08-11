@@ -32,7 +32,8 @@ syscalls = [
     ["realloc",2, "sys_realloc_hdlr"],
     ["opendir",1, "sys_opendir_hdlr"],
     ["readdir",1, "sys_readdir_hdlr"],
-    ["closedir",1, "sys_closedir_hdlr"]
+    ["closedir",1, "sys_closedir_hdlr"], 
+    ["stat", 2, "sys_stat_hdlr"]
 ]
 
    #
