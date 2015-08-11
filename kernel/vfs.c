@@ -39,6 +39,7 @@ static struct fnode *fno_create_file(char *path)
     char *base = kalloc(strlen(path) + 1);
     struct module *owner = NULL;
     struct fnode *parent;
+    struct fnode *f = NULL;
     if (!base)
         return NULL;
     basename_r(path, base);
@@ -52,7 +53,10 @@ static struct fnode *fno_create_file(char *path)
     if (parent) {
         owner = parent->owner;
     }
-    return fno_create(owner, filename(path), parent);
+    f = fno_create(owner, filename(path), parent);
+    if (f)
+        f->flags = 0;
+    return f;
 }
 
 static struct fnode *fno_create_dir(char *path)
@@ -139,7 +143,7 @@ struct fnode *fno_search(const char *path)
 
 static struct fnode *_fno_create(struct module *owner, const char *name, struct fnode *parent)
 {
-    struct fnode *fno = kalloc(sizeof(struct fnode));
+    struct fnode *fno = kcalloc(sizeof(struct fnode), 1);
     int nlen = strlen(name);
     if (!fno)
         return NULL;
@@ -188,6 +192,9 @@ void fno_unlink(struct fnode *fno)
 
     if (fno && fno->owner && fno->owner->ops.unlink)
         fno->owner->ops.unlink(fno);
+
+    if (!fno)
+        return;
 
     if (dir) {
         struct fnode *child = dir->children;

@@ -141,6 +141,7 @@ void kernel_task_init(void);
 
 
 #define kalloc malloc
+#define kcalloc calloc
 #define krealloc realloc
 #define kfree  free
 

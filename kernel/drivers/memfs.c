@@ -143,6 +143,7 @@ static int memfs_unlink(struct fnode *fno)
     struct memfs_fnode *mfno = fno->priv;
     if (mfno && mfno->content)
         kfree(mfno->content);
+    kfree(mfno);
     return 0;
 }
 
