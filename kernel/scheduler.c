@@ -1,6 +1,6 @@
 #include "frosted.h"
 #include "syscall_table.h"
-
+#include "string.h" /* flibc string.h */
 
 /* Full kernel space separation */
 #define RUN_HANDLER (0xfffffff1u)
@@ -18,9 +18,6 @@
 #define RUN_USER    RUN_HANDLER
 #endif
 
-
-/* XXX TEMP for memset */
-#include "string.h"
 
 /* Array of syscalls */
 static void *sys_syscall_handlers[_SYSCALLS_NR] = {

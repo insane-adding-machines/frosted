@@ -5,31 +5,16 @@ ARCH?=stellaris_qemu
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
-CFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -DARCH_$(ARCH) -Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc -Ikernel -DCORE_M3 -Iinclude
-LDFLAGS:=-nostartfiles -lc -lm -lrdimon -ggdb
+CFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -DARCH_$(ARCH) -Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding
+LDFLAGS:=-nostartfiles -ggdb -lc -lm -lnosys 
+PREFIX=$(PWD)/build
 
 #debugging
 CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-OBJS:=	kernel/svc.o			\
-	kernel/frosted.o			\
-	port/$(FAMILY)/$(FAMILY).o	\
-	kernel/sys.o				\
-	kernel/systick.o			\
-	kernel/syscall.o			\
-	kernel/timer.o				\
-	kernel/scheduler.o			\
-	kernel/syscall_table.o		\
-	kernel/vfs.o				\
-	kernel/newlib_redirect.o	\
-	kernel/malloc.o				\
-	kernel/module.o				\
-	kernel/drivers/memfs.o		\
-	kernel/drivers/null.o		\
-	kernel/drivers/uart.o 		\
-	apps/test.o
-
+OBJS:=  port/$(FAMILY)/$(FAMILY).o	\
+		apps/test.o
 
 include port/$(FAMILY)/$(FAMILY).mk
 
@@ -40,14 +25,18 @@ kernel/syscall_table.c: kernel/syscall_table_gen.py
 
 kernel/syscall_table.h: kernel/syscall_table.c
 
-image.elf: kernel/syscall_table.h $(OBJS) $(LIBS)
-	$(CC) -o $@   -Wl,--start-group  $(OBJS) $(LIBS) -Wl,--end-group  -Tport/$(FAMILY)/$(FAMILY).ld  -Wl,-Map,image.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+$(PREFIX)/build/lib/libfrosted.a:
+	make -C kernel
+
+image.elf: $(PREFIX)/build/lib/libfrosted.a $(OBJS) $(LIBS)
+	$(CC) -o $@   -Wl,--start-group $(PREFIX)/lib/libfrosted.a $(OBJS) $(LIBS) -Wl,--end-group  -Tport/$(FAMILY)/$(FAMILY).ld  -Wl,-Map,image.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.elf
 	#qemu-system-arm -semihosting -M lm3s6965evb --kernel image.elf -nographic -S -s
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.elf -serial stdio -S -s
 
 clean:
+	@make -C kernel clean
 	@rm -f $(OBJS)
 	@rm -f image.elf image.map
 
