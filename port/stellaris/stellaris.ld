@@ -19,11 +19,11 @@ SECTIONS
         KEEP(*(.isr_vector))
         *(.text*)
         *(.rodata*)
-        _etext = .;
     } > FLASH
  
     .data :
     {
+        _etext = LOADADDR(.data);
         _data = .;
         *(vtable)
         *(.data*)
