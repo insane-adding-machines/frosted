@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 static volatile uint32_t * const TTY0WR = (uint32_t *)UART0_BASE;
+static volatile uint8_t * const TTY0IE = ((uint8_t *)UART0_BASE) + 56;
 
 static int devuart_read(int fd, void *buf, unsigned int len)
 {
@@ -45,6 +46,9 @@ void devuart_init(struct fnode *dev)
     mod_devuart.ops.poll = devuart_poll;
     mod_devuart.ops.write = devuart_write;
     uart = fno_create(&mod_devuart, "ttyS0", dev);
+    *TTY0IE = 0x04;
+    NVIC_EnableIRQ(UART0_IRQn);
+
 
     register_module(&mod_devuart);
 }

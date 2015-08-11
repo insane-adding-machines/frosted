@@ -316,7 +316,8 @@ void __naked  PendSV_Handler(void)
     //_top_stack = msp_read();
 
     _cur_task->sp = _top_stack;
-    _cur_task->state = TASK_RUNNABLE;
+    if (_cur_task->state == TASK_RUNNING)
+        _cur_task->state = TASK_RUNNABLE;
 
     /* choose next task */
     task_switch();

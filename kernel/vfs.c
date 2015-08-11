@@ -159,7 +159,6 @@ static struct fnode *_fno_create(struct module *owner, const char *name, struct 
         parent = &FNO_ROOT;
     }
 
-
     fno->parent = parent;
     fno->next = fno->parent->children;
     fno->parent->children = fno;
@@ -188,7 +187,11 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
 
 void fno_unlink(struct fnode *fno)
 {
-    struct fnode *dir = fno->parent;
+    struct fnode *dir;
+
+    if (!fno)
+        return;
+    dir = fno->parent;
 
     if (fno && fno->owner && fno->owner->ops.unlink)
         fno->owner->ops.unlink(fno);
@@ -229,8 +232,10 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
             if (f != NULL)
                 return -1; /* XXX: EEXIST */
         }
-        if (flags & O_TRUNC) {
-            fno_unlink(fno_search(path));
+        if (f && (flags & O_TRUNC)) {
+            f = fno_search(path);
+            if (f) 
+                fno_unlink(f);
         }
         f = fno_create_file(path);
     }
@@ -275,8 +280,12 @@ int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 
 int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    fno_unlink(fno_search((char *)arg1));
-    return 0;
+    struct fnode *fno = fno_search((char *)arg1);
+    if (fno) {
+        fno_unlink(fno);
+        return 0;
+    }
+    return -1;
 }
 
 static struct dirent readdir_retval;
@@ -300,6 +309,8 @@ int sys_readdir_hdlr(uint32_t arg1)
 {
     struct fnode *fno = (struct fnode *)arg1;
     struct fnode *next = (struct fnode *)fno->off;
+    if (!fno)
+        return (int)NULL;
     if (!next) {
         return (int)NULL;
     }

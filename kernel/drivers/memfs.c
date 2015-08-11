@@ -140,7 +140,10 @@ static int memfs_creat(struct fnode *fno)
 
 static int memfs_unlink(struct fnode *fno)
 {
-    struct memfs_fnode *mfno = fno->priv;
+    struct memfs_fnode *mfno;
+    if (!fno)
+        return -1;
+    mfno = fno->priv;
     if (mfno && mfno->content)
         kfree(mfno->content);
     kfree(mfno);

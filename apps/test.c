@@ -21,19 +21,23 @@ void task2(void *arg)
     sys_write(ser, GREETING, strlen(GREETING));
     close(ser);
 
+    addr = (void *)sys_malloc(20);
     ret = sys_mkdir("/mem/test");
+    ret = sys_read(fdz, addr, 20);
+    ret = sys_write(fdn, addr, 20);
+    sys_close(fdn);
+    sys_close(fdz);
+    now = sys_gettimeofday(NULL);
+    pid = sys_getpid();
+    ppid = sys_getppid();
+    sys_free(addr);
 
     while(1) {
         addr = (void *)sys_malloc(20);
-        ret = sys_read(fdz, addr, 20);
-        ret = sys_write(fdn, addr, 20);
-        sys_close(fdn);
-        sys_close(fdz);
-        now = sys_gettimeofday(NULL);
-        pid = sys_getpid();
-        ppid = sys_getppid();
 
         fdm = sys_open("/mem/test/test", O_RDWR|O_CREAT|O_TRUNC);
+        if (fdm < 0)
+            while(1);;
         ret = sys_write(fdm, "hello", 5);
         sys_close(fdm);
 
@@ -44,6 +48,7 @@ void task2(void *arg)
         sys_unlink("/mem/test/test");
 
         sys_free(addr);
+        sys_sleep(200);
     }
     (void)i;
 }
@@ -97,7 +102,7 @@ void task3(void *arg) {
     } while (ser < 0);
 
     sys_write(ser, LS_HDR, strlen(LS_HDR));
-    /* print_files(ser, "/", 0); */ /* Stat: work inprogress */
+    //print_files(ser, "/", 0);  /* Stat: work inprogress */
     close(ser);
 }
 
