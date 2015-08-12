@@ -103,9 +103,9 @@ int sys_opendir(uint32_t arg1){
     syscall(SYS_OPENDIR, arg1, 0, 0, 0, 0); 
 }
 
-/* Syscall: readdir(1 arguments) */
-int sys_readdir(uint32_t arg1){
-    syscall(SYS_READDIR, arg1, 0, 0, 0, 0); 
+/* Syscall: readdir(2 arguments) */
+int sys_readdir(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_READDIR, arg1, arg2, 0, 0, 0); 
 }
 
 /* Syscall: closedir(1 arguments) */

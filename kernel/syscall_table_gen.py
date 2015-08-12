@@ -19,19 +19,19 @@ syscalls = [
     ["getpid", 0, "sys_getpid_hdlr"],
     ["getppid", 0, "sys_getppid_hdlr"],
     ["open", 2, "sys_open_hdlr"],
-    ["close",1, "sys_close_hdlr"],
+    ["close", 1, "sys_close_hdlr"],
     ["read", 3, "sys_read_hdlr"],
     ["write", 3, "sys_write_hdlr"],
     ["seek", 3, "sys_seek_hdlr"],
     ["mkdir", 1, "sys_mkdir_hdlr"],
     ["unlink", 1, "sys_unlink_hdlr"],
     ["gettimeofday",1, "sys_gettimeofday_hdlr"],
-    ["malloc",1, "sys_malloc_hdlr"],
-    ["free",1, "sys_free_hdlr"],
-    ["calloc",2, "sys_calloc_hdlr"],
-    ["realloc",2, "sys_realloc_hdlr"],
-    ["opendir",1, "sys_opendir_hdlr"],
-    ["readdir",1, "sys_readdir_hdlr"],
+    ["malloc", 1, "sys_malloc_hdlr"],
+    ["free", 1, "sys_free_hdlr"],
+    ["calloc", 2, "sys_calloc_hdlr"],
+    ["realloc", 2, "sys_realloc_hdlr"],
+    ["opendir", 1, "sys_opendir_hdlr"],
+    ["readdir", 2, "sys_readdir_hdlr"],
     ["closedir",1, "sys_closedir_hdlr"], 
     ["stat", 2, "sys_stat_hdlr"]
 ]
@@ -41,8 +41,8 @@ syscalls = [
  #####
 #######
 #################################################################
-hdr = open("kernel/syscall_table.h", "w")
-code = open("kernel/syscall_table.c", "w")
+hdr = open("syscall_table.h", "w")
+code = open("syscall_table.c", "w")
 
 hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n\n")
 code.write("/* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n#include \"syscall_table.h\"\n")

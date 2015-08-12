@@ -53,22 +53,31 @@ void task2(void *arg)
     (void)i;
 }
 
-#define LS_HDR "VFS Content:\n"
+#define LS_HDR " **** VFS Content: **** \n"
+#define LS_TAIL " **** End of VFS Content. ****\n\n"
 
 static void print_files(int ser, char *start, int level)
 {
-    char _fname[256];
-    char *fname = _fname;
+    char *fname;
+    char *fname_start;
     struct dirent *ep;
     DIR *d;
     struct stat st;
-    char size[10];
     char type;
     int i;
 
+    fname_start = sys_malloc(MAX_FILE);
+    ep = sys_malloc(sizeof(struct dirent));
+    if (!ep || !fname_start)
+        while(1);;
+
     d = sys_opendir(start);
-    while(ep = sys_readdir(d)) {
-        snprintf(fname, 256, "%s/%s", start, ep->d_name);    
+    while(sys_readdir(d, ep) == 0) {
+        fname = fname_start;
+        fname[0] = '\0';
+        strncat(fname, start, MAX_FILE);
+        strncat(fname, "/", MAX_FILE);
+        strncat(fname, ep->d_name, MAX_FILE);
 
         while (fname[0] == '/' && fname[1] == '/')
             fname++;
@@ -83,14 +92,13 @@ static void print_files(int ser, char *start, int level)
             type = 'd';
         else
             type = 'f';
-        snprintf(size, 10, "%c\t%d", type, st.st_size);
-        sys_write(ser, size, strlen(size));
+
+        sys_write(ser, &type, 1); 
         sys_write(ser, "\n", 1);
-        if (type == 'd') {
-            print_files(ser, fname, level + 1);
-        }
     }
     sys_closedir(d);
+    sys_free(ep);
+    sys_free(fname_start);
 }
 
 
@@ -102,7 +110,10 @@ void task3(void *arg) {
     } while (ser < 0);
 
     sys_write(ser, LS_HDR, strlen(LS_HDR));
-    //print_files(ser, "/", 0);  /* Stat: work inprogress */
+    print_files(ser, "/", 0);  /* Stat: work inprogress */
+    print_files(ser, "/mem", 0);  /* Stat: work inprogress */
+    print_files(ser, "/dev", 0);  /* Stat: work inprogress */
+    sys_write(ser, LS_TAIL, strlen(LS_TAIL));
     close(ser);
 }
 

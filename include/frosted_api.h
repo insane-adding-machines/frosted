@@ -18,10 +18,10 @@
 
 typedef void DIR;
 
-
+#define MAX_FILE 48
 struct dirent {
     uint32_t d_ino;
-    char d_name[256];
+    char d_name[MAX_FILE];
 };
 
 struct stat {
@@ -61,10 +61,13 @@ int sys_getppid(void);
 int sys_open(const char *path, int mode);
 int sys_close(int fd);
 DIR *sys_opendir(const char *path);
-struct dirent *sys_readdir(DIR *d);
+int sys_readdir(DIR *d, struct dirent *ep);
 int sys_closedir(DIR *d);
 unsigned int sys_gettimeofday(unsigned int *ms);
 int sys_stat(const char *path, struct stat *st);
+
+void *sys_malloc(uint32_t size);
+int sys_free(void *ptr);
 #endif /* KERNEL */
 
 #endif

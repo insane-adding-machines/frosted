@@ -46,8 +46,8 @@ void devuart_init(struct fnode *dev)
     mod_devuart.ops.poll = devuart_poll;
     mod_devuart.ops.write = devuart_write;
     uart = fno_create(&mod_devuart, "ttyS0", dev);
-    *TTY0IE = 0x04;
-    NVIC_EnableIRQ(UART0_IRQn);
+//    *TTY0IE = 0x04;
+//    NVIC_EnableIRQ(UART0_IRQn);
 
 
     register_module(&mod_devuart);

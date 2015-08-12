@@ -288,7 +288,6 @@ int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     return -1;
 }
 
-static struct dirent readdir_retval;
 
 int sys_opendir_hdlr(uint32_t arg1)
 {
@@ -305,19 +304,20 @@ int sys_opendir_hdlr(uint32_t arg1)
     }
 }
 
-int sys_readdir_hdlr(uint32_t arg1)
+int sys_readdir_hdlr(uint32_t arg1, uint32_t arg2)
 {
     struct fnode *fno = (struct fnode *)arg1;
     struct fnode *next = (struct fnode *)fno->off;
-    if (!fno)
-        return (int)NULL;
+    struct dirent *ep = (struct dirent *)arg2;
+    if (!fno || !ep)
+        return -1;
     if (!next) {
-        return (int)NULL;
+        return -1;
     }
     fno->off = (int)next->next;
-    readdir_retval.d_ino = 0; /* TODO: populate with inode? */
-    strncpy(readdir_retval.d_name, next->fname, 256);
-    return (int)(&readdir_retval);
+    ep->d_ino = 0; /* TODO: populate with inode? */
+    strncpy(ep->d_name, next->fname, 256);
+    return 0;
 }
 
 int sys_closedir_hdlr(uint32_t arg1)
