@@ -6,6 +6,19 @@
  */
 extern void init(void *arg);
 
+int (*kdbg_write)(int, void *, int) = NULL;
+    
+
+void kdbg_set_write(int (*wr)(int, void *, int))
+{
+    kdbg_write = wr;
+}
+
+int _write(int file, char *ptr, int len) {
+    if (kdbg_write) {
+        return kdbg_write(file, ptr, len);
+    }
+}
 
 void frosted_init(void)
 {

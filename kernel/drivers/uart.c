@@ -48,7 +48,12 @@ void devuart_init(struct fnode *dev)
     uart = fno_create(&mod_devuart, "ttyS0", dev);
 //    *TTY0IE = 0x04;
 //    NVIC_EnableIRQ(UART0_IRQn);
+//
 
+    /* Kernel printf associated to devuart_write */
+    kdbg_set_write(devuart_write);
+
+    printf("UART Driver: Kernel printf enabled.\n");
 
     register_module(&mod_devuart);
 }
