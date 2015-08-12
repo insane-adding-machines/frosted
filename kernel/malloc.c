@@ -188,7 +188,6 @@ realloc_free:
 void * f_malloc(size_t size)
 {
     struct f_malloc_block * blk = NULL, *last = NULL;
-    irq_off();
 
     /* update stats */
     f_malloc_stats.malloc_calls++;
@@ -235,7 +234,6 @@ void * f_malloc(size_t size)
     /* update stats */
     f_malloc_stats.objects_allocated++;
     f_malloc_stats.mem_allocated += (uint32_t)blk->size;
-    irq_on();
 
     return (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
 }
@@ -243,13 +241,11 @@ void * f_malloc(size_t size)
 void f_free(void * ptr)
 {
     struct f_malloc_block * blk;
-    irq_off();
 
     /* stats */
     f_malloc_stats.free_calls++;
 
     if (!ptr) {
-        irq_on();
         return;
     }
 
@@ -274,7 +270,6 @@ void f_free(void * ptr)
     } else {
         dbg_malloc("FREE ERR: %p is not a valid allocated pointer!\n", blk);
     }
-    irq_on();
 }
 
 

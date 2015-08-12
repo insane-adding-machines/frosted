@@ -48,7 +48,7 @@ void task2(void *arg)
         sys_unlink("/mem/test/test");
 
         sys_free(addr);
-        sys_sleep(200);
+     //   sys_sleep(200);
     }
     (void)i;
 }

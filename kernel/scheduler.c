@@ -390,8 +390,10 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
     if (sys_syscall_handlers[n] == NULL)
         return -1;
 
+    irq_off();
     call = sys_syscall_handlers[n];
     retval = call(arg1, arg2, arg3, *a4, *a5);
+    irq_on();
 
     if ((_cur_task->state == TASK_SLEEPING) || (_cur_task->state == TASK_WAITING))
         task_switch();
