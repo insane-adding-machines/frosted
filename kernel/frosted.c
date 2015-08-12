@@ -6,18 +6,20 @@
  */
 extern void init(void *arg);
 
-int (*kdbg_write)(int, void *, int) = NULL;
+static int (*_klog_write)(int, const void *, unsigned int) = NULL;
     
 
-void kdbg_set_write(int (*wr)(int, void *, int))
+void klog_set_write(int (*wr)(int, const void *, unsigned int))
 {
-    kdbg_write = wr;
+    _klog_write = wr;
 }
 
-int _write(int file, char *ptr, int len) {
-    if (kdbg_write) {
-        return kdbg_write(file, ptr, len);
+int klog_write(int file, char *ptr, int len)
+{
+    if (_klog_write) {
+        _klog_write(file, ptr, len);
     }
+    return len;
 }
 
 void frosted_init(void)
@@ -37,14 +39,20 @@ void frosted_init(void)
 void main(void) 
 {
     volatile int ret = 0;
+    int ttt = 0;
 
     frosted_init();
     
     /* Create "init" task */
+    klog(LOG_INFO, "Starting Init task\n");
     if (task_create(init, (void *)0, 2) < 0)
         IDLE();
 
     while(1) {
+        if (!ttt && (jiffies > 500)) {
+            ttt++;
+            klog(LOG_INFO, "time elapsed\n");
+        }
         /* This is the kernel main loop */   
     }
 }

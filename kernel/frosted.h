@@ -18,6 +18,21 @@ struct fnode;
 volatile unsigned int jiffies;
 volatile int _syscall_retval;
 void frosted_init(void);
+void klog_set_write(int (*wr)(int, const void *, unsigned int));
+
+/* klog */
+#define klog(priority, ...)   {                  \
+    char *str = (char *)f_malloc(256);           \
+    if (str) {                                   \
+        if (priority <= KLOG_LEVEL) {            \
+            snprintf(str, 256,  __VA_ARGS__ );   \
+            klog_write(0, str, strlen(str));     \
+        }                                        \
+        f_free(str);                             \
+    }                                            \
+}
+
+
 
 /* Systick & co. */
 int _clock_interval;

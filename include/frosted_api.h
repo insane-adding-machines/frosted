@@ -4,6 +4,7 @@
 
 /* Constants */
 
+/* open */
 #define O_RDONLY 0x01
 #define O_WRONLY 0x02
 #define O_RDWR   (O_RDONLY | O_WRONLY)
@@ -12,10 +13,22 @@
 #define O_TRUNC  0x10
 #define O_APPEND 0x20
 
+/* seek */
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
 
+/* syslog */
+#define LOG_EMERG   0   /* system is unusable */
+#define LOG_ALERT   1   /* action must be taken immediately */
+#define LOG_CRIT    2   /* critical conditions */
+#define LOG_ERR     3   /* error conditions */
+#define LOG_WARNING 4   /* warning conditions */
+#define LOG_NOTICE  5   /* normal but significant condition */
+#define LOG_INFO    6   /* informational */
+#define LOG_DEBUG   7   /* debug-level messages */
+
+/* opendir - readdir */
 typedef void DIR;
 
 #define MAX_FILE 48
@@ -24,6 +37,7 @@ struct dirent {
     char d_name[MAX_FILE];
 };
 
+/* stat */
 struct stat {
     uint32_t st_size;
     uint32_t st_mode;

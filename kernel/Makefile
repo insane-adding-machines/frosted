@@ -11,6 +11,7 @@ PREFIX:=$(PWD)/build
 #Target flags
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DARCH_$(ARCH)
+CFLAGS+=-DKLOG_LEVEL=6
 #Include paths
 CFLAGS+=-I. -I../include -I../flibc -I../arch/$(ARCH)/inc -I../port/$(FAMILY)/inc
 #Freestanding options

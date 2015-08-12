@@ -5,7 +5,7 @@ ARCH?=stellaris_qemu
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
-CFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -DARCH_$(ARCH) -Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding
+CFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -DARCH_$(ARCH) -Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
 LDFLAGS:=-nostartfiles -ggdb -lc -lm -lnosys 
 PREFIX=$(PWD)/build
 

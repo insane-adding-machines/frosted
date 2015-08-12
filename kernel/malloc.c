@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
@@ -16,7 +15,11 @@
 void * sbrk (int incr);
 #endif
 
+#if defined __linux__ || defined _WIN32 /* test application */
 #define dbg_malloc printf
+#else
+#define dbg_malloc(...) do{}while(0)
+#endif
 
 /*------------------*/
 /* Structures       */
@@ -324,12 +327,12 @@ int sys_realloc_hdlr(int addr, int size)
 #if defined __linux__ || defined _WIN32 /* test application */
     void print_malloc_stats(void)
     {
-        printf("\n=== FROSTED MALLOC STATS ===\n");
-        printf("--> malloc calls: %d\n", f_malloc_stats.malloc_calls);
-        printf("--> free   calls: %d\n", f_malloc_stats.free_calls);
-        printf("--> objects allocated: %d\n", f_malloc_stats.objects_allocated);
-        printf("--> memory  allocated: %d\n", f_malloc_stats.mem_allocated);
-        printf("=== FROSTED MALLOC STATS ===\n\n");
+        dbg_malloc("\n=== FROSTED MALLOC STATS ===\n");
+        dbg_malloc("--> malloc calls: %d\n", f_malloc_stats.malloc_calls);
+        dbg_malloc("--> free   calls: %d\n", f_malloc_stats.free_calls);
+        dbg_malloc("--> objects allocated: %d\n", f_malloc_stats.objects_allocated);
+        dbg_malloc("--> memory  allocated: %d\n", f_malloc_stats.mem_allocated);
+        dbg_malloc("=== FROSTED MALLOC STATS ===\n\n");
     }
     
     void print_malloc_entries(void)
@@ -340,14 +343,14 @@ int sys_realloc_hdlr(int addr, int size)
         /* See if we can find a free block that fits */
         while (blk) /* last entry will break the loop */
         {
-            printf(">>> Entry #%d: \n", i);
-            printf("    Address (blk) %p \n", blk);
-            printf("    Address (usr) %p \n", ((uint8_t*)blk) + sizeof(struct f_malloc_block));
-            printf("    Prev: %p \n", blk->prev);
-            printf("    Next: %p \n", blk->next);
-            printf("    Size (usr) %d \n", blk->size);
-            printf("    In use? %d \n", blk->in_use);
-            printf("    Magic: 0x%08x \n", blk->magic);
+            dbg_malloc(">>> Entry #%d: \n", i);
+            dbg_malloc("    Address (blk) %p \n", blk);
+            dbg_malloc("    Address (usr) %p \n", ((uint8_t*)blk) + sizeof(struct f_malloc_block));
+            dbg_malloc("    Prev: %p \n", blk->prev);
+            dbg_malloc("    Next: %p \n", blk->next);
+            dbg_malloc("    Size (usr) %d \n", blk->size);
+            dbg_malloc("    In use? %d \n", blk->in_use);
+            dbg_malloc("    Magic: 0x%08x \n", blk->magic);
             i++;
             blk = blk->next;
         }
@@ -358,31 +361,31 @@ int sys_realloc_hdlr(int addr, int size)
         void * test10 = f_malloc(10);
         void * test200 = f_malloc(200);
         void * test100 = NULL;
-        printf("test10: %p\n", test10);
-        printf("test200: %p\n", test200);
+        dbg_malloc("test10: %p\n", test10);
+        dbg_malloc("test200: %p\n", test200);
         f_free(test10);
         print_malloc_stats();
         print_malloc_entries();
     
-        printf("\nTrying to re-use freed memory + allocate more\n");
+        dbg_malloc("\nTrying to re-use freed memory + allocate more\n");
         test10 = f_malloc(10); // this should re-use exisiting entry
         test100 = f_malloc(100); // this should alloc more memory through sbrk
         print_malloc_stats();
         print_malloc_entries();
     
-        printf("\nFreeing all of the memory\n");
+        dbg_malloc("\nFreeing all of the memory\n");
         f_free(test10);
         f_free(test200);
         f_free(test100);
         print_malloc_stats();
         print_malloc_entries();
 
-        printf("Trying to re-use freed memory\n");
+        dbg_malloc("Trying to re-use freed memory\n");
         test100 = f_malloc(100); // this should re-use memory in the freed pool
         print_malloc_stats();
         print_malloc_entries();
 
-        printf("Allocating more memory\n");
+        dbg_malloc("Allocating more memory\n");
         test10 = f_malloc(10);
         test200 = f_malloc(200);
         print_malloc_stats();
