@@ -100,6 +100,10 @@ static void print_files(int ser, char *start, int level)
     sys_free(fname_start);
 }
 
+static const char str_welcome[]      = "Welcome to Frosted\r\n";
+static const char str_unknowncmd[]   = "Unknown command. Try 'help'.\r\n";
+static const char str_help[]         = "The only supported commands are 'help' and 'ls'.\r\n";
+static const char str_prompt[]       = "[frosted]$> ";
 
 void task3(void *arg) {
     int ser;
@@ -108,11 +112,33 @@ void task3(void *arg) {
         ser = sys_open("/dev/ttyS0", O_RDWR);
     } while (ser < 0);
 
-    sys_write(ser, LS_HDR, strlen(LS_HDR));
-    print_files(ser, "/", 0);  /* Stat: work inprogress */
-    print_files(ser, "/mem", 0);  /* Stat: work inprogress */
-    print_files(ser, "/dev", 0);  /* Stat: work inprogress */
-    sys_write(ser, LS_TAIL, strlen(LS_TAIL));
+    sys_write(ser, str_welcome, strlen(str_welcome));
+
+    while (2>1)
+    {
+        char input[100];
+        int len;
+
+        sys_write(ser, str_prompt, strlen(str_prompt));
+
+        len = sys_read(ser, input, 100);
+        sys_write(ser, "\n", 1);
+
+        input[len] = '\0';
+        if (!strcmp(input, "ls"))
+        {
+            sys_write(ser, LS_HDR, strlen(LS_HDR));
+            print_files(ser, "/", 0);  /* Stat: work inprogress */
+            print_files(ser, "/mem", 0);  /* Stat: work inprogress */
+            print_files(ser, "/dev", 0);  /* Stat: work inprogress */
+            sys_write(ser, LS_TAIL, strlen(LS_TAIL));
+        } else if (!strcmp(input, "help")) {
+            sys_write(ser, str_help, strlen(str_help));
+        } else {
+            sys_write(ser, str_unknowncmd, strlen(str_unknowncmd));
+        }
+    }
+
     close(ser);
 }
 
@@ -133,8 +159,8 @@ void init(void *arg)
     sys_close(fd);
     
     /* Thread create test */
-    if (sys_thread_create(task2, (void *)42, 1) < 0)
-        IDLE();
+    //if (sys_thread_create(task2, (void *)42, 1) < 0)
+    //    IDLE();
     if (sys_thread_create(task3, (void *)42, 1) < 0)
         IDLE();
 
