@@ -48,6 +48,8 @@ int task_timeslice(void);
 int task_filedesc_add(struct fnode *f);
 struct fnode *task_filedesc_get(int fd);
 int task_filedesc_del(int fd);
+void task_suspend(void);
+void task_resume(int pid);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 

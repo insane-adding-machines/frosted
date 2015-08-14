@@ -51,7 +51,6 @@ void main(void)
     while(1) {
         if (!ttt && (jiffies > 500)) {
             ttt++;
-            klog(LOG_INFO, "time elapsed\n");
         }
         /* This is the kernel main loop */   
     }

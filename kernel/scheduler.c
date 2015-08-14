@@ -41,7 +41,7 @@ int sys_register_handler(uint32_t n, int(*_sys_c)(uint32_t arg1, uint32_t arg2, 
 
 #define MAX_TASKS 16
 #define BASE_TIMESLICE (20)
-#define TIMESLICE(x) ((BASE_TIMESLICE) + (x->prio << 2))
+#define TIMESLICE(x) ((BASE_TIMESLICE) + ((x)->prio << 2))
 #define STACK_SIZE (992)
 
 struct __attribute__((packed)) nvic_stack_frame {
@@ -368,10 +368,27 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
         return -1;
 
     if (pid > 0) {
+        irq_on();
         _cur_task->state = TASK_SLEEPING;
         _cur_task->timeslice = jiffies + arg1;
+        irq_off();
     }
     return 0;
+}
+
+void task_suspend(void)
+{
+    irq_on();
+    _cur_task->state = TASK_WAITING;
+    _cur_task->timeslice = 0;
+}
+
+void task_resume(int pid)
+{
+    if (tasklist[pid].state == TASK_WAITING) {
+        tasklist[pid].state = TASK_RUNNABLE;
+        tasklist[pid].timeslice = TIMESLICE(&tasklist[pid]);
+    }
 }
 
 static uint32_t *a4 = NULL;

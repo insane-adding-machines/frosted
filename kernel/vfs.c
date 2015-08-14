@@ -248,6 +248,10 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if (flags & O_APPEND) {
         f->off = f->size;
     }
+    if (f->owner && f->owner->ops.open) {
+        if (f->owner->ops.open(path, flags) < 0)
+            return -1;
+    }
     return task_filedesc_add(f); 
 }
 
