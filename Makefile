@@ -32,8 +32,10 @@ image.elf: $(PREFIX)/build/lib/libfrosted.a $(OBJS) $(LIBS)
 	$(CC) -o $@   -Wl,--start-group $(PREFIX)/lib/libfrosted.a $(OBJS) $(LIBS) -Wl,--end-group  -Tport/$(FAMILY)/$(FAMILY).ld  -Wl,-Map,image.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.elf
-	#qemu-system-arm -semihosting -M lm3s6965evb --kernel image.elf -nographic -S -s
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.elf -serial stdio -S -s
+
+qemu2: image.elf
+	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.elf -serial stdio
 
 clean:
 	@make -C kernel clean

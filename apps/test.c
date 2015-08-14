@@ -125,14 +125,14 @@ void task3(void *arg) {
         sys_write(ser, "\n", 1);
 
         input[len] = '\0';
-        if (!strcmp(input, "ls"))
+        if (!strncmp(input, "ls", 2))
         {
             sys_write(ser, LS_HDR, strlen(LS_HDR));
             print_files(ser, "/", 0);  /* Stat: work inprogress */
             print_files(ser, "/mem", 0);  /* Stat: work inprogress */
             print_files(ser, "/dev", 0);  /* Stat: work inprogress */
             sys_write(ser, LS_TAIL, strlen(LS_TAIL));
-        } else if (!strcmp(input, "help")) {
+        } else if (!strncmp(input, "help", 4)) {
             sys_write(ser, str_help, strlen(str_help));
         } else {
             sys_write(ser, str_unknowncmd, strlen(str_unknowncmd));

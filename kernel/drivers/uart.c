@@ -50,14 +50,10 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     if (fd < 0)
         return -1;
 
-    for(out = 0; out < len;) {
+    for(out = 0; out < len; out++) {
         /* wait for data */
-        if (UART_FR(UART0_BASE) & UART_FR_RXFE) 
+        while (UART_FR(UART0_BASE) & UART_FR_RXFE) 
         {
-            /*
-            if (out > 0)
-                break;
-                */
             task_suspend();
         }
         /* read data */
@@ -65,7 +61,6 @@ static int devuart_read(int fd, void *buf, unsigned int len)
         /* TEMP -- echo char */
         devuart_write(0, ptr, 1);
         /* CR '\n' */
-        out++;
         if (*(ptr) == 0xD)
             break;
         ptr++;
