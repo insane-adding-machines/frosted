@@ -18,6 +18,8 @@
 #define RUN_USER    RUN_HANDLER
 #endif
 
+#define STACK_THRESHOLD 64
+
 
 /* Array of syscalls */
 static void *sys_syscall_handlers[_SYSCALLS_NR] = {
@@ -319,8 +321,13 @@ void __naked  PendSV_Handler(void)
     if (_cur_task->state == TASK_RUNNING)
         _cur_task->state = TASK_RUNNABLE;
 
+
     /* choose next task */
     task_switch();
+    
+    if (((int)(_cur_task->sp) - (int)(&_cur_task->stack)) < STACK_THRESHOLD) {
+        klog(LOG_WARNING, "Process %d is running out of stack space!\n", _cur_task->pid);
+    }
 
     /* write new stack pointer and restore context */
     if (in_kernel()) {
