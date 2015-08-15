@@ -26,4 +26,5 @@
 #define SYS_READDIR 			(20)
 #define SYS_CLOSEDIR 			(21)
 #define SYS_STAT 			(22)
-#define _SYSCALLS_NR 23
+#define SYS_POLL 			(23)
+#define _SYSCALLS_NR 24

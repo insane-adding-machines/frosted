@@ -87,7 +87,6 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
 void fno_unlink(struct fnode *fno);
 
 struct fnode *fno_search(const char *path);
-struct fnode *fno_get(int fd);
 
 
 /* Modules (for files/sockets) */
@@ -106,7 +105,7 @@ struct module {
         /* Common module operations */
         int (*read)(int fd, void *buf, unsigned int len);
         int (*write)(int fd, const void *buf, unsigned int len);
-        int (*poll)(int fd, uint16_t events);
+        int (*poll)(int fd, uint16_t events, uint16_t *revents);
         int (*close)(int fd);
 
         /* Files only (NULL == socket) */

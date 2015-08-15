@@ -118,8 +118,14 @@ void task3(void *arg) {
     {
         char input[100];
         int len;
+        struct pollfd pfd;
+        pfd.fd = ser;
+        pfd.events = POLLIN;
 
         sys_write(ser, str_prompt, strlen(str_prompt));
+
+        if (sys_poll(&pfd, 1, 1000) <= 0)
+            continue;
 
         len = sys_read(ser, input, 100);
         sys_write(ser, "\n", 1);

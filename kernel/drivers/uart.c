@@ -69,9 +69,19 @@ static int devuart_read(int fd, void *buf, unsigned int len)
 }
 
 
-static int devuart_poll(int fd, uint16_t events)
+static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
 {
-    return 0;
+    int ret = 0;
+    *revents = 0;
+    if (events & POLLOUT) {
+        *revents |= POLLOUT;
+        ret = 1; /* TODO: implement interrupt for write events */
+    }
+    if ((events == POLLIN) && (!(UART_FR(UART0_BASE) & UART_FR_RXFE))) {
+        *revents |= POLLIN;
+        ret = 1;
+    }
+    return ret;
 }
 
 static int devuart_open(const char *path, int flags)

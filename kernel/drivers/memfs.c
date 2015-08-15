@@ -75,8 +75,9 @@ static int memfs_write(int fd, const void *buf, unsigned int len)
     return len;
 }
 
-static int memfs_poll(int fd, uint16_t events)
+static int memfs_poll(int fd, uint16_t events, uint16_t *revents)
 {
+    *revents = events;
     return 1;
 }
 

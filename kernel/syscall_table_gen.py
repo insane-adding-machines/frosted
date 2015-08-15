@@ -33,7 +33,8 @@ syscalls = [
     ["opendir", 1, "sys_opendir_hdlr"],
     ["readdir", 2, "sys_readdir_hdlr"],
     ["closedir",1, "sys_closedir_hdlr"], 
-    ["stat", 2, "sys_stat_hdlr"]
+    ["stat", 2, "sys_stat_hdlr"],
+    ["poll", 3, "sys_poll_hdlr"]
 ]
 
    #

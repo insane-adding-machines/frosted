@@ -58,6 +58,20 @@ struct stat {
 #define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)    // directory?
 #define S_ISCHR(m)  (((m) & S_IFMT) == S_IFCHR)    // character device?
 
+/* poll */
+#define POLLIN		0x0001
+#define POLLPRI		0x0002
+#define POLLOUT		0x0004
+#define POLLERR		0x0008
+#define POLLHUP		0x0010
+#define POLLNVAL	0x0020
+
+struct pollfd {
+    int fd;
+    uint16_t events;
+    uint16_t revents;
+};
+
 
 
 /* Syscalls API for frosted. 
@@ -82,6 +96,7 @@ int sys_stat(const char *path, struct stat *st);
 
 void *sys_malloc(uint32_t size);
 int sys_free(void *ptr);
+int sys_poll(struct pollfd *fds, int nfds, int timeout);
 #endif /* KERNEL */
 
 #endif

@@ -118,6 +118,11 @@ int sys_stat(uint32_t arg1, uint32_t arg2){
     syscall(SYS_STAT, arg1, arg2, 0, 0, 0); 
 }
 
+/* Syscall: poll(3 arguments) */
+int sys_poll(uint32_t arg1, uint32_t arg2, uint32_t arg3){
+    syscall(SYS_POLL, arg1, arg2, arg3, 0,  0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -142,6 +147,7 @@ extern sys_opendir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_readdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_closedir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern sys_stat_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern sys_poll_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -167,4 +173,5 @@ void syscalls_init(void) {
 	sys_register_handler(20, sys_readdir_hdlr);
 	sys_register_handler(21, sys_closedir_hdlr);
 	sys_register_handler(22, sys_stat_hdlr);
+	sys_register_handler(23, sys_poll_hdlr);
 }

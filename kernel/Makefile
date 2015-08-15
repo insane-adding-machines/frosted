@@ -32,6 +32,7 @@ OBJS:=	svc.o			\
 	newlib_redirect.o	\
 	malloc.o			\
 	module.o			\
+	poll.o				\
 	drivers/memfs.o		\
 	drivers/null.o		\
 	drivers/uart.o 		\
