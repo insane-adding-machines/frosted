@@ -12,13 +12,139 @@
 #define UART_IC(baseaddr) (*(((unsigned int *)(baseaddr))+(0x44>>2)))
 #define UART_IM(baseaddr)  (*(((unsigned int *)(baseaddr))+(0x38>>2)))
 
+static int devuart_write(int fd, const void *buf, unsigned int len);
+
 /* Use static state for now. Future drivers can have multiple structs for this. */
 static int uart_pid = 0;
+
+struct cirbuf {
+    uint8_t *buf;
+    uint8_t *readptr;
+    uint8_t *writeptr;
+    int     bufsize;
+    int     overflow;
+};
+
+static struct cirbuf * inbuf = NULL;
+
+struct cirbuf * cirbuf_create(int size)
+{
+    struct cirbuf* inbuf;
+    if (size <= 0) 
+        return NULL;
+
+    inbuf = f_malloc(sizeof(struct cirbuf));
+    if (!inbuf)
+        return NULL;
+
+    inbuf->buf = f_malloc(size);
+    if (!inbuf->buf)
+    {
+        f_free(inbuf);
+        return NULL;
+    }
+
+    inbuf->bufsize = size;
+    inbuf->readptr = inbuf->buf;
+    inbuf->writeptr = inbuf->buf;
+    return inbuf;
+}
+
+/* 0 on success, -1 on fail */
+int cirbuf_writebyte(struct cirbuf *cb, uint8_t byte)
+{
+    if (!cb)
+        return -1;
+
+    /* check if there is space */
+    if (!cirbuf_bytesfree(cb))
+        return -1;
+
+    *cb->writeptr++ = byte;
+
+    /* wrap if needed */
+    if (cb->writeptr > cb->buf+cb->bufsize)
+        cb->writeptr = cb->buf;
+
+    return 0;
+}
+
+/* 0 on success, -1 on fail */
+int cirbuf_readbyte(struct cirbuf *cb, uint8_t *byte)
+{
+    if (!cb || !byte)
+        return -1;
+
+    /* check if there is data */
+    if (!cirbuf_bytesinuse(cb))
+        return -1;
+
+    *byte = *cb->readptr++;
+
+    /* wrap if needed */
+    if (cb->readptr > cb->buf+cb->bufsize)
+        cb->readptr = cb->buf;
+
+    return 0;
+}
+
+/* 0 on success, -1 on fail */
+int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
+{
+    uint8_t byte;
+    if (!cb)
+        return NULL;
+
+    /* check if there is space */
+    if (!cirbuf_bytesfree(cb))
+        return NULL;
+
+    /* TODO */
+    // Write in 1 or 2  chunks, depending on wrap needed or not
+
+    return bytes;
+}
+
+int cirbuf_bytesfree(struct cirbuf *cb)
+{
+    int bytes;
+    if (!cb)
+        return NULL;
+
+    bytes = (int)(cb->readptr - cb->writeptr);
+    if (cb->writeptr >= cb->readptr)
+        bytes += cb->bufsize;
+
+    return bytes;
+}
+
+int cirbuf_bytesinuse(struct cirbuf *cb)
+{
+    int bytes;
+    if (!cb)
+        return NULL;
+
+    bytes = (int)(cb->writeptr - cb->readptr);
+    if (cb->writeptr < cb->readptr)
+        bytes += cb->bufsize;
+
+    return (bytes);
+}
 
 void UART0_IRQHandler(void)
 {
     /* Clear RX flag */
     UART_IC(UART0_BASE) = UART_IC_RXIC;
+
+    /* While data available */
+    while (!(UART_FR(UART0_BASE) & UART_FR_RXFE))
+    {
+        char byte = UART_DR(UART0_BASE);
+        /* read data into circular buffer */
+        cirbuf_writebyte(inbuf, byte);
+        /* TEMP -- echo char */
+        //devuart_write(0, &byte, 1);
+    }
 
     /* If a process is attached, resume the process */
     if (uart_pid > 0) 
@@ -42,7 +168,7 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
 
 static int devuart_read(int fd, void *buf, unsigned int len)
 {
-    int out;
+    int out, len_available;
     char *ptr = (char *)buf;
 
     if (len <= 0)
@@ -50,19 +176,15 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     if (fd < 0)
         return -1;
 
+    len_available =  cirbuf_bytesinuse(inbuf);
+    if (len_available < len)
+        len = len_available;
+
     for(out = 0; out < len; out++) {
-        /* wait for data */
-        while (UART_FR(UART0_BASE) & UART_FR_RXFE) 
-        {
-            task_suspend();
-        }
         /* read data */
-        *ptr = UART_DR(UART0_BASE);
+        cirbuf_readbyte(inbuf, ptr);
         /* TEMP -- echo char */
         devuart_write(0, ptr, 1);
-        /* CR '\n' */
-        if (*(ptr) == 0xD)
-            break;
         ptr++;
     }
     return out;
@@ -103,6 +225,11 @@ void devuart_init(struct fnode *dev)
     mod_devuart.ops.read = devuart_read; 
     mod_devuart.ops.poll = devuart_poll;
     mod_devuart.ops.write = devuart_write;
+
+
+    /* create circular buffer */
+    inbuf = cirbuf_create(256);
+
     uart = fno_create(&mod_devuart, "ttyS0", dev);
     UART_IM(UART0_BASE) = UART_IM_RXIM;
     NVIC_EnableIRQ(UART0_IRQn);

@@ -117,7 +117,7 @@ void task3(void *arg) {
     while (2>1)
     {
         char input[100];
-        int len;
+        int len = 0;
         struct pollfd pfd;
         pfd.fd = ser;
         pfd.events = POLLIN;
@@ -127,7 +127,12 @@ void task3(void *arg) {
         if (sys_poll(&pfd, 1, 1000) <= 0)
             continue;
 
-        len = sys_read(ser, input, 100);
+        while(len < 100)
+        {
+            len += sys_read(ser, input+len, 1);
+            if (input[len-1] == 0xD)
+                break; /* CR (\n) */
+        }
         sys_write(ser, "\n", 1);
 
         input[len] = '\0';
