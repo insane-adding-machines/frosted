@@ -94,7 +94,7 @@ code.write("/* External handlers (defined elsewhere) : */ \n")
 for n in range(len(syscalls)):
     name = syscalls[n][0]
     call = syscalls[n][2]
-    code.write( "extern %s(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);\n" % call)
+    code.write( "extern int %s(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);\n" % call)
 code.write("\n")
 
 code.write("void syscalls_init(void) {\n")

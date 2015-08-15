@@ -15,7 +15,8 @@ CFLAGS+=-DKLOG_LEVEL=6
 #Include paths
 CFLAGS+=-I. -I../include -I../flibc -I../arch/$(ARCH)/inc -I../port/$(FAMILY)/inc
 #Freestanding options
-CFLAGS+=-fno-builtin -ffreestanding
+CFLAGS+=-fno-builtin
+CFLAGS+=-ffreestanding
 #Debugging
 CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
@@ -43,8 +44,6 @@ all: syscall_table.h $(OBJS)
 	@echo -e "\t[AR] $(PREFIX)/lib/$(LIBNAME)"
 	@mkdir -p $(PREFIX)/lib
 	@$(AR) cru $(PREFIX)/lib/$(LIBNAME) $(OBJS)
-
-#	$(CC) -o $@ -Wl,--start-group  $(OBJS) $(LIBS) -Wl,--end-group  -Tport/$(FAMILY)/$(FAMILY).ld  -Wl,-Map,image.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 syscall_table.c: syscall_table_gen.py
 	python2 $^

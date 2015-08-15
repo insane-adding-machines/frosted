@@ -124,30 +124,30 @@ int sys_poll(uint32_t arg1, uint32_t arg2, uint32_t arg3){
 }
 
 /* External handlers (defined elsewhere) : */ 
-extern sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_suspend_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_thread_create_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_test_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_getpid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_getppid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_open_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_close_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_read_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_write_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_seek_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_mkdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_unlink_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_gettimeofday_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_malloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_free_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_calloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_realloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_opendir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_readdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_closedir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_stat_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-extern sys_poll_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_suspend_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_thread_create_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_test_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_getpid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_getppid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_open_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_close_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_read_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_write_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_seek_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_mkdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_unlink_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_gettimeofday_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_malloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_free_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_calloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_realloc_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_opendir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_readdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_closedir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_stat_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_poll_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);

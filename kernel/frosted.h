@@ -3,11 +3,14 @@
 
 #define KERNEL
 #include "frosted_api.h"
+#include "malloc.h"
 
 //#define DEBUG
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 #include "system.h"
 
 /* Types */
@@ -40,8 +43,10 @@ void SysTick_Hook(void);
 int SysTick_Interval(unsigned long interval);
 void SysTick_on(void);
 void SysTick_off(void);
+int SysTick_interval(unsigned long interval);
 
-/* scheduler */
+/* Scheduler */
+void frosted_scheduler_on(void);
 uint16_t scheduler_get_cur_pid(void);
 uint16_t scheduler_get_cur_ppid(void);
 int task_timeslice(void);
@@ -50,9 +55,16 @@ struct fnode *task_filedesc_get(int fd);
 int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
+int task_create(void (*init)(void *), void *arg, unsigned int prio);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 
+/* Timers */
+int Timer_on(unsigned int n);
+
+/* Modules */
+int register_module(struct module *m);
+int unregister_module(struct module *m);
 
 /* System */
 int sys_register_handler(uint32_t n, int (*_sys_c)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t));

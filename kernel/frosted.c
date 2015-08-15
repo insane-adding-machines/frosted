@@ -27,7 +27,6 @@ void frosted_init(void)
     SystemInit(); /* SystemInit() -> Board_SystemInit() */
     SystemCoreClockUpdate();
     SysTick_Config(SystemCoreClock / 1000);
-    Board_Init();
 
     syscalls_init();
     vfs_init();
