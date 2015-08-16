@@ -351,6 +351,46 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     return 0;
 }
 
+static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
+{
+    int nlen;
+    if (f == &FNO_ROOT) {
+        *p = dst + 1;
+        dst[0] = '/';
+        dst[1] = '\0';
+        return 0;
+    }
+    if (!*p) {
+        return _fno_fullpath(f, dst, p, len);
+    }
+    nlen = strlen(f->fname);
+    if (nlen + (*p - dst) > (len -1))
+        return -1;
+    memcpy(*p, f->fname, nlen);
+    *p += nlen;
+    *(*p + 1) = '\0';
+    return 0;
+}
+
+
+static int fno_fullpath(struct fnode *f, char *dst, int len) 
+{
+    char *p = NULL;
+    return _fno_fullpath(f, dst, &p, len);
+}
+
+int sys_chdir_hdlr(uint32_t arg1)
+{
+    return -1;
+}
+
+int sys_getcwd_hdlr(uint32_t arg1, uint32_t arg2)
+{
+    char *path = (char *)arg1;
+    int len = (int)arg2;
+    return fno_fullpath(task_get_cwd(), path, len);
+}
+
 void vfs_init(void) 
 {
     struct fnode *dev = NULL;

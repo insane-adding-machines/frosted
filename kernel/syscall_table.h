@@ -27,4 +27,6 @@
 #define SYS_CLOSEDIR 			(21)
 #define SYS_STAT 			(22)
 #define SYS_POLL 			(23)
-#define _SYSCALLS_NR 24
+#define SYS_CHDIR 			(24)
+#define SYS_GETCWD 			(25)
+#define _SYSCALLS_NR 26

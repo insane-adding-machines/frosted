@@ -103,10 +103,11 @@ static void print_files(int ser, char *start, int level)
 static const char str_welcome[]      = "Welcome to Frosted\r\n";
 static const char str_unknowncmd[]   = "Unknown command. Try 'help'.\r\n";
 static const char str_help[]         = "The only supported commands are 'help' and 'ls'.\r\n";
-static const char str_prompt[]       = "[frosted]$> ";
+static const char str_prompt[]       = "[frosted]:";
 
 void task3(void *arg) {
     int ser;
+    char pwd[MAX_FILE] = "";
 
     do {
         ser = sys_open("/dev/ttyS0", O_RDWR);
@@ -123,6 +124,9 @@ void task3(void *arg) {
         pfd.events = POLLIN;
 
         sys_write(ser, str_prompt, strlen(str_prompt));
+        sys_getcwd(pwd, MAX_FILE);
+        sys_write(ser, pwd, strlen(pwd));
+        sys_write(ser, "$ ", 2);
 
         if (sys_poll(&pfd, 1, 1000) <= 0)
             continue;

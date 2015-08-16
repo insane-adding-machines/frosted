@@ -56,6 +56,7 @@ int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
 int task_create(void (*init)(void *), void *arg, unsigned int prio);
+struct fnode *task_get_cwd(void);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 

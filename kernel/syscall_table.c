@@ -123,6 +123,16 @@ int sys_poll(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_POLL, arg1, arg2, arg3, 0,  0); 
 }
 
+/* Syscall: chdir(1 arguments) */
+int sys_chdir(uint32_t arg1){
+    syscall(SYS_CHDIR, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: getcwd(2 arguments) */
+int sys_getcwd(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_GETCWD, arg1, arg2, 0, 0, 0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern int sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -148,6 +158,8 @@ extern int sys_readdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_closedir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_stat_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_poll_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_chdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_getcwd_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -174,4 +186,6 @@ void syscalls_init(void) {
 	sys_register_handler(21, sys_closedir_hdlr);
 	sys_register_handler(22, sys_stat_hdlr);
 	sys_register_handler(23, sys_poll_hdlr);
+	sys_register_handler(24, sys_chdir_hdlr);
+	sys_register_handler(25, sys_getcwd_hdlr);
 }
