@@ -100,7 +100,8 @@ static void print_files(int ser, char *start, int level)
 static const char str_welcome[]      = "Welcome to Frosted\r\n";
 static const char str_unknowncmd[]   = "Unknown command. Try 'help'.\r\n";
 static const char str_invaliddir[]   = "Directory not found.\r\n";
-static const char str_help[]         = "The only supported commands are 'help' and 'ls'.\r\n";
+static const char str_invalidfile[]  = "File not found.\r\n";
+static const char str_help[]         = "Supported commands: help ls mkdir touch rm.\r\n";
 static const char str_prompt[]       = "[frosted]:";
 
 void fresh(void *arg) {
@@ -153,11 +154,33 @@ void fresh(void *arg) {
                     sys_write(ser, str_invaliddir, strlen(str_invaliddir));
                 }
             }
+        } else if (!strncmp(input, "rm", 2)) {
+            if (strlen(input) > 2) {
+                char *arg = input + 3;
+                if (sys_unlink(arg) < 0) {
+                    sys_write(ser, str_invalidfile, strlen(str_invalidfile));
+                }
+            }
+        } else if (!strncmp(input, "mkdir", 5)) {
+            if (strlen(input) > 5) {
+                char *arg = input + 6;
+                if (sys_mkdir(arg) < 0) {
+                    sys_write(ser, str_invaliddir, strlen(str_invaliddir));
+                }
+            }
+        } else if (!strncmp(input, "touch", 5)) {
+            if (strlen(input) > 5) {
+                int fd; 
+                char *arg = input + 6;
+                fd = sys_open(arg, O_CREAT|O_TRUNC|O_EXCL);
+                if (fd < 0) {
+                    sys_write(ser, str_invalidfile, strlen(str_invalidfile));
+                } else sys_close(fd);
+            }
         } else if (strlen(input) > 0){
             sys_write(ser, str_unknowncmd, strlen(str_unknowncmd));
         }
     }
-
     close(ser);
 }
 

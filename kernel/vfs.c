@@ -286,9 +286,12 @@ void fno_unlink(struct fnode *fno)
 
 int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    char *path = (char *)arg1;
+    char *rel_path = (char *)arg1;
     struct fnode *f;
     uint32_t flags = arg2;
+    char path[MAX_FILE];
+
+    path_abs(rel_path, path, MAX_FILE);
 
     if ((flags & O_CREAT) == 0) {
         f = fno_search(path);
@@ -343,21 +346,28 @@ int sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    if (fno_create_dir((char *)arg1))
+    char *path = (char *)arg1;
+    char abs_p[MAX_FILE];
+    struct fnode *f;
+    path_abs(path, abs_p, MAX_FILE);
+    if (fno_create_dir(abs_p))
         return 0;
     return -1;
 }
 
 int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    struct fnode *fno = fno_search((char *)arg1);
-    if (fno) {
-        fno_unlink(fno);
+    char *path = (char *)arg1;
+    char abs_p[MAX_FILE];
+    struct fnode *f;
+    path_abs(path, abs_p, MAX_FILE);
+    f = fno_search(abs_p);
+    if (f) {
+        fno_unlink(f);
         return 0;
     }
     return -1;
 }
-
 
 int sys_opendir_hdlr(uint32_t arg1)
 {
