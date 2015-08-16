@@ -111,7 +111,7 @@ int cirbuf_bytesfree(struct cirbuf *cb)
     if (!cb)
         return NULL;
 
-    bytes = (int)(cb->readptr - cb->writeptr);
+    bytes = (int)(cb->readptr - cb->writeptr - 1);
     if (cb->writeptr >= cb->readptr)
         bytes += cb->bufsize;
 
