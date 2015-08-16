@@ -99,6 +99,7 @@ static void print_files(int ser, char *start, int level)
 
 static const char str_welcome[]      = "Welcome to Frosted\r\n";
 static const char str_unknowncmd[]   = "Unknown command. Try 'help'.\r\n";
+static const char str_invaliddir[]   = "Directory not found.\r\n";
 static const char str_help[]         = "The only supported commands are 'help' and 'ls'.\r\n";
 static const char str_prompt[]       = "[frosted]:";
 
@@ -148,7 +149,9 @@ void fresh(void *arg) {
         } else if (!strncmp(input, "cd", 2)) {
             if (strlen(input) > 2) {
                 char *arg = input + 3;
-                sys_chdir(arg);
+                if (sys_chdir(arg) < 0) {
+                    sys_write(ser, str_invaliddir, strlen(str_invaliddir));
+                }
             }
         } else if (strlen(input) > 0){
             sys_write(ser, str_unknowncmd, strlen(str_unknowncmd));

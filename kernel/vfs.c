@@ -39,6 +39,67 @@ static char *filename(char *path)
     return path;
 }
 
+static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
+{
+    int nlen;
+    if (f == &FNO_ROOT) {
+        *p = dst + 1;
+        dst[0] = '/';
+        dst[1] = '\0';
+        return 0;
+    }
+    if (!*p) {
+        _fno_fullpath(f->parent, dst, p, len);
+    }
+    nlen = strlen(f->fname);
+    if (nlen + (*p - dst) > (len -1))
+        return -1;
+    memcpy(*p, f->fname, nlen);
+    *p += nlen;
+    *(*p) = '/';
+    *p += 1;
+    *(*p + 1) = '\0';
+    return 0;
+}
+
+static int fno_fullpath(struct fnode *f, char *dst, int len) 
+{
+    char *p = NULL;
+    int ret;
+    ret =  _fno_fullpath(f, dst, &p, len);
+    if (ret == 0)  {
+        int nlen = strlen(dst);
+        if (nlen > 1) {
+            /* Remove trailing "/" */
+            dst[nlen - 1] = '\0';
+            return nlen - 1;
+        } else {
+            return nlen;
+        }
+    }
+    return -1;
+}
+
+static int path_abs(char *src, char *dst, int len)
+{
+    struct fnode *f = task_getcwd();
+    if (src[0] == '/')
+        strncpy(dst, src, len);
+    else if ((src[0] == '.') && (src[1] == '.')) {
+        if (f->parent) {
+            if (fno_fullpath(f->parent, dst, len) > 0)
+                return 0;
+        }
+    } else {
+        if (fno_fullpath(f, dst, len) > 0) {
+            strncat(dst, "/", len);
+            strncat(dst, src, len);
+            return 0;
+        }
+    }
+    return 0;
+}
+
 static struct fnode *fno_create_file(char *path)
 {
     char *base = kalloc(strlen(path) + 1);
@@ -356,53 +417,17 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     return 0;
 }
 
-static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
-{
-    int nlen;
-    if (f == &FNO_ROOT) {
-        *p = dst + 1;
-        dst[0] = '/';
-        dst[1] = '\0';
-        return 0;
-    }
-    if (!*p) {
-        _fno_fullpath(f->parent, dst, p, len);
-    }
-    nlen = strlen(f->fname);
-    if (nlen + (*p - dst) > (len -1))
-        return -1;
-    memcpy(*p, f->fname, nlen);
-    *p += nlen;
-    *(*p) = '/';
-    *p += 1;
-    *(*p + 1) = '\0';
-    return 0;
-}
 
-
-static int fno_fullpath(struct fnode *f, char *dst, int len) 
-{
-    char *p = NULL;
-    int ret;
-    ret =  _fno_fullpath(f, dst, &p, len);
-    if (ret == 0)  {
-        int nlen = strlen(dst);
-        if (nlen > 1) {
-            /* Remove trailing "/" */
-            dst[nlen - 1] = '\0';
-            return nlen - 1;
-        } else {
-            return nlen;
-        }
-    }
-    return -1;
-}
 
 int sys_chdir_hdlr(uint32_t arg1)
 {
     char *path = (char *)arg1;
-    struct fnode *f = fno_search(path);
-    if (!(f->flags & FL_DIR))
+    char abs_p[MAX_FILE];
+    struct fnode *f;
+    path_abs(path, abs_p, MAX_FILE);
+
+    f = fno_search(abs_p);
+    if (!f || (!(f->flags & FL_DIR)))
         return -1;
     task_chdir(f);
     return 0;
