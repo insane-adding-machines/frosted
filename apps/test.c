@@ -102,7 +102,7 @@ static const char str_unknowncmd[]   = "Unknown command. Try 'help'.\r\n";
 static const char str_help[]         = "The only supported commands are 'help' and 'ls'.\r\n";
 static const char str_prompt[]       = "[frosted]:";
 
-void task3(void *arg) {
+void fresh(void *arg) {
     int ser;
     char pwd[MAX_FILE] = "";
 
@@ -177,7 +177,7 @@ void init(void *arg)
     /* Thread create test */
     //if (sys_thread_create(task2, (void *)42, 1) < 0)
     //    IDLE();
-    if (sys_thread_create(task3, (void *)42, 1) < 0)
+    if (sys_thread_create(fresh, (void *)42, 1) < 0)
         IDLE();
 
     while(1) {
