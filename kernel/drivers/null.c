@@ -23,7 +23,7 @@ static int devnull_write(int fd, const void *buf, unsigned int len)
     return len;
 }
 
-static int devnull_poll(int fd, uint16_t events)
+static int devnull_poll(int fd, uint16_t events, uint16_t *revents)
 {
     return 1;
 }

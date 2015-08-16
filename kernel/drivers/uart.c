@@ -93,23 +93,23 @@ int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
 {
     uint8_t byte;
     if (!cb)
-        return NULL;
+        return -1;
 
     /* check if there is space */
     if (!cirbuf_bytesfree(cb))
-        return NULL;
+        return -1;
 
     /* TODO */
     // Write in 1 or 2  chunks, depending on wrap needed or not
 
-    return bytes;
+    return len;
 }
 
 int cirbuf_bytesfree(struct cirbuf *cb)
 {
     int bytes;
     if (!cb)
-        return NULL;
+        return -1;
 
     bytes = (int)(cb->readptr - cb->writeptr - 1);
     if (cb->writeptr >= cb->readptr)
@@ -122,7 +122,7 @@ int cirbuf_bytesinuse(struct cirbuf *cb)
 {
     int bytes;
     if (!cb)
-        return NULL;
+        return -1;
 
     bytes = (int)(cb->writeptr - cb->readptr);
     if (cb->writeptr < cb->readptr)
