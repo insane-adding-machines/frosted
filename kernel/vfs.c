@@ -11,22 +11,27 @@ static struct fnode FNO_ROOT = {
 static void basename_r(const char *path, char *res)
 {
     char *p;
-    strncpy(res, path, strlen(path) - 1);
+    strncpy(res, path, strlen(path));
     p = res + strlen(res) - 1;
-    while (p > res) {
+    while (p >= res) {
         if (*p == '/') {
             *p = '\0';
-            return;
+            break;
         }
         p--;
     }
+    if (strlen(res) == 0) {
+        res[0] = '/';
+        res[1] = '\0';
+    }
+
 }
 
 static char *filename(char *path)
 {
     int len = strlen(path);
     char *p = path + len - 1;
-    while (p > path) {
+    while (p >= path) {
         if (*p == '/')
             return (p + 1);
         p--;
@@ -361,13 +366,15 @@ static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
         return 0;
     }
     if (!*p) {
-        return _fno_fullpath(f, dst, p, len);
+        _fno_fullpath(f->parent, dst, p, len);
     }
     nlen = strlen(f->fname);
     if (nlen + (*p - dst) > (len -1))
         return -1;
     memcpy(*p, f->fname, nlen);
     *p += nlen;
+    *(*p) = '/';
+    *p += 1;
     *(*p + 1) = '\0';
     return 0;
 }
@@ -376,19 +383,36 @@ static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
 static int fno_fullpath(struct fnode *f, char *dst, int len) 
 {
     char *p = NULL;
-    return _fno_fullpath(f, dst, &p, len);
+    int ret;
+    ret =  _fno_fullpath(f, dst, &p, len);
+    if (ret == 0)  {
+        int nlen = strlen(dst);
+        if (nlen > 1) {
+            /* Remove trailing "/" */
+            dst[nlen - 1] = '\0';
+            return nlen - 1;
+        } else {
+            return nlen;
+        }
+    }
+    return -1;
 }
 
 int sys_chdir_hdlr(uint32_t arg1)
 {
-    return -1;
+    char *path = (char *)arg1;
+    struct fnode *f = fno_search(path);
+    if (!(f->flags & FL_DIR))
+        return -1;
+    task_chdir(f);
+    return 0;
 }
 
 int sys_getcwd_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;
     int len = (int)arg2;
-    return fno_fullpath(task_get_cwd(), path, len);
+    return fno_fullpath(task_getcwd(), path, len);
 }
 
 void vfs_init(void) 

@@ -150,9 +150,14 @@ int task_filedesc_del(int fd)
     t->filedesc[fd] = NULL;
 }
 
-struct fnode *task_get_cwd(void)
+struct fnode *task_getcwd(void)
 {
     return _cur_task->cwd;
+}
+
+void task_chdir(struct fnode *f)
+{
+    _cur_task->cwd = f;
 }
 
 static __inl int in_kernel(void)

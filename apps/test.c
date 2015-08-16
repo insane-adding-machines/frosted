@@ -52,9 +52,6 @@ void task2(void *arg)
     (void)i;
 }
 
-#define LS_HDR " **** VFS Content: **** \n"
-#define LS_TAIL " **** End of VFS Content. ****\n\n"
-
 static void print_files(int ser, char *start, int level)
 {
     char *fname;
@@ -114,6 +111,9 @@ void task3(void *arg) {
     } while (ser < 0);
 
     sys_write(ser, str_welcome, strlen(str_welcome));
+    sys_mkdir("/home");
+    sys_mkdir("/home/test");
+    sys_chdir("/home/test");
 
     while (2>1)
     {
@@ -139,17 +139,18 @@ void task3(void *arg) {
         }
         sys_write(ser, "\n", 1);
 
-        input[len] = '\0';
+        input[len - 1] = '\0';
         if (!strncmp(input, "ls", 2))
         {
-            sys_write(ser, LS_HDR, strlen(LS_HDR));
-            print_files(ser, "/", 0);  /* Stat: work inprogress */
-            print_files(ser, "/mem", 0);  /* Stat: work inprogress */
-            print_files(ser, "/dev", 0);  /* Stat: work inprogress */
-            sys_write(ser, LS_TAIL, strlen(LS_TAIL));
+            print_files(ser, pwd, 0);
         } else if (!strncmp(input, "help", 4)) {
             sys_write(ser, str_help, strlen(str_help));
-        } else {
+        } else if (!strncmp(input, "cd", 2)) {
+            if (strlen(input) > 2) {
+                char *arg = input + 3;
+                sys_chdir(arg);
+            }
+        } else if (strlen(input) > 0){
             sys_write(ser, str_unknowncmd, strlen(str_unknowncmd));
         }
     }
