@@ -92,6 +92,9 @@ static int path_abs(char *src, char *dst, int len)
         }
     } else {
         if (fno_fullpath(f, dst, len) > 0) {
+            while (dst[strlen(dst) - 1] == '/')
+                dst[strlen(dst) - 1] = '\0';
+                
             strncat(dst, "/", len);
             strncat(dst, src, len);
             return 0;
@@ -296,17 +299,20 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if ((flags & O_CREAT) == 0) {
         f = fno_search(path);
     } else {
+        f = fno_search(path);
         if (flags & O_EXCL) {
-            f = fno_search(path);
             if (f != NULL)
                 return -1; /* XXX: EEXIST */
         }
         if (f && (flags & O_TRUNC)) {
-            f = fno_search(path);
-            if (f) 
+            if (f) {
                 fno_unlink(f);
+                f = NULL;
+            }
+
         }
-        f = fno_create_file(path);
+        if (!f)
+            f = fno_create_file(path);
     }
     if (f == NULL)
        return -1; /* XXX: ENOENT */

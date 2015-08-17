@@ -30,7 +30,7 @@ int sys_read_hdlr(int fd, void *buf, int len)
 int sys_write_hdlr(int fd, void *buf, int len)
 {
     struct fnode *fno = task_filedesc_get(fd);
-    if (fno) {
+    if (fno && fno->owner && fno->owner->ops.write) {
         return fno->owner->ops.write(fd, buf, len);
     }
     return -1;
