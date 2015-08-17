@@ -5,7 +5,7 @@ static const char str_welcome[]      = "Welcome to Frosted\r\n";
 static const char str_unknowncmd[]   = "Unknown command. Try 'help'.\r\n";
 static const char str_invaliddir[]   = "Directory not found.\r\n";
 static const char str_invalidfile[]  = "File not found.\r\n";
-static const char str_help[]         = "Supported commands: help ls mkdir touch rm.\r\n";
+static const char str_help[]         = "Supported commands: help ls mkdir touch cat rm.\r\n";
 static const char str_prompt[]       = "[frosted]:";
 
 static void ls(int ser, char *start)
@@ -124,6 +124,25 @@ void fresh(void *arg) {
                 if (fd < 0) {
                     sys_write(ser, str_invalidfile, strlen(str_invalidfile));
                 } else sys_close(fd);
+            }
+        } else if (!strncmp(input, "cat", 3)) {
+            if (strlen(input) > 3) {
+                char *arg = input + 4;
+                int fd; 
+                fd = sys_open(arg, O_RDONLY);
+                if (fd < 0) {
+                    sys_write(ser, str_invalidfile, strlen(str_invalidfile));
+                } else {
+                    int r;
+                    char buf[10];
+                    do {
+                        r = sys_read(fd, buf, 10);
+                        if (r > 0) {
+                            sys_write(ser, buf, r);
+                        }
+                    } while (r > 0);
+                    sys_close(fd);
+                }
             }
         } else if (strlen(input) > 0){
             sys_write(ser, str_unknowncmd, strlen(str_unknowncmd));

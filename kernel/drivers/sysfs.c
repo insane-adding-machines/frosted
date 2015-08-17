@@ -83,7 +83,11 @@ static int sysfs_close(int fd)
 int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    if (fno->off > 0)
+        return -1;
     snprintf(res, len, "%lu\n", jiffies);
+    fno->off += strlen(res);
     return strlen(res);
 }
 
