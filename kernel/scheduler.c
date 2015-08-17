@@ -390,10 +390,12 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 
 void task_suspend(void)
 {
-    irq_on();
     _cur_task->state = TASK_WAITING;
     _cur_task->timeslice = 0;
+    /*irq_on(); */
+    schedule();
 }
+
 
 void task_resume(int pid)
 {

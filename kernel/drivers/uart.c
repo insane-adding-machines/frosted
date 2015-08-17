@@ -142,8 +142,6 @@ void UART0_IRQHandler(void)
         char byte = UART_DR(UART0_BASE);
         /* read data into circular buffer */
         cirbuf_writebyte(inbuf, byte);
-        /* TEMP -- echo char */
-        //devuart_write(0, &byte, 1);
     }
 
     /* If a process is attached, resume the process */
@@ -177,6 +175,13 @@ static int devuart_read(int fd, void *buf, unsigned int len)
         return -1;
 
     len_available =  cirbuf_bytesinuse(inbuf);
+    /*
+    while (len_available <= 0) {
+        task_suspend();
+        len_available =  cirbuf_bytesinuse(inbuf);
+    }
+    */
+
     if (len_available < len)
         len = len_available;
 

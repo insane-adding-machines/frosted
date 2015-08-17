@@ -14,7 +14,7 @@ CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 OBJS:=  port/$(FAMILY)/$(FAMILY).o	\
-		apps/test.o
+		apps/init.o apps/fresh.o
 
 include port/$(FAMILY)/$(FAMILY).mk
 
