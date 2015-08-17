@@ -468,5 +468,6 @@ void vfs_init(void)
     devnull_init(dev);
     devuart_init(dev);
     memfs_init();
+    sysfs_init();
 }
 

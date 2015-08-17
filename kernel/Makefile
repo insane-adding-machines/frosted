@@ -35,6 +35,7 @@ OBJS:=	svc.o			\
 	module.o			\
 	poll.o				\
 	drivers/memfs.o		\
+	drivers/sysfs.o		\
 	drivers/null.o		\
 	drivers/uart.o 		\
 	../flibc/memset.o
