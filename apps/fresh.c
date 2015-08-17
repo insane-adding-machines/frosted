@@ -55,6 +55,8 @@ static void ls(int ser, char *start)
     sys_free(fname_start);
 }
 
+static char lastcmd[100] = "";
+
 void fresh(void *arg) {
     int ser;
     char pwd[MAX_FILE] = "";
@@ -100,6 +102,27 @@ void fresh(void *arg) {
                 sys_write(ser, "\n", 1);
                 goto cancel; 
             }
+
+            /* arrows */
+            if (input[len-1] == 0x1b) {
+                char dir;
+                while (sys_read(ser, &dir, 1) > 0) ;;
+                sys_write(ser, &del, 1);
+                sys_write(ser, " ", 1);
+                sys_write(ser, &del, 1);
+
+                while (len > 0) {
+                    sys_write(ser, &del, 1);
+                    sys_write(ser, " ", 1);
+                    sys_write(ser, &del, 1);
+                    len--;
+                }
+                sys_write(ser, lastcmd, strlen(lastcmd));
+                len = strlen(lastcmd);
+                strcpy(input, lastcmd);
+            }
+
+            /* backspace */
             if ((input[len-1] == 127)) {
                 if (len > 1) {
                     sys_write(ser, &del, 1);
@@ -114,6 +137,7 @@ void fresh(void *arg) {
         sys_write(ser, "\n", 1);
 
         input[len - 1] = '\0';
+        strcpy(lastcmd, input);
         for (i = 0; i < len; i++) {
             if (input[i] == '>') {
                 int flags = O_WRONLY | O_CREAT;
