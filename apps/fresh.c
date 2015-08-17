@@ -78,6 +78,8 @@ void fresh(void *arg) {
         pfd.fd = ser;
         pfd.events = POLLIN;
 
+     cancel:
+        len = 0;
         sys_write(ser, str_prompt, strlen(str_prompt));
         sys_getcwd(pwd, MAX_FILE);
         sys_write(ser, pwd, strlen(pwd));
@@ -90,9 +92,24 @@ void fresh(void *arg) {
 
         while(len < 100)
         {
+            char del = 0x08;
             len += sys_read(ser, input+len, 1);
-            if (input[len-1] == 0xD)
+            if ((input[len-1] == 0xD))
                 break; /* CR (\n) */
+            if ((input[len-1] == 0x4)) {
+                sys_write(ser, "\n", 1);
+                goto cancel; 
+            }
+            if ((input[len-1] == 127)) {
+                if (len > 1) {
+                    sys_write(ser, &del, 1);
+                    sys_write(ser, " ", 1);
+                    sys_write(ser, &del, 1);
+                    len -= 2;
+                }else {
+                    len -=1;
+                }
+            }
         }
         sys_write(ser, "\n", 1);
 
