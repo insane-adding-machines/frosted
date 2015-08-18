@@ -1,9 +1,12 @@
 #ifndef FROSTED_INCLUDED_H
 #define FROSTED_INCLUDED_H
 
+#include "system.h"
+
 #define KERNEL
 #include "frosted_api.h"
 #include "malloc.h"
+#include "interrupts.h"
 
 //#define DEBUG
 
@@ -11,7 +14,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "system.h"
 
 /* Types */
 struct task;
@@ -140,30 +142,6 @@ struct module {
     struct module *next;
 };
 
-
-
-#ifdef DEBUG
-static void irq_off(void)
-{
-}
-
-static void irq_on(void)
-{
-}
-
-#else
-
-/* Inline kernel utils */
-static inline void irq_off(void)
-{
-    asm volatile ("cpsid i\n");
-}
-
-static inline void irq_on(void)
-{
-    asm volatile ("cpsie i\n");
-}
-#endif
 
 void task_run(void);
 void kernel_task_init(void);

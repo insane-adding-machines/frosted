@@ -236,6 +236,7 @@ void devuart_init(struct fnode *dev)
 
     uart = fno_create(&mod_devuart, "ttyS0", dev);
     UART_IM(UART0_BASE) = UART_IM_RXIM;
+    interrupt_set_priority(UART0_IRQn, OS_IRQ_PRIO);
     NVIC_EnableIRQ(UART0_IRQn);
 
     /* Kernel printf associated to devuart_write */

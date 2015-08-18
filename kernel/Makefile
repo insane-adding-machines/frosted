@@ -30,6 +30,7 @@ OBJS:=	svc.o			\
 	scheduler.o			\
 	syscall_table.o		\
 	vfs.o				\
+	interrupts.o		\
 	newlib_redirect.o	\
 	malloc.o			\
 	module.o			\
@@ -38,7 +39,9 @@ OBJS:=	svc.o			\
 	drivers/sysfs.o		\
 	drivers/null.o		\
 	drivers/uart.o 		\
-	../flibc/memset.o
+	../flibc/memset.o	\
+	../flibc/strcmp.o	\
+	../flibc/strncmp.o
 
 
 all: syscall_table.h $(OBJS)

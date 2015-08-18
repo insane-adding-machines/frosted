@@ -31,16 +31,14 @@ void frosted_init(void)
     syscalls_init();
     vfs_init();
     kernel_task_init();
+    interrupt_init();
     frosted_scheduler_on();
 }
 
-/* OS entry point */
-void main(void) 
+void frosted_kernel(void)
 {
     volatile int ret = 0;
     int ttt = 0;
-
-    frosted_init();
     
     /* Create "init" task */
     klog(LOG_INFO, "Starting Init task\n");
@@ -53,5 +51,12 @@ void main(void)
         }
         /* This is the kernel main loop */   
     }
+}
+
+/* OS entry point */
+void main(void) 
+{
+    frosted_init();
+    frosted_kernel(); /* never returns */
 }
 
