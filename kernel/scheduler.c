@@ -380,10 +380,8 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
         return -1;
 
     if (pid > 0) {
-        irq_on();
         _cur_task->state = TASK_SLEEPING;
         _cur_task->timeslice = jiffies + arg1;
-        irq_off();
     }
     return 0;
 }
@@ -392,7 +390,6 @@ void task_suspend(void)
 {
     _cur_task->state = TASK_WAITING;
     _cur_task->timeslice = 0;
-    /*irq_on(); */
     schedule();
 }
 

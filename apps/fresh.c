@@ -79,8 +79,6 @@ void fresh(void *arg) {
         int i;
         pfd.fd = ser;
         pfd.events = POLLIN;
-
-     cancel:
         len = 0;
         sys_write(ser, str_prompt, strlen(str_prompt));
         sys_getcwd(pwd, MAX_FILE);
@@ -91,16 +89,20 @@ void fresh(void *arg) {
         if (sys_poll(&pfd, 1, 1000) <= 0)
             continue;
         */
-
         while(len < 100)
         {
-            char del = 0x08;
-            len += sys_read(ser, input+len, 1);
+            const char del = 0x08;
+            int ret = sys_read(ser, input + len, 1);
+
+            if (ret != 1)
+                continue;
+            len += ret;
             if ((input[len-1] == 0xD))
                 break; /* CR (\n) */
             if ((input[len-1] == 0x4)) {
                 sys_write(ser, "\n", 1);
-                goto cancel; 
+                len = 0;
+                break;
             }
 
             /* arrows */
@@ -135,6 +137,8 @@ void fresh(void *arg) {
             }
         }
         sys_write(ser, "\n", 1);
+        if (len == 0)
+            break;
 
         input[len - 1] = '\0';
         strcpy(lastcmd, input);

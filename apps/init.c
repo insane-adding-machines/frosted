@@ -52,6 +52,15 @@ void task2(void *arg)
     (void)i;
 }
 
+void idling(void *arg)
+{
+    int pid;
+    while(1) {
+        pid = sys_getpid();
+        sys_sleep(100);
+    }
+}
+
 void init(void *arg)
 {
     volatile int i = (int)arg;
@@ -67,8 +76,8 @@ void init(void *arg)
     sys_close(fd);
     
     /* Thread create test */
-    //if (sys_thread_create(task2, (void *)42, 1) < 0)
-    //    IDLE();
+    if (sys_thread_create(idling, (void *)42, 1) < 0)
+        IDLE();
     if (sys_thread_create(fresh, (void *)42, 1) < 0)
         IDLE();
 

@@ -20,6 +20,7 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
         }
         if (ret > 0)
             return ret;
+        task_suspend();
     }
     return 0;
 }
