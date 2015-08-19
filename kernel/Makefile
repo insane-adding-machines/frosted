@@ -13,7 +13,7 @@ CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DARCH_$(ARCH)
 CFLAGS+=-DKLOG_LEVEL=6
 #Include paths
-CFLAGS+=-I. -I../include -I../flibc -I../arch/$(ARCH)/inc -I../port/$(FAMILY)/inc
+CFLAGS+=-I. -I../include -I../arch/$(ARCH)/inc -I../port/$(FAMILY)/inc
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
@@ -23,6 +23,7 @@ ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 OBJS:=	svc.o			\
 	frosted.o			\
+	string.o			\
 	sys.o				\
 	systick.o			\
 	syscall.o			\
@@ -38,13 +39,7 @@ OBJS:=	svc.o			\
 	drivers/memfs.o		\
 	drivers/sysfs.o		\
 	drivers/null.o		\
-	drivers/uart.o 		\
-	../flibc/memset.o	\
-	../flibc/strcmp.o	\
-	../flibc/strncmp.o  \
-	../flibc/strcat.o	\
-	../flibc/strncat.o  \
-	../flibc/strlen.o  
+	drivers/uart.o 		
 
 
 all: syscall_table.h $(OBJS)
