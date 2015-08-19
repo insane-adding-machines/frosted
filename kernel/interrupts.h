@@ -11,43 +11,47 @@
 #define OS_IRQ_MAX_PRIO     OS_HALFWAY_IRQ_PRIO    /* IRQs using kernel API can run at most at this prio */
 
 #ifdef DEBUG
-    static void interrupts_off(void)
+    static void irq_off(void)
     {
     }
     
-    static void interrupts_on(void)
+    static void irq_on(void)
+    {
+    }
+
+    static void irq_setmask(void)
+    {
+    }
+    
+    static void irq_clearmask(void)
     {
     }
 #else
     /* Inline kernel utils */
 
-    static inline void interrupt_setmask(void)
+    static inline void irq_setmask(void)
     {
-        asm volatile ("movs r0, %0 \n" :: "r" (OS_IRQ_MAX_PRIO));
-        asm volatile ("msr  basepri, r0         \n");
+        __set_BASEPRI(OS_IRQ_MAX_PRIO);
     }
     
-    static inline void interrupt_clearmask(void)
+    static inline void irq_clearmask(void)
     {
-        asm volatile ("movs r0, 0             \n");
-        asm volatile ("msr  basepri, r0       \n");
+        __set_BASEPRI(0u);
     }
 
-    static inline void interrupts_off(void)
+    static inline void irq_off(void)
     {
         asm volatile ("cpsid i                \n");
-        //interrupt_setmask();
     }
     
-    static inline void interrupts_on(void)
+    static inline void irq_on(void)
     {
         asm volatile ("cpsie i                \n");
-        //interrupt_clearmask();
     }
 #endif
 
-void interrupt_enable(uint32_t irq_nr);
-void interrupt_set_priority(uint32_t irq_nr, uint32_t prio);
-void interrupt_init(void);
+void irq_enable(uint32_t irq_nr);
+void irq_set_priority(uint32_t irq_nr, uint32_t prio);
+void irq_init(void);
 
 #endif /* FROSTED_INTERRUPTS_H */

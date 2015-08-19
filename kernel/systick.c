@@ -7,8 +7,8 @@ static int _sched_active = 0;
 
 void frosted_scheduler_on(void)
 {
-    interrupt_set_priority(PendSV_IRQn, 0); // HIGHEST FOR NOW
-    interrupt_set_priority(SVCall_IRQn, 0); //OS_IRQ_MAX_PRIO);
+    irq_set_priority(PendSV_IRQn, 0); // HIGHEST FOR NOW
+    irq_set_priority(SVCall_IRQn, 0); //OS_IRQ_MAX_PRIO);
     _sched_active = 1;
 }
 
@@ -23,7 +23,7 @@ void __attribute__((weak)) SysTick_Hook(void)
 
 void SysTick_Handler(void)
 {
-    //interrupts_off(); // XXX Fixme
+    //irq_off(); // XXX Fixme
     SysTick_Hook();
     jiffies+= _clock_interval;
     _n_int++;
@@ -31,7 +31,7 @@ void SysTick_Handler(void)
     if (_sched_active && (task_timeslice() == 0)) {
         schedule();
     }
-    //interrupts_on();
+    //irq_on();
 }
 
 void SysTick_on(void)

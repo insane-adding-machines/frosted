@@ -33,20 +33,18 @@
  *
  */
 
-// XXX: TODO: Use BASEPRI to mask interrupts, instead of cpsie/cpsid
-
-void interrupt_enable(uint32_t irq_nr)
+void irq_enable(uint32_t irq_nr)
 {
     NVIC_EnableIRQ(irq_nr);
 }
 
-void interrupt_set_priority(uint32_t irq_nr, uint32_t prio)
+void irq_set_priority(uint32_t irq_nr, uint32_t prio)
 {
     /* prio will be shifted according to NVIC PRIO BITS */
     NVIC_SetPriority(irq_nr, prio);
 }
 
-void interrupt_init(void)
+void irq_init(void)
 {
     NVIC_SetPriorityGrouping(__NVIC_PRIO_BITS); /* assign all bits to be pre-empt prio bits */
 }
