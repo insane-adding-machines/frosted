@@ -41,7 +41,10 @@ OBJS:=	svc.o			\
 	drivers/uart.o 		\
 	../flibc/memset.o	\
 	../flibc/strcmp.o	\
-	../flibc/strncmp.o
+	../flibc/strncmp.o  \
+	../flibc/strcat.o	\
+	../flibc/strncat.o  \
+	../flibc/strlen.o  
 
 
 all: syscall_table.h $(OBJS)
