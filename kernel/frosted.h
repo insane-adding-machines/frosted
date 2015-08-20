@@ -46,12 +46,18 @@ int SysTick_Interval(unsigned long interval);
 void SysTick_on(void);
 void SysTick_off(void);
 int SysTick_interval(unsigned long interval);
+void ktimer_init(void);
+
+struct ktimer;
+struct ktimer *ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg);
+void ktimer_cancel(struct ktimer *t);
 
 /* Scheduler */
 void frosted_scheduler_on(void);
 uint16_t scheduler_get_cur_pid(void);
 uint16_t scheduler_get_cur_ppid(void);
 int task_timeslice(void);
+int task_running(void);
 int task_filedesc_add(struct fnode *f);
 struct fnode *task_filedesc_get(int fd);
 int task_filedesc_del(int fd);

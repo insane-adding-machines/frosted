@@ -24,6 +24,7 @@ int klog_write(int file, char *ptr, int len)
 
 void frosted_init(void)
 {
+    ktimer_init();
     SystemInit(); /* SystemInit() -> Board_SystemInit() */
     SystemCoreClockUpdate();
     SysTick_Config(SystemCoreClock / 1000);
@@ -35,6 +36,11 @@ void frosted_init(void)
     frosted_scheduler_on();
 }
 
+static void ktimer_test(uint32_t time, void *arg)
+{
+    klog(LOG_INFO, "Timer expired!!\n");
+}
+
 void frosted_kernel(void)
 {
     volatile int ret = 0;
@@ -44,6 +50,8 @@ void frosted_kernel(void)
     klog(LOG_INFO, "Starting Init task\n");
     if (task_create(init, (void *)0, 2) < 0)
         IDLE();
+
+    ktimer_add(1000, ktimer_test, NULL);
 
     while(1) {
         if (!ttt && (jiffies > 500)) {

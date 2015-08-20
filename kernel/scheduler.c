@@ -227,6 +227,11 @@ uint16_t scheduler_get_cur_ppid(void)
 }
 
 
+int task_running(void)
+{
+    return (_cur_task->state == TASK_RUNNING);
+}
+
 int task_timeslice(void) 
 {
     return (--_cur_task->timeslice);
