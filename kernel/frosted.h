@@ -72,6 +72,10 @@ void task_chdir(struct fnode *f);
 /* Timers */
 int Timer_on(unsigned int n);
 
+/* Tasklets */
+void tasklet_add(void (*exe)(void*), void *arg);
+void check_tasklets(void);
+
 /* Modules */
 int register_module(struct module *m);
 int unregister_module(struct module *m);

@@ -1,0 +1,43 @@
+#include "frosted.h"
+
+struct tasklet {
+    void (*exe)(void *);
+    void *arg;
+    struct tasklet *next;
+};
+
+struct tasklet *tasklet_list_head = NULL;
+struct tasklet *tasklet_list_tail = NULL;
+
+
+void tasklet_add(void (*exe)(void*), void *arg)
+{
+    struct tasklet *t = kalloc(sizeof(struct tasklet));
+    if  (!t)
+        return;
+    t->exe = exe;
+    t->arg = arg;
+    if (!tasklet_list_head) {
+        tasklet_list_head = t;
+        tasklet_list_tail = t;
+    } else {
+        tasklet_list_tail->next = t;
+        tasklet_list_tail = t;
+    }
+}
+
+void check_tasklets(void)
+{
+    struct tasklet *t;
+    while(tasklet_list_head) {
+        t = tasklet_list_head;
+        if (t->exe) {
+            t->exe(t->arg);
+        }
+        tasklet_list_head = t->next;
+        kfree(t);
+        if (!tasklet_list_head)
+            tasklet_list_tail = NULL;
+    }
+}
+

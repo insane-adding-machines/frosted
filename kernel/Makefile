@@ -28,6 +28,7 @@ OBJS:=	svc.o			\
 	systick.o			\
 	syscall.o			\
 	timer.o				\
+	tasklet.o			\
 	scheduler.o			\
 	syscall_table.o		\
 	vfs.o				\

@@ -36,16 +36,18 @@ void frosted_init(void)
     frosted_scheduler_on();
 }
 
+static void tasklet_test(void *arg)
+{
+    klog(LOG_INFO, "Tasklet executed\n");
+}
+
 static void ktimer_test(uint32_t time, void *arg)
 {
-    klog(LOG_INFO, "Timer expired!!\n");
+    tasklet_add(tasklet_test, NULL);
 }
 
 void frosted_kernel(void)
 {
-    volatile int ret = 0;
-    int ttt = 0;
-    
     /* Create "init" task */
     klog(LOG_INFO, "Starting Init task\n");
     if (task_create(init, (void *)0, 2) < 0)
@@ -54,10 +56,7 @@ void frosted_kernel(void)
     ktimer_add(1000, ktimer_test, NULL);
 
     while(1) {
-        if (!ttt && (jiffies > 500)) {
-            ttt++;
-        }
-        /* This is the kernel main loop */   
+        check_tasklets();
     }
 }
 
