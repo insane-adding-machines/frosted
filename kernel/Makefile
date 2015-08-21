@@ -27,6 +27,7 @@ OBJS:=	svc.o			\
 	sys.o				\
 	systick.o			\
 	syscall.o			\
+	semaphore.o			\
 	timer.o				\
 	tasklet.o			\
 	scheduler.o			\

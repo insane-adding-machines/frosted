@@ -409,6 +409,95 @@ void task_resume(int pid)
     }
 }
 
+/* Semaphore */
+struct semaphore {
+    int value;
+    int listeners;
+    int *listener;
+};
+
+static void sem_add_listener(struct semaphore *s)
+{
+    int i;
+    int pid = _cur_task->pid;
+    for (i = 0; i < s->listeners; i++) {
+        if (s->listener[i] == pid)
+            return;
+    }
+    s->listener = krealloc(s->listener, sizeof(int) * (s->listeners + 1));
+    if (!s->listener)
+        return;
+    s->listener[s->listeners++] = pid;
+}
+
+static void sem_del_listener(struct semaphore *s)
+{
+    int i;
+    int pid = _cur_task->pid;
+    for (i = 0; i < s->listeners; i++) {
+        if (s->listener[i] == pid) {
+            s->listener[i] = -1;
+            return;
+        }
+    }
+}
+
+int sem_wait(struct semaphore *s)
+{
+    if (!s)
+        return -1;
+    if(_sem_wait(s) == 0) {
+        sem_add_listener(s);
+        task_suspend();
+        return -1;
+    }
+    sem_del_listener(s);
+    return 0;
+}
+
+int sem_post(struct semaphore *s)
+{
+    if (!s)
+        return -1;
+    if (_sem_post(s) > 0) {
+        int i;
+        for(i = 0; i < s->listeners; i++) {
+            int pid = s->listener[i];
+            if (pid >= 0) {
+                task_resume(pid);
+            }
+        }
+    }
+    return 0;
+}
+
+int sys_sem_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return sem_init(arg1);
+}
+
+int sys_sem_post_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return sem_post((struct semaphore *)arg1);
+}
+
+int sys_sem_wait_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return sem_wait((struct semaphore *)arg1);
+}
+
+struct semaphore *sem_init(int val)
+{
+    struct semaphore *s = kalloc(sizeof(struct semaphore));
+    if (s) {
+        s->value = val;
+        s->listeners = 0;
+        s->listener = NULL;
+    }
+    return s;
+}
+
+
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
 

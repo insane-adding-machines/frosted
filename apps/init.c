@@ -61,6 +61,27 @@ void idling(void *arg)
     }
 }
 
+static struct semaphore *sem = NULL;
+void prod(void *arg)
+{
+    sem = sys_sem_init(0);
+    while(1) {
+        sys_sem_post(sem);
+        sys_sleep(1000);
+    }
+}
+
+void cons(void *arg)
+{
+    volatile int counter = 0;
+    while(!sem)
+        sys_sleep(200);
+    while(1) {
+        sys_sem_wait(sem);
+        counter++;
+    }
+}
+
 void init(void *arg)
 {
     volatile int i = (int)arg;
@@ -79,6 +100,10 @@ void init(void *arg)
     if (sys_thread_create(idling, (void *)42, 1) < 0)
         IDLE();
     if (sys_thread_create(fresh, (void *)42, 1) < 0)
+        IDLE();
+    if (sys_thread_create(prod, (void *)42, 1) < 0)
+        IDLE();
+    if (sys_thread_create(cons, (void *)42, 1) < 0)
         IDLE();
 
     while(1) {

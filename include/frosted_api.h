@@ -31,6 +31,9 @@
 /* opendir - readdir */
 typedef void DIR;
 
+/* semaphore */
+struct semaphore;
+
 #define MAX_FILE 48
 struct dirent {
     uint32_t d_ino;
@@ -97,6 +100,10 @@ int sys_stat(const char *path, struct stat *st);
 void *sys_malloc(uint32_t size);
 int sys_free(void *ptr);
 int sys_poll(struct pollfd *fds, int nfds, int timeout);
+
+int sys_sem_wait(struct semaphore *s);
+int sys_sem_post(struct semaphore *s);
+struct semaphore *sys_sem_init(int val);
 #endif /* KERNEL */
 
 #endif

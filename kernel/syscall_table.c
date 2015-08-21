@@ -133,6 +133,21 @@ int sys_getcwd(uint32_t arg1, uint32_t arg2){
     syscall(SYS_GETCWD, arg1, arg2, 0, 0, 0); 
 }
 
+/* Syscall: sem_init(1 arguments) */
+int sys_sem_init(uint32_t arg1){
+    syscall(SYS_SEM_INIT, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: sem_post(1 arguments) */
+int sys_sem_post(uint32_t arg1){
+    syscall(SYS_SEM_POST, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: sem_wait(1 arguments) */
+int sys_sem_wait(uint32_t arg1){
+    syscall(SYS_SEM_WAIT, arg1, 0, 0, 0, 0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern int sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -160,6 +175,9 @@ extern int sys_stat_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_poll_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_chdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_getcwd_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_sem_init_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_sem_post_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_sem_wait_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -188,4 +206,7 @@ void syscalls_init(void) {
 	sys_register_handler(23, sys_poll_hdlr);
 	sys_register_handler(24, sys_chdir_hdlr);
 	sys_register_handler(25, sys_getcwd_hdlr);
+	sys_register_handler(26, sys_sem_init_hdlr);
+	sys_register_handler(27, sys_sem_post_hdlr);
+	sys_register_handler(28, sys_sem_wait_hdlr);
 }

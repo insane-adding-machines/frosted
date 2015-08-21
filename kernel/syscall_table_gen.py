@@ -36,7 +36,10 @@ syscalls = [
     ["stat", 2, "sys_stat_hdlr"],
     ["poll", 3, "sys_poll_hdlr"],
     ["chdir", 1, "sys_chdir_hdlr"],
-    ["getcwd", 2, "sys_getcwd_hdlr"]
+    ["getcwd", 2, "sys_getcwd_hdlr"],
+    ["sem_init", 1, "sys_sem_init_hdlr"],
+    ["sem_post", 1, "sys_sem_post_hdlr"],
+    ["sem_wait", 1, "sys_sem_wait_hdlr"]
 ]
 
    #

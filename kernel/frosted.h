@@ -18,6 +18,7 @@
 /* Types */
 struct task;
 struct fnode;
+struct semaphore;
 
 /* generics */
 volatile unsigned int jiffies;
@@ -66,6 +67,9 @@ void task_resume(int pid);
 int task_create(void (*init)(void *), void *arg, unsigned int prio);
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
+int sem_wait(struct semaphore *s);
+int sem_post(struct semaphore *s);
+struct semaphore *sem_init(int val);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 
