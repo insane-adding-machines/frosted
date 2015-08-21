@@ -32,4 +32,5 @@
 #define SYS_SEM_INIT 			(26)
 #define SYS_SEM_POST 			(27)
 #define SYS_SEM_WAIT 			(28)
-#define _SYSCALLS_NR 29
+#define SYS_SOCKET 			(29)
+#define _SYSCALLS_NR 30

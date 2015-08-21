@@ -34,7 +34,7 @@ typedef void DIR;
 /* semaphore */
 struct semaphore;
 
-#define MAX_FILE 48
+#define MAX_FILE 64
 struct dirent {
     uint32_t d_ino;
     char d_name[MAX_FILE];
@@ -76,6 +76,21 @@ struct pollfd {
 };
 
 
+/* for unix sockets */
+#define AF_UNIX 0
+#define SOCK_STREAM 6
+#define SOCK_DGRAM 17
+
+struct __attribute__((packed)) sockaddr {
+    uint16_t sa_family;
+    uint8_t  sa_zero[14];
+};
+
+struct __attribute__((packed)) sockaddr_un {
+    uint16_t sun_family;
+    uint8_t  sun_path[MAX_FILE - 2];
+};
+
 
 /* Syscalls API for frosted. 
  * Any Application may link to the OS using these system calls.
@@ -104,6 +119,8 @@ int sys_poll(struct pollfd *fds, int nfds, int timeout);
 int sys_sem_wait(struct semaphore *s);
 int sys_sem_post(struct semaphore *s);
 struct semaphore *sys_sem_init(int val);
+
+int sys_socket(int domain, int type, int protocol);
 #endif /* KERNEL */
 
 #endif

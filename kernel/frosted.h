@@ -152,6 +152,7 @@ struct module {
         int (*accept)(int fd, void *addr, int *addrlen);
         int (*connect)(int fd, const void *addr, int addrlen);
         int (*listen)(int fd, int backlog);
+        int (*shutdown)(int fd, uint16_t how);
     } ops;
     struct module *next;
 };

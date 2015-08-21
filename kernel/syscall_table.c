@@ -148,6 +148,11 @@ int sys_sem_wait(uint32_t arg1){
     syscall(SYS_SEM_WAIT, arg1, 0, 0, 0, 0); 
 }
 
+/* Syscall: socket(3 arguments) */
+int sys_socket(uint32_t arg1, uint32_t arg2, uint32_t arg3){
+    syscall(SYS_SOCKET, arg1, arg2, arg3, 0,  0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern int sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -178,6 +183,7 @@ extern int sys_getcwd_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sem_init_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sem_post_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sem_wait_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_socket_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -209,4 +215,5 @@ void syscalls_init(void) {
 	sys_register_handler(26, sys_sem_init_hdlr);
 	sys_register_handler(27, sys_sem_post_hdlr);
 	sys_register_handler(28, sys_sem_wait_hdlr);
+	sys_register_handler(29, sys_socket_hdlr);
 }

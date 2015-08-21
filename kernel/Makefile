@@ -41,7 +41,8 @@ OBJS:=	svc.o			\
 	drivers/memfs.o		\
 	drivers/sysfs.o		\
 	drivers/null.o		\
-	drivers/uart.o 		
+	drivers/uart.o 		\
+	drivers/socket_un.o
 
 
 all: syscall_table.h $(OBJS)

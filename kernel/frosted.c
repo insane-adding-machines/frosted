@@ -33,6 +33,9 @@ void frosted_init(void)
     vfs_init();
     kernel_task_init();
     irq_init();
+    
+    socket_un_init();
+
     frosted_scheduler_on();
 }
 

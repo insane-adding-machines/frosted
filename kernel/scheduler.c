@@ -473,7 +473,7 @@ int sem_post(struct semaphore *s)
 
 int sys_sem_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    return sem_init(arg1);
+    return (int)sem_init(arg1);
 }
 
 int sys_sem_post_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)

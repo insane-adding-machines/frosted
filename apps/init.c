@@ -86,7 +86,7 @@ void init(void *arg)
 {
     volatile int i = (int)arg;
     volatile int pid;
-    int fd;
+    int fd, sd;
     uint32_t *temp;
     /* c-lib and init test */
     temp = (uint32_t *)sys_malloc(32);
@@ -96,6 +96,11 @@ void init(void *arg)
     fd = sys_open("/dev/null", 0);
     sys_close(fd);
     
+    /* socket/close test */
+    sd = sys_socket(AF_UNIX, SOCK_DGRAM, 0);
+    sys_close(sd);
+
+
     /* Thread create test */
     if (sys_thread_create(idling, (void *)42, 1) < 0)
         IDLE();
