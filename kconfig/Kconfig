@@ -1,0 +1,4 @@
+mainmenu "FROSTED Kernel Configuration"
+source ../kernel/Kconfig
+
+

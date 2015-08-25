@@ -28,13 +28,15 @@ void frosted_init(void)
     SystemInit(); /* SystemInit() -> Board_SystemInit() */
     SystemCoreClockUpdate();
     SysTick_Config(SystemCoreClock / 1000);
-
     syscalls_init();
     vfs_init();
     kernel_task_init();
     irq_init();
-    
+
+
+#ifdef UNIX    
     socket_un_init();
+#endif
 
     frosted_scheduler_on();
 }

@@ -1,4 +1,4 @@
-OBJS+= \
+OBJS-y+= \
 	port/lpc17xx/src/adc_17xx_40xx.o     \
 	port/lpc17xx/src/can_17xx_40xx.o     \
 	port/lpc17xx/src/chip_17xx_40xx.o    \

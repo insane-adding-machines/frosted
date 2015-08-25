@@ -470,10 +470,20 @@ void vfs_init(void)
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
 
-    /* Hook modules */
+#ifdef CONFIG_DEVNULL
     devnull_init(dev);
+#endif
+
+#ifdef CONFIG_DEVUART
     devuart_init(dev);
+#endif
+
+#ifdef CONFIG_MEMFS
     memfs_init();
+#endif
+
+#ifdef CONFIG_SYSFS
     sysfs_init();
+#endif
 }
 

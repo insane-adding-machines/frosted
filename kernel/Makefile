@@ -1,7 +1,15 @@
-#FAMILY?=lpc17xx
-#ARCH?=seedpro
-FAMILY?=stellaris
-ARCH?=stellaris_qemu
+include ../kconfig/.config
+
+ifeq ($(ARCH_SEEDPRO),y)
+	FAMILY=lpc17xx 
+	ARCH=seedpro
+endif
+
+ifeq ($(ARCH_QEMU),y)
+	FAMILY=stellaris
+	ARCH=stellaris_qemu
+endif
+
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
@@ -21,34 +29,46 @@ CFLAGS+=-ffreestanding
 CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
-OBJS:=	svc.o			\
+OBJS-y+=	svc.o			\
 	frosted.o			\
 	string.o			\
 	sys.o				\
 	systick.o			\
 	syscall.o			\
 	semaphore.o			\
-	timer.o				\
 	tasklet.o			\
 	scheduler.o			\
 	syscall_table.o		\
-	vfs.o				\
 	interrupts.o		\
 	newlib_redirect.o	\
 	malloc.o			\
 	module.o			\
 	poll.o				\
-	drivers/memfs.o		\
-	drivers/sysfs.o		\
-	drivers/null.o		\
-	drivers/uart.o 		\
-	drivers/socket_un.o
+	timer.o
+OBJS-y += vfs.o
+
+OBJS-$(MEMFS)+= drivers/memfs.o
+CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
+
+OBJS-$(SYSFS)+= drivers/sysfs.o
+CFLAGS-$(SYSFS)+=-DCONFIG_SYSFS
+
+OBJS-$(DEVNULL)+= drivers/null.o
+CFLAGS-$(DEVNULL)+=-DCONFIG_DEVNULL
+
+OBJS-$(DEVUART)+= drivers/uart.o
+CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
+
+OBJS-$(SOCK_UNIX)+= drivers/socket_un.o
+CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
+
+CFLAGS+=$(CFLAGS-y)
 
 
-all: syscall_table.h $(OBJS)
+all: syscall_table.h $(OBJS-y)
 	@echo -e "\t[AR] $(PREFIX)/lib/$(LIBNAME)"
 	@mkdir -p $(PREFIX)/lib
-	@$(AR) cru $(PREFIX)/lib/$(LIBNAME) $(OBJS)
+	@$(AR) cru $(PREFIX)/lib/$(LIBNAME) $(OBJS-y)
 
 syscall_table.c: syscall_table_gen.py
 	python2 $^
@@ -56,6 +76,6 @@ syscall_table.c: syscall_table_gen.py
 syscall_table.h: syscall_table.c
 
 clean:
-	@rm -f $(OBJS)
+	@rm -f $(OBJS-y)
 	@rm -f $(PREFIX)/lib/$(LIBNAME)
 

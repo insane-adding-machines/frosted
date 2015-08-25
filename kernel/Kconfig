@@ -1,0 +1,44 @@
+menu "Platform Selection"
+    choice ARCH
+    prompt "Architecture"
+    default ARCH_QEMU
+
+    config ARCH_QEMU
+    bool "TI Stellaris qemu"
+
+    config ARCH_SEEDPRO
+    bool "SeedPRO Development board"
+endchoice
+
+endmenu
+
+menu "Kernel Configuration"
+endmenu
+
+menu "Subsystems"
+    menu "Filesystems"
+        config SYSFS
+        bool "SysFS (/sys)"
+        default y
+
+        config MEMFS
+        bool "MemFS"
+        default y
+    endmenu
+
+    menu "Sockets"
+        config SOCK_UNIX
+        bool "UNIX Sockets for IPC"
+        default y
+    endmenu
+
+    menu "Devices"
+        config DEVNULL
+        bool "Support for /dev/null and /dev/zero"
+        default y
+
+        config DEVUART
+        bool "Generic UART driver"
+        default y
+    endmenu
+endmenu
