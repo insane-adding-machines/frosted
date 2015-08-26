@@ -37,3 +37,8 @@ tags
 
 #python compiled
 *.pyc
+
+#kconfig
+.config
+.config.old
+
