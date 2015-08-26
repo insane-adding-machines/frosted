@@ -76,16 +76,6 @@ static void * _top_stack;
 #define __inl inline
 #define __naked __attribute__((naked))
 
-
-
-#define TASK_IDLE       0
-#define TASK_RUNNABLE   1
-#define TASK_RUNNING    2
-#define TASK_SLEEPING   3
-#define TASK_WAITING    4
-#define TASK_OVER 0xFF
-
-
 struct __attribute__((packed)) task {
     void (*start)(void *);
     void *arg;
@@ -212,6 +202,21 @@ static __inl void task_switch(void)
     _cur_task->state = TASK_RUNNING;
 }
 
+int scheduler_ntasks(void)
+{
+    return pid_max;
+}
+
+int scheduler_task_state(int pid)
+{
+    return tasklist[pid].state;
+}
+
+unsigned scheduler_stack_used(int pid)
+{
+    return STACK_SIZE - ((char *)tasklist[pid].sp - (char *)tasklist[pid].stack);
+}
+
 uint16_t scheduler_get_cur_pid(void)
 {
     if (!_cur_task)
@@ -225,7 +230,6 @@ uint16_t scheduler_get_cur_ppid(void)
         return 0;
     return _cur_task->ppid;
 }
-
 
 int task_running(void)
 {

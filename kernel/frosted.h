@@ -8,6 +8,13 @@
 #include "malloc.h"
 #include "interrupts.h"
 
+#define TASK_IDLE       0
+#define TASK_RUNNABLE   1
+#define TASK_RUNNING    2
+#define TASK_SLEEPING   3
+#define TASK_WAITING    4
+#define TASK_OVER 0xFF
+
 //#define DEBUG
 
 #include <stdlib.h>

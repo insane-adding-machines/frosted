@@ -125,7 +125,61 @@ int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
     return fno->off;
 }
 
-int sysfs_time_write(struct sysfs_fnode *sfs, const void *buf, int len)
+#define MAX_TASKLIST 512
+int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    static char *task_txt;
+    static int off;
+    int i;
+    int stack_used;
+    int p_state;
+    const char legend[]="pid\tstate\tstack used\n";
+    if (fno->off == 0) {
+        task_txt = kalloc(MAX_TASKLIST);
+        if (!task_txt)
+            return -1;
+        off = 0;
+
+        strcpy(task_txt, legend);
+        off += strlen(legend);
+
+        for (i = 1; i < scheduler_ntasks(); i++) {
+            p_state = scheduler_task_state(i);
+            if ((p_state != TASK_IDLE) && (p_state != TASK_OVER)) {
+                off += ul_to_str(i, task_txt + off);
+                task_txt[off++] = '\t';
+                if (p_state == TASK_RUNNABLE)
+                    task_txt[off++] = 'r';
+                if (p_state == TASK_RUNNING)
+                    task_txt[off++] = 'R';
+                if (p_state == TASK_WAITING)
+                    task_txt[off++] = 'w';
+                if (p_state == TASK_SLEEPING)
+                    task_txt[off++] = 's';
+                
+                task_txt[off++] = '\t';
+                stack_used = scheduler_stack_used(i);
+                off += ul_to_str(stack_used, task_txt + off);
+                task_txt[off++] = '\n';
+            }
+        }
+        task_txt[off++] = '\0';
+    }
+    if (off == fno->off) {
+        kfree(task_txt);
+        return -1;
+    }
+    if (len > (off - fno->off)) {
+       len = off - fno->off;
+    }
+    memcpy(res, task_txt + fno->off, len);
+    fno->off += len;
+    return len;
+}
+
+int sysfs_no_write(struct sysfs_fnode *sfs, const void *buf, int len)
 {
     return -1;
 }
@@ -158,7 +212,8 @@ void sysfs_init(void)
 
     sysfs = fno_mkdir(&mod_sysfs, "sys", NULL);
     register_module(&mod_sysfs);
-    sysfs_register("time", sysfs_time_read, sysfs_time_write);
+    sysfs_register("time", sysfs_time_read, sysfs_no_write);
+    sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
 }
 
 
