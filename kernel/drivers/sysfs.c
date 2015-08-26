@@ -4,6 +4,8 @@
 static struct fnode *sysfs;
 static struct module mod_sysfs;
 
+static mutex_t *sysfs_mutex;
+
 struct sysfs_fnode {
     struct fnode *fnode;
     int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len);
@@ -137,6 +139,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     int p_state;
     const char legend[]="pid\tstate\tstack used\n";
     if (fno->off == 0) {
+        mutex_lock(sysfs_mutex);
         task_txt = kalloc(MAX_TASKLIST);
         if (!task_txt)
             return -1;
@@ -169,6 +172,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     }
     if (off == fno->off) {
         kfree(task_txt);
+        mutex_unlock(sysfs_mutex);
         return -1;
     }
     if (len > (off - fno->off)) {
@@ -212,6 +216,7 @@ void sysfs_init(void)
 
     sysfs = fno_mkdir(&mod_sysfs, "sys", NULL);
     register_module(&mod_sysfs);
+    sysfs_mutex = mutex_init();
     sysfs_register("time", sysfs_time_read, sysfs_no_write);
     sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
 }
