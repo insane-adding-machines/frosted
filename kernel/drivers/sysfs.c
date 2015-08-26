@@ -80,15 +80,49 @@ static int sysfs_close(int fd)
     return 0;
 }
 
+static int ul_to_str(unsigned long n, char *s)
+{
+    int maxlen = 10;
+    int i;
+    int q = 1;
+
+    if (n == 0) {
+        s[0] = '0';
+        s[1] = '\0';
+        return 1;
+    }
+
+    for (i = 0; i <= maxlen; i++) {
+        if ((n / q) == 0)
+            break;
+        q*=10;
+    }
+    q /= 10;
+    s[i] = '\0';
+    maxlen = i;
+
+    for (i = 0; i < maxlen; i++) {
+        int c;
+        c = (n / q);
+        s[i] = '0' + c;
+        n -= (c * q);
+        q /= 10;
+    }
+    return maxlen;
+     
+}
+
 int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
     struct fnode *fno = sfs->fnode;
     if (fno->off > 0)
         return -1;
-    snprintf(res, len, "%lu\n", jiffies);
-    fno->off += strlen(res);
-    return strlen(res);
+
+    fno->off += ul_to_str(jiffies, res);
+    res[fno->off++] = '\n';
+    res[fno->off] = '\0';
+    return fno->off;
 }
 
 int sysfs_time_write(struct sysfs_fnode *sfs, const void *buf, int len)
