@@ -32,5 +32,10 @@
 #define SYS_SEM_INIT 			(26)
 #define SYS_SEM_POST 			(27)
 #define SYS_SEM_WAIT 			(28)
-#define SYS_SOCKET 			(29)
-#define _SYSCALLS_NR 30
+#define SYS_SEM_DESTROY 			(29)
+#define SYS_MUTEX_INIT 			(30)
+#define SYS_MUTEX_UNLOCK 			(31)
+#define SYS_MUTEX_LOCK 			(32)
+#define SYS_MUTEX_DESTROY 			(33)
+#define SYS_SOCKET 			(34)
+#define _SYSCALLS_NR 35

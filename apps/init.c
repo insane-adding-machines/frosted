@@ -61,10 +61,12 @@ void idling(void *arg)
     }
 }
 
-static struct semaphore *sem = NULL;
+static sem_t *sem = NULL;
+static mutex_t *mut = NULL;
 void prod(void *arg)
 {
     sem = sys_sem_init(0);
+    mut = sys_mutex_init();
     while(1) {
         sys_sem_post(sem);
         sys_sleep(1000);
@@ -78,7 +80,9 @@ void cons(void *arg)
         sys_sleep(200);
     while(1) {
         sys_sem_wait(sem);
+        mutex_lock(mut);
         counter++;
+        mutex_unlock(mut);
     }
 }
 

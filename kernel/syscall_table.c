@@ -148,6 +148,31 @@ int sys_sem_wait(uint32_t arg1){
     syscall(SYS_SEM_WAIT, arg1, 0, 0, 0, 0); 
 }
 
+/* Syscall: sem_destroy(1 arguments) */
+int sys_sem_destroy(uint32_t arg1){
+    syscall(SYS_SEM_DESTROY, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: mutex_init(0 arguments) */
+int sys_mutex_init(void){
+    syscall(SYS_MUTEX_INIT, 0, 0, 0, 0, 0); 
+}
+
+/* Syscall: mutex_unlock(1 arguments) */
+int sys_mutex_unlock(uint32_t arg1){
+    syscall(SYS_MUTEX_UNLOCK, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: mutex_lock(1 arguments) */
+int sys_mutex_lock(uint32_t arg1){
+    syscall(SYS_MUTEX_LOCK, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: mutex_destroy(1 arguments) */
+int sys_mutex_destroy(uint32_t arg1){
+    syscall(SYS_MUTEX_DESTROY, arg1, 0, 0, 0, 0); 
+}
+
 /* Syscall: socket(3 arguments) */
 int sys_socket(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_SOCKET, arg1, arg2, arg3, 0,  0); 
@@ -183,6 +208,11 @@ extern int sys_getcwd_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sem_init_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sem_post_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sem_wait_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_sem_destroy_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_mutex_init_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_mutex_unlock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_mutex_lock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_mutex_destroy_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_socket_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
@@ -215,5 +245,10 @@ void syscalls_init(void) {
 	sys_register_handler(26, sys_sem_init_hdlr);
 	sys_register_handler(27, sys_sem_post_hdlr);
 	sys_register_handler(28, sys_sem_wait_hdlr);
-	sys_register_handler(29, sys_socket_hdlr);
+	sys_register_handler(29, sys_sem_destroy_hdlr);
+	sys_register_handler(30, sys_mutex_init_hdlr);
+	sys_register_handler(31, sys_mutex_unlock_hdlr);
+	sys_register_handler(32, sys_mutex_lock_hdlr);
+	sys_register_handler(33, sys_mutex_destroy_hdlr);
+	sys_register_handler(34, sys_socket_hdlr);
 }

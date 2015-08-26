@@ -35,7 +35,9 @@ OBJS-y+=	svc.o			\
 	sys.o				\
 	systick.o			\
 	syscall.o			\
+	locks.o				\
 	semaphore.o			\
+	mutex.o				\
 	tasklet.o			\
 	scheduler.o			\
 	syscall_table.o		\

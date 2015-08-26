@@ -40,6 +40,11 @@ syscalls = [
     ["sem_init", 1, "sys_sem_init_hdlr"],
     ["sem_post", 1, "sys_sem_post_hdlr"],
     ["sem_wait", 1, "sys_sem_wait_hdlr"],
+    ["sem_destroy", 1, "sys_sem_destroy_hdlr"],
+    ["mutex_init", 0, "sys_mutex_init_hdlr"],
+    ["mutex_unlock", 1, "sys_mutex_unlock_hdlr"],
+    ["mutex_lock", 1, "sys_mutex_lock_hdlr"],
+    ["mutex_destroy", 1, "sys_mutex_destroy_hdlr"],
     ["socket", 3, "sys_socket_hdlr"]
 ]
 

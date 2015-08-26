@@ -33,6 +33,8 @@ typedef void DIR;
 
 /* semaphore */
 struct semaphore;
+typedef struct semaphore sem_t;
+typedef struct semaphore mutex_t;
 
 #define MAX_FILE 64
 struct dirent {
@@ -116,9 +118,15 @@ void *sys_malloc(uint32_t size);
 int sys_free(void *ptr);
 int sys_poll(struct pollfd *fds, int nfds, int timeout);
 
-int sys_sem_wait(struct semaphore *s);
-int sys_sem_post(struct semaphore *s);
-struct semaphore *sys_sem_init(int val);
+int sys_sem_wait(sem_t *s);
+int sys_sem_post(sem_t *s);
+sem_t *sys_sem_init(int val);
+int sys_sem_destroy(sem_t *s);
+
+int sys_mutex_lock(mutex_t *s);
+int sys_mutex_unlock(mutex_t *s);
+mutex_t *sys_mutex_init(void);
+int sys_mutex_destroy(mutex_t *s);
 
 int sys_socket(int domain, int type, int protocol);
 #endif /* KERNEL */
