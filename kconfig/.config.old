@@ -21,7 +21,7 @@ ARCH_QEMU=y
 # Filesystems
 #
 SYSFS=y
-MEMFS=y
+# MEMFS is not set
 
 #
 # Sockets

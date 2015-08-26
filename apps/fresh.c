@@ -160,6 +160,9 @@ void fresh(void *arg) {
             }
         }
         
+        if (strlen(input) == 0)
+            continue;
+        
         if (!strncmp(input, "ls", 2))
         {
             ls(out, pwd);
