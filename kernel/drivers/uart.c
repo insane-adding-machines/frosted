@@ -178,6 +178,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     len_available =  cirbuf_bytesinuse(inbuf);
     if (len_available <= 0) {
         task_suspend();
+        return SYS_CALL_AGAIN;
     }
 
     if (len_available < len)

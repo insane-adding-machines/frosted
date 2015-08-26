@@ -89,6 +89,8 @@ int sys_register_handler(uint32_t n, int (*_sys_c)(uint32_t, uint32_t, uint32_t,
 int syscall(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
 void syscalls_init(void);
 
+#define SYS_CALL_AGAIN (-1024) 
+
 /* VFS */
 void vfs_init(void);
 

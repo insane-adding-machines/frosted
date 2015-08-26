@@ -446,10 +446,10 @@ int sem_wait(struct semaphore *s)
 {
     if (!s)
         return -1;
-    if(_sem_wait(s) == 0) {
+    if(_sem_wait(s) != 0) {
         sem_add_listener(s);
         task_suspend();
-        return -1;
+        return SYS_CALL_AGAIN;
     }
     sem_del_listener(s);
     return 0;
