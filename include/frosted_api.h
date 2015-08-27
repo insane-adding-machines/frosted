@@ -109,13 +109,16 @@ int sys_getppid(void);
 int sys_open(const char *path, int mode);
 int sys_close(int fd);
 DIR *sys_opendir(const char *path);
+int sys_read(int fd, void *buf, int count);
+int sys_write(int fd, const void *buf, int count);
 int sys_readdir(DIR *d, struct dirent *ep);
 int sys_closedir(DIR *d);
 unsigned int sys_gettimeofday(unsigned int *ms);
 int sys_stat(const char *path, struct stat *st);
 int sys_unlink(const char *path);
 int sys_seek(int fd, int off, int whence);
-
+int sys_kill(int pid, int sig);
+void sys_exit(int status);
 void *sys_malloc(uint32_t size);
 int sys_free(void *ptr);
 int sys_poll(struct pollfd *fds, int nfds, int timeout);
