@@ -39,4 +39,5 @@
 #define SYS_MUTEX_DESTROY 			(33)
 #define SYS_SOCKET 			(34)
 #define SYS_KILL 			(35)
-#define _SYSCALLS_NR 36
+#define SYS_EXIT 			(36)
+#define _SYSCALLS_NR 37

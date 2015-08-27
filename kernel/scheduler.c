@@ -243,7 +243,7 @@ int task_timeslice(void)
 
 void task_end(void)
 {
-    _cur_task->state = TASK_IDLE;
+    _cur_task->state = TASK_OVER;
     while(1);
 }
 
@@ -426,6 +426,11 @@ int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     /* For now, signal param is ignored. */
     task_terminate(arg1);
     return 0;
+}
+
+int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
+{
+    task_terminate(_cur_task->pid);
 }
 
 static uint32_t *a4 = NULL;
