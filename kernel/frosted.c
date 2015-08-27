@@ -24,6 +24,9 @@ int klog_write(int file, char *ptr, int len)
 
 void frosted_init(void)
 {
+    extern void * __syscall__;
+    volatile void * vector = __syscall__;
+    (void)vector;
     ktimer_init();
     SystemInit(); /* SystemInit() -> Board_SystemInit() */
     SystemCoreClockUpdate();

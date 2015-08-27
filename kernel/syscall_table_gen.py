@@ -123,7 +123,7 @@ vector_c.write("#include <stdint.h>\n")
 vector_c.write("/* Syscall table Vector array */ \n")
 for s in syscalls:
     vector_c.write("extern int sys_%s( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );\n" % s[0])
-vector_c.write("int __attribute__((section(\"syscall_vector\"))) (*__syscall__[%d])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {\n" % len(syscalls))
+vector_c.write("int __attribute__((used,section(\".syscall_vector\"))) (* const __syscall__[%d])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {\n" % len(syscalls))
 
 for n in range(len(syscalls) - 1):
     name = syscalls[n][0]

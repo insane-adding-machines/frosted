@@ -28,7 +28,7 @@ all: image.elf
 kernel/syscall_table.c: kernel/syscall_table_gen.py
 	python2 $^
 
-kernel/syscall_table.h: kernel/syscall_table.c
+include/syscall_table.h: kernel/syscall_table.c
 
 $(PREFIX)/build/lib/libfrosted.a:
 	make -C kernel
