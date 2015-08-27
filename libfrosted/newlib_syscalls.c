@@ -95,30 +95,6 @@ int _write (int file, char *ptr, int len)
     return write(file, ptr, len);
 }
 
-//void * _realloc_r(struct _reent *re, void * ptr, size_t size)
-//{
-//    (void)re;
-//    return realloc(ptr, size);
-//}
-//
-//void * _calloc_r(struct _reent *re, size_t num, size_t size)
-//{
-//    (void)re;
-//    return calloc(num, size);
-//}
-//
-//void * _malloc_r(struct _reent *re, size_t size)
-//{
-//    (void)re;
-//    return malloc(size);
-//}
-//
-//void _free_r(struct _reent *re, void * ptr)
-//{
-//    (void)re;
-//    free(ptr);
-//}
-
 void * _realloc(void * ptr, size_t size)
 {
     return (void *)realloc(ptr, size);
