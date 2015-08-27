@@ -48,6 +48,7 @@ OBJS-y+=	svc.o			\
 	poll.o				\
 	timer.o
 OBJS-y += vfs.o
+OBJS-y += syscall_vector.o
 
 OBJS-$(MEMFS)+= drivers/memfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS

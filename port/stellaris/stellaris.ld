@@ -17,6 +17,7 @@ SECTIONS
     .text :
     {
         KEEP(*(.isr_vector))
+        KEEP(*(.syscall_vector))
         *(.text*)
         *(.rodata*)
     } > FLASH

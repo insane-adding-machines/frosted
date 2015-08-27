@@ -55,8 +55,10 @@ syscalls = [
  #####
 #######
 #################################################################
-hdr = open("syscall_table.h", "w")
+hdr = open("../include/syscall_table.h", "w")
 code = open("syscall_table.c", "w")
+vector_h = open("syscall_vector.h", "w")
+vector_c = open("syscall_vector.c", "w")
 
 hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n\n")
 code.write("/* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n#include \"syscall_table.h\"\n")
@@ -115,3 +117,19 @@ for n in range(len(syscalls)):
     call = syscalls[n][2]
     code.write( "\tsys_register_handler(%d, %s);\n" % (n, call) );
 code.write("}\n")
+code.close()
+
+vector_c.write("#include <stdint.h>\n")
+vector_c.write("/* Syscall table Vector array */ \n")
+for s in syscalls:
+    vector_c.write("extern int sys_%s( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );\n" % s[0])
+vector_c.write("int __attribute__((section(\"syscall_vector\"))) (*__syscall__[%d])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {\n" % len(syscalls))
+
+for n in range(len(syscalls) - 1):
+    name = syscalls[n][0]
+    vector_c.write("\tsys_%s,\n" % (name))
+name = syscalls[-1][0]
+vector_c.write("\tsys_%s\n" % (name))
+vector_c.write("};\n")
+
+vector_c.close()
