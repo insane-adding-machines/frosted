@@ -13,6 +13,7 @@
 #define UART_IM(baseaddr)  (*(((unsigned int *)(baseaddr))+(0x38>>2)))
 
 static int devuart_write(int fd, const void *buf, unsigned int len);
+static mutex_t *uart_mutex;
 
 /* Use static state for now. Future drivers can have multiple structs for this. */
 static int uart_pid = 0;
@@ -175,8 +176,10 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     if (fd < 0)
         return -1;
 
+    mutex_lock(uart_mutex);
     len_available =  cirbuf_bytesinuse(inbuf);
     if (len_available <= 0) {
+        uart_pid = scheduler_get_cur_pid();
         task_suspend();
         return SYS_CALL_AGAIN;
     }
@@ -193,6 +196,8 @@ static int devuart_read(int fd, void *buf, unsigned int len)
             devuart_write(0, ptr, 1);
         ptr++;
     }
+    uart_pid = 0;
+    mutex_unlock(uart_mutex);
     return out;
 }
 
@@ -214,9 +219,10 @@ static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
 
 static int devuart_open(const char *path, int flags)
 {
-    if (uart_pid != 0)
+    struct fnode *f = fno_search(path);
+    if (!f)
         return -1;
-    uart_pid = scheduler_get_cur_pid();
+    return task_filedesc_add(f); 
 }
 
 static struct module mod_devuart = {
@@ -226,6 +232,7 @@ static struct fnode *uart = NULL;
 
 void devuart_init(struct fnode *dev)
 {
+    uart_mutex = mutex_init();
     mod_devuart.family = FAMILY_FILE;
     mod_devuart.ops.open = devuart_open;
     mod_devuart.ops.read = devuart_read; 

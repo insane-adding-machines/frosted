@@ -297,6 +297,10 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     char path[MAX_FILE];
 
     path_abs(rel_path, path, MAX_FILE);
+    f = fno_search(path);
+    if (f->owner && f->owner->ops.open) {
+        return f->owner->ops.open(path, flags);
+    }
 
     if ((flags & O_CREAT) == 0) {
         f = fno_search(path);
@@ -324,10 +328,6 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         return -1; /* XXX: is a dir */
     if (flags & O_APPEND) {
         f->off = f->size;
-    }
-    if (f->owner && f->owner->ops.open) {
-        if (f->owner->ops.open(path, flags) < 0)
-            return -1;
     }
     return task_filedesc_add(f); 
 }
