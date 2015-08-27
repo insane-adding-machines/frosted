@@ -8,8 +8,8 @@ CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 CFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
 CFLAGS+=-Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc
-LDFLAGS:=-nostartfiles -ggdb -lc -lm -lnosys 
-PREFIX=$(PWD)/build
+PREFIX:=$(PWD)/build
+LDFLAGS:=-nostartfiles -ggdb -lc -lm -lsysfrosted -L$(PREFIX)/lib
 
 #debugging
 CFLAGS+=-ggdb
@@ -30,10 +30,13 @@ kernel/syscall_table.c: kernel/syscall_table_gen.py
 
 include/syscall_table.h: kernel/syscall_table.c
 
-$(PREFIX)/build/lib/libfrosted.a:
+$(PREFIX)/lib/libfrosted.a:
 	make -C kernel
 
-image.elf: $(PREFIX)/build/lib/libfrosted.a $(OBJS-y)
+$(PREFIX)/lib/libsysfrosted.a:
+	make -C sysfrosted
+
+image.elf: $(PREFIX)/lib/libfrosted.a $(PREFIX)/lib/libsysfrosted.a $(OBJS-y)
 	$(CC) -o $@   -Wl,--start-group $(PREFIX)/lib/libfrosted.a $(OBJS-y) -Wl,--end-group  -Tport/$(FAMILY)/$(FAMILY).ld  -Wl,-Map,image.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.elf
@@ -47,6 +50,7 @@ menuconfig:
 
 clean:
 	@make -C kernel clean
+	@make -C sysfrosted clean
 	@rm -f $(OBJS-y)
 	@rm -f image.elf image.map
 
