@@ -77,7 +77,7 @@ int _stat(const char *file, struct stat *st)
 
 clock_t _times(struct tms *buf)
 {
-    return NULL;
+    return (clock_t)NULL;
 }
 
 int _unlink (char * name)
@@ -121,12 +121,12 @@ int _write (int file, char *ptr, int len)
 
 void * _realloc(void * ptr, size_t size)
 {
-    return realloc(ptr, size);
+    return (void *)realloc(ptr, size);
 }
 
 void * _calloc(size_t num, size_t size)
 {
-    return calloc(num, size);
+    return (void *)calloc(num, size);
 }
 
 void * _malloc(size_t size)
