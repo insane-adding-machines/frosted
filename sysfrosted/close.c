@@ -3,12 +3,14 @@
  */
 
 #include "frosted_api.h"
+#include "syscall_table.h"
 #include <errno.h>
 #undef errno
 extern int errno;
+extern int (*__syscall__[])(int fd);
 
 int _close(int fd)
 {
-  return sys_close(fd);
+  return __syscall__[SYS_CLOSE](fd);
 }
 

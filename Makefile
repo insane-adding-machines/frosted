@@ -9,7 +9,8 @@ AS:=$(CROSS_COMPILE)as
 CFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
 CFLAGS+=-Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc
 PREFIX:=$(PWD)/build
-LDFLAGS:=-nostartfiles -ggdb -lc -lm -lsysfrosted -L$(PREFIX)/lib
+#LDFLAGS:=-nostartfiles -ggdb -lc -lm -lsysfrosted -L$(PREFIX)/lib
+LDFLAGS:=-nostartfiles -ggdb -lc -lm -lnosys -L$(PREFIX)/lib
 
 #debugging
 CFLAGS+=-ggdb
