@@ -71,11 +71,13 @@ static int fno_fullpath(struct fnode *f, char *dst, int len)
         int nlen = strlen(dst);
         if (nlen > 1) {
             /* Remove trailing "/" */
-            dst[nlen - 1] = '\0';
-            return nlen - 1;
-        } else {
-            return nlen;
+            dst[--nlen] = '\0';
+            while (dst[nlen - 1] == '/') {
+                dst[nlen - 1] = '\0';
+                nlen--;
+            }
         }
+        return nlen;
     }
     return -1;
 }
