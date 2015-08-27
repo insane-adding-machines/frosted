@@ -9,12 +9,6 @@
 extern int errno;
 extern int (*__syscall__[])(int pid, int  sig);
 
-int _kill(int pid, int sig)
-{
-    return __syscall__[SYS_KILL](pid, sig);
-}
-
-
 int kill(int pid, int sig)
 {
     return __syscall__[SYS_KILL](pid, sig);

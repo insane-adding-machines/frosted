@@ -9,11 +9,6 @@
 extern int errno;
 extern int (*__syscall__[])(int fd, int offset, int  whence);
 
-int _lseek (int fd, int offset, int whence)
-{
-    return __syscall__[SYS_SEEK](fd, offset, whence);
-}
-
 int lseek (int fd, int offset, int whence)
 {
     return __syscall__[SYS_SEEK](fd, offset, whence);

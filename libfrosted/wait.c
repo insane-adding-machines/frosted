@@ -1,5 +1,5 @@
 /*
- * Stub version of execve.
+ * Stub version of wait.
  */
 
 #include "frosted_api.h"
@@ -7,7 +7,7 @@
 #undef errno
 extern int errno;
 
-int _execve(char *name, char **argv, char **env)
+int wait(int  *status)
 {
   errno = ENOSYS;
   return -1;

@@ -14,7 +14,7 @@ CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
-LIBNAME:=libfrosted.a
+LIBNAME:=libkernel.a
 PREFIX:=$(PWD)/build
 #Target flags
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
@@ -42,7 +42,6 @@ OBJS-y+=	svc.o			\
 	scheduler.o			\
 	syscall_table.o		\
 	interrupts.o		\
-	newlib_redirect.o	\
 	malloc.o			\
 	module.o			\
 	poll.o				\

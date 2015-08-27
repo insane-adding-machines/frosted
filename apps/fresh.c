@@ -1,4 +1,5 @@
 #include "frosted_api.h"
+#include "syscalls.h"
 #include <string.h>
 #include <stdio.h>
 static const char str_welcome[]      = "Welcome to Frosted\r\n";

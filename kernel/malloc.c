@@ -12,7 +12,7 @@
 #define F_MALLOC_MAGIC    (0xDECEA5ED) 
 
 #ifdef _WIN32
-void * sbrk (int incr);
+void * f_sbrk (int incr);
 #endif
 
 #if defined __linux__ || defined _WIN32 /* test application */
@@ -138,6 +138,21 @@ static struct f_malloc_block * f_find_best_fit(size_t size, struct f_malloc_bloc
     return found;
 }
 
+static void * f_sbrk(int incr)
+{
+   extern char   end;           /* Set by linker */
+   static char * heap_end;
+   char *        prev_heap_end;
+
+   if (heap_end == 0)
+     heap_end = &end;
+
+   prev_heap_end = heap_end;
+   heap_end += incr;
+
+   return (void *) prev_heap_end;
+}
+
 /*------------------*/
 /* Public functions */
 /*------------------*/
@@ -208,7 +223,7 @@ void * f_malloc(size_t size)
         }
     } else {
         /* No first fit found: ask for new memory */
-        blk = (struct f_malloc_block *)sbrk(size + sizeof(struct f_malloc_block));  // can OS give us more memory?
+        blk = (struct f_malloc_block *)f_sbrk(size + sizeof(struct f_malloc_block));  // can OS give us more memory?
         if ((long)blk == -1)
             return NULL;
 
@@ -306,7 +321,7 @@ int sys_realloc_hdlr(int addr, int size)
 #if defined _WIN32
     uint8_t f_heap[32 * 1024];
     
-    void * sbrk (int incr)
+    void * f_sbrk (int incr)
     {
       #define end f_heap
       //extern char   end; /* Set by linker.  */

@@ -9,11 +9,6 @@
 extern int errno;
 extern int (*__syscall__[])(void);
 
-int _getpid(void)
-{
-    return __syscall__[SYS_GETPID]();
-}
-
 int getpid(void)
 {
     return __syscall__[SYS_GETPID]();

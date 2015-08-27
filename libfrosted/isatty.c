@@ -7,7 +7,7 @@
 #undef errno
 extern int errno;
 
-int _isatty(int file)
+int isatty(int file)
 {
   errno = ENOSYS;
   return 0;

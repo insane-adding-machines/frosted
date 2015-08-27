@@ -7,7 +7,7 @@
 #undef errno
 extern int errno;
 
-int _fork(void)
+int fork(void)
 {
   errno = ENOSYS;
   return -1;

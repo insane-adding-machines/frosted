@@ -9,11 +9,6 @@
 extern int errno;
 extern int (*__syscall__[])(int fd);
 
-int _close(int fd)
-{
-    return __syscall__[SYS_CLOSE](fd);
-}
-
 int close(int fd)
 {
     return __syscall__[SYS_CLOSE](fd);

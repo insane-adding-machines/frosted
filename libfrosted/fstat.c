@@ -1,5 +1,5 @@
 /*
- * Stub version of stat.
+ * Stub version of fstat.
  */
 
 #include "frosted_api.h"
@@ -8,7 +8,7 @@
 extern int errno;
 struct stat;
 
-int _stat(const char *file, struct stat *st)
+int fstat(int fildes, struct stat *st)
 {
   errno = ENOSYS;
   return -1;

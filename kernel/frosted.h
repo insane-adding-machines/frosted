@@ -179,10 +179,10 @@ void kernel_task_init(void);
 
 
 
-#define kalloc malloc
-#define kcalloc calloc
-#define krealloc realloc
-#define kfree  free
+#define kalloc f_malloc
+#define kcalloc f_calloc
+#define krealloc f_realloc
+#define kfree  f_free
 
 #endif /* BSP_INCLUDED_H */
 

@@ -14,7 +14,7 @@ CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
-LIBNAME:=libsysfrosted.a
+LIBNAME:=libfrosted.a
 PREFIX:=$(PWD)/build
 #Target flags
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
@@ -31,9 +31,7 @@ ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 OBJS-y+=			\
 		close.o		\
-		environ.o	\
 		errno.o		\
-		execve.o	\
 		_exit.o		\
 		fork.o		\
 		fstat.o		\
@@ -44,13 +42,13 @@ OBJS-y+=			\
 		lseek.o		\
 		open.o		\
 		read.o		\
-		sbrk.o		\
 		stat.o		\
-		syscalls.o	\
-		times.o		\
-		unlink.o 	\
+		unlink.o	\
 		wait.o		\
-		write.o
+		write.o		\
+		malloc.o	\
+		free.o		\
+		newlib_syscalls.o
 
 CFLAGS+=$(CFLAGS-y)
 

@@ -9,11 +9,6 @@
 extern int errno;
 extern int (*__syscall__[])(char *name);
 
-int _unlink (char * name)
-{
-    return __syscall__[SYS_UNLINK](name);
-}
-
 int unlink (char * name)
 {
     return __syscall__[SYS_UNLINK](name);

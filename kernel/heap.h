@@ -14,7 +14,7 @@ static inline int heap_insert(struct heap_##type *heap, type *el) \
 { \
 	int i; \
     if (++heap->n >= heap->size) {													\
-		heap->top = realloc(heap->top, (heap->n + 1) * sizeof(type));				\
+		heap->top = krealloc(heap->top, (heap->n + 1) * sizeof(type));				\
 		if (!heap->top) {															\
 			heap->n--;																\
 			return -1;																\
@@ -66,13 +66,13 @@ static inline type *heap_first(heap_##type *heap)	\
 } \
 static inline heap_##type *heap_init(void) \
 { \
-	heap_##type *p = calloc(1, sizeof(heap_##type));	\
+	heap_##type *p = kcalloc(1, sizeof(heap_##type));	\
 	return p;		\
 } \
 static inline void heap_destroy(heap_##type *h) \
 { \
-	free(h->top); 	\
-	free(h); 		\
+	kfree(h->top); 	\
+	kfree(h); 		\
 } \
 
 
