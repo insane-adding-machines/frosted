@@ -14,3 +14,7 @@ int _getpid(void)
     return __syscall__[SYS_GETPID]();
 }
 
+int getpid(void)
+{
+    return __syscall__[SYS_GETPID]();
+}

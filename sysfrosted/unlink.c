@@ -14,3 +14,7 @@ int _unlink (char * name)
     return __syscall__[SYS_UNLINK](name);
 }
 
+int unlink (char * name)
+{
+    return __syscall__[SYS_UNLINK](name);
+}

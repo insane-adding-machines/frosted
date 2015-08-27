@@ -14,3 +14,7 @@ int _read(int file, char *ptr, int len)
     return __syscall__[SYS_READ](file, ptr, len);
 }
 
+int read(int file, char *ptr, int len)
+{
+    return __syscall__[SYS_READ](file, ptr, len);
+}

@@ -18,7 +18,7 @@ syscalls = [
     ["test", 5, "sys_test_hdlr"],
     ["getpid", 0, "sys_getpid_hdlr"],
     ["getppid", 0, "sys_getppid_hdlr"],
-    ["open", 2, "sys_open_hdlr"],
+    ["open", 3, "sys_open_hdlr"],
     ["close", 1, "sys_close_hdlr"],
     ["read", 3, "sys_read_hdlr"],
     ["write", 3, "sys_write_hdlr"],

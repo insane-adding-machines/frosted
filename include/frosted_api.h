@@ -106,7 +106,7 @@ int sys_thread_create(void (*init)(void *), void *arg, unsigned int prio);
 int sys_mkdir(char *path);
 int sys_getpid(void);
 int sys_getppid(void);
-int sys_open(const char *path, int mode);
+int sys_open(const char *path, int flags, int mode);
 int sys_close(int fd);
 DIR *sys_opendir(const char *path);
 int sys_read(int fd, void *buf, int count);

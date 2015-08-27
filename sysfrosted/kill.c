@@ -15,3 +15,7 @@ int _kill(int pid, int sig)
 }
 
 
+int kill(int pid, int sig)
+{
+    return __syscall__[SYS_KILL](pid, sig);
+}

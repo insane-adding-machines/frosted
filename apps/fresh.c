@@ -36,8 +36,8 @@ static void ls(int ser, char *start)
             fname++;
 
         sys_stat(fname, &st);
-        sys_write(ser, fname, strlen(fname));
-        sys_write(ser, "\t", 1);
+        write(ser, fname, strlen(fname));
+        write(ser, "\t", 1);
         if (S_ISDIR(st.st_mode))
             type = 'd';
         else {
@@ -45,10 +45,10 @@ static void ls(int ser, char *start)
             type = 'f';
         }
 
-        sys_write(ser, &type, 1); 
-        sys_write(ser, "    ", 4);
-        sys_write(ser, ch_size, strlen(ch_size));
-        sys_write(ser, "\n", 1);
+        write(ser, &type, 1); 
+        write(ser, "    ", 4);
+        write(ser, ch_size, strlen(ch_size));
+        write(ser, "\n", 1);
     }
     sys_closedir(d);
     sys_free(ep);
@@ -62,10 +62,10 @@ void fresh(void *arg) {
     char pwd[MAX_FILE] = "";
 
     do {
-        ser = sys_open("/dev/ttyS0", O_RDWR);
+        ser = open("/dev/ttyS0", O_RDWR);
     } while (ser < 0);
 
-    sys_write(ser, str_welcome, strlen(str_welcome));
+    write(ser, str_welcome, strlen(str_welcome));
     sys_mkdir("/home");
     sys_mkdir("/home/test");
     sys_chdir("/home/test");
@@ -80,10 +80,10 @@ void fresh(void *arg) {
         pfd.fd = ser;
         pfd.events = POLLIN;
         len = 0;
-        sys_write(ser, str_prompt, strlen(str_prompt));
+        write(ser, str_prompt, strlen(str_prompt));
         sys_getcwd(pwd, MAX_FILE);
-        sys_write(ser, pwd, strlen(pwd));
-        sys_write(ser, "$ ", 2);
+        write(ser, pwd, strlen(pwd));
+        write(ser, "$ ", 2);
 
         /* Blocking calls: WIP
         if (sys_poll(&pfd, 1, 1000) <= 0)
@@ -100,7 +100,7 @@ void fresh(void *arg) {
             if ((input[len-1] == 0xD))
                 break; /* CR (\n) */
             if ((input[len-1] == 0x4)) {
-                sys_write(ser, "\n", 1);
+                write(ser, "\n", 1);
                 len = 0;
                 break;
             }
@@ -109,17 +109,17 @@ void fresh(void *arg) {
             if (input[len-1] == 0x1b) {
                 char dir;
                 while (sys_read(ser, &dir, 1) > 0) ;;
-                sys_write(ser, &del, 1);
-                sys_write(ser, " ", 1);
-                sys_write(ser, &del, 1);
+                write(ser, &del, 1);
+                write(ser, " ", 1);
+                write(ser, &del, 1);
 
                 while (len > 0) {
-                    sys_write(ser, &del, 1);
-                    sys_write(ser, " ", 1);
-                    sys_write(ser, &del, 1);
+                    write(ser, &del, 1);
+                    write(ser, " ", 1);
+                    write(ser, &del, 1);
                     len--;
                 }
-                sys_write(ser, lastcmd, strlen(lastcmd));
+                write(ser, lastcmd, strlen(lastcmd));
                 len = strlen(lastcmd);
                 strcpy(input, lastcmd);
             }
@@ -127,16 +127,16 @@ void fresh(void *arg) {
             /* backspace */
             if ((input[len-1] == 127)) {
                 if (len > 1) {
-                    sys_write(ser, &del, 1);
-                    sys_write(ser, " ", 1);
-                    sys_write(ser, &del, 1);
+                    write(ser, &del, 1);
+                    write(ser, " ", 1);
+                    write(ser, &del, 1);
                     len -= 2;
                 }else {
                     len -=1;
                 }
             }
         }
-        sys_write(ser, "\n", 1);
+        write(ser, "\n", 1);
         if (len == 0)
             break;
 
@@ -153,9 +153,9 @@ void fresh(void *arg) {
                     flags |= O_TRUNC;
                 while (input[i] == '>' || input[i] == ' ')
                     i++;
-                out = sys_open(&input[i], flags);
+                out = open(&input[i], flags);
                 if (out < 0) {
-                    sys_write(ser, str_invalidfile, strlen(str_invalidfile));
+                    write(ser, str_invalidfile, strlen(str_invalidfile));
                 }
             }
         }
@@ -167,70 +167,70 @@ void fresh(void *arg) {
         {
             ls(out, pwd);
         } else if (!strncmp(input, "help", 4)) {
-            sys_write(out, str_help, strlen(str_help));
+            write(out, str_help, strlen(str_help));
         } else if (!strncmp(input, "cd", 2)) {
             if (strlen(input) > 2) {
                 char *arg = input + 3;
                 if (sys_chdir(arg) < 0) {
-                    sys_write(out, str_invaliddir, strlen(str_invaliddir));
+                    write(out, str_invaliddir, strlen(str_invaliddir));
                 }
             }
         } else if (!strncmp(input, "rm", 2)) {
             if (strlen(input) > 2) {
                 char *arg = input + 3;
                 if (sys_unlink(arg) < 0) {
-                    sys_write(out, str_invalidfile, strlen(str_invalidfile));
+                    write(out, str_invalidfile, strlen(str_invalidfile));
                 }
             }
         } else if (!strncmp(input, "mkdir", 5)) {
             if (strlen(input) > 5) {
                 char *arg = input + 6;
                 if (sys_mkdir(arg) < 0) {
-                    sys_write(out, str_invaliddir, strlen(str_invaliddir));
+                    write(out, str_invaliddir, strlen(str_invaliddir));
                 }
             }
         } else if (!strncmp(input, "touch", 5)) {
             if (strlen(input) > 5) {
                 int fd; 
                 char *arg = input + 6;
-                fd = sys_open(arg, O_CREAT|O_TRUNC|O_EXCL);
+                fd = open(arg, O_CREAT|O_TRUNC|O_EXCL);
                 if (fd < 0) {
-                    sys_write(out, str_invalidfile, strlen(str_invalidfile));
-                } else sys_close(fd);
+                    write(out, str_invalidfile, strlen(str_invalidfile));
+                } else close(fd);
             }
         } else if (!strncmp(input, "echo", 4)) {
             if (strlen(input) > 4) {
                 int fd; 
                 char *arg = input + 5;
-                sys_write(out, arg, strlen(arg));
-                sys_write(out, "\n", 1);
+                write(out, arg, strlen(arg));
+                write(out, "\n", 1);
             }
         } else if (!strncmp(input, "cat", 3)) {
             if (strlen(input) > 3) {
                 char *arg = input + 4;
                 int fd; 
-                fd = sys_open(arg, O_RDONLY);
+                fd = open(arg, O_RDONLY);
                 if (fd < 0) {
-                    sys_write(out, str_invalidfile, strlen(str_invalidfile));
+                    write(out, str_invalidfile, strlen(str_invalidfile));
                 } else {
                     int r;
                     char buf[10];
                     do {
                         r = sys_read(fd, buf, 10);
                         if (r > 0) {
-                            sys_write(out, buf, r);
+                            write(out, buf, r);
                         }
                     } while (r > 0);
-                    sys_close(fd);
+                    close(fd);
                 }
             }
         } else if (strlen(input) > 0){
-            sys_write(out, str_unknowncmd, strlen(str_unknowncmd));
+            write(out, str_unknowncmd, strlen(str_unknowncmd));
         }
         if (ser != out)
-            sys_close(out);
+            close(out);
         out = ser;
 
     }
-    sys_close(ser);
+    close(ser);
 }

@@ -10,14 +10,14 @@ void task2(void *arg)
     volatile int i = (int)arg;
     volatile int pid, ppid;
     void *addr;
-    int fdn = sys_open("/dev/null", O_RDONLY);
-    int fdz = sys_open("/dev/zero", O_WRONLY);
+    int fdn = open("/dev/null", O_RDONLY, 0);
+    int fdz = open("/dev/zero", O_WRONLY, 0);
     int fdm;
     int ser;
     volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
     volatile uint32_t now; 
     volatile int ret;
-    ser = sys_open("/dev/ttyS0", O_RDWR);
+    ser = open("/dev/ttyS0", O_RDWR, 0);
     sys_write(ser, GREETING, strlen(GREETING));
     close(ser);
 
@@ -25,8 +25,8 @@ void task2(void *arg)
     ret = sys_mkdir("/mem/test");
     ret = sys_read(fdz, addr, 20);
     ret = sys_write(fdn, addr, 20);
-    sys_close(fdn);
-    sys_close(fdz);
+    close(fdn);
+    close(fdz);
     now = sys_gettimeofday(NULL);
     pid = sys_getpid();
     ppid = sys_getppid();
@@ -35,16 +35,16 @@ void task2(void *arg)
     while(1) {
         addr = (void *)sys_malloc(20);
 
-        fdm = sys_open("/mem/test/test", O_RDWR|O_CREAT|O_TRUNC);
+        fdm = open("/mem/test/test", O_RDWR|O_CREAT|O_TRUNC, 0);
         if (fdm < 0)
             while(1);;
         ret = sys_write(fdm, "hello", 5);
-        sys_close(fdm);
+        close(fdm);
 
-        fdm = sys_open("/mem/test/test", O_RDWR);
+        fdm = open("/mem/test/test", O_RDWR, 0);
         ret = sys_read(fdm, addr, 20);
 
-        sys_close(fdm);
+        close(fdm);
         sys_unlink("/mem/test/test");
 
         sys_free(addr);
@@ -97,12 +97,12 @@ void init(void *arg)
     sys_free(temp);
 
     /* open/close test */
-    fd = sys_open("/dev/null", 0);
-    sys_close(fd);
+    fd = open("/dev/null", 0, 0);
+    close(fd);
     
     /* socket/close test */
     sd = sys_socket(AF_UNIX, SOCK_DGRAM, 0);
-    sys_close(sd);
+    close(sd);
 
 
     /* Thread create test */

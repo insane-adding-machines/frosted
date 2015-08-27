@@ -14,3 +14,7 @@ int _write (int file, char *ptr, int len)
     return __syscall__[SYS_WRITE](file, ptr, len);
 }
 
+int write (int file, char *ptr, int len)
+{
+    return __syscall__[SYS_WRITE](file, ptr, len);
+}
