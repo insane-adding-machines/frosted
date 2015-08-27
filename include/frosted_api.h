@@ -114,6 +114,7 @@ int sys_closedir(DIR *d);
 unsigned int sys_gettimeofday(unsigned int *ms);
 int sys_stat(const char *path, struct stat *st);
 int sys_unlink(const char *path);
+int sys_seek(int fd, int off, int whence);
 
 void *sys_malloc(uint32_t size);
 int sys_free(void *ptr);
