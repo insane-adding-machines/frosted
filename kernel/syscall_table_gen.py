@@ -60,13 +60,13 @@ code = open("syscall_table.c", "w")
 vector_h = open("syscall_vector.h", "w")
 vector_c = open("syscall_vector.c", "w")
 
-hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n\n")
+hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n")
 code.write("/* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n#include \"syscall_table.h\"\n")
 
 for n in range(len(syscalls)):
     name = syscalls[n][0]
     hdr.write("#define SYS_%s \t\t\t(%d)\n" % (name.upper(), n))
-hdr.write("#define _SYSCALLS_NR %d\n" % len(syscalls))
+hdr.write("#define _SYSCALLS_NR (%d) /* We have %d syscalls! */\n" % (len(syscalls), len(syscalls)))
 
 for n in range(len(syscalls)):
     name = syscalls[n][0]

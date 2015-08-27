@@ -1,8 +1,6 @@
 /* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */
 /* If you want to add syscalls, use syscall_table_gen.py  */
 
-#include "frosted.h"
-
 #define SYS_SETCLOCK 			(0)
 #define SYS_SLEEP 			(1)
 #define SYS_SUSPEND 			(2)
@@ -40,4 +38,4 @@
 #define SYS_SOCKET 			(34)
 #define SYS_KILL 			(35)
 #define SYS_EXIT 			(36)
-#define _SYSCALLS_NR 37
+#define _SYSCALLS_NR (37) /* We have 37 syscalls! */
