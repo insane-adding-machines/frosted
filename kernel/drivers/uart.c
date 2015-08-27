@@ -186,7 +186,8 @@ static int devuart_read(int fd, void *buf, unsigned int len)
 
     for(out = 0; out < len; out++) {
         /* read data */
-        cirbuf_readbyte(inbuf, ptr);
+        if (cirbuf_readbyte(inbuf, ptr) != 0)
+            break;
         /* TEMP -- echo char */
         if ((*ptr >= 0x20) && (*ptr <= 0x7E))
             devuart_write(0, ptr, 1);
