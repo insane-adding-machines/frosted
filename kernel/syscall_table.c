@@ -178,6 +178,11 @@ int sys_socket(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_SOCKET, arg1, arg2, arg3, 0,  0); 
 }
 
+/* Syscall: kill(2 arguments) */
+int sys_kill(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_KILL, arg1, arg2, 0, 0, 0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern int sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -214,6 +219,7 @@ extern int sys_mutex_unlock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_
 extern int sys_mutex_lock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_mutex_destroy_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_socket_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_kill_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -251,4 +257,5 @@ void syscalls_init(void) {
 	sys_register_handler(32, sys_mutex_lock_hdlr);
 	sys_register_handler(33, sys_mutex_destroy_hdlr);
 	sys_register_handler(34, sys_socket_hdlr);
+	sys_register_handler(35, sys_kill_hdlr);
 }

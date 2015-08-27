@@ -78,12 +78,12 @@ void task_chdir(struct fnode *f);
 int sem_wait(sem_t *s);
 int sem_post(sem_t *s);
 sem_t *sem_init(int val);
-void sem_destroy(sem_t *s);
+int sem_destroy(sem_t *s);
 
 int mutex_lock(mutex_t *s);
 int mutex_unlock(mutex_t *s);
-mutex_t *mutex_init(int val);
-void mutex_destroy(mutex_t *s);
+mutex_t *mutex_init();
+int mutex_destroy(mutex_t *s);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 

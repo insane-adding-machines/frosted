@@ -45,7 +45,8 @@ syscalls = [
     ["mutex_unlock", 1, "sys_mutex_unlock_hdlr"],
     ["mutex_lock", 1, "sys_mutex_lock_hdlr"],
     ["mutex_destroy", 1, "sys_mutex_destroy_hdlr"],
-    ["socket", 3, "sys_socket_hdlr"]
+    ["socket", 3, "sys_socket_hdlr"],
+    ["kill", 2, "sys_kill_hdlr"]
 ]
 
    #

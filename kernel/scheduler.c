@@ -413,7 +413,20 @@ void task_resume(int pid)
     }
 }
 
+void task_terminate(int pid)
+{
+    tasklist[pid].state = TASK_OVER;
+    tasklist[pid].timeslice = 0;
+}
 
+int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    if (arg1 > pid_max)
+        return -1;
+    /* For now, signal param is ignored. */
+    task_terminate(arg1);
+    return 0;
+}
 
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
