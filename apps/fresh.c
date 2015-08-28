@@ -20,13 +20,13 @@ static void ls(int ser, char *start)
     int i;
     char ch_size[8] = "";
 
-    fname_start = sys_malloc(MAX_FILE);
-    ep = sys_malloc(sizeof(struct dirent));
+    fname_start = malloc(MAX_FILE);
+    ep = malloc(sizeof(struct dirent));
     if (!ep || !fname_start)
         while(1);;
 
-    d = sys_opendir(start);
-    while(sys_readdir(d, ep) == 0) {
+    d = opendir(start);
+    while(readdir(d, ep) == 0) {
         fname = fname_start;
         fname[0] = '\0';
         strncat(fname, start, MAX_FILE);
@@ -36,7 +36,7 @@ static void ls(int ser, char *start)
         while (fname[0] == '/' && fname[1] == '/')
             fname++;
 
-        sys_stat(fname, &st);
+        stat(fname, &st);
         write(ser, fname, strlen(fname));
         write(ser, "\t", 1);
         if (S_ISDIR(st.st_mode))
@@ -51,9 +51,9 @@ static void ls(int ser, char *start)
         write(ser, ch_size, strlen(ch_size));
         write(ser, "\n", 1);
     }
-    sys_closedir(d);
-    sys_free(ep);
-    sys_free(fname_start);
+    closedir(d);
+    free(ep);
+    free(fname_start);
 }
 
 static char lastcmd[100] = "";
@@ -67,9 +67,9 @@ void fresh(void *arg) {
     } while (ser < 0);
 
     write(ser, str_welcome, strlen(str_welcome));
-    sys_mkdir("/home");
-    sys_mkdir("/home/test");
-    sys_chdir("/home/test");
+    mkdir("/home");
+    mkdir("/home/test");
+    chdir("/home/test");
 
     while (2>1)
     {
@@ -82,18 +82,18 @@ void fresh(void *arg) {
         pfd.events = POLLIN;
         len = 0;
         write(ser, str_prompt, strlen(str_prompt));
-        sys_getcwd(pwd, MAX_FILE);
+        getcwd(pwd, MAX_FILE);
         write(ser, pwd, strlen(pwd));
         write(ser, "$ ", 2);
 
         /* Blocking calls: WIP
-        if (sys_poll(&pfd, 1, 1000) <= 0)
+        if (poll(&pfd, 1, 1000) <= 0)
             continue;
         */
         while(len < 100)
         {
             const char del = 0x08;
-            int ret = sys_read(ser, input + len, 1);
+            int ret = read(ser, input + len, 1);
 
             if (ret != 1)
                 continue;
@@ -109,7 +109,7 @@ void fresh(void *arg) {
             /* arrows */
             if (input[len-1] == 0x1b) {
                 char dir;
-                while (sys_read(ser, &dir, 1) > 0) ;;
+                while (read(ser, &dir, 1) > 0) ;;
                 write(ser, &del, 1);
                 write(ser, " ", 1);
                 write(ser, &del, 1);
@@ -172,21 +172,21 @@ void fresh(void *arg) {
         } else if (!strncmp(input, "cd", 2)) {
             if (strlen(input) > 2) {
                 char *arg = input + 3;
-                if (sys_chdir(arg) < 0) {
+                if (chdir(arg) < 0) {
                     write(out, str_invaliddir, strlen(str_invaliddir));
                 }
             }
         } else if (!strncmp(input, "rm", 2)) {
             if (strlen(input) > 2) {
                 char *arg = input + 3;
-                if (sys_unlink(arg) < 0) {
+                if (unlink(arg) < 0) {
                     write(out, str_invalidfile, strlen(str_invalidfile));
                 }
             }
         } else if (!strncmp(input, "mkdir", 5)) {
             if (strlen(input) > 5) {
                 char *arg = input + 6;
-                if (sys_mkdir(arg) < 0) {
+                if (mkdir(arg) < 0) {
                     write(out, str_invaliddir, strlen(str_invaliddir));
                 }
             }
@@ -217,7 +217,7 @@ void fresh(void *arg) {
                     int r;
                     char buf[10];
                     do {
-                        r = sys_read(fd, buf, 10);
+                        r = read(fd, buf, 10);
                         if (r > 0) {
                             write(out, buf, r);
                         }

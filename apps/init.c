@@ -5,6 +5,8 @@
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
+ int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xF0; 
+
 void task2(void *arg)
 {
     volatile int i = (int)arg;
@@ -14,40 +16,39 @@ void task2(void *arg)
     int fdz = open("/dev/zero", O_WRONLY, 0);
     int fdm;
     int ser;
-    volatile int test_retval = sys_test(0x10,0x20,0x30,0x40,0x50);
     volatile uint32_t now; 
     volatile int ret;
     ser = open("/dev/ttyS0", O_RDWR, 0);
-    sys_write(ser, GREETING, strlen(GREETING));
+    write(ser, GREETING, strlen(GREETING));
     close(ser);
 
-    addr = (void *)sys_malloc(20);
-    ret = sys_mkdir("/mem/test");
-    ret = sys_read(fdz, addr, 20);
-    ret = sys_write(fdn, addr, 20);
+    addr = (void *)malloc(20);
+    ret = mkdir("/mem/test");
+    ret = read(fdz, addr, 20);
+    ret = write(fdn, addr, 20);
     close(fdn);
     close(fdz);
-    now = sys_gettimeofday(NULL);
-    pid = sys_getpid();
-    ppid = sys_getppid();
-    sys_free(addr);
+    now = gettimeofday(NULL);
+    pid = getpid();
+    ppid = getppid();
+    free(addr);
 
     while(1) {
-        addr = (void *)sys_malloc(20);
+        addr = (void *)malloc(20);
 
         fdm = open("/mem/test/test", O_RDWR|O_CREAT|O_TRUNC, 0);
         if (fdm < 0)
             while(1);;
-        ret = sys_write(fdm, "hello", 5);
+        ret = write(fdm, "hello", 5);
         close(fdm);
 
         fdm = open("/mem/test/test", O_RDWR, 0);
-        ret = sys_read(fdm, addr, 20);
+        ret = read(fdm, addr, 20);
 
         close(fdm);
-        sys_unlink("/mem/test/test");
+        unlink("/mem/test/test");
 
-        sys_free(addr);
+        free(addr);
     }
     (void)i;
 }
@@ -56,8 +57,8 @@ void idling(void *arg)
 {
     int pid;
     while(1) {
-        pid = sys_getpid();
-        sys_sleep(100);
+        pid = getpid();
+        sleep(100);
     }
 }
 
@@ -65,11 +66,11 @@ static sem_t *sem = NULL;
 static mutex_t *mut = NULL;
 void prod(void *arg)
 {
-    sem = sys_sem_init(0);
-    mut = sys_mutex_init();
+    sem = sem_init(0);
+    mut = mutex_init();
     while(1) {
-        sys_sem_post(sem);
-        sys_sleep(1000);
+        sem_post(sem);
+        sleep(1000);
     }
 }
 
@@ -77,9 +78,9 @@ void cons(void *arg)
 {
     volatile int counter = 0;
     while(!sem)
-        sys_sleep(200);
+        sleep(200);
     while(1) {
-        sys_sem_wait(sem);
+        sem_wait(sem);
         mutex_lock(mut);
         counter++;
         mutex_unlock(mut);
@@ -93,31 +94,92 @@ void init(void *arg)
     int fd, sd;
     uint32_t *temp;
     /* c-lib and init test */
-    temp = (uint32_t *)sys_malloc(32);
-    sys_free(temp);
+    temp = (uint32_t *)malloc(32);
+    free(temp);
 
     /* open/close test */
     fd = open("/dev/null", 0, 0);
     close(fd);
     
     /* socket/close test */
-    sd = sys_socket(AF_UNIX, SOCK_DGRAM, 0);
+    sd = socket(AF_UNIX, SOCK_DGRAM, 0);
     close(sd);
 
 
     /* Thread create test */
-    if (sys_thread_create(idling, (void *)42, 1) < 0)
+    if (thread_create(idling, (void *)42, 1) < 0)
         IDLE();
-    if (sys_thread_create(fresh, (void *)42, 1) < 0)
+    if (thread_create(fresh, (void *)42, 1) < 0)
         IDLE();
-    if (sys_thread_create(prod, (void *)42, 1) < 0)
+    if (thread_create(prod, (void *)42, 1) < 0)
         IDLE();
-    if (sys_thread_create(cons, (void *)42, 1) < 0)
+    if (thread_create(cons, (void *)42, 1) < 0)
         IDLE();
 
     while(1) {
-        sys_sleep(500);
-        pid = sys_getpid();
+        sleep(500);
+        pid = getpid();
     }
     (void)i;
+}
+
+//*****************************************************************************
+//
+// The entry point for the application.
+//
+//*****************************************************************************
+extern int main(void);
+extern unsigned int __StackTop; /* provided by linker script */
+ 
+ 
+//*****************************************************************************
+//
+// The following are constructs created by the linker, indicating where the
+// the "data" and "bss" segments reside in memory.  The initializers for the
+// "data" segment resides immediately following the "text" segment.
+//
+//*****************************************************************************
+extern unsigned long apps_etext;
+extern unsigned long apps_data;
+extern unsigned long apps_edata;
+extern unsigned long apps_bss;
+extern unsigned long apps_ebss;
+ 
+//*****************************************************************************
+//
+// This is the code that gets called when the processor first starts execution
+// following a reset event.  Only the absolutely necessary set is performed,
+// after which the application supplied entry() routine is called. 
+//
+//*****************************************************************************
+void INIT _init(void)
+{
+    unsigned long *pulSrc, *pulDest;
+    unsigned char * bssDest;
+ 
+    //
+    // Copy the data segment initializers from flash to SRAM.
+    //
+    pulSrc = &apps_etext;
+    pulDest = &apps_data; 
+
+    while(pulDest < &apps_edata)
+    {
+        *pulDest++ = *pulSrc++;
+    }
+
+    //
+    // Zero-init the BSS section
+    //
+    bssDest = (unsigned char *)&apps_bss;
+
+    while(bssDest < (unsigned char *)&apps_ebss)
+    {
+        *bssDest++ = 0u;
+    }
+ 
+    //
+    // Call the application's entry point.
+    //
+    init(NULL);
 }

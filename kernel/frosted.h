@@ -7,6 +7,7 @@
 #include "frosted_api.h"
 #include "malloc.h"
 #include "interrupts.h"
+#include "string.h"
 
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1
@@ -34,6 +35,8 @@ void frosted_init(void);
 void klog_set_write(int (*wr)(int, const void *, unsigned int));
 
 /* klog */
+/* TODO: implement snprintf! */
+#if 0
 #define klog(priority, ...)   {                  \
     char *str = (char *)f_malloc(256);           \
     if (str) {                                   \
@@ -44,6 +47,9 @@ void klog_set_write(int (*wr)(int, const void *, unsigned int));
         f_free(str);                             \
     }                                            \
 }
+#else
+#define klog(...) do{}while(0)
+#endif
 
 
 

@@ -7,7 +7,7 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (*__syscall__[])(char * file, int flags, int mode);
+extern int (**__syscall__)(char * file, int flags, int mode);
 
 int open(char *file, int flags, int mode)
 {

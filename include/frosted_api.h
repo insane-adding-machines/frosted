@@ -2,6 +2,8 @@
 #define INC_FROSTED_API
 #include <stdint.h>
 
+#define INIT __attribute__((section(".init")))
+
 /* Constants */
 
 /* open */
@@ -27,6 +29,7 @@
 #define LOG_NOTICE  5   /* normal but significant condition */
 #define LOG_INFO    6   /* informational */
 #define LOG_DEBUG   7   /* debug-level messages */
+
 
 /* opendir - readdir */
 typedef void DIR;
@@ -103,14 +106,14 @@ int sys_setclock(unsigned int ms);
 int sys_sleep(unsigned int ms);
 int sys_suspend(unsigned int ms);
 int sys_thread_create(void (*init)(void *), void *arg, unsigned int prio);
-int sys_mkdir(char *path);
 int sys_getpid(void);
 int sys_getppid(void);
 int sys_open(const char *path, int flags, int mode);
-int sys_close(int fd);
-DIR *sys_opendir(const char *path);
 int sys_read(int fd, void *buf, int count);
 int sys_write(int fd, const void *buf, int count);
+int sys_close(int fd);
+DIR *sys_opendir(const char *path);
+int sys_mkdir(char *path);
 int sys_readdir(DIR *d, struct dirent *ep);
 int sys_closedir(DIR *d);
 unsigned int sys_gettimeofday(unsigned int *ms);

@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include "malloc.h"
 #include "frosted.h"
@@ -240,7 +239,7 @@ void * f_malloc(size_t size)
         /* Link this entry to the previous last entry */
         if (last)
         {
-            assert(last->next == NULL);
+            // assert(last->next == NULL);
             last->next = blk;
             blk->prev = last;
         }

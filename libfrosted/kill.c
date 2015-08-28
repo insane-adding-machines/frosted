@@ -7,7 +7,7 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (*__syscall__[])(int pid, int  sig);
+extern int (**__syscall__)(int pid, int  sig);
 
 int kill(int pid, int sig)
 {

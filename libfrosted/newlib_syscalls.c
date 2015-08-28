@@ -115,3 +115,8 @@ void _free(void * ptr)
     free(ptr);
 }
 
+int _gettimeofday(struct timeval *tv, struct timezone *tz)
+{
+    return -1;
+}
+

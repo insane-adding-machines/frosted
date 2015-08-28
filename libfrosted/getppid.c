@@ -1,5 +1,5 @@
 /*
- * Frosted version of getpid.
+ * Frosted version of getppid.
  */
 
 #include "frosted_api.h"
@@ -9,7 +9,7 @@
 extern int errno;
 extern int (**__syscall__)(void);
 
-int getpid(void)
+int getppid(void)
 {
-    return __syscall__[SYS_GETPID]();
+    return __syscall__[SYS_GETPPID]();
 }

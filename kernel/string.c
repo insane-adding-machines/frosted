@@ -105,3 +105,50 @@ int strncmp(const char *s1, const char *s2, size_t n)
     }
 	return diff;
 }
+
+/*
+ * memcpy implementation
+ *
+ */
+
+void *memcpy(void *dst, const void *src, size_t n)
+{
+    int i;
+    const char *s = (const char *)src;
+    char *d = (char *)dst;
+    for (i = 0; i < n; i++) {
+        d[i] = s[i];
+    }
+    return dst;
+}
+
+/* 
+ * strncpy implementation
+ *
+ */
+char *strncpy(char *dst, const char *src, size_t n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        dst[i] = src[i];
+        if (src[i] == '\0')
+            break;
+    }
+    return dst;
+}
+
+/* 
+ * strcpy implementation
+ *
+ */
+char *strcpy(char *dst, const char *src)
+{
+    int i;
+    while(1 < 2) {
+        dst[i] = src[i];
+        if (src[i] == '\0')
+            break;
+    }
+    return dst;
+}
+

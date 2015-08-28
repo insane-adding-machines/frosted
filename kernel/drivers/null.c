@@ -28,7 +28,7 @@ static int devnull_poll(int fd, uint16_t events, uint16_t *revents)
     return 1;
 }
 
-static int devnull_open(char *path, int flags)
+static int devnull_open(const char *path, int flags)
 {
     struct fnode *f = fno_search(path);
     if (!f)

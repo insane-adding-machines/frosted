@@ -6,7 +6,7 @@
 #include "frosted_api.h"
 #include "syscall_table.h"
 
-extern int (*__syscall__[])(int rc);
+extern int (**__syscall__)(int rc);
 
 void _exit(int rc)
 {

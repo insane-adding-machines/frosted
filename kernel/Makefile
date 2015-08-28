@@ -25,8 +25,11 @@ CFLAGS+=-I. -I../include -I../arch/$(ARCH)/inc -I../port/$(FAMILY)/inc
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
+CFLAGS+=-nostdlib
 #Debugging
 CFLAGS+=-ggdb
+#CFLAGS+=-Os
+
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 OBJS-y+=	svc.o			\

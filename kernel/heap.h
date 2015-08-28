@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -37,7 +36,6 @@ static inline int heap_peek(struct heap_##type *heap, type *first) \
 	type *last;				\
 	int i, child;			\
 	if(heap->n == 0) {		\
-		errno = ENOENT;		\
 		return -1; 			\
 	}						\
 	memcpy(first, &heap->top[1], sizeof(type));		\

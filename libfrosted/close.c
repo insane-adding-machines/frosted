@@ -7,7 +7,7 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (*__syscall__[])(int fd);
+extern int (**__syscall__)(int fd);
 
 int close(int fd)
 {

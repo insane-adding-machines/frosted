@@ -3,6 +3,9 @@
 
 struct stat;
 struct tms;
+struct timeval;
+struct timezone;
+typedef void DIR;
  
 void _exit();
 int fork(void);
@@ -20,5 +23,9 @@ int unlink(char *name);
 int wait(int *status);
 int write(int file, const void *ptr, int len);
 void free(void * ptr);
-void * malloc(int size);
-
+void *malloc(int size);
+DIR *opendir(const char *path);
+int mkdir(char *path);
+int readdir(DIR *d, struct dirent *ep);
+int closedir(DIR *d);
+unsigned int gettimeofday(unsigned int *ms);

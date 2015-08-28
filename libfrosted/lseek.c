@@ -7,7 +7,7 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (*__syscall__[])(int fd, int offset, int  whence);
+extern int (**__syscall__)(int fd, int offset, int  whence);
 
 int lseek (int fd, int offset, int whence)
 {

@@ -7,7 +7,7 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern void (*__syscall__[])(void * ptr);
+extern void (**__syscall__)(void * ptr);
 
 void free(void * ptr)
 {

@@ -48,6 +48,20 @@ OBJS-y+=			\
 		write.o		\
 		malloc.o	\
 		free.o		\
+		mkdir.o		\
+		chdir.o		\
+		getppid.o	\
+		sleep.o		\
+		getcwd.o	\
+		opendir.o		\
+		readdir.o		\
+		closedir.o		\
+		sem_init.o		\
+		semaphore.o			\
+		mutex_init.o		\
+		mutex.o				\
+		socket.o			\
+		thread_create.o		\
 		newlib_syscalls.o
 
 CFLAGS+=$(CFLAGS-y)
