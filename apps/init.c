@@ -1,11 +1,12 @@
 #include "frosted_api.h"
 #include "fresh.h"
+#include "syscalls.h"
 #include <string.h>
 #include <stdio.h>
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
- int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xF0; 
+int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xF0; 
 
 void task2(void *arg)
 {

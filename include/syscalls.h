@@ -1,12 +1,16 @@
 /* Frosted system call API */
 #include <stdio.h>
+#ifndef _INCLUDE_SYSCALLS
+#define _INCLUDE_SYSCALLS
 
 struct stat;
 struct tms;
 struct timeval;
 struct timezone;
 typedef void DIR;
- 
+
+
+
 void _exit();
 int fork(void);
 int fstat(int fildes, struct stat *st);
@@ -29,3 +33,4 @@ int mkdir(char *path);
 int readdir(DIR *d, struct dirent *ep);
 int closedir(DIR *d);
 unsigned int gettimeofday(unsigned int *ms);
+#endif
