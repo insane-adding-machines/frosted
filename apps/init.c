@@ -81,9 +81,9 @@ void cons(void *arg)
         sleep(200);
     while(1) {
         sem_wait(sem);
-        mutex_lock(mut);
+        //mutex_lock(mut);
         counter++;
-        mutex_unlock(mut);
+        //mutex_unlock(mut);
     }
 }
 
