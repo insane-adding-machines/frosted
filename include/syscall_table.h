@@ -45,6 +45,8 @@
 #define SYS_SETSOCKOPT 			(41)
 #define SYS_GETSOCKOPT 			(42)
 #define SYS_SHUTDOWN 			(43)
-#define SYS_KILL 			(44)
-#define SYS_EXIT 			(45)
-#define _SYSCALLS_NR (46) /* We have 46 syscalls! */
+#define SYS_DUP 			(44)
+#define SYS_DUP2 			(45)
+#define SYS_KILL 			(46)
+#define SYS_EXIT 			(47)
+#define _SYSCALLS_NR (48) /* We have 48 syscalls! */

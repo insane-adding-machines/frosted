@@ -40,6 +40,8 @@ OBJS-y+=			\
 		kill.o		\
 		link.o		\
 		lseek.o		\
+		dup.o		\
+		dup2.o		\
 		open.o		\
 		read.o		\
 		stat.o		\

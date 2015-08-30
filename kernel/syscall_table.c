@@ -223,6 +223,16 @@ int sys_shutdown(uint32_t arg1, uint32_t arg2){
     syscall(SYS_SHUTDOWN, arg1, arg2, 0, 0, 0); 
 }
 
+/* Syscall: dup(1 arguments) */
+int sys_dup(uint32_t arg1){
+    syscall(SYS_DUP, arg1, 0, 0, 0, 0); 
+}
+
+/* Syscall: dup2(2 arguments) */
+int sys_dup2(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_DUP2, arg1, arg2, 0, 0, 0); 
+}
+
 /* Syscall: kill(2 arguments) */
 int sys_kill(uint32_t arg1, uint32_t arg2){
     syscall(SYS_KILL, arg1, arg2, 0, 0, 0); 
@@ -278,6 +288,8 @@ extern int sys_recvfrom_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_setsockopt_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_getsockopt_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_shutdown_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_dup_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_dup2_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_kill_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_exit_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
@@ -326,6 +338,8 @@ void syscalls_init(void) {
 	sys_register_handler(41, sys_setsockopt_hdlr);
 	sys_register_handler(42, sys_getsockopt_hdlr);
 	sys_register_handler(43, sys_shutdown_hdlr);
-	sys_register_handler(44, sys_kill_hdlr);
-	sys_register_handler(45, sys_exit_hdlr);
+	sys_register_handler(44, sys_dup_hdlr);
+	sys_register_handler(45, sys_dup2_hdlr);
+	sys_register_handler(46, sys_kill_hdlr);
+	sys_register_handler(47, sys_exit_hdlr);
 }

@@ -44,9 +44,11 @@ extern int sys_recvfrom( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_setsockopt( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_getsockopt( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_shutdown( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_dup( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_dup2( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_kill( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_exit( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
-int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[46])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
+int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[48])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
 	sys_setclock,
 	sys_sleep,
 	sys_suspend,
@@ -91,6 +93,8 @@ int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[46])
 	sys_setsockopt,
 	sys_getsockopt,
 	sys_shutdown,
+	sys_dup,
+	sys_dup2,
 	sys_kill,
 	sys_exit
 };

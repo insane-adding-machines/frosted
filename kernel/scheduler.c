@@ -140,6 +140,34 @@ int task_filedesc_del(int fd)
     t->filedesc[fd] = NULL;
 }
 
+int sys_dup_hdlr(int fd)
+{
+    volatile struct task *t = _cur_task;
+    struct fnode *f = task_filedesc_get(fd);
+    int newfd = -1;
+    if (!f)
+        return -1;
+    return task_filedesc_add(f);
+}
+
+int sys_dup2_hdlr(int fd, int newfd)
+{
+    volatile struct task *t = _cur_task;
+    struct fnode *f = task_filedesc_get(fd);
+    if (newfd < 0)
+        return -1;
+    if (newfd == fd)
+        return -1;
+    if (!f)
+        return -1;
+    if (newfd >= t->n_files)
+        return -1;
+    if (t->filedesc[newfd] != NULL)
+        return -1;
+    t->filedesc[newfd] = f;
+    return newfd;
+}
+
 struct fnode *task_getcwd(void)
 {
     return _cur_task->cwd;

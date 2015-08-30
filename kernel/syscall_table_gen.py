@@ -55,6 +55,8 @@ syscalls = [
     ["setsockopt", 5, "sys_setsockopt_hdlr"],
     ["getsockopt", 5, "sys_getsockopt_hdlr"],
     ["shutdown", 2, "sys_shutdown_hdlr"],
+    ["dup", 1, "sys_dup_hdlr"],
+    ["dup2", 2, "sys_dup2_hdlr"],
     ["kill", 2, "sys_kill_hdlr"],
     ["exit", 1, "sys_exit_hdlr"]
 ]
