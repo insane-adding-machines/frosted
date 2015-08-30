@@ -36,6 +36,15 @@
 #define SYS_MUTEX_LOCK 			(32)
 #define SYS_MUTEX_DESTROY 			(33)
 #define SYS_SOCKET 			(34)
-#define SYS_KILL 			(35)
-#define SYS_EXIT 			(36)
-#define _SYSCALLS_NR (37) /* We have 37 syscalls! */
+#define SYS_BIND 			(35)
+#define SYS_ACCEPT 			(36)
+#define SYS_CONNECT 			(37)
+#define SYS_LISTEN 			(38)
+#define SYS_SENDTO 			(39)
+#define SYS_RECVFROM 			(40)
+#define SYS_SETSOCKOPT 			(41)
+#define SYS_GETSOCKOPT 			(42)
+#define SYS_SHUTDOWN 			(43)
+#define SYS_KILL 			(44)
+#define SYS_EXIT 			(45)
+#define _SYSCALLS_NR (46) /* We have 46 syscalls! */

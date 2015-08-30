@@ -45,25 +45,26 @@ int sock_socket(int domain, int type, int protocol)
     fd = task_filedesc_add(&FNO_SOCKUN_STUB);
     return fd;
 }
-int sock_recvfrom(int fd, void *buf, unsigned int len, void *addr, int addrlen)
-{
-    return -1;
-}
-int sock_sendto(int fd, const void *buf, unsigned int len, void *addr, int addrlen)
-{
-    return -1;
-}
-int sock_bind(int fd, void *addr, int addrlen)
+int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct sockaddr *addr, unsigned int *addrlen)
 {
     return -1;
 }
 
-int sock_accept(int fd, void *addr, int *addrlen)
+int sock_sendto(int fd, const void *buf, unsigned int len, int flags, struct sockaddr *addr, unsigned int addrlen)
+{
+    return -1;
+}
+int sock_bind(int fd, struct sockaddr *addr, unsigned int addrlen)
 {
     return -1;
 }
 
-int sock_connect(int fd, const void *addr, int addrlen)
+int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
+{
+    return -1;
+}
+
+int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
 {
     return -1;
 }

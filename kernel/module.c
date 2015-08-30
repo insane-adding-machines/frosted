@@ -76,3 +76,85 @@ int sys_socket_hdlr(int family, int type, int proto)
         return -1;
     return m->ops.socket(family, type, proto);
 }
+
+int sys_bind_hdlr(int sd, struct sockaddr_env *se)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.bind) {
+        return fno->owner->ops.bind(sd, se->se_addr, se->se_len);
+    }
+    return -1;
+}
+
+int sys_listen_hdlr(int sd, unsigned int backlog)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.listen) {
+        return fno->owner->ops.listen(sd, backlog);
+    }
+    return -1;
+}
+
+int sys_connect_hdlr(int sd, struct sockaddr_env *se)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.connect) {
+        return fno->owner->ops.connect(sd, se->se_addr, se->se_len);
+    }
+    return -1;
+}
+
+int sys_accept_hdlr(int sd, struct sockaddr_env *se)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.accept) {
+        return fno->owner->ops.accept(sd, se->se_addr, &(se->se_len));
+    }
+    return -1;
+}
+
+
+int sys_recvfrom_hdlr(int sd, void *buf, int len, int flags, struct sockaddr_env *se)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.recvfrom) {
+        return fno->owner->ops.recvfrom(sd, buf, len, flags, se->se_addr, &(se->se_len));
+    }
+    return -1;
+}
+
+int sys_sendto_hdlr(int sd, const void *buf, int len, int flags, struct sockaddr_env *se )
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.sendto) {
+        return fno->owner->ops.sendto(sd, buf, len, flags, se->se_addr, se->se_len);
+    }
+    return -1;
+}
+
+int sys_shutdown_hdlr(int sd, int how)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.shutdown) {
+        return fno->owner->ops.shutdown(sd, how);
+    }
+    return -1;
+}
+
+int sys_setsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned int optlen)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.setsockopt) {
+        return fno->owner->ops.setsockopt(sd, level, optname, optval, optlen);
+    }
+    return -1;
+}
+
+int sys_getsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned int *optlen)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.getsockopt) {
+        return fno->owner->ops.getsockopt(sd, level, optname, optval, optlen);
+    }
+    return -1;
+}

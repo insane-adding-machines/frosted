@@ -46,6 +46,15 @@ syscalls = [
     ["mutex_lock", 1, "sys_mutex_lock_hdlr"],
     ["mutex_destroy", 1, "sys_mutex_destroy_hdlr"],
     ["socket", 3, "sys_socket_hdlr"],
+    ["bind", 2, "sys_bind_hdlr"],
+    ["accept", 2, "sys_accept_hdlr"],
+    ["connect", 2, "sys_connect_hdlr"],
+    ["listen", 2, "sys_listen_hdlr"],
+    ["sendto", 5, "sys_sendto_hdlr"],
+    ["recvfrom", 5, "sys_recvfrom_hdlr"],
+    ["setsockopt", 5, "sys_setsockopt_hdlr"],
+    ["getsockopt", 5, "sys_getsockopt_hdlr"],
+    ["shutdown", 2, "sys_shutdown_hdlr"],
     ["kill", 2, "sys_kill_hdlr"],
     ["exit", 1, "sys_exit_hdlr"]
 ]

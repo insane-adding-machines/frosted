@@ -168,13 +168,15 @@ struct module {
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);
-        int (*recvfrom)(int fd, void *buf, unsigned int len, void *addr, int addrlen);
-        int (*sendto)(int fd, const void *buf, unsigned int len, void *addr, int addrlen);
-        int (*bind)(int fd, void *addr, int addrlen);
-        int (*accept)(int fd, void *addr, int *addrlen);
-        int (*connect)(int fd, const void *addr, int addrlen);
+        int (*recvfrom)(int fd, void *buf, unsigned int len, int flags, struct sockaddr *addr, unsigned int *addrlen);
+        int (*sendto)(int fd, const void *buf, unsigned int len, int flags, struct sockaddr *addr, unsigned int addrlen);
+        int (*bind)(int fd, struct sockaddr *addr, unsigned int addrlen);
+        int (*accept)(int fd, struct sockaddr *addr, unsigned int *addrlen);
+        int (*connect)(int fd, struct sockaddr *addr, unsigned int addrlen);
         int (*listen)(int fd, int backlog);
         int (*shutdown)(int fd, uint16_t how);
+        int (*setsockopt)(int sd, int level, int optname, void *optval, unsigned int optlen);
+        int (*getsockopt)(int sd, int level, int optname, void *optval, unsigned int *optlen);
     } ops;
     struct module *next;
 };

@@ -96,4 +96,9 @@ struct __attribute__((packed)) sockaddr_un {
     uint8_t  sun_path[MAX_FILE - 2];
 };
 
+struct sockaddr_env {
+    struct sockaddr *se_addr;
+    unsigned int se_len;
+};
+
 #endif

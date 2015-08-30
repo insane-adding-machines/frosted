@@ -178,6 +178,51 @@ int sys_socket(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_SOCKET, arg1, arg2, arg3, 0,  0); 
 }
 
+/* Syscall: bind(2 arguments) */
+int sys_bind(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_BIND, arg1, arg2, 0, 0, 0); 
+}
+
+/* Syscall: accept(2 arguments) */
+int sys_accept(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_ACCEPT, arg1, arg2, 0, 0, 0); 
+}
+
+/* Syscall: connect(2 arguments) */
+int sys_connect(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_CONNECT, arg1, arg2, 0, 0, 0); 
+}
+
+/* Syscall: listen(2 arguments) */
+int sys_listen(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_LISTEN, arg1, arg2, 0, 0, 0); 
+}
+
+/* Syscall: sendto(5 arguments) */
+int sys_sendto(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){
+    syscall(SYS_SENDTO, arg1, arg2, arg3, arg4, arg5); 
+}
+
+/* Syscall: recvfrom(5 arguments) */
+int sys_recvfrom(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){
+    syscall(SYS_RECVFROM, arg1, arg2, arg3, arg4, arg5); 
+}
+
+/* Syscall: setsockopt(5 arguments) */
+int sys_setsockopt(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){
+    syscall(SYS_SETSOCKOPT, arg1, arg2, arg3, arg4, arg5); 
+}
+
+/* Syscall: getsockopt(5 arguments) */
+int sys_getsockopt(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){
+    syscall(SYS_GETSOCKOPT, arg1, arg2, arg3, arg4, arg5); 
+}
+
+/* Syscall: shutdown(2 arguments) */
+int sys_shutdown(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_SHUTDOWN, arg1, arg2, 0, 0, 0); 
+}
+
 /* Syscall: kill(2 arguments) */
 int sys_kill(uint32_t arg1, uint32_t arg2){
     syscall(SYS_KILL, arg1, arg2, 0, 0, 0); 
@@ -224,6 +269,15 @@ extern int sys_mutex_unlock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_
 extern int sys_mutex_lock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_mutex_destroy_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_socket_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_bind_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_accept_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_connect_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_listen_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_sendto_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_recvfrom_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_setsockopt_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_getsockopt_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_shutdown_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_kill_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_exit_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
@@ -263,6 +317,15 @@ void syscalls_init(void) {
 	sys_register_handler(32, sys_mutex_lock_hdlr);
 	sys_register_handler(33, sys_mutex_destroy_hdlr);
 	sys_register_handler(34, sys_socket_hdlr);
-	sys_register_handler(35, sys_kill_hdlr);
-	sys_register_handler(36, sys_exit_hdlr);
+	sys_register_handler(35, sys_bind_hdlr);
+	sys_register_handler(36, sys_accept_hdlr);
+	sys_register_handler(37, sys_connect_hdlr);
+	sys_register_handler(38, sys_listen_hdlr);
+	sys_register_handler(39, sys_sendto_hdlr);
+	sys_register_handler(40, sys_recvfrom_hdlr);
+	sys_register_handler(41, sys_setsockopt_hdlr);
+	sys_register_handler(42, sys_getsockopt_hdlr);
+	sys_register_handler(43, sys_shutdown_hdlr);
+	sys_register_handler(44, sys_kill_hdlr);
+	sys_register_handler(45, sys_exit_hdlr);
 }

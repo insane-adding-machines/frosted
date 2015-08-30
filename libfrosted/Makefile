@@ -61,6 +61,15 @@ OBJS-y+=			\
 		mutex_init.o		\
 		mutex.o				\
 		socket.o			\
+		accept.o	\
+		bind.o		\
+		connect.o	\
+		getsockopt.o		\
+		listen.o	\
+		recvfrom.o	\
+		sendto.o	\
+		setsockopt.o		\
+		shutdown.o			\
 		thread_create.o		\
 		newlib_syscalls.o
 

@@ -35,9 +35,18 @@ extern int sys_mutex_unlock( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_mutex_lock( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_mutex_destroy( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_socket( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_bind( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_accept( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_connect( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_listen( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_sendto( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_recvfrom( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_setsockopt( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_getsockopt( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_shutdown( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_kill( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_exit( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
-int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[37])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
+int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[46])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
 	sys_setclock,
 	sys_sleep,
 	sys_suspend,
@@ -73,6 +82,15 @@ int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[37])
 	sys_mutex_lock,
 	sys_mutex_destroy,
 	sys_socket,
+	sys_bind,
+	sys_accept,
+	sys_connect,
+	sys_listen,
+	sys_sendto,
+	sys_recvfrom,
+	sys_setsockopt,
+	sys_getsockopt,
+	sys_shutdown,
 	sys_kill,
 	sys_exit
 };
