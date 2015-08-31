@@ -3,11 +3,13 @@ include ../kconfig/.config
 ifeq ($(ARCH_SEEDPRO),y)
 	FAMILY=lpc17xx 
 	ARCH=seedpro
+	CFLAGS+=-DSEEDPRO
 endif
 
 ifeq ($(ARCH_QEMU),y)
 	FAMILY=stellaris
 	ARCH=stellaris_qemu
+	CFLAGS+=-DSTELLARIS
 endif
 
 CROSS_COMPILE?=arm-none-eabi-

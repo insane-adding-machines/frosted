@@ -6,7 +6,13 @@
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
+#ifdef STELLARIS
 int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xF0; 
+#endif
+
+#ifdef SEEDPRO
+int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCA40; 
+#endif
 
 void task2(void *arg)
 {
@@ -110,12 +116,17 @@ void init(void *arg)
     /* Thread create test */
     if (thread_create(idling, (void *)42, 1) < 0)
         IDLE();
+#ifdef FRESH
     if (thread_create(fresh, (void *)42, 1) < 0)
         IDLE();
+#endif
+
+#ifdef PRODCONS
     if (thread_create(prod, (void *)42, 1) < 0)
         IDLE();
     if (thread_create(cons, (void *)42, 1) < 0)
         IDLE();
+#endif
 
     while(1) {
         sleep(500);

@@ -1,12 +1,19 @@
 -include kconfig/.config
-#FAMILY?=lpc17xx
-#ARCH?=seedpro
-FAMILY?=stellaris
-ARCH?=stellaris_qemu
+ifeq ($(ARCH_SEEDPRO),y)
+	FAMILY=lpc17xx
+	ARCH=seedpro
+	CFLAGS+=-DSEEDPRO
+endif
+
+ifeq ($(ARCH_QEMU),y)
+	FAMILY=stellaris
+	ARCH=stellaris_qemu
+	CFLAGS+=-DSTELLARIS
+endif
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
-CFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
+CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
 CFLAGS+=-Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 

@@ -1,7 +1,7 @@
 include ../kconfig/.config
 
 ifeq ($(ARCH_SEEDPRO),y)
-	FAMILY=lpc17xx 
+	FAMILY=lpc17xx
 	ARCH=seedpro
 endif
 
