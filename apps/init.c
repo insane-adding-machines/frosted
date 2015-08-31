@@ -11,7 +11,7 @@ int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) =
 #endif
 
 #ifdef SEEDPRO
-int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCA40; 
+int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCC; 
 #endif
 
 void task2(void *arg)
