@@ -39,6 +39,9 @@ tags
 *.pyc
 
 #kconfig
-.config
-.config.old
+kconfig/.config
+kconfig/.config.old
+
+#generated files
+apps/apps.ld
 
