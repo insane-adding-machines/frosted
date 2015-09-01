@@ -1,5 +1,4 @@
 include ../kconfig/.config
-
 ifeq ($(ARCH_SEEDPRO),y)
 	FAMILY=lpc17xx
 	BOARD=seedpro
@@ -15,7 +14,7 @@ ifeq ($(ARCH_STM32F4DISCOVERY),y)
 	BOARD=stm32f4discovery
 	CFLAGS+=-DSTM32F407xx
 endif
--include $(BOARD)/layout.conf
+-include ../board/$(BOARD)/layout.conf
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)

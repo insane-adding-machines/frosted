@@ -1,7 +1,8 @@
  tar ext :3333
  monitor reset
  layout src
- file out/image.elf
+ file kernel.elf
+ add-symbol-file apps.elf 0x8020000
  mon reset
  mon halt
  stepi

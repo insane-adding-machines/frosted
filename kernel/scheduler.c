@@ -322,9 +322,9 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     nvic_frame = (struct nvic_stack_frame *) sp;
     memset(nvic_frame, 0, NVIC_FRAME_SIZE);
     nvic_frame->r0 = (uint32_t) arg;
-    nvic_frame->pc = (uint32_t) init | 1u;
-    nvic_frame->lr = (uint32_t) task_end | 1u;
-    nvic_frame->psr = 0x01000000ul;
+    nvic_frame->pc = (uint32_t) init;
+    nvic_frame->lr = (uint32_t) task_end;
+    nvic_frame->psr = 0x01000000u;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
     //extra_frame->lr = RUN_USER;
@@ -388,6 +388,7 @@ void __naked  PendSV_Handler(void)
 
     asm volatile ("mrs %0, PSR" : "=r" (pendsv_psr_mask));
     pendsv_psr_mask &= 0x0000000Fu;
+    pendsv_psr_mask |= 0x01000000u;
 
     /* save current SP to TCB */
     //_top_stack = msp_read();
@@ -415,8 +416,8 @@ void __naked  PendSV_Handler(void)
     }
 
     /* restore the ISR_NUMBER to IPSR */
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= pendsv_psr_mask;
+    //((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr = pendsv_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
@@ -499,6 +500,7 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
 
     asm volatile ("mrs %0, PSR" : "=r" (svc_psr_mask));
     svc_psr_mask &= 0x0000000Fu;
+    svc_psr_mask |= 0x01000000u;
 
     /* save current SP to TCB */
     _cur_task->sp = _top_stack;
@@ -540,8 +542,8 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
     }
 
     /* restore the ISR_NUMBER to IPSR */
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= svc_psr_mask;
+    //((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr = svc_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
