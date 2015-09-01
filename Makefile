@@ -1,20 +1,28 @@
 -include kconfig/.config
+
 ifeq ($(ARCH_SEEDPRO),y)
 	FAMILY=lpc17xx
-	ARCH=seedpro
+	BOARD=seedpro
 	CFLAGS+=-DSEEDPRO
 endif
 
 ifeq ($(ARCH_QEMU),y)
 	FAMILY=stellaris
-	ARCH=stellaris_qemu
+	BOARD=stellaris_qemu
 	CFLAGS+=-DSTELLARIS
 endif
+
+ifeq ($(ARCH_STM32F4DISCOVERY),y)
+	FAMILY=stm32f4
+	BOARD=stm32f4discovery
+	CFLAGS+=-DSTM32F4DISCOVERY -DSTM32F407xx
+endif
+
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
-CFLAGS+=-Iarch/$(ARCH)/inc -Iport/$(FAMILY)/inc
+CFLAGS+=-Iboard/$(BOARD)/inc -Ifamily/$(FAMILY)/inc
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 
@@ -25,11 +33,11 @@ CFLAGS+=-ggdb
 #CFLAGS+=-Os
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-OBJS-y:=  port/$(FAMILY)/$(FAMILY).o	
+OBJS-y:=  family/$(FAMILY)/$(FAMILY).o	
 APPS-y:= \
 		apps/init.o apps/fresh.o
 
-include port/$(FAMILY)/$(FAMILY).mk
+include family/$(FAMILY)/$(FAMILY).mk
 
 all: image.bin
 
@@ -55,7 +63,7 @@ apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y)
 
 
 kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y)
-	$(CC) -o $@   -Tport/$(FAMILY)/$(FAMILY).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+	$(CC) -o $@   -Tfamily/$(FAMILY)/$(FAMILY).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -s

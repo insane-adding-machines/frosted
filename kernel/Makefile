@@ -2,12 +2,18 @@ include ../kconfig/.config
 
 ifeq ($(ARCH_SEEDPRO),y)
 	FAMILY=lpc17xx
-	ARCH=seedpro
+	BOARD=seedpro
 endif
 
 ifeq ($(ARCH_QEMU),y)
 	FAMILY=stellaris
-	ARCH=stellaris_qemu
+	BOARD=stellaris_qemu
+endif
+
+ifeq ($(ARCH_STM32F4DISCOVERY),y)
+	FAMILY=stm32f4
+	BOARD=stm32f4discovery
+	CFLAGS+=-DSTM32F407xx
 endif
 
 CROSS_COMPILE?=arm-none-eabi-
@@ -18,10 +24,10 @@ LIBNAME:=libkernel.a
 PREFIX:=$(PWD)/build
 #Target flags
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
-CFLAGS+=-DCORE_M3 -DARCH_$(ARCH)
+CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD)
 CFLAGS+=-DKLOG_LEVEL=6
 #Include paths
-CFLAGS+=-I. -I../include -I../arch/$(ARCH)/inc -I../port/$(FAMILY)/inc
+CFLAGS+=-I. -I../include -I../board/$(BOARD)/inc -I../family/$(FAMILY)/inc
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
