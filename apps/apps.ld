@@ -6,7 +6,7 @@
 ENTRY(_init);
 MEMORY
 {
-    FLASH (rx) : ORIGIN = 0x00020000, LENGTH = 128K
+    FLASH (rx) : ORIGIN = 0x8020000, LENGTH = 128K
     SRAM (rwx) : ORIGIN = 0x2000F000, LENGTH = 4K
 }
 

@@ -14,6 +14,10 @@ int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) =
 int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCC; 
 #endif
 
+#ifdef STM32F4DISCOVERY
+int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0x80001a8;
+#endif
+
 void task2(void *arg)
 {
     volatile int i = (int)arg;

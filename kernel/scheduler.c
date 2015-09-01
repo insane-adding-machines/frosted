@@ -2,6 +2,8 @@
 #include "syscall_table.h"
 #include "string.h" /* flibc string.h */
 
+//#define USERSPACE
+
 /* Full kernel space separation */
 #define RUN_HANDLER (0xfffffff1u)
 #ifdef USERSPACE
@@ -53,6 +55,26 @@ struct __attribute__((packed)) nvic_stack_frame {
     uint32_t lr;
     uint32_t pc;
     uint32_t psr;
+#   if (__CORTEX_M == 4) /* CORTEX-M4 saves FPU frame as well */
+    uint32_t s0;
+    uint32_t s1;
+    uint32_t s2;
+    uint32_t s3;
+    uint32_t s4;
+    uint32_t s5;
+    uint32_t s6;
+    uint32_t s7;
+    uint32_t s8;
+    uint32_t s9;
+    uint32_t s10;
+    uint32_t s11;
+    uint32_t s12;
+    uint32_t s13;
+    uint32_t s14;
+    uint32_t s15;
+    uint32_t fpscr;
+    uint32_t dummy;
+#   endif
 };
 struct __attribute__((packed)) extra_stack_frame {
     uint32_t r4;
@@ -97,7 +119,6 @@ static struct task tasklist[MAX_TASKS] __attribute__((section(".task"), __used__
 static int pid_max = 0;
 
 /* Handling of file descriptors */
-
 int task_filedesc_add(struct fnode *f)
 {
     int i;
@@ -301,9 +322,9 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     nvic_frame = (struct nvic_stack_frame *) sp;
     memset(nvic_frame, 0, NVIC_FRAME_SIZE);
     nvic_frame->r0 = (uint32_t) arg;
-    nvic_frame->pc = (uint32_t) init;
-    nvic_frame->lr = (uint32_t) task_end;
-    nvic_frame->psr = 0x21000000ul;
+    nvic_frame->pc = (uint32_t) init | 1u;
+    nvic_frame->lr = (uint32_t) task_end | 1u;
+    nvic_frame->psr = 0x01000000ul;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
     //extra_frame->lr = RUN_USER;
@@ -353,9 +374,9 @@ static __naked void restore_task_context(void)
 
 
 /* C ABI cannot mess with the stack, we will */
+uint32_t pendsv_psr_mask = 0;
 void __naked  PendSV_Handler(void)
 {
-
     /* save current context on current stack */
     if (in_kernel()) {
         save_kernel_context();
@@ -365,13 +386,15 @@ void __naked  PendSV_Handler(void)
         asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
     }
 
+    asm volatile ("mrs %0, PSR" : "=r" (pendsv_psr_mask));
+    pendsv_psr_mask &= 0x0000000Fu;
+
     /* save current SP to TCB */
     //_top_stack = msp_read();
 
     _cur_task->sp = _top_stack;
     if (_cur_task->state == TASK_RUNNING)
         _cur_task->state = TASK_RUNNABLE;
-
 
     /* choose next task */
     task_switch();
@@ -390,6 +413,10 @@ void __naked  PendSV_Handler(void)
         restore_task_context();
         runnable = RUN_USER;
     }
+
+    /* restore the ISR_NUMBER to IPSR */
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= pendsv_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
@@ -463,12 +490,15 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
-
+static svc_psr_mask = 0;
 int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     /* save current context on current stack */
     save_task_context();
     asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
+
+    asm volatile ("mrs %0, PSR" : "=r" (svc_psr_mask));
+    svc_psr_mask &= 0x0000000Fu;
 
     /* save current SP to TCB */
     _cur_task->sp = _top_stack;
@@ -508,6 +538,10 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
         restore_task_context();
         runnable = RUN_USER;
     }
+
+    /* restore the ISR_NUMBER to IPSR */
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= svc_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
