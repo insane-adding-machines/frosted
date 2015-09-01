@@ -44,4 +44,4 @@ kconfig/.config.old
 
 #generated files
 apps/apps.ld
-
+.gdbinit
