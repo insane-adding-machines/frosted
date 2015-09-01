@@ -1,0 +1,16 @@
+menu "Applications"
+        config FRESH
+        bool "FreSH shell application"
+        default y
+
+        config TASK2
+        bool "Generic syscall test 'task2'"
+        default y
+
+        config PRODCONS
+        bool "IPC testing (prod/cons)"
+        default y
+        
+
+endmenu
+
