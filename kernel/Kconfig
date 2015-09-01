@@ -7,7 +7,10 @@ menu "Platform Selection"
     bool "TI Stellaris qemu"
 
     config ARCH_SEEDPRO
-    bool "SeedPRO Development board"
+    bool "Seeeduino Arch Pro board"
+
+    config ARCH_STM32F4DISCOVERY
+    bool "STM32F4 Discovery board"
 endchoice
 
 endmenu
