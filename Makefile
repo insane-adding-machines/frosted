@@ -66,7 +66,7 @@ kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y)
 	$(CC) -o $@   -Tfamily/$(FAMILY)/$(FAMILY).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
-	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -s
+	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
 
 qemu2: image.bin
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio
