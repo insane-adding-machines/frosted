@@ -18,11 +18,24 @@ ifeq ($(ARCH_STM32F4DISCOVERY),y)
 	CFLAGS+=-DSTM32F4DISCOVERY -DSTM32F407xx
 endif
 
+ifeq ($(FRESH),y)
+	CFLAGS+=-DCONFIG_FRESH=1
+endif
+
+ifeq ($(PRODCONS),y)
+	CFLAGS+=-DCONFIG_PRODCONS=1
+endif
+
+
+-include $(BOARD)/layout.conf
+FLASH_ORIGIN?=0x0
+FLASH_SIZE?=256K
+
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
-CFLAGS+=-Iboard/$(BOARD)/inc -Ifamily/$(FAMILY)/inc
+CFLAGS+=-Iboard/$(BOARD)/inc -Ifamily/$(FAMILY)/inc -Lfamily/$(FAMILY)/
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 
@@ -58,7 +71,11 @@ image.bin: kernel.elf apps.elf
 	cat apps.bin >> $@
 
 
-apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y)
+apps/apps.ld: apps/apps.ld.in
+	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | sed -e "s/__FLASH_SIZE/$(FLASH_SIZE)/g" >$@
+
+
+apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
 	$(CC) -o $@  $(APPS-y) -Tapps/apps.ld -lfrosted -lc -lfrosted -Wl,-Map,apps.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 
@@ -79,5 +96,6 @@ clean:
 	@make -C libfrosted clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf
+	@rm -f apps/apps.ld
 	@find . |grep "\.o" | xargs -x rm -f
 

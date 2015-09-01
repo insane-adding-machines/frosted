@@ -15,6 +15,10 @@ ifeq ($(ARCH_STM32F4DISCOVERY),y)
 	BOARD=stm32f4discovery
 	CFLAGS+=-DSTM32F407xx
 endif
+-include $(BOARD)/layout.conf
+FLASH_ORIGIN?=0x0
+FLASH_SIZE?=256K
+CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
 
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc

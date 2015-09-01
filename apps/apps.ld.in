@@ -1,12 +1,10 @@
-/******************************************************************************
- *
- * standalone.ld - Linker script for applications using startup.c 
- *
- *****************************************************************************/
 ENTRY(_init);
+
 MEMORY
 {
-    FLASH (rx) : ORIGIN = 0x8020000, LENGTH = 128K
+    FLASH (rx) : 
+        ORIGIN = __FLASH_ORIGIN + 0x20000, 
+        LENGTH = __FLASH_SIZE - 0x20000
     SRAM (rwx) : ORIGIN = 0x2000F000, LENGTH = 4K
 }
 

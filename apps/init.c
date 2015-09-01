@@ -120,12 +120,12 @@ void init(void *arg)
     /* Thread create test */
     if (thread_create(idling, (void *)42, 1) < 0)
         IDLE();
-#ifdef FRESH
+#ifdef CONFIG_FRESH
     if (thread_create(fresh, (void *)42, 1) < 0)
         IDLE();
 #endif
 
-#ifdef PRODCONS
+#ifdef CONFIG_PRODCONS
     if (thread_create(prod, (void *)42, 1) < 0)
         IDLE();
     if (thread_create(cons, (void *)42, 1) < 0)

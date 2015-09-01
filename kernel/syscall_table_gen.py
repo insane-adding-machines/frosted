@@ -68,7 +68,6 @@ syscalls = [
 #################################################################
 hdr = open("../include/syscall_table.h", "w")
 code = open("syscall_table.c", "w")
-vector_h = open("syscall_vector.h", "w")
 vector_c = open("syscall_vector.c", "w")
 
 hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n")
