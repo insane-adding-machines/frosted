@@ -8,8 +8,9 @@ static int _sched_active = 0;
 
 void frosted_scheduler_on(void)
 {
-    irq_set_priority(PendSV_IRQn, 0); // HIGHEST FOR NOW
-    irq_set_priority(SVCall_IRQn, 0); //OS_IRQ_MAX_PRIO);
+    irq_set_priority(PendSV_IRQn, 2); 
+    irq_set_priority(SVCall_IRQn, 1);
+    irq_set_priority(SysTick_IRQn, 0);
     _sched_active = 1;
 }
 

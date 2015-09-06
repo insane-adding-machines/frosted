@@ -31,10 +31,10 @@ void frosted_init(void)
     SystemInit(); /* SystemInit() -> Board_SystemInit() */
     SystemCoreClockUpdate();
     SysTick_Config(SystemCoreClock / 1000);
+    irq_init();
     syscalls_init();
     vfs_init();
     kernel_task_init();
-    irq_init();
 
 
 #ifdef UNIX    

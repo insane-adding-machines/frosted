@@ -388,7 +388,6 @@ void __naked  PendSV_Handler(void)
 
     asm volatile ("mrs %0, PSR" : "=r" (pendsv_psr_mask));
     pendsv_psr_mask &= 0x0000000Fu;
-    pendsv_psr_mask |= 0x01000000u;
 
     /* save current SP to TCB */
     //_top_stack = msp_read();
@@ -416,8 +415,8 @@ void __naked  PendSV_Handler(void)
     }
 
     /* restore the ISR_NUMBER to IPSR */
-    //((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr = pendsv_psr_mask;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= pendsv_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
@@ -439,19 +438,6 @@ void kernel_task_init(void)
     _cur_task = &tasklist[0];
 }
 
-int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
-{
-    uint16_t pid = scheduler_get_cur_pid();
-
-    if (arg1 < 0)
-        return -1;
-
-    if (pid > 0) {
-        _cur_task->state = TASK_SLEEPING;
-        _cur_task->timeslice = jiffies + arg1;
-    }
-    return 0;
-}
 
 void task_suspend(void)
 {
@@ -473,6 +459,26 @@ void task_terminate(int pid)
 {
     tasklist[pid].state = TASK_OVER;
     tasklist[pid].timeslice = 0;
+}
+
+static void sleepy_task_wakeup(uint32_t now, void *arg)
+{
+    int pid = (int)arg;
+    task_resume(pid);
+}
+
+int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    uint16_t pid = scheduler_get_cur_pid();
+
+    if (arg1 < 0)
+        return -1;
+
+    if (pid > 0) {
+        ktimer_add(arg1, sleepy_task_wakeup, (void *)_cur_task->pid);
+        task_suspend();
+    }
+    return 0;
 }
 
 int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -500,7 +506,6 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
 
     asm volatile ("mrs %0, PSR" : "=r" (svc_psr_mask));
     svc_psr_mask &= 0x0000000Fu;
-    svc_psr_mask |= 0x01000000u;
 
     /* save current SP to TCB */
     _cur_task->sp = _top_stack;
@@ -542,8 +547,8 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
     }
 
     /* restore the ISR_NUMBER to IPSR */
-    //((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr = svc_psr_mask;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
+    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= svc_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
