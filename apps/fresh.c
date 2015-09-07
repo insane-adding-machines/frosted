@@ -93,26 +93,14 @@ void fresh(void *arg) {
         while(len < 100)
         {
             const char del = 0x08;
-            int ret = read(ser, input + len, 1);
-
-            if (ret != 1)
-                continue;
-            len += ret;
-            if ((input[len-1] == 0xD))
-                break; /* CR (\n) */
-            if ((input[len-1] == 0x4)) {
-                write(ser, "\n", 1);
-                len = 0;
-                break;
-            }
-
+            int ret = read(ser, input + len, 3);
+            
             /* arrows */
-            if (input[len-1] == 0x1b) {
-                char dir;
-                while (read(ser, &dir, 1) > 0) ;;
-                write(ser, &del, 1);
-                write(ser, " ", 1);
-                write(ser, &del, 1);
+            if ((ret == 3) && (input[len] == 0x1b)) {
+                char dir = input[len + 1];
+                if (strlen(lastcmd) == 0) {
+                    continue;
+                }
 
                 while (len > 0) {
                     write(ser, &del, 1);
@@ -123,7 +111,39 @@ void fresh(void *arg) {
                 write(ser, lastcmd, strlen(lastcmd));
                 len = strlen(lastcmd);
                 strcpy(input, lastcmd);
+                continue;
             }
+
+            if (ret > 3)
+                continue;
+            if ((ret == 1) && (input[len] >= 0x20 && input[len] <= 0x7e)) {
+                /* Echo to terminal */
+                write(ser, &input[len], 1);
+            }
+            len += ret;
+
+            if ((input[len-1] == 0xD))
+                break; /* CR (\n) */
+            if ((input[len-1] == 0x4)) {
+                write(ser, "\n", 1);
+                len = 0;
+                break;
+            }
+
+            /* tab */
+            if ((input[len-1] == 0x09)) {
+                len--;
+                write(ser, "\n", 1);
+                write(out, str_help, strlen(str_help));
+                write(ser, "\n", 1);
+                write(ser, str_prompt, strlen(str_prompt));
+                getcwd(pwd, MAX_FILE);
+                write(ser, pwd, strlen(pwd));
+                write(ser, "$ ", 2);
+                write(ser, input, len);
+                continue;
+            }
+
 
             /* backspace */
             if ((input[len-1] == 127)) {

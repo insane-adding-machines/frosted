@@ -192,8 +192,12 @@ static int devuart_read(int fd, void *buf, unsigned int len)
         if (cirbuf_readbyte(inbuf, ptr) != 0)
             break;
         /* TEMP -- echo char */
-        if ((*ptr >= 0x20) && (*ptr <= 0x7E))
-            devuart_write(0, ptr, 1);
+        /*
+        if (out > 0 || (*(ptr - 1) != 0x1b)) {
+            if ((*ptr >= 0x20) && (*ptr <= 0x7E))
+                devuart_write(0, ptr, 1);
+        }
+        */
         ptr++;
     }
     uart_pid = 0;
