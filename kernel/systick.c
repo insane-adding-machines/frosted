@@ -40,23 +40,13 @@ void ktimer_init(void)
 }
 
 /* Add kernel timer */
-struct ktimer *ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
+int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
 {
-    struct ktimer *t = kalloc(sizeof(struct ktimer));
-    if (!t)
-        return NULL;
-    t->expire_time = jiffies + count;
-    t->handler = handler;
-    t->arg = arg;
-    heap_insert(ktimer_list, t);
-    return t;
-}
-
-/* Disable existing timer */
-void ktimer_cancel(struct ktimer *t)
-{
-    if (t)
-        t->handler = NULL;
+    struct ktimer t;
+    t.expire_time = jiffies + count;
+    t.handler = handler;
+    t.arg = arg;
+    return heap_insert(ktimer_list, &t);
 }
 
 /* Check expired timers */
@@ -72,7 +62,6 @@ static void ktimers_check(void)
             t->handler(jiffies, t->arg);
         }
         heap_peek(ktimer_list, &t_previous); 
-        kfree(t);
         t = heap_first(ktimer_list);
     }
 }
