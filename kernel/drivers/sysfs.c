@@ -183,7 +183,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     return len;
 }
 
-#define MAX_TASKLIST 512
+#define MAX_MEMSTATS 512
 int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
@@ -200,7 +200,7 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
         const char free_banner[] = "\tFree calls: ";
         const char mem_banner[] = "\tMemory in use: ";
         mutex_lock(sysfs_mutex);
-        mem_txt = kalloc(MAX_TASKLIST);
+        mem_txt = kalloc(MAX_MEMSTATS);
         if (!mem_txt)
             return -1;
         off = 0;
