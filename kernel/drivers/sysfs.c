@@ -194,20 +194,53 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
     int stack_used;
     int p_state;
     if (fno->off == 0) {
-        const char k_stat_banner[] = "Kernel statistics\n";
-        const char k_stat_banner[] = "Kernel statistics\n";
-        const char malloc_banner[] = "Malloc calls: ";
-        const char free_banner[] = "Free calls: ";
-        const char mem_banner[] = "Memory in use: ";
+        const char k_stat_banner[] = "\n\nKernel statistics\n";
+        const char t_stat_banner[] = "\n\nTasks statistics\n";
+        const char malloc_banner[] = "\tMalloc calls: ";
+        const char free_banner[] = "\tFree calls: ";
+        const char mem_banner[] = "\tMemory in use: ";
         mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_TASKLIST);
         if (!mem_txt)
             return -1;
         off = 0;
 
-        strcpy(mem_txt, k_stat_banner);
+        strcpy(mem_txt + off, k_stat_banner);
         off += strlen(k_stat_banner);
+        strcpy(mem_txt + off, malloc_banner);
+        off += strlen(malloc_banner);
+        off += ul_to_str(f_malloc_stats[0].malloc_calls, mem_txt + off);
+        *(mem_txt + off) = '\n'; 
+        off++;
+        strcpy(mem_txt + off, free_banner);
+        off += strlen(free_banner);
+        off += ul_to_str(f_malloc_stats[0].free_calls, mem_txt + off);
+        *(mem_txt + off) = '\n'; 
+        off++;
 
+        strcpy(mem_txt + off, mem_banner);
+        off += strlen(mem_banner);
+        off += ul_to_str(f_malloc_stats[0].mem_allocated, mem_txt + off);
+        *(mem_txt + off) = '\n'; 
+        off++;
+        
+        strcpy(mem_txt + off, t_stat_banner);
+        off += strlen(k_stat_banner);
+        strcpy(mem_txt + off, malloc_banner);
+        off += strlen(malloc_banner);
+        off += ul_to_str(f_malloc_stats[1].malloc_calls, mem_txt + off);
+        *(mem_txt + off) = '\n'; 
+        off++;
+        strcpy(mem_txt + off, free_banner);
+        off += strlen(free_banner);
+        off += ul_to_str(f_malloc_stats[1].free_calls, mem_txt + off);
+        *(mem_txt + off) = '\n'; 
+        off++;
+        strcpy(mem_txt + off, mem_banner);
+        off += strlen(mem_banner);
+        off += ul_to_str(f_malloc_stats[1].mem_allocated, mem_txt + off);
+        *(mem_txt + off) = '\n'; 
+        off++;
         mem_txt[off++] = '\0';
     }
     if (off == fno->off) {
@@ -259,6 +292,7 @@ void sysfs_init(void)
     sysfs_mutex = mutex_init();
     sysfs_register("time", sysfs_time_read, sysfs_no_write);
     sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
+    sysfs_register("mem", sysfs_mem_read, sysfs_no_write);
 }
 
 

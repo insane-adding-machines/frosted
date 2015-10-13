@@ -63,7 +63,7 @@ int SysTick_interval(unsigned long interval);
 void ktimer_init(void);
 
 struct ktimer;
-struct ktimer *ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg);
+int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg);
 void ktimer_cancel(struct ktimer *t);
 
 /* Scheduler */

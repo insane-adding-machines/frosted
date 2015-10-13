@@ -470,13 +470,18 @@ static void sleepy_task_wakeup(uint32_t now, void *arg)
 int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     uint16_t pid = scheduler_get_cur_pid();
+    uint32_t timeout = jiffies + arg1;
 
     if (arg1 < 0)
         return -1;
 
     if (pid > 0) {
         ktimer_add(arg1, sleepy_task_wakeup, (void *)_cur_task->pid);
+        if (timeout < jiffies) 
+            return 0;
+
         task_suspend();
+        return SYS_CALL_AGAIN;
     }
     return 0;
 }

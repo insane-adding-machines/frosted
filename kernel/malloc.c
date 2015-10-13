@@ -31,19 +31,14 @@ struct f_malloc_block {
     uint32_t flags; 
 };
 
-struct f_malloc_stats {
-    uint32_t malloc_calls;
-    uint32_t free_calls;
-    uint32_t objects_allocated;
-    uint32_t mem_allocated;
-};
 
 /*------------------*/
 /* Local variables  */
 /*------------------*/
 static struct f_malloc_block * malloc_entry_kernel = NULL;
 static struct f_malloc_block * malloc_entry_user = NULL;
-static struct f_malloc_stats f_malloc_stats[2] = {};
+
+struct f_malloc_stats f_malloc_stats[2] = {};
 
 static const uint32_t kmem_size = (CONFIG_KMEM_SIZE << 10);
 
