@@ -143,11 +143,12 @@ char *strncpy(char *dst, const char *src, size_t n)
  */
 char *strcpy(char *dst, const char *src)
 {
-    int i;
+    int i = 0;
     while(1 < 2) {
         dst[i] = src[i];
         if (src[i] == '\0')
             break;
+        i++;
     }
     return dst;
 }
