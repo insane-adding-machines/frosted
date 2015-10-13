@@ -34,14 +34,14 @@ struct cirbuf * cirbuf_create(int size)
     if (size <= 0) 
         return NULL;
 
-    inbuf = f_malloc(sizeof(struct cirbuf));
+    inbuf = kalloc(sizeof(struct cirbuf));
     if (!inbuf)
         return NULL;
 
-    inbuf->buf = f_malloc(size);
+    inbuf->buf = kalloc(size);
     if (!inbuf->buf)
     {
-        f_free(inbuf);
+        kfree(inbuf);
         return NULL;
     }
 

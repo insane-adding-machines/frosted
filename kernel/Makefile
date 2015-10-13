@@ -29,6 +29,7 @@ PREFIX:=$(PWD)/build
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD)
 CFLAGS+=-DKLOG_LEVEL=6
+CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
 #Include paths
 CFLAGS+=-I. -I../include -I../board/$(BOARD)/inc -I../family/$(FAMILY)/inc
 #Freestanding options

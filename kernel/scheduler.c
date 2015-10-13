@@ -133,7 +133,7 @@ int task_filedesc_add(struct fnode *f)
         }
     }
     t->n_files++;
-    re = (void *)f_realloc(t->filedesc, t->n_files * sizeof(struct fnode *));
+    re = (void *)krealloc(t->filedesc, t->n_files * sizeof(struct fnode *));
     if (!re)
         return -1;
     t->filedesc = re;

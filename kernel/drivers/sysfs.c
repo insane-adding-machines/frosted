@@ -183,6 +183,46 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     return len;
 }
 
+#define MAX_TASKLIST 512
+int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    static char *mem_txt;
+    static int off;
+    int i;
+    int stack_used;
+    int p_state;
+    if (fno->off == 0) {
+        const char k_stat_banner[] = "Kernel statistics\n";
+        const char k_stat_banner[] = "Kernel statistics\n";
+        const char malloc_banner[] = "Malloc calls: ";
+        const char free_banner[] = "Free calls: ";
+        const char mem_banner[] = "Memory in use: ";
+        mutex_lock(sysfs_mutex);
+        mem_txt = kalloc(MAX_TASKLIST);
+        if (!mem_txt)
+            return -1;
+        off = 0;
+
+        strcpy(mem_txt, k_stat_banner);
+        off += strlen(k_stat_banner);
+
+        mem_txt[off++] = '\0';
+    }
+    if (off == fno->off) {
+        kfree(mem_txt);
+        mutex_unlock(sysfs_mutex);
+        return -1;
+    }
+    if (len > (off - fno->off)) {
+       len = off - fno->off;
+    }
+    memcpy(res, mem_txt + fno->off, len);
+    fno->off += len;
+    return len;
+}
+
 int sysfs_no_write(struct sysfs_fnode *sfs, const void *buf, int len)
 {
     return -1;

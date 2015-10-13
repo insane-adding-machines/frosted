@@ -27,6 +27,7 @@ ifeq ($(PRODCONS),y)
 endif
 
 
+
 -include board/$(BOARD)/layout.conf
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K

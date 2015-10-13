@@ -18,6 +18,10 @@ endmenu
 menu "Kernel Configuration"
 endmenu
 
+config KMEM_SIZE
+    int "Kernel memory size (KB)"
+    default 4
+
 menu "Subsystems"
     menu "Filesystems"
         config SYSFS
