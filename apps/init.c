@@ -104,6 +104,7 @@ void init(void *arg)
     volatile int pid;
     int fd, sd;
     uint32_t *temp;
+    int testval = 42;
     /* c-lib and init test */
     temp = (uint32_t *)malloc(32);
     free(temp);
@@ -118,17 +119,17 @@ void init(void *arg)
 
 
     /* Thread create test */
-    if (thread_create(idling, (void *)42, 1) < 0)
+    if (thread_create(idling, &testval, 1) < 0)
         IDLE();
 #ifdef CONFIG_FRESH
-    if (thread_create(fresh, (void *)42, 1) < 0)
+    if (thread_create(fresh, &testval, 1) < 0)
         IDLE();
 #endif
 
 #ifdef CONFIG_PRODCONS
-    if (thread_create(prod, (void *)42, 1) < 0)
+    if (thread_create(prod, &testval, 1) < 0)
         IDLE();
-    if (thread_create(cons, (void *)42, 1) < 0)
+    if (thread_create(cons, &testval, 1) < 0)
         IDLE();
 #endif
 

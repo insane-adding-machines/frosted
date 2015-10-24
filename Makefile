@@ -49,8 +49,8 @@ CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 OBJS-y:=  family/$(FAMILY)/$(FAMILY).o	
-APPS-y:= \
-		apps/init.o apps/fresh.o
+APPS-y:= apps/init.o 
+APPS-$(FRESH)+=apps/fresh.o
 
 include family/$(FAMILY)/$(FAMILY).mk
 
