@@ -177,11 +177,13 @@ static int devuart_read(int fd, void *buf, unsigned int len)
         return -1;
 
     mutex_lock(uart_mutex);
+    NVIC_DisableIRQ(UART0_IRQn);
     len_available =  cirbuf_bytesinuse(inbuf);
     if (len_available <= 0) {
         uart_pid = scheduler_get_cur_pid();
         task_suspend();
-        return SYS_CALL_AGAIN;
+        out = SYS_CALL_AGAIN;
+        goto again;
     }
 
     if (len_available < len)
@@ -194,6 +196,9 @@ static int devuart_read(int fd, void *buf, unsigned int len)
         ptr++;
     }
     uart_pid = 0;
+
+again:
+    NVIC_EnableIRQ(UART0_IRQn);
     mutex_unlock(uart_mutex);
     return out;
 }
