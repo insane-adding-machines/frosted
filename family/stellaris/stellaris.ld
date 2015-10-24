@@ -34,19 +34,16 @@ SECTIONS
     .bss :
     {
         _bss = .;
-        __bss_start__ = .;
         *(.bss*)
         *(COMMON)
         . = ALIGN(32 / 8);
         _ebss = .;
-        _end = .;
-        _bss_end__ = . ; __bss_end__ = . ; __end__ = . ;
         PROVIDE (end = .);
     } > SRAM
 
     .heap :
     {
         /* heap starts after BSS */
-        PROVIDE(_heap_start = _end );
+        PROVIDE(_heap_start = _ebss );
     } > SRAM
 }
