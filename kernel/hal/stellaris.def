@@ -1,0 +1,46 @@
+SCTL_BASE 			0x400FE000 1 System Controller
+SC_DID0 			0x400FE000 1         
+SC_DID1 			0x400FE004 1         
+SC_DC0 			    0x400FE008 1          
+
+SC_DC1              0x400FE010 1          
+SC_DC2              0x400FE014 1          
+SC_DC3              0x400FE018 1          
+SC_DC4              0x400FE01C 1          
+SC_DC5              0x400FE020 1          
+SC_DC6              0x400FE024 1          
+SC_DC7              0x400FE028 1          
+SC_DC8              0x400FE02C 1          
+SC_PBORCTL 			0x400FE030 1      
+SC_LDOPCTL 			0x400FE034 1      
+
+SC_SRCR 			0x400FE040 3
+
+SC_RIS 		    	0x400FE050 1          
+SC_IMC 		    	0x400FE054 1          
+SC_MISC 			0x400FE058 1         
+SC_RESC 			0x400FE05C 1         
+SC_RCC 		    	0x400FE060 1          
+SC_PLLCFG 			0x400FE064 1       
+
+SC_GPIOHBCTL 		0x400FE06C 1    
+SC_RCC2 			0x400FE070 1         
+
+SC_MOSCCTL 			0x400FE07C 1      
+
+SC_RCGC		    	0x400FE100 3
+SC_SCGC	            0x400FE110 3
+SC_DCGC0			0x400FE120 3        
+
+SC_DSLPCLKCFG	    0x400FE144 1		    
+
+SC_PIOSCCAL			0x400FE150 1
+SC_PIOSCSTAT		0x400FE154 1	     
+
+SC_LDOARST			0x400FE160 1 
+
+SC_I2SMCLKCFG	    0x400FE170 1
+
+SC_DC9			    0x400FE190 1
+
+SC_NVMSTAT			0x400fe1a0 1

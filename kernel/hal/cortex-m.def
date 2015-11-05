@@ -1,0 +1,53 @@
+# SYSTEM CONTROL BLOCK (SCB)
+ACTLR 0xE000E008 1 Auxiliary Control Register
+CPUID 0xE000ED00 1 CPUID Base Register
+ICSR  0xE000ED04 1 Interrupt Control and State Register
+VTOR  0xE000ED08 1 Vector Table Offset Register
+AIRCR 0xE000ED0C 1 Application Interrupt and Reset Control Register
+SCR   0xE000ED10 1 System Control Register 
+CCR   0xE000ED14 1 Configuration and Control Register
+SHPR  0xE000ED18 3 System Handler Priority Register
+SHCRS 0xE000ED24 1 System Handler Control and State Register
+CFSR  0xE000ED28 1 Configurable Fault Status Register
+MMSR  0xE000ED28 1 MemManage Fault Status Register 
+BFSR  0xE000ED29 1 BusFault Status Register
+UFSR  0xE000ED2A 1 UsageFault Status Register 
+HFSR  0xE000ED2C 1 HardFault Status Register
+MMAR  0xE000ED34 1 MemManage Fault Address Register
+BFAR  0xE000ED38 1 BusFault Address Register
+AFSR  0xE000ED3C 1 Auxiliary Fault Status Register
+
+
+# System Timer
+TMR_CSR 0xE000E010 1 SysTick Control and Status Register
+TMR_RVR 0xE000E014 1 SysTick Reload Value Register
+TMR_CVR 0xE000E018 1 SysTick Current Value Register
+TMR_CAL 0xE000E01C 1 SysTick Calibration Value Register
+
+
+# Interrupt controller
+NVIC_ISER 0xE000E100 8 Interrupt Set-Enable Registers
+NVIC_ICER 0xE000E180 8 Interrupt Clear-Enable Registers
+NVIC_ISPR 0xE000E200 8 Interrupt Set-Pending Registers
+NVIC_ICPR 0xE000E280 8 Interrupt Clear-Pending Registers
+NVIC_IABR 0xE000E300 8 Interrupt Active Bit Register
+NVIC_IPRR 0xE000E400 60 Interrupt Priority Register
+NVIC_STIR 0xE000EF00 1 Software Trigger Interrupt Register
+
+# Memory protection unit
+MPU_TYPE 0xE000ED90 1 MPU Type Register
+MPU_CTRL 0xE000ED94 1 MPU Control Register
+MPU_RNR  0xE000ED98 1 MPU Region Number Register
+MPU_RBAR 0xE000ED9C 1 MPU Region Base Address Register
+MPU_RASR 0xE000EDA0 1 MPU Region Attribute and Size Register
+MPU_ALIAS 0xE000EDA4 6 MPU Array of aliases 
+
+
+# FPU
+CPACR 0xE000ED88 1 Coprocessor Access Control Register
+FPCCR 0xE000EF34 1 Floating-point Context Control Register
+FPCAR 0xE000EF38 1 Floating-point Context Address Register
+FPDSCR 0xE000EF3C 1 Floating-point Default Status Control Register
+
+
+
