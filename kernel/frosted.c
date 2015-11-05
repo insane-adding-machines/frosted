@@ -1,3 +1,22 @@
+/*  
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors: Daniele Lacamera, Maxime Vincent
+ *
+ */  
 #include "frosted.h"
 #define IDLE() while(1){do{}while(0);}
 
@@ -27,11 +46,14 @@ void frosted_init(void)
     extern void * _k__syscall__;
     volatile void * vector = &_k__syscall__;
     (void)vector;
+            
+    hal_board_init();
+
     ktimer_init();
-    SystemInit(); /* SystemInit() -> Board_SystemInit() */
-    SystemCoreClockUpdate();
-    SysTick_Config(SystemCoreClock / 1000);
-    irq_init();
+
+    hal_systick_config(SYS_CLOCK / 1000);
+    hal_irqprio_config();
+
     syscalls_init();
     vfs_init();
     kernel_task_init();

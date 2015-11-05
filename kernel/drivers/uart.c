@@ -1,6 +1,9 @@
 #include "frosted.h"
 #include <stdint.h>
 
+extern const uint32_t UART0_BASE;
+extern const uint32_t UART0_IRQn;
+
 #define UART_FR_RXFE    (0x10)
 #define UART_FR_TXFF    (0x20)
 
@@ -64,7 +67,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
         return -1;
 
     mutex_lock(uart_mutex);
-    NVIC_DisableIRQ(UART0_IRQn);
+    hal_irq_off(UART0_IRQn);
     len_available =  cirbuf_bytesinuse(inbuf);
     if (len_available <= 0) {
         uart_pid = scheduler_get_cur_pid();
@@ -85,7 +88,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     uart_pid = 0;
 
 again:
-    NVIC_EnableIRQ(UART0_IRQn);
+    hal_irq_on(UART0_IRQn);
     mutex_unlock(uart_mutex);
     return out;
 }
@@ -134,8 +137,8 @@ void devuart_init(struct fnode *dev)
 
     uart = fno_create(&mod_devuart, "ttyS0", dev);
     UART_IM(UART0_BASE) = UART_IM_RXIM;
-    irq_set_priority(UART0_IRQn, OS_IRQ_PRIO);
-    NVIC_EnableIRQ(UART0_IRQn);
+    hal_irq_set_prio(UART0_IRQn, OS_IRQ_PRIO);
+    hal_irq_on(UART0_IRQn);
 
     /* Kernel printf associated to devuart_write */
     klog_set_write(devuart_write);

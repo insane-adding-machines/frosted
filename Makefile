@@ -1,19 +1,19 @@
 -include kconfig/.config
 
 ifeq ($(ARCH_SEEDPRO),y)
-	FAMILY=lpc17xx
+	CPU=cortex-m
 	BOARD=seedpro
 	CFLAGS+=-DSEEDPRO
 endif
 
 ifeq ($(ARCH_QEMU),y)
-	FAMILY=stellaris
-	BOARD=stellaris_qemu
+	CPU=cortex-m
+	BOARD=stellaris
 	CFLAGS+=-DSTELLARIS
 endif
 
 ifeq ($(ARCH_STM32F4DISCOVERY),y)
-	FAMILY=stm32f4
+	CPU=cortex-m
 	BOARD=stm32f4discovery
 	CFLAGS+=-DSTM32F4DISCOVERY -DSTM32F407xx
 endif
@@ -28,7 +28,6 @@ endif
 
 
 
--include board/$(BOARD)/layout.conf
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
@@ -37,7 +36,6 @@ CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
-CFLAGS+=-Iboard/$(BOARD)/inc -Ifamily/$(FAMILY)/inc -Lfamily/$(FAMILY)/
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 
@@ -48,16 +46,16 @@ CFLAGS+=-ggdb
 #CFLAGS+=-Os
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-OBJS-y:=  family/$(FAMILY)/$(FAMILY).o	
 APPS-y:= apps/init.o 
 APPS-$(FRESH)+=apps/fresh.o
 
-include family/$(FAMILY)/$(FAMILY).mk
+OBJS-y:=  kernel/hal/$(CPU).o kernel/hal/$(BOARD).o kernel/hal/regs.o kernel/hal/tools.o
 
 all: image.bin
 
 kernel/syscall_table.c: kernel/syscall_table_gen.py
 	python2 $^
+
 
 include/syscall_table.h: kernel/syscall_table.c
 
@@ -82,7 +80,7 @@ apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
 
 
 kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y)
-	$(CC) -o $@   -Tfamily/$(FAMILY)/$(FAMILY).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+	$(CC) -o $@   -Tkernel/hal/$(BOARD).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333

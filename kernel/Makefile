@@ -1,20 +1,19 @@
 include ../kconfig/.config
 ifeq ($(ARCH_SEEDPRO),y)
-	FAMILY=lpc17xx
+	CPU=cortex-m
 	BOARD=seedpro
 endif
 
 ifeq ($(ARCH_QEMU),y)
-	FAMILY=stellaris
-	BOARD=stellaris_qemu
+	CPU=cortex-m
+	BOARD=stellaris
 endif
 
 ifeq ($(ARCH_STM32F4DISCOVERY),y)
-	FAMILY=stm32f4
+	CPU=cortex-m
 	BOARD=stm32f4discovery
 	CFLAGS+=-DSTM32F407xx
 endif
--include ../board/$(BOARD)/layout.conf
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
@@ -31,7 +30,7 @@ CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD)
 CFLAGS+=-DKLOG_LEVEL=6
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
 #Include paths
-CFLAGS+=-I. -I../include -I../board/$(BOARD)/inc -I../family/$(FAMILY)/inc
+CFLAGS+=-I. -I../include -Ihal
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
@@ -41,6 +40,7 @@ CFLAGS+=-ggdb
 #CFLAGS+=-Os
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
+
 
 OBJS-y+=	svc.o			\
 	frosted.o			\
@@ -54,7 +54,6 @@ OBJS-y+=	svc.o			\
 	tasklet.o			\
 	scheduler.o			\
 	syscall_table.o		\
-	interrupts.o		\
 	malloc.o			\
 	module.o			\
 	poll.o				\
@@ -81,7 +80,7 @@ CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
 CFLAGS+=$(CFLAGS-y)
 
 
-all: syscall_table.h $(OBJS-y)
+all: hal/regs.h syscall_table.h $(OBJS-y)
 	@echo -e "\t[AR] $(PREFIX)/lib/$(LIBNAME)"
 	@mkdir -p $(PREFIX)/lib
 	@$(AR) cru $(PREFIX)/lib/$(LIBNAME) $(OBJS-y)
@@ -89,9 +88,13 @@ all: syscall_table.h $(OBJS-y)
 syscall_table.c: syscall_table_gen.py
 	python2 $^
 
+hal/regs.h: 
+	./hal/def_reg.py hal/$(CPU).def hal/$(BOARD).def
+
 syscall_table.h: syscall_table.c
 
 clean:
+	@rm -f hal/regs.c hal/regs.h
 	@rm -f $(OBJS-y)
 	@rm -f $(PREFIX)/lib/$(LIBNAME)
 

@@ -1,3 +1,22 @@
+/*  
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors: Daniele Lacamera, Maxime Vincent
+ *
+ */  
 #include "frosted.h"
 #include "heap.h"
 volatile unsigned int jiffies = 0u;
@@ -8,9 +27,9 @@ static int _sched_active = 0;
 
 void frosted_scheduler_on(void)
 {
-    irq_set_priority(PendSV_IRQn, 2); 
-    irq_set_priority(SVCall_IRQn, 1);
-    irq_set_priority(SysTick_IRQn, 0);
+    hal_irq_set_prio(IRQN_PSV, 2);
+    hal_irq_set_prio(IRQN_SVC, 1);
+    hal_irq_set_prio(IRQN_TCK, 0);
     _sched_active = 1;
 }
 
@@ -85,16 +104,13 @@ void SysTick_Handler(void)
 void SysTick_on(void)
 {
     int clock;
-    clock = (SystemCoreClock * _clock_interval) / 1000;
-    SystemCoreClockUpdate();
-    SysTick_Config(clock);
+    clock = (SYS_CLOCK * _clock_interval) / 1000;
+    hal_systick_config(clock);
 }
 
 void SysTick_off(void)
 {
-  SysTick->VAL   = 0;                                          /* Load the SysTick Counter Value */
-  SysTick->CTRL  = SysTick_CTRL_CLKSOURCE_Msk |
-                   SysTick_CTRL_ENABLE_Msk;                    /* Disable SysTick IRQ  */
+    hal_systick_stop();
 }
 
 int SysTick_interval(unsigned long interval)

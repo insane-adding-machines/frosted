@@ -1,8 +1,0 @@
- tar ext :3333
- monitor reset
- layout src
- file out/image.elf
- mon reset
- mon halt
- stepi
- focus c
