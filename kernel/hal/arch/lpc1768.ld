@@ -2,7 +2,7 @@ ENTRY(Reset_Handler)
 MEMORY
 {
     FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 512K
-    SRAM (rwx) : ORIGIN = 0x100000C8, LENGTH = (32K - 0xC8)
+    SRAM (rwx) : ORIGIN = 0x10000000, LENGTH = 32K
 }
 
 __StackTop = ORIGIN(SRAM) + LENGTH(SRAM) - 4;

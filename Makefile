@@ -3,7 +3,7 @@
 ifeq ($(ARCH_SEEDPRO),y)
 	CPU=cortex-m
 	BOARD=lpc1768
-	RAM_BASE=0x100000C8
+	RAM_BASE=0x10000000
 	CFLAGS+=-DSEEDPRO
 endif
 
@@ -72,7 +72,13 @@ image.bin: kernel.elf apps.elf
 
 
 apps/apps.ld: apps/apps.ld.in
-	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | sed -e "s/__FLASH_SIZE/$(FLASH_SIZE)/g" | sed -e "s/__RAM_BASE/$(RAM_BASE)/g" >$@
+	export KMEM_SIZE_B=`expr $(KMEM_SIZE) \* 1024`; \
+	export KMEM_SIZE_B_HEX=`printf 0x%X $$KMEM_SIZE_B`;	\
+	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
+			 sed -e "s/__FLASH_SIZE/$(FLASH_SIZE)/g" | \
+			 sed -e "s/__RAM_BASE/$(RAM_BASE)/g" |\
+			 sed -e "s/__KMEM_SIZE/` printf 0x%x $$KMEM_SIZE_B_HEX`/g" \
+			 >$@
 
 
 apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
