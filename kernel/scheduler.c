@@ -361,6 +361,7 @@ static __naked void save_kernel_context(void)
     asm volatile ("mrs r0, "MSP"           ");
     asm volatile ("stmdb r0!, {r4-r11}   ");
     asm volatile ("msr "MSP", r0           ");
+    asm volatile ("isb");
     asm volatile ("bx lr                 ");
 }
 
@@ -369,6 +370,7 @@ static __naked void save_task_context(void)
     asm volatile ("mrs r0, "PSP"           ");
     asm volatile ("stmdb r0!, {r4-r11}   ");
     asm volatile ("msr "PSP", r0           ");
+    asm volatile ("isb");
     asm volatile ("bx lr                 ");
 }
 
@@ -380,6 +382,7 @@ static __naked void restore_kernel_context(void)
     asm volatile ("mrs r0, "MSP"          ");
     asm volatile ("ldmfd r0!, {r4-r11}  ");
     asm volatile ("msr "MSP", r0          ");
+    asm volatile ("isb");
     asm volatile ("bx lr                 ");
 }
 
@@ -388,6 +391,7 @@ static __naked void restore_task_context(void)
     asm volatile ("mrs r0, "PSP"          ");
     asm volatile ("ldmfd r0!, {r4-r11}  ");
     asm volatile ("msr "PSP", r0          ");
+    asm volatile ("isb");
     asm volatile ("bx lr                 ");
 }
 
@@ -400,12 +404,16 @@ void __naked  PendSV_Handler(void)
     if (in_kernel()) {
         save_kernel_context();
         asm volatile ("mrs %0, "MSP"" : "=r" (_top_stack));
+        asm volatile ("isb");
     } else {
         save_task_context();
         asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
+        asm volatile ("isb");
     }
 
     asm volatile ("mrs %0, PSR" : "=r" (pendsv_psr_mask));
+    asm volatile ("isb");
+
     pendsv_psr_mask &= 0x0000000Fu;
 
     /* save current SP to TCB */
