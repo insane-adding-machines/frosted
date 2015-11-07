@@ -1,7 +1,7 @@
 include ../kconfig/.config
 ifeq ($(ARCH_SEEDPRO),y)
 	CPU=cortex-m
-	BOARD=seedpro
+	BOARD=lpc1768
 endif
 
 ifeq ($(ARCH_QEMU),y)

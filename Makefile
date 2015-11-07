@@ -2,7 +2,7 @@
 
 ifeq ($(ARCH_SEEDPRO),y)
 	CPU=cortex-m
-	BOARD=seedpro
+	BOARD=lpc1768
 	CFLAGS+=-DSEEDPRO
 endif
 
@@ -40,10 +40,10 @@ PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 
 #debugging
-#CFLAGS+=-ggdb
+CFLAGS+=-ggdb
 
 #optimization
-CFLAGS+=-Os
+#CFLAGS+=-Os
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 APPS-y:= apps/init.o 
