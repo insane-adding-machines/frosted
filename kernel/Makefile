@@ -30,7 +30,7 @@ CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD)
 CFLAGS+=-DKLOG_LEVEL=6
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
 #Include paths
-CFLAGS+=-I. -I../include -Ihal
+CFLAGS+=-I. -I../include -Ihal -I..
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
@@ -42,7 +42,10 @@ CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 
-OBJS-y+=	svc.o			\
+OBJS-y:=  hal/cpu/$(CPU).o hal/arch/$(BOARD).o hal/regs.o hal/tools.o
+OBJS-y+= \
+	hal/startup.o			\
+	svc.o				\
 	frosted.o			\
 	string.o			\
 	sys.o				\
@@ -89,12 +92,16 @@ syscall_table.c: syscall_table_gen.py
 	python2 $^
 
 hal/regs.h: 
-	./hal/def_reg.py hal/$(CPU).def hal/$(BOARD).def
+	./hal/def_reg.py hal/cpu/$(CPU).def hal/arch/$(BOARD).def
+
+hal/startup.c:
+	./hal/def_irq.py hal/cpu/$(CPU)_irq.def hal/arch/$(BOARD)_irq.def
+
 
 syscall_table.h: syscall_table.c
 
 clean:
-	@rm -f hal/regs.c hal/regs.h
+	@rm -f hal/regs.c hal/regs.h hal/startup.c
 	@rm -f $(OBJS-y)
 	@rm -f $(PREFIX)/lib/$(LIBNAME)
 

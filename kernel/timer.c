@@ -21,7 +21,7 @@
 
 unsigned long timer_val = 0;
  
-void TIMER1_IRQHandler(void)
+void TIMER1_Handler(void)
 {
 #if 0
     if (Chip_TIMER_MatchPending(LPC_TIMER1, 1)) {

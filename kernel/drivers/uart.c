@@ -22,7 +22,7 @@ static int uart_pid = 0;
 static mutex_t *uart_mutex;
 static struct cirbuf * inbuf = NULL;
 
-void UART0_IRQHandler(void)
+void UART0_Handler(void)
 {
     /* Clear RX flag */
     UART_IC(UART0_BASE) = UART_IC_RXIC;

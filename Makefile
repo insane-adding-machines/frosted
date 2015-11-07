@@ -3,6 +3,7 @@
 ifeq ($(ARCH_SEEDPRO),y)
 	CPU=cortex-m
 	BOARD=lpc1768
+	RAM_BASE=0x100000C8
 	CFLAGS+=-DSEEDPRO
 endif
 
@@ -27,7 +28,7 @@ ifeq ($(PRODCONS),y)
 endif
 
 
-
+RAM_BASE?=0x20000000
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
@@ -49,7 +50,6 @@ ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 APPS-y:= apps/init.o 
 APPS-$(FRESH)+=apps/fresh.o
 
-OBJS-y:=  kernel/hal/$(CPU).o kernel/hal/$(BOARD).o kernel/hal/regs.o kernel/hal/tools.o
 
 all: image.bin
 
@@ -72,7 +72,7 @@ image.bin: kernel.elf apps.elf
 
 
 apps/apps.ld: apps/apps.ld.in
-	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | sed -e "s/__FLASH_SIZE/$(FLASH_SIZE)/g" >$@
+	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | sed -e "s/__FLASH_SIZE/$(FLASH_SIZE)/g" | sed -e "s/__RAM_BASE/$(RAM_BASE)/g" >$@
 
 
 apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
@@ -80,7 +80,7 @@ apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
 
 
 kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y)
-	$(CC) -o $@   -Tkernel/hal/$(BOARD).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+	$(CC) -o $@   -Tkernel/hal/arch/$(BOARD).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333

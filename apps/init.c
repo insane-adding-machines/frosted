@@ -26,15 +26,15 @@
 #define GREETING "Welcome to frosted!\n"
 
 #ifdef STELLARIS
-int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xF0; 
+int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (0xE0UL); 
 #endif
 
 #ifdef SEEDPRO
-int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCC; 
+int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCCUL; 
 #endif
 
 #ifdef STM32F4DISCOVERY
-int (** const __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**const)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0x80001a8;
+int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0x80001a8UL;
 #endif
 
 void task2(void *arg)
