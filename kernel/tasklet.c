@@ -36,6 +36,7 @@ void tasklet_add(void (*exe)(void*), void *arg)
         return;
     t->exe = exe;
     t->arg = arg;
+    t->next = NULL;
     if (!tasklet_list_head) {
         tasklet_list_head = t;
         tasklet_list_tail = t;

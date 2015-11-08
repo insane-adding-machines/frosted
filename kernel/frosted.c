@@ -73,7 +73,7 @@ static void tasklet_test(void *arg)
 
 static void ktimer_test(uint32_t time, void *arg)
 {
-    //tasklet_add(tasklet_test, NULL);
+    tasklet_add(tasklet_test, NULL);
 }
 
 void frosted_kernel(void)
