@@ -25,7 +25,7 @@ const uint32_t NVIC_PRIO_BITS = 3;
 /* PLL/Systick Configured values */
 const uint32_t SYS_CLOCK =  96000000;
 #define PLL_FCO (16u)       /* Value for 384 MHz as main PLL clock */
-#define CPU_CLOCK_DIV (3u)  /* 384 / 3 = 96MHz */
+#define CPU_CLOCK_DIV (4u)  /* 384 / (3+1) = 96MHz */
 
 const uint32_t UART0_BASE = 0x4000C000;
 const uint32_t UART0_IRQn = 5;
@@ -90,21 +90,20 @@ int hal_board_init(void)
 
     /* Set oscillator frequency to 384 MHz */
     SET_REG(SYSREG_SC_PLL0_CONF, (PLL_FCO - 1u));
-
-    /* Enable oscillator */
-    SET_REG(SYSREG_SC_PLL0_CTRL, 1);
+    SET_REG(SYSREG_SC_PLL0_CTRL, 0x01);
+    SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK0);
+    SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK1);
 
     /* Enable oscillator */
     pll0ctrl = GET_REG(SYSREG_SC_PLL0_CTRL);
     pll0ctrl |= (1 << PLL0_STS_ON);
     SET_REG(SYSREG_SC_PLL0_CTRL, pll0ctrl);
-
-    /* Kickstart oscillator */
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK0);
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK1);
 
+
     /* Set correct divider */
-    SET_REG(SYSREG_SC_CCLKSEL, CPU_CLOCK_DIV);
+    SET_REG(SYSREG_SC_CCLKSEL, (CPU_CLOCK_DIV - 1u));
 
     /* Wait for lock */
     while ((GET_REG(SYSREG_SC_PLL0_STAT) & PLL0_STS_LOCK) == 0)
@@ -114,6 +113,8 @@ int hal_board_init(void)
     pll0ctrl = GET_REG(SYSREG_SC_PLL0_CTRL);
     pll0ctrl |= (1 << PLL0_STS_CONN);
     SET_REG(SYSREG_SC_PLL0_CTRL, pll0ctrl);
+    SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK0);
+    SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK1);
 
     noop();
 }
