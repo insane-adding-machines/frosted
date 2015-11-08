@@ -30,4 +30,13 @@ int hal_board_init(void);
 extern const uint32_t NVIC_PRIO_BITS;
 extern const uint32_t SYS_CLOCK;
 
+/* HAL: Peripheral abstraction */
+struct hal_iodev {
+    uint32_t *base;
+    uint32_t clock_id;
+    uint32_t irqn;
+};
+int hal_iodev_on(struct hal_iodev *iodev);
+int hal_iodev_off(struct hal_iodev *iodev);
+
 #endif

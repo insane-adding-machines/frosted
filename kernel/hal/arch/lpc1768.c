@@ -19,16 +19,23 @@
  */  
 #include "tools.h"
 #include "regs.h"
+#include "system.h"
+
 
 const uint32_t NVIC_PRIO_BITS = 3;
+
+/* Serial port UART0 */
+const struct hal_iodev UART0 = { 
+    .base = 0x4000C000,
+    .irqn = 5,
+    .clock_id = 0
+};
 
 /* PLL/Systick Configured values */
 const uint32_t SYS_CLOCK =  96000000;
 #define PLL_FCO (16u)       /* Value for 384 MHz as main PLL clock */
 #define CPU_CLOCK_DIV (4u)  /* 384 / (3+1) = 96MHz */
 
-const uint32_t UART0_BASE = 0x4000C000;
-const uint32_t UART0_IRQn = 5;
 
 /* PLL bit pos */
 #define PLL0_FREQ     (16)  /* PLL0 main freq pos */
@@ -130,3 +137,32 @@ int hal_board_init(void)
 
     noop();
 }
+
+int hal_iodev_on(struct hal_iodev *iodev)
+{
+    volatile uint32_t pconp;
+    if (iodev->clock_id > 0) { 
+        pconp = GET_REG(SYSREG_SC_PCONP); 
+        pconp |= (1 << iodev->clock_id);
+        SET_REG(SYSREG_SC_PCONP, pconp);
+    }
+    if (iodev->irqn > 0)
+        hal_irq_on(iodev->irqn);
+    return 0;
+}
+
+
+int hal_iodev_off(struct hal_iodev *iodev)
+{
+    volatile uint32_t pconp;
+    if (iodev->irqn > 0)
+        hal_irq_off(iodev->irqn);
+    if (iodev->clock_id > 0) { 
+        pconp = GET_REG(SYSREG_SC_PCONP); 
+        pconp &= ~(1 << iodev->clock_id);
+        SET_REG(SYSREG_SC_PCONP, pconp);
+    }
+    return 0;
+}
+
+

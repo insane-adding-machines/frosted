@@ -1,8 +1,7 @@
 #include "frosted.h"
 #include <stdint.h>
 
-extern const uint32_t UART0_BASE;
-extern const uint32_t UART0_IRQn;
+extern struct hal_iodev UART0;
 
 #define UART_FR_RXFE    (0x10)
 #define UART_FR_TXFF    (0x20)
@@ -25,12 +24,12 @@ static struct cirbuf * inbuf = NULL;
 void UART0_Handler(void)
 {
     /* Clear RX flag */
-    UART_IC(UART0_BASE) = UART_IC_RXIC;
+    UART_IC(UART0.base) = UART_IC_RXIC;
 
     /* While data available */
-    while (!(UART_FR(UART0_BASE) & UART_FR_RXFE))
+    while (!(UART_FR(UART0.base) & UART_FR_RXFE))
     {
-        char byte = UART_DR(UART0_BASE);
+        char byte = UART_DR(UART0.base);
         /* read data into circular buffer */
         cirbuf_writebyte(inbuf, byte);
     }
@@ -49,7 +48,7 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     if (fd < 0)
         return -1;
     for (i = 0; i < len; i++) {
-        UART_DR(UART0_BASE) = ch[i];
+        UART_DR(UART0.base) = ch[i];
     }
     return len;
 }
@@ -67,7 +66,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
         return -1;
 
     mutex_lock(uart_mutex);
-    hal_irq_off(UART0_IRQn);
+    hal_irq_off(UART0.irqn);
     len_available =  cirbuf_bytesinuse(inbuf);
     if (len_available <= 0) {
         uart_pid = scheduler_get_cur_pid();
@@ -88,7 +87,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     uart_pid = 0;
 
 again:
-    hal_irq_on(UART0_IRQn);
+    hal_irq_on(UART0.irqn);
     mutex_unlock(uart_mutex);
     return out;
 }
@@ -102,7 +101,7 @@ static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
         *revents |= POLLOUT;
         ret = 1; /* TODO: implement interrupt for write events */
     }
-    if ((events == POLLIN) && (!(UART_FR(UART0_BASE) & UART_FR_RXFE))) {
+    if ((events == POLLIN) && (!(UART_FR(UART0.base) & UART_FR_RXFE))) {
         *revents |= POLLIN;
         ret = 1;
     }
@@ -136,9 +135,9 @@ void devuart_init(struct fnode *dev)
     inbuf = cirbuf_create(256);
 
     uart = fno_create(&mod_devuart, "ttyS0", dev);
-    UART_IM(UART0_BASE) = UART_IM_RXIM;
-    hal_irq_set_prio(UART0_IRQn, OS_IRQ_PRIO);
-    hal_irq_on(UART0_IRQn);
+    UART_IM(UART0.base) = UART_IM_RXIM;
+    hal_irq_set_prio(UART0.irqn, OS_IRQ_PRIO);
+    hal_irq_on(UART0.irqn);
 
     /* Kernel printf associated to devuart_write */
     klog_set_write(devuart_write);

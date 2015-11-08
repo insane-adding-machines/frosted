@@ -19,6 +19,7 @@
  */  
 #include "tools.h"
 #include "regs.h"
+#include "system.h"
 
 const uint32_t NVIC_PRIO_BITS = 3;
 
@@ -52,9 +53,11 @@ const uint32_t SYS_CLOCK = 50000000;
 /* RIS bit pos */
 #define RIS_PLLLRIS    6
 
-
-const uint32_t UART0_BASE = 0x4000C000;
-const uint32_t UART0_IRQn = 5;
+const struct hal_iodev UART0 = { 
+    .base = 0x4000C000,
+    .irqn = 5,
+    .clock_id = 0
+};
 
 
 int hal_board_init(void)
@@ -106,4 +109,16 @@ int hal_board_init(void)
     noop();
 
 }
+
+
+int hal_iodev_on(struct hal_iodev *iodev)
+{
+    return 0;
+}
+
+int hal_iodev_off(struct hal_iodev *iodev)
+{
+    return 0;
+}
+
 
