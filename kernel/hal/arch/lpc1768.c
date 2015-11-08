@@ -36,6 +36,9 @@ const uint32_t UART0_IRQn = 5;
 #define PLL0_STS_CONN (25)  /* PLL0 connect pos */
 #define PLL0_STS_LOCK (26)  /* PLL0 connect pos */
 
+#define PLLE0         (0)
+#define PLLC0         (1)
+
 #define PLL1_FREQ     (5)   /* PLL1 main freq pos */
 #define PLL1_STS_ON   (8)   /* PLL1 enable  pos */
 #define PLL1_STS_CONN (9)   /* PLL1 connect pos */
@@ -60,17 +63,18 @@ int hal_board_init(void)
 {
     volatile uint32_t scs;
     volatile uint32_t pll0ctrl;
+    volatile uint32_t pll0stat;
     /* Check if PLL0 is already connected, if so, disconnect */
     if (GET_REG(SYSREG_SC_PLL0_STAT) & (1<<PLL0_STS_CONN)) {
         pll0ctrl = GET_REG(SYSREG_SC_PLL0_CTRL);
-        pll0ctrl &= ~(1 << PLL0_STS_CONN);
+        pll0ctrl &= ~(1 << PLLE0);
         SET_REG(SYSREG_SC_PLL0_CTRL, pll0ctrl);
     }
     
     /* Check if PLL0 is already ON, if so, disable */
     if (GET_REG(SYSREG_SC_PLL0_STAT) & (1<<PLL0_STS_ON)) {
         pll0ctrl = GET_REG(SYSREG_SC_PLL0_CTRL);
-        pll0ctrl &= ~(1 << PLL0_STS_ON);
+        pll0ctrl &= ~(1 << PLLE0);
         SET_REG(SYSREG_SC_PLL0_CTRL, pll0ctrl);
     }
 
@@ -90,13 +94,15 @@ int hal_board_init(void)
 
     /* Set oscillator frequency to 384 MHz */
     SET_REG(SYSREG_SC_PLL0_CONF, (PLL_FCO - 1u));
+    SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK0);
+    SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK1);
     SET_REG(SYSREG_SC_PLL0_CTRL, 0x01);
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK0);
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK1);
 
     /* Enable oscillator */
     pll0ctrl = GET_REG(SYSREG_SC_PLL0_CTRL);
-    pll0ctrl |= (1 << PLL0_STS_ON);
+    pll0ctrl |= (1 << PLLE0);
     SET_REG(SYSREG_SC_PLL0_CTRL, pll0ctrl);
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK0);
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK1);
@@ -111,10 +117,16 @@ int hal_board_init(void)
 
     /* Connect oscillator */ 
     pll0ctrl = GET_REG(SYSREG_SC_PLL0_CTRL);
-    pll0ctrl |= (1 << PLL0_STS_CONN);
+    pll0ctrl |= (1 << PLLC0);
     SET_REG(SYSREG_SC_PLL0_CTRL, pll0ctrl);
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK0);
     SET_REG(SYSREG_SC_PLL0_FEED, PLL_KICK1);
+
+
+    while ((GET_REG(SYSREG_SC_PLL0_STAT) & PLL0_STS_CONN) == 0)
+        noop();
+
+    pll0stat = GET_REG(SYSREG_SC_PLL0_STAT);
 
     noop();
 }
