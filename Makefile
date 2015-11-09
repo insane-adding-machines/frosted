@@ -1,10 +1,10 @@
 -include kconfig/.config
 
-ifeq ($(ARCH_SEEDPRO),y)
+ifeq ($(ARCH_SEEEDPRO),y)
 	CPU=cortex-m
 	BOARD=lpc1768
 	RAM_BASE=0x10000000
-	CFLAGS+=-DSEEDPRO
+	CFLAGS+=-DSEEEDPRO
 endif
 
 ifeq ($(ARCH_QEMU),y)
@@ -49,6 +49,33 @@ CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 APPS-y:= apps/init.o 
 APPS-$(FRESH)+=apps/fresh.o
+
+
+OBJS-y:=
+CFLAGS-y:=-Ikernel/hal
+
+# device drivers 
+OBJS-$(MEMFS)+= kernel/drivers/memfs.o
+CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
+
+OBJS-$(SYSFS)+= kernel/drivers/sysfs.o
+CFLAGS-$(SYSFS)+=-DCONFIG_SYSFS
+
+OBJS-$(DEVNULL)+= kernel/drivers/null.o
+CFLAGS-$(DEVNULL)+=-DCONFIG_DEVNULL
+
+
+
+OBJS-$(SOCK_UNIX)+= kernel/drivers/socket_un.o
+CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
+
+OBJS-$(DEVUART)+= kernel/drivers/uart.o
+CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
+
+OBJS-$(GPIO_SEEEDPRO)+=kernel/drivers/gpio/gpio_seeedpro.o
+CFLAGS-$(GPIO_SEEEDPRO)+=-DCONFIG_GPIO_SEEEDPRO
+
+CFLAGS+=$(CFLAGS-y)
 
 
 all: image.bin

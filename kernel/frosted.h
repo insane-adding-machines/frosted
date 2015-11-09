@@ -159,6 +159,7 @@ struct module {
         int (*write)(int fd, const void *buf, unsigned int len);
         int (*poll)(int fd, uint16_t events, uint16_t *revents);
         int (*close)(int fd);
+        int (*ioctl)(int fd, const uint32_t cmd, void *arg);
 
         /* Files only (NULL == socket) */
         int (*open)(const char *path, int flags);

@@ -6,7 +6,7 @@ menu "Platform Selection"
     config ARCH_QEMU
     bool "TI Stellaris qemu"
 
-    config ARCH_SEEDPRO
+    config ARCH_SEEEDPRO
     bool "Seeeduino Arch Pro board"
 
     config ARCH_STM32F4DISCOVERY
@@ -47,5 +47,11 @@ menu "Subsystems"
         config DEVUART
         bool "Generic UART driver"
         default y
+
+        config GPIO_SEEEDPRO
+        depends on ARCH_SEEEDPRO
+        bool "Arch Seeed pro GPIO driver"
+        default y
+
     endmenu
 endmenu

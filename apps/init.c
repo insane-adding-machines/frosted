@@ -20,6 +20,7 @@
 #include "frosted_api.h"
 #include "fresh.h"
 #include "syscalls.h"
+#include "ioctl.h"
 #include <string.h>
 #include <stdio.h>
 #define IDLE() while(1){do{}while(0);}
@@ -29,7 +30,7 @@
 int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (0xE0UL); 
 #endif
 
-#ifdef SEEDPRO
+#ifdef SEEEDPRO
 int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCCUL; 
 #endif
 
@@ -86,9 +87,33 @@ void task2(void *arg)
 void idling(void *arg)
 {
     int pid;
-    while(1) {
-        pid = getpid();
-        sleep(100);
+    int led[4];
+    int i, j;
+
+    led[0] = open("/dev/gpio_1_18", O_RDWR, 0);
+    led[1] = open("/dev/gpio_1_20", O_RDWR, 0);
+    led[2] = open("/dev/gpio_1_21", O_RDWR, 0);
+    led[3] = open("/dev/gpio_1_23", O_RDWR, 0);
+
+    if (led[0] >= 0) {
+        for (i = 0; i < 4; i++) {
+            ioctl(led[i], IOCTL_GPIO_ENABLE, NULL);
+            ioctl(led[i], IOCTL_GPIO_SET_OUTPUT, NULL);
+        }
+        while(1) {
+            for (i = 0; i < 9; i++) {
+                if (i < 4) {
+                    write(led[i], "0", 1);
+                } else {
+                    char val = (1 - (i % 2)) + '0';
+                    for(j = 0; j < 4; j++)
+                        write(led[j], &val, 1);
+                }
+                sleep(200);
+            }
+        }
+    } else {
+        while(1) { sleep(1000); } /* GPIO unavailable, just sleep. */
     }
 }
 

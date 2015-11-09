@@ -1,22 +1,3 @@
-/*  
- *      This file is part of frosted.
- *
- *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
- *      published by the Free Software Foundation.
- *      
- *
- *      frosted is distributed in the hope that it will be useful,
- *      but WITHOUT ANY WARRANTY; without even the implied warranty of
- *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *      GNU General Public License for more details.
- *
- *      You should have received a copy of the GNU General Public License
- *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
- *
- *      Authors: Daniele Lacamera, Maxime Vincent
- *
- */  
 /* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */
 /* If you want to add syscalls, use syscall_table_gen.py  */
 
@@ -140,6 +121,11 @@ int sys_stat(uint32_t arg1, uint32_t arg2){
 /* Syscall: poll(3 arguments) */
 int sys_poll(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_POLL, arg1, arg2, arg3, 0,  0); 
+}
+
+/* Syscall: ioctl(3 arguments) */
+int sys_ioctl(uint32_t arg1, uint32_t arg2, uint32_t arg3){
+    syscall(SYS_IOCTL, arg1, arg2, arg3, 0,  0); 
 }
 
 /* Syscall: chdir(1 arguments) */
@@ -287,6 +273,7 @@ extern int sys_readdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_closedir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_stat_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_poll_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_ioctl_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_chdir_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_getcwd_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sem_init_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -337,28 +324,29 @@ void syscalls_init(void) {
 	sys_register_handler(21, sys_closedir_hdlr);
 	sys_register_handler(22, sys_stat_hdlr);
 	sys_register_handler(23, sys_poll_hdlr);
-	sys_register_handler(24, sys_chdir_hdlr);
-	sys_register_handler(25, sys_getcwd_hdlr);
-	sys_register_handler(26, sys_sem_init_hdlr);
-	sys_register_handler(27, sys_sem_post_hdlr);
-	sys_register_handler(28, sys_sem_wait_hdlr);
-	sys_register_handler(29, sys_sem_destroy_hdlr);
-	sys_register_handler(30, sys_mutex_init_hdlr);
-	sys_register_handler(31, sys_mutex_unlock_hdlr);
-	sys_register_handler(32, sys_mutex_lock_hdlr);
-	sys_register_handler(33, sys_mutex_destroy_hdlr);
-	sys_register_handler(34, sys_socket_hdlr);
-	sys_register_handler(35, sys_bind_hdlr);
-	sys_register_handler(36, sys_accept_hdlr);
-	sys_register_handler(37, sys_connect_hdlr);
-	sys_register_handler(38, sys_listen_hdlr);
-	sys_register_handler(39, sys_sendto_hdlr);
-	sys_register_handler(40, sys_recvfrom_hdlr);
-	sys_register_handler(41, sys_setsockopt_hdlr);
-	sys_register_handler(42, sys_getsockopt_hdlr);
-	sys_register_handler(43, sys_shutdown_hdlr);
-	sys_register_handler(44, sys_dup_hdlr);
-	sys_register_handler(45, sys_dup2_hdlr);
-	sys_register_handler(46, sys_kill_hdlr);
-	sys_register_handler(47, sys_exit_hdlr);
+	sys_register_handler(24, sys_ioctl_hdlr);
+	sys_register_handler(25, sys_chdir_hdlr);
+	sys_register_handler(26, sys_getcwd_hdlr);
+	sys_register_handler(27, sys_sem_init_hdlr);
+	sys_register_handler(28, sys_sem_post_hdlr);
+	sys_register_handler(29, sys_sem_wait_hdlr);
+	sys_register_handler(30, sys_sem_destroy_hdlr);
+	sys_register_handler(31, sys_mutex_init_hdlr);
+	sys_register_handler(32, sys_mutex_unlock_hdlr);
+	sys_register_handler(33, sys_mutex_lock_hdlr);
+	sys_register_handler(34, sys_mutex_destroy_hdlr);
+	sys_register_handler(35, sys_socket_hdlr);
+	sys_register_handler(36, sys_bind_hdlr);
+	sys_register_handler(37, sys_accept_hdlr);
+	sys_register_handler(38, sys_connect_hdlr);
+	sys_register_handler(39, sys_listen_hdlr);
+	sys_register_handler(40, sys_sendto_hdlr);
+	sys_register_handler(41, sys_recvfrom_hdlr);
+	sys_register_handler(42, sys_setsockopt_hdlr);
+	sys_register_handler(43, sys_getsockopt_hdlr);
+	sys_register_handler(44, sys_shutdown_hdlr);
+	sys_register_handler(45, sys_dup_hdlr);
+	sys_register_handler(46, sys_dup2_hdlr);
+	sys_register_handler(47, sys_kill_hdlr);
+	sys_register_handler(48, sys_exit_hdlr);
 }

@@ -1,5 +1,5 @@
 include ../kconfig/.config
-ifeq ($(ARCH_SEEDPRO),y)
+ifeq ($(ARCH_SEEEDPRO),y)
 	CPU=cortex-m
 	BOARD=lpc1768
 endif
@@ -65,28 +65,13 @@ OBJS-y+= \
 OBJS-y += vfs.o
 OBJS-y += syscall_vector.o
 
-OBJS-$(MEMFS)+= drivers/memfs.o
-CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
-
-OBJS-$(SYSFS)+= drivers/sysfs.o
-CFLAGS-$(SYSFS)+=-DCONFIG_SYSFS
-
-OBJS-$(DEVNULL)+= drivers/null.o
-CFLAGS-$(DEVNULL)+=-DCONFIG_DEVNULL
-
-OBJS-$(DEVUART)+= drivers/uart.o
-CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
-
-OBJS-$(SOCK_UNIX)+= drivers/socket_un.o
-CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
-
 CFLAGS+=$(CFLAGS-y)
 
 
 all: hal/regs.h syscall_table.h $(OBJS-y)
 	@echo -e "\t[AR] $(PREFIX)/lib/$(LIBNAME)"
 	@mkdir -p $(PREFIX)/lib
-	@$(AR) cru $(PREFIX)/lib/$(LIBNAME) $(OBJS-y)
+	$(AR) cr $(PREFIX)/lib/$(LIBNAME) $(OBJS-y)
 
 syscall_table.c: syscall_table_gen.py
 	python2 $^

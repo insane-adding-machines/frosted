@@ -13,6 +13,9 @@
 #define IRQN_PSV (0x0E | INT_SYS)
 #define IRQN_TCK (0x0F | INT_SYS)
 
+
+
+
 /* HAL: CPU abstraction */
 void hal_irqprio_config(void);
 void hal_irq_set_prio(uint32_t irqn, uint32_t prio);

@@ -371,6 +371,15 @@ int sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     } else return -1;
 }
 
+int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    struct fnode *fno = task_filedesc_get(arg1);
+    if (fno && fno->owner->ops.ioctl) {
+        fno->owner->ops.ioctl(arg1, arg2, arg3);
+    } else return -1;
+}
+
+
 int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     char *path = (char *)arg1;
@@ -477,6 +486,26 @@ int sys_getcwd_hdlr(uint32_t arg1, uint32_t arg2)
     return fno_fullpath(task_getcwd(), path, len);
 }
 
+void __attribute__((weak)) devnull_init(struct fnode *dev)
+{
+
+}
+
+void __attribute__((weak)) memfs_init(void)
+{
+
+}
+
+void __attribute__((weak)) sysfs_init(void)
+{
+
+}
+
+void __attribute__((weak)) devgpio_init(struct fnode *dev)
+{
+
+}
+
 void vfs_init(void) 
 {
     struct fnode *dev = NULL;
@@ -490,21 +519,11 @@ void vfs_init(void)
 
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
-
-#ifdef CONFIG_DEVNULL
     devnull_init(dev);
-#endif
-
-#ifdef CONFIG_DEVUART
     devuart_init(dev);
-#endif
+    devgpio_init(dev);
 
-#ifdef CONFIG_MEMFS
     memfs_init();
-#endif
-
-#ifdef CONFIG_SYSFS
     sysfs_init();
-#endif
 }
 

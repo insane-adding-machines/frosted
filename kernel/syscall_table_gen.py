@@ -35,6 +35,7 @@ syscalls = [
     ["closedir",1, "sys_closedir_hdlr"], 
     ["stat", 2, "sys_stat_hdlr"],
     ["poll", 3, "sys_poll_hdlr"],
+    ["ioctl", 3, "sys_ioctl_hdlr"],
     ["chdir", 1, "sys_chdir_hdlr"],
     ["getcwd", 2, "sys_getcwd_hdlr"],
     ["sem_init", 1, "sys_sem_init_hdlr"],

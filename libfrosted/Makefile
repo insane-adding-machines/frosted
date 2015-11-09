@@ -1,9 +1,9 @@
 include ../kconfig/.config
 
-ifeq ($(ARCH_SEEDPRO),y)
+ifeq ($(ARCH_SEEEDPRO),y)
 	FAMILY=lpc17xx 
 	ARCH=seedpro
-	CFLAGS+=-DSEEDPRO
+	CFLAGS+=-DSEEEDPRO
 endif
 
 ifeq ($(ARCH_QEMU),y)
@@ -62,6 +62,7 @@ OBJS-y+=			\
 		closedir.o		\
 		sem_init.o		\
 		semaphore.o			\
+		ioctl.o				\
 		mutex_init.o		\
 		mutex.o				\
 		socket.o			\

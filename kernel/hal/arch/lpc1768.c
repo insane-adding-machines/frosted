@@ -20,15 +20,23 @@
 #include "tools.h"
 #include "regs.h"
 #include "system.h"
+#include "lpc1768.h"
 
 
 const uint32_t NVIC_PRIO_BITS = 3;
 
 /* Serial port UART0 */
 const struct hal_iodev UART0 = { 
-    .base = 0x4000C000,
+    .base = (uint32_t *)0x4000C000,
     .irqn = 5,
-    .clock_id = 0
+    .clock_id = CHIP_CLOCK_UART0
+};
+
+/* GPIO controller */
+const struct hal_iodev GPIO = { 
+    .base = (uint32_t *)0x2009C000,
+    .irqn = 0,
+    .clock_id = CHIP_CLOCK_GPIO
 };
 
 /* PLL/Systick Configured values */
@@ -136,6 +144,8 @@ int hal_board_init(void)
     pll0stat = GET_REG(SYSREG_SC_PLL0_STAT);
 
     noop();
+
+
 }
 
 int hal_iodev_on(struct hal_iodev *iodev)
@@ -146,8 +156,10 @@ int hal_iodev_on(struct hal_iodev *iodev)
         pconp |= (1 << iodev->clock_id);
         SET_REG(SYSREG_SC_PCONP, pconp);
     }
-    if (iodev->irqn > 0)
+    if (iodev->irqn > 0) {
+        hal_irq_set_prio(iodev->irqn, ((1<<NVIC_PRIO_BITS)-1));
         hal_irq_on(iodev->irqn);
+    }
     return 0;
 }
 

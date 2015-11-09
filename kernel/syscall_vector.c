@@ -24,6 +24,7 @@ extern int sys_readdir( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_closedir( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_stat( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_poll( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_ioctl( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_chdir( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_getcwd( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_sem_init( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
@@ -48,7 +49,7 @@ extern int sys_dup( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_dup2( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_kill( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_exit( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
-int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[48])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
+int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[49])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
 	sys_setclock,
 	sys_sleep,
 	sys_suspend,
@@ -73,6 +74,7 @@ int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[48])
 	sys_closedir,
 	sys_stat,
 	sys_poll,
+	sys_ioctl,
 	sys_chdir,
 	sys_getcwd,
 	sys_sem_init,
