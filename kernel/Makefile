@@ -11,8 +11,8 @@ endif
 
 ifeq ($(ARCH_STM32F4DISCOVERY),y)
 	CPU=cortex-m
-	BOARD=stm32f4discovery
-	CFLAGS+=-DSTM32F407xx
+	BOARD=stm32f4
+	CFLAGS+=-DSTM32F4
 endif
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
@@ -42,7 +42,7 @@ CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 
-OBJS-y:=  hal/cpu/$(CPU).o hal/arch/$(BOARD).o hal/regs.o hal/tools.o
+OBJS-y:=  hal/cpu/$(CPU).o hal/arch/$(BOARD).o hal/tools.o
 OBJS-y+= \
 	hal/startup.o			\
 	svc.o				\

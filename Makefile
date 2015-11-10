@@ -15,8 +15,8 @@ endif
 
 ifeq ($(ARCH_STM32F4DISCOVERY),y)
 	CPU=cortex-m
-	BOARD=stm32f4discovery
-	CFLAGS+=-DSTM32F4DISCOVERY -DSTM32F407xx
+	BOARD=stm32f4
+	CFLAGS+=-DSTM32F4
 endif
 
 ifeq ($(FRESH),y)
