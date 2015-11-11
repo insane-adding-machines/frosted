@@ -4,6 +4,7 @@ extern int sys_setclock( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_sleep( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_suspend( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_thread_create( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_thread_join( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_test( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_getpid( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_getppid( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
@@ -49,11 +50,12 @@ extern int sys_dup( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_dup2( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_kill( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_exit( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
-int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[49])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
+int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[50])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
 	sys_setclock,
 	sys_sleep,
 	sys_suspend,
 	sys_thread_create,
+	sys_thread_join,
 	sys_test,
 	sys_getpid,
 	sys_getppid,

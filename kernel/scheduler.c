@@ -281,8 +281,12 @@ int task_timeslice(void)
 
 void task_end(void)
 {
-    _cur_task->state = TASK_OVER;
-    while(1);
+    _cur_task->state = TASK_ZOMBIE;
+    while(1) {
+        if (_cur_task->ppid > 0)
+            task_resume(_cur_task->ppid);
+        task_suspend();
+    }
 }
 
 int task_create(void (*init)(void *), void *arg, unsigned int prio)
@@ -323,7 +327,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     //irq_clearmask();
     irq_on();
 
-    return 0;
+    return pid;
 } 
 
 static __naked void save_kernel_context(void)
@@ -453,8 +457,10 @@ void task_resume(int pid)
 
 void task_terminate(int pid)
 {
-    tasklist[pid].state = TASK_OVER;
+    tasklist[pid].state = TASK_ZOMBIE;
     tasklist[pid].timeslice = 0;
+    if (tasklist[pid].ppid > 0)
+        task_resume(tasklist[pid].ppid);
 }
 
 static void sleepy_task_wakeup(uint32_t now, void *arg)
@@ -480,6 +486,36 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
         return SYS_CALL_AGAIN;
     }
     return 0;
+}
+
+int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    int to_arg = (int)arg2;
+    uint32_t timeout;
+
+    if (arg1 <= 1)
+        return -1;
+
+    if (_cur_task->pid == arg1 || tasklist[arg1].ppid != _cur_task->pid)
+        return -1;
+
+
+    if (tasklist[arg1].state == TASK_ZOMBIE) {
+        tasklist[arg1].state = TASK_OVER;
+        return 0; /* TODO: get task return value from stacked NVIC frame -> r0 */
+    }
+
+    if (to_arg == 0)
+        return -1;
+
+    if (to_arg > 0)  {
+        timeout = jiffies + to_arg;
+        ktimer_add(to_arg, sleepy_task_wakeup, (void *)_cur_task->pid);
+        if (timeout < jiffies)
+            return -1;
+    }
+    task_suspend();
+    return SYS_CALL_AGAIN;
 }
 
 int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)

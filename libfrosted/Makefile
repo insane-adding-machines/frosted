@@ -76,6 +76,7 @@ OBJS-y+=			\
 		setsockopt.o		\
 		shutdown.o			\
 		thread_create.o		\
+		thread_join.o		\
 		newlib_syscalls.o
 
 CFLAGS+=$(CFLAGS-y)

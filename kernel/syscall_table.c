@@ -23,6 +23,11 @@ int sys_thread_create(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_THREAD_CREATE, arg1, arg2, arg3, 0,  0); 
 }
 
+/* Syscall: thread_join(2 arguments) */
+int sys_thread_join(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_THREAD_JOIN, arg1, arg2, 0, 0, 0); 
+}
+
 /* Syscall: test(5 arguments) */
 int sys_test(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){
     syscall(SYS_TEST, arg1, arg2, arg3, arg4, arg5); 
@@ -253,6 +258,7 @@ extern int sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_suspend_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_thread_create_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_thread_join_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_test_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_getpid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_getppid_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -304,49 +310,50 @@ void syscalls_init(void) {
 	sys_register_handler(1, sys_sleep_hdlr);
 	sys_register_handler(2, sys_suspend_hdlr);
 	sys_register_handler(3, sys_thread_create_hdlr);
-	sys_register_handler(4, sys_test_hdlr);
-	sys_register_handler(5, sys_getpid_hdlr);
-	sys_register_handler(6, sys_getppid_hdlr);
-	sys_register_handler(7, sys_open_hdlr);
-	sys_register_handler(8, sys_close_hdlr);
-	sys_register_handler(9, sys_read_hdlr);
-	sys_register_handler(10, sys_write_hdlr);
-	sys_register_handler(11, sys_seek_hdlr);
-	sys_register_handler(12, sys_mkdir_hdlr);
-	sys_register_handler(13, sys_unlink_hdlr);
-	sys_register_handler(14, sys_gettimeofday_hdlr);
-	sys_register_handler(15, sys_malloc_hdlr);
-	sys_register_handler(16, sys_free_hdlr);
-	sys_register_handler(17, sys_calloc_hdlr);
-	sys_register_handler(18, sys_realloc_hdlr);
-	sys_register_handler(19, sys_opendir_hdlr);
-	sys_register_handler(20, sys_readdir_hdlr);
-	sys_register_handler(21, sys_closedir_hdlr);
-	sys_register_handler(22, sys_stat_hdlr);
-	sys_register_handler(23, sys_poll_hdlr);
-	sys_register_handler(24, sys_ioctl_hdlr);
-	sys_register_handler(25, sys_chdir_hdlr);
-	sys_register_handler(26, sys_getcwd_hdlr);
-	sys_register_handler(27, sys_sem_init_hdlr);
-	sys_register_handler(28, sys_sem_post_hdlr);
-	sys_register_handler(29, sys_sem_wait_hdlr);
-	sys_register_handler(30, sys_sem_destroy_hdlr);
-	sys_register_handler(31, sys_mutex_init_hdlr);
-	sys_register_handler(32, sys_mutex_unlock_hdlr);
-	sys_register_handler(33, sys_mutex_lock_hdlr);
-	sys_register_handler(34, sys_mutex_destroy_hdlr);
-	sys_register_handler(35, sys_socket_hdlr);
-	sys_register_handler(36, sys_bind_hdlr);
-	sys_register_handler(37, sys_accept_hdlr);
-	sys_register_handler(38, sys_connect_hdlr);
-	sys_register_handler(39, sys_listen_hdlr);
-	sys_register_handler(40, sys_sendto_hdlr);
-	sys_register_handler(41, sys_recvfrom_hdlr);
-	sys_register_handler(42, sys_setsockopt_hdlr);
-	sys_register_handler(43, sys_getsockopt_hdlr);
-	sys_register_handler(44, sys_shutdown_hdlr);
-	sys_register_handler(45, sys_dup_hdlr);
-	sys_register_handler(46, sys_dup2_hdlr);
-	sys_register_handler(47, sys_kill_hdlr);
-	sys_register_handler(48, sys_exit_hdlr);
+	sys_register_handler(4, sys_thread_join_hdlr);
+	sys_register_handler(5, sys_test_hdlr);
+	sys_register_handler(6, sys_getpid_hdlr);
+	sys_register_handler(7, sys_getppid_hdlr);
+	sys_register_handler(8, sys_open_hdlr);
+	sys_register_handler(9, sys_close_hdlr);
+	sys_register_handler(10, sys_read_hdlr);
+	sys_register_handler(11, sys_write_hdlr);
+	sys_register_handler(12, sys_seek_hdlr);
+	sys_register_handler(13, sys_mkdir_hdlr);
+	sys_register_handler(14, sys_unlink_hdlr);
+	sys_register_handler(15, sys_gettimeofday_hdlr);
+	sys_register_handler(16, sys_malloc_hdlr);
+	sys_register_handler(17, sys_free_hdlr);
+	sys_register_handler(18, sys_calloc_hdlr);
+	sys_register_handler(19, sys_realloc_hdlr);
+	sys_register_handler(20, sys_opendir_hdlr);
+	sys_register_handler(21, sys_readdir_hdlr);
+	sys_register_handler(22, sys_closedir_hdlr);
+	sys_register_handler(23, sys_stat_hdlr);
+	sys_register_handler(24, sys_poll_hdlr);
+	sys_register_handler(25, sys_ioctl_hdlr);
+	sys_register_handler(26, sys_chdir_hdlr);
+	sys_register_handler(27, sys_getcwd_hdlr);
+	sys_register_handler(28, sys_sem_init_hdlr);
+	sys_register_handler(29, sys_sem_post_hdlr);
+	sys_register_handler(30, sys_sem_wait_hdlr);
+	sys_register_handler(31, sys_sem_destroy_hdlr);
+	sys_register_handler(32, sys_mutex_init_hdlr);
+	sys_register_handler(33, sys_mutex_unlock_hdlr);
+	sys_register_handler(34, sys_mutex_lock_hdlr);
+	sys_register_handler(35, sys_mutex_destroy_hdlr);
+	sys_register_handler(36, sys_socket_hdlr);
+	sys_register_handler(37, sys_bind_hdlr);
+	sys_register_handler(38, sys_accept_hdlr);
+	sys_register_handler(39, sys_connect_hdlr);
+	sys_register_handler(40, sys_listen_hdlr);
+	sys_register_handler(41, sys_sendto_hdlr);
+	sys_register_handler(42, sys_recvfrom_hdlr);
+	sys_register_handler(43, sys_setsockopt_hdlr);
+	sys_register_handler(44, sys_getsockopt_hdlr);
+	sys_register_handler(45, sys_shutdown_hdlr);
+	sys_register_handler(46, sys_dup_hdlr);
+	sys_register_handler(47, sys_dup2_hdlr);
+	sys_register_handler(48, sys_kill_hdlr);
+	sys_register_handler(49, sys_exit_hdlr);
 }

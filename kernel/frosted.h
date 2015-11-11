@@ -14,7 +14,8 @@
 #define TASK_RUNNING    2
 #define TASK_SLEEPING   3
 #define TASK_WAITING    4
-#define TASK_OVER 0xFF
+#define TASK_ZOMBIE     0x66
+#define TASK_OVER       0xFF
 
 //#define DEBUG
 

@@ -8,7 +8,7 @@
 
 extern int (**__syscall__)(int rc);
 
-void _exit(int rc)
+void exit(int rc)
 {
     __syscall__[SYS_EXIT](rc);
 }

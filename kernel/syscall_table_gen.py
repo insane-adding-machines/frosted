@@ -15,6 +15,7 @@ syscalls = [
     ["sleep", 1, "sys_sleep_hdlr"],
     ["suspend", 1, "sys_suspend_hdlr"],
     ["thread_create", 3, "sys_thread_create_hdlr"],
+    ["thread_join", 2, "sys_thread_join_hdlr"],
     ["test", 5, "sys_test_hdlr"],
     ["getpid", 0, "sys_getpid_hdlr"],
     ["getppid", 0, "sys_getppid_hdlr"],

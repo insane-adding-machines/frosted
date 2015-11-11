@@ -77,6 +77,14 @@ static void ls(int ser, char *start)
 
 static char lastcmd[100] = "";
 
+void sleep_task(void *_arg) {
+    char *arg = _arg;
+    int s;
+    s = atoi(arg);
+    sleep(s);
+    exit(0);
+}
+
 void fresh(void *arg) {
     int ser;
     char pwd[MAX_FILE] = "";
@@ -237,6 +245,18 @@ void fresh(void *arg) {
                 if (fd < 0) {
                     write(out, str_invalidfile, strlen(str_invalidfile));
                 } else close(fd);
+            }
+        } else if (!strncmp(input, "sleep", 5)) {
+            if (strlen(input) > 5) {
+                int fd; 
+                char *arg = input + 6;
+                int pid = thread_create(sleep_task, arg, 1);
+                if (pid < 0) {
+                    write(out, str_invalidfile, strlen(str_invalidfile));
+                    continue;
+                }
+                thread_join(pid, -1);
+                write(out, "\n", 1);
             }
         } else if (!strncmp(input, "echo", 4)) {
             if (strlen(input) > 4) {
