@@ -21,23 +21,14 @@
 #include "syscall_table.h"
 #include "string.h" /* flibc string.h */
 
-//#define USERSPACE
 
 /* Full kernel space separation */
 #define RUN_HANDLER (0xfffffff1u)
-#ifdef USERSPACE
-#   define MSP "msp"
-#   define PSP "psp"
+#define MSP "msp"
+#define PSP "psp"
 #define RUN_KERNEL  (0xfffffff9u)
 #define RUN_USER    (0xfffffffdu)
 
-/* Separation is emulated */
-#else
-#   define MSP "msp"
-#   define PSP "msp"
-#define RUN_KERNEL  RUN_HANDLER
-#define RUN_USER    RUN_HANDLER
-#endif
 
 #define STACK_THRESHOLD 64
 
@@ -111,9 +102,6 @@ struct __attribute__((packed)) extra_stack_frame {
 
 
 static void * _top_stack;
-//#define EXT_RETURN ((struct nvic_stack_frame *)(_top_stack))->pc
-
-//#define __inl __attribute__((always_inline))
 #define __inl inline
 #define __naked __attribute__((naked))
 
@@ -223,30 +211,12 @@ static __inl int in_kernel(void)
     return (_cur_task == tasklist);
 }
 
-static __inl void * psp_read(void)
-{
-    void * ret=NULL;
-    asm volatile ("mrs %0, psp" : "=r" (ret));
-    return ret;
-}
-
-static __inl void psp_write(void *in)
-{
-    asm volatile ("msr psp, %0" :: "r" (in));
-}
-
 static __inl void * msp_read(void)
 {
     void * ret=NULL;
     asm volatile ("mrs %0, msp" : "=r" (ret));
     return ret;
 }
-
-static __inl void msp_write(void *in)
-{
-    asm volatile ("msr msp, %0" :: "r" (in));
-}
-
 
 static __inl void task_switch(void)
 {
@@ -397,7 +367,6 @@ static __naked void restore_task_context(void)
 
 
 /* C ABI cannot mess with the stack, we will */
-uint32_t pendsv_psr_mask = 0;
 void __naked  PendSV_Handler(void)
 {
     /* save current context on current stack */
@@ -411,10 +380,8 @@ void __naked  PendSV_Handler(void)
         asm volatile ("isb");
     }
 
-    asm volatile ("mrs %0, PSR" : "=r" (pendsv_psr_mask));
     asm volatile ("isb");
 
-    pendsv_psr_mask &= 0x0000000Fu;
 
     /* save current SP to TCB */
     //_top_stack = msp_read();
@@ -433,17 +400,19 @@ void __naked  PendSV_Handler(void)
     /* write new stack pointer and restore context */
     if (in_kernel()) {
         asm volatile ("msr "MSP", %0" :: "r" (_cur_task->sp));
+        asm volatile ("isb");
+        asm volatile ("msr CONTROL, %0" :: "r" (0x00));
+        asm volatile ("isb");
         restore_kernel_context();
         runnable = RUN_KERNEL;
     } else {
         asm volatile ("msr "PSP", %0" :: "r" (_cur_task->sp));
+        asm volatile ("isb");
+        asm volatile ("msr CONTROL, %0" :: "r" (0x01));
+        asm volatile ("isb");
         restore_task_context();
         runnable = RUN_USER;
     }
-
-    /* restore the ISR_NUMBER to IPSR */
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= pendsv_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));
@@ -529,15 +498,12 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
-static svc_psr_mask = 0;
 int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     /* save current context on current stack */
     save_task_context();
     asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
 
-    asm volatile ("mrs %0, PSR" : "=r" (svc_psr_mask));
-    svc_psr_mask &= 0x0000000Fu;
 
     /* save current SP to TCB */
     _cur_task->sp = _top_stack;
@@ -570,17 +536,19 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
     /* write new stack pointer and restore context */
     if (in_kernel()) {
         asm volatile ("msr "MSP", %0" :: "r" (_cur_task->sp));
+        asm volatile ("isb");
+        asm volatile ("msr CONTROL, %0" :: "r" (0x00));
+        asm volatile ("isb");
         restore_kernel_context();
         runnable = RUN_KERNEL;
     } else {
         asm volatile ("msr "PSP", %0" :: "r" (_cur_task->sp));
+        asm volatile ("isb");
+        asm volatile ("msr CONTROL, %0" :: "r" (0x01));
+        asm volatile ("isb");
         restore_task_context();
         runnable = RUN_USER;
     }
-
-    /* restore the ISR_NUMBER to IPSR */
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr &= 0xFFFFFFF0u;
-    ((struct nvic_stack_frame *)((uint8_t *)_cur_task->sp + EXTRA_FRAME_SIZE))->psr |= svc_psr_mask;
 
     /* Set return value selected by the restore procedure */ 
     asm volatile ("mov lr, %0" :: "r" (runnable));

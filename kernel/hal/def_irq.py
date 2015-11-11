@@ -83,7 +83,8 @@ c_file.write('    (void *)&__StackTop,     /** <-- Initial stack pointer **/\n')
 for irq in irqlist:
     if irq == 'RESERVED':
         irq = "Default"
-    c_file.write('    %s_Handler,\n' % irq)
+    if len(irq) > 1:
+        c_file.write('    %s_Handler,\n' % irq)
 
 c_file.write('};\n')
 

@@ -27,7 +27,7 @@
 #define GREETING "Welcome to frosted!\n"
 
 #ifdef STELLARIS
-int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (0xE0UL); 
+int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (0xDCUL); 
 #endif
 
 #ifdef SEEEDPRO
