@@ -5,6 +5,7 @@
 
 #define MEM_KERNEL 0
 #define MEM_USER   1
+#define MEM_TASK   MEM_USER
 
 struct f_malloc_stats {
     uint32_t malloc_calls;

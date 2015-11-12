@@ -17,6 +17,7 @@ extern int sys_mkdir( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_unlink( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_gettimeofday( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_malloc( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+extern int sys_mem_init( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_free( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_calloc( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_realloc( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
@@ -50,7 +51,7 @@ extern int sys_dup( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_dup2( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_kill( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_exit( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
-int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[50])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
+int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[51])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
 	sys_setclock,
 	sys_sleep,
 	sys_suspend,
@@ -68,6 +69,7 @@ int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[50])
 	sys_unlink,
 	sys_gettimeofday,
 	sys_malloc,
+	sys_mem_init,
 	sys_free,
 	sys_calloc,
 	sys_realloc,

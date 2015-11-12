@@ -50,6 +50,7 @@ OBJS-y+=			\
 		unlink.o	\
 		wait.o		\
 		write.o		\
+		mem_init.o  \
 		malloc.o	\
 		free.o		\
 		mkdir.o		\

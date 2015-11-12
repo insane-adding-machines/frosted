@@ -56,6 +56,7 @@ struct f_malloc_block {
 /*------------------*/
 static struct f_malloc_block * malloc_entry_kernel = NULL;
 static struct f_malloc_block * malloc_entry_user = NULL;
+static char * heap_end_user;
 
 struct f_malloc_stats f_malloc_stats[2] = {};
 
@@ -139,15 +140,16 @@ static void * f_sbrk(int user, int incr)
 {
     extern char   end;           /* Set by linker */
     static char * heap_end_kernel;
-    static char * heap_end_user;
     char *        prev_heap_end;
 
     if (heap_end_kernel == 0) {
         heap_end_kernel = &end;
-        heap_end_user = ( &end ) + kmem_size;
+        heap_end_user = NULL;
     }
 
     if (user) {
+        if (!heap_end_user)
+            return NULL;
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
     } else {
@@ -332,6 +334,14 @@ int sys_calloc_hdlr(int n, int size)
 int sys_realloc_hdlr(int addr, int size)
 {
     return (int)f_realloc(MEM_USER, (void *)addr, size);
+}
+
+int sys_mem_init_hdlr(int addr)
+{
+    if (heap_end_user != NULL)
+        return -1;
+    heap_end_user = (uint8_t *)addr;
+
 }
 
 

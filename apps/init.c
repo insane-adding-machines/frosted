@@ -238,6 +238,9 @@ void INIT _init(void)
     {
         *bssDest++ = 0u;
     }
+
+    /* Set initial point for userspace memory */
+    mem_init(&apps_ebss);
  
     //
     // Call the application's entry point.

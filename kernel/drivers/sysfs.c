@@ -158,9 +158,9 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
                 if (p_state == TASK_RUNNING)
                     task_txt[off++] = 'R';
                 if (p_state == TASK_WAITING)
-                    task_txt[off++] = 'w';
-                if (p_state == TASK_SLEEPING)
-                    task_txt[off++] = 's';
+                    task_txt[off++] = 'W';
+                if (p_state == TASK_ZOMBIE)
+                    task_txt[off++] = 'Z';
                 
                 task_txt[off++] = '\t';
                 stack_used = scheduler_stack_used(i);

@@ -12,8 +12,7 @@
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1
 #define TASK_RUNNING    2
-#define TASK_SLEEPING   3
-#define TASK_WAITING    4
+#define TASK_WAITING    3
 #define TASK_ZOMBIE     0x66
 #define TASK_OVER       0xFF
 
@@ -190,9 +189,11 @@ void kernel_task_init(void);
 
 
 #define kalloc(x) f_malloc(MEM_KERNEL,x)
+#define task_space_alloc(x) f_malloc(MEM_TASK, x)
 #define kcalloc(x,y) f_calloc(MEM_KERNEL,x,y)
 #define krealloc(x,y) f_realloc(MEM_KERNEL,x,y)
 #define kfree  f_free
+#define task_space_free f_free
 
 #endif /* BSP_INCLUDED_H */
 
