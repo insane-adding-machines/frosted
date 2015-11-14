@@ -506,6 +506,12 @@ void __attribute__((weak)) devgpio_init(struct fnode *dev)
 
 }
 
+
+void __attribute__((weak)) devuart_init(struct fnode *dev)
+{
+
+}
+
 void vfs_init(void) 
 {
     struct fnode *dev = NULL;

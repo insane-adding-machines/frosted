@@ -1,0 +1,44 @@
+
+RCC_BASE           0x40003800 1 RCC base address
+RCC_CR             0x40003800 1 clock control register
+RCC_PLLCFGR        0x40003804 1 PLL configuration register
+RCC_CFGR           0x40003808 1 clock configuration register
+RCC_CIR            0x4000380C 1 clock interrupt register
+RCC_AHB1RSTR       0x40003810 1 AHB1 peripheral reset register
+RCC_AHB2RSTR       0x40003814 1 AHB2 peripheral reset register
+RCC_AHB3RSTR       0x40003818 1 AHB3 peripheral reset register
+RCC_APB1RSTR       0x40003820 1 APB1 peripheral reset register
+RCC_APB2RSTR       0x40003824 1 APB2 peripheral reset register
+RCC_AHB1ENR        0x40003830 1 AHB1 peripheral clock register
+RCC_AHB2ENR        0x40003834 1 AHB2 peripheral clock register
+RCC_AHB3ENR        0x40003838 1 AHB3 peripheral clock register
+RCC_APB1ENR        0x40003840 1 APB1 peripheral clock enable register
+RCC_APB2ENR        0x40003844 1 APB2 peripheral clock enable register
+RCC_AHB1LPENR      0x40003850 1 AHB1 peripheral clock enable in low power mode register
+RCC_AHB2LPENR      0x40003854 1 AHB2 peripheral clock enable in low power mode register
+RCC_AHB3LPENR      0x40003858 1 AHB3 peripheral clock enable in low power mode register
+RCC_APB1LPENR      0x40003860 1 APB1 peripheral clock enable in low power mode register
+RCC_APB2LPENR      0x40003864 1 APB2 peripheral clock enable in low power mode register
+RCC_BDCR           0x40003870 1 Backup domain control register
+RCC_CSR            0x40003874 1 clock control & status register
+RCC_SSCGR          0x40003880 1 spread spectrum clock generation register
+RCC_PLLI2SCFGR     0x40003884 1 PLLI2S configuration register
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

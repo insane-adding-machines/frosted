@@ -34,8 +34,8 @@ int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int 
 int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0xCCUL; 
 #endif
 
-#ifdef STM32F4DISCOVERY
-int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0x80001a8UL;
+#ifdef STM32F4
+int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) 0x8000184UL;
 #endif
 
 void task2(void *arg)
