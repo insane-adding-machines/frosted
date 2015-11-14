@@ -519,11 +519,11 @@ void vfs_init(void)
 
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
-    devnull_init(dev);
-    devuart_init(dev);
     devgpio_init(dev);
+    devuart_init(dev);
 
     memfs_init();
+    devnull_init(dev);
     sysfs_init();
 }
 

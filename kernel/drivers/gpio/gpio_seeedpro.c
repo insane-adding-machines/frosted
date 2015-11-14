@@ -5,6 +5,9 @@
 extern struct hal_iodev GPIO;
 static int gpio_subsys_initialized = 0;
 
+extern int lpc1768_pio_mode(uint32_t port, uint32_t pin, uint32_t mode);
+extern int lpc1768_pio_func(uint32_t port, uint32_t pin, uint32_t func);
+
 
 static struct module mod_devgpio = {
 };
@@ -104,6 +107,12 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
     }
     if (cmd == IOCTL_GPIO_SET_INPUT) {
         GPIOREG[a->port].dir &= ~(1 << a->n);
+    }
+    if (cmd == IOCTL_GPIO_SET_MODE) {
+        lpc1768_pio_mode(a->port, a->n, *((uint32_t *)arg));
+    }
+    if (cmd == IOCTL_GPIO_SET_FUNC) {
+        lpc1768_pio_func(a->port, a->n, *((uint32_t *)arg));
     }
     return 0;
 }

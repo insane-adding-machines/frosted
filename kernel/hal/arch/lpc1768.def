@@ -30,3 +30,10 @@ SC_UINTST                   0x400FC1C0 1
 SC_DMAREQSEL                0x400FC1C4 1
 SC_CLKOUTCFG                0x400FC1C8 1
 
+# IOCON for PinMuxing
+IOCON_PINSEL                0x4002C000 11
+IOCON_PINMODE               0x4002C040 10
+IOCON_PINMODE_OD            0x4002C068 5
+IOCON_I2CPADCFG             0x4002C07C 1
+
+

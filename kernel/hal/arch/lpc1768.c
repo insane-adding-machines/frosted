@@ -32,6 +32,20 @@ const struct hal_iodev UART0 = {
     .clock_id = CHIP_CLOCK_UART0
 };
 
+/* Serial port UART1 */
+const struct hal_iodev UART1 = { 
+    .base = (uint32_t *)0x40010000,
+    .irqn = 6,
+    .clock_id = CHIP_CLOCK_UART1
+};
+
+/* Serial port UART3 */
+const struct hal_iodev UART3 = { 
+    .base = (uint32_t *)0x4009C000,
+    .irqn = 8,
+    .clock_id = CHIP_CLOCK_UART3
+};
+
 /* GPIO controller */
 const struct hal_iodev GPIO = { 
     .base = (uint32_t *)0x2009C000,
@@ -178,3 +192,14 @@ int hal_iodev_off(struct hal_iodev *iodev)
 }
 
 
+int lpc1768_pio_mode(uint32_t port, uint32_t pin, uint32_t mode) {
+    uint32_t temp;
+    temp = GET_REG(SYSREG_IOCON_PINMODE((port << 1) + (pin >> 4))) & ~(0x03 << ((pin % 16)<< 1));
+    SET_REG(SYSREG_IOCON_PINMODE((port << 1) + ((pin) >> 4)), ((mode & 0x03) << ((pin % 16)<< 1)));
+}
+
+int lpc1768_pio_func(uint32_t port, uint32_t pin, uint32_t func) {
+    uint32_t temp;
+    temp = GET_REG(SYSREG_IOCON_PINSEL((port << 1) + (pin >> 4))) & ~(0x03 << ((pin % 16)<< 1));
+    SET_REG(SYSREG_IOCON_PINSEL((port << 1) + ((pin) >> 4)), ((func & 0x03) << ((pin % 16)<< 1)));
+}

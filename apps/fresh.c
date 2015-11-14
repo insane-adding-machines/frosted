@@ -28,6 +28,8 @@ static const char str_invalidfile[]  = "File not found.\r\n";
 static const char str_help[]         = "Supported commands: help ls mkdir touch cat echo rm.\r\n";
 static const char str_prompt[]       = "[frosted]:";
 
+#define FRESH_DEV "/dev/ttyS0"
+
 static void ls(int ser, char *start)
 {
     char *fname;
@@ -90,7 +92,7 @@ void fresh(void *arg) {
     char pwd[MAX_FILE] = "";
 
     do {
-        ser = open("/dev/ttyS0", O_RDWR);
+        ser = open(FRESH_DEV, O_RDWR);
     } while (ser < 0);
 
     write(ser, str_welcome, strlen(str_welcome));
