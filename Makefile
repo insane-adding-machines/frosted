@@ -4,19 +4,21 @@ ifeq ($(ARCH_SEEEDPRO),y)
 	CPU=cortex-m
 	BOARD=lpc1768
 	RAM_BASE=0x10000000
-	CFLAGS+=-DSEEEDPRO
+	CFLAGS+=-DSEEEDPRO -mcpu=cortex-m3
 endif
 
 ifeq ($(ARCH_QEMU),y)
 	CPU=cortex-m
 	BOARD=stellaris
-	CFLAGS+=-DSTELLARIS
+	CFLAGS+=-DSTELLARIS -mcpu=cortex-m3
 endif
 
 ifeq ($(ARCH_STM32F4DISCOVERY),y)
 	CPU=cortex-m
 	BOARD=stm32f4
-	CFLAGS+=-DSTM32F4
+	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
+	FLASH_SIZE=1024K
+	FLASH_ORIGIN=0x08000000
 endif
 
 ifeq ($(FRESH),y)
@@ -36,7 +38,7 @@ CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
-CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
+CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 

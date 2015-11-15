@@ -1,18 +1,18 @@
 include ../kconfig/.config
 ifeq ($(ARCH_SEEEDPRO),y)
 	CPU=cortex-m
-	BOARD=lpc1768
+	BOARD=lpc1768 -mcpu=cortex-m3
 endif
 
 ifeq ($(ARCH_QEMU),y)
 	CPU=cortex-m
-	BOARD=stellaris
+	BOARD=stellaris -mcpu=cortex-m3
 endif
 
 ifeq ($(ARCH_STM32F4DISCOVERY),y)
 	CPU=cortex-m
 	BOARD=stm32f4
-	CFLAGS+=-DSTM32F4
+	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
 endif
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
@@ -25,7 +25,7 @@ AR:=$(CROSS_COMPILE)ar
 LIBNAME:=libkernel.a
 PREFIX:=$(PWD)/build
 #Target flags
-CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
+CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD)
 CFLAGS+=-DKLOG_LEVEL=6
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
