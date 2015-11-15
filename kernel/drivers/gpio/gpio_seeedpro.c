@@ -202,10 +202,6 @@ void devgpio_init(struct fnode *dev)
 
     GPIOREG[1].dir |= (1<<18);
 
-
-    /* Kernel printf associated to devgpio_write */
-    klog_set_write(devgpio_write);
-
     klog(LOG_INFO, "GPIO Driver: KLOG enabled.\n");
 
     register_module(&mod_devgpio);

@@ -90,10 +90,27 @@ void idling(void *arg)
     int led[4];
     int i, j;
 
-    led[0] = open("/dev/gpio_1_18", O_RDWR, 0);
-    led[1] = open("/dev/gpio_1_20", O_RDWR, 0);
-    led[2] = open("/dev/gpio_1_21", O_RDWR, 0);
-    led[3] = open("/dev/gpio_1_23", O_RDWR, 0);
+#ifdef STM32F4
+# define LED0 "/dev/gpio_3_12"
+# define LED1 "/dev/gpio_3_13"
+# define LED2 "/dev/gpio_3_14"
+# define LED3 "/dev/gpio_3_15"
+#elif defined (SEEEDPRO)
+# define LED0 "/dev/gpio_1_18"
+# define LED1 "/dev/gpio_1_20"
+# define LED2 "/dev/gpio_1_21"
+# define LED3 "/dev/gpio_1_23"
+#else
+# define LED0 "/dev/null"
+# define LED1 "/dev/null"
+# define LED2 "/dev/null"
+# define LED3 "/dev/null"
+#endif
+
+    led[0] = open(LED0, O_RDWR, 0);
+    led[1] = open(LED1, O_RDWR, 0);
+    led[2] = open(LED2, O_RDWR, 0);
+    led[3] = open(LED3, O_RDWR, 0);
 
     if (led[0] >= 0) {
         for (i = 0; i < 4; i++) {

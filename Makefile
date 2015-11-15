@@ -13,7 +13,7 @@ ifeq ($(ARCH_QEMU),y)
 	CFLAGS+=-DSTELLARIS -mcpu=cortex-m3
 endif
 
-ifeq ($(ARCH_STM32F4DISCOVERY),y)
+ifeq ($(ARCH_STM32F4),y)
 	CPU=cortex-m
 	BOARD=stm32f4
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
@@ -76,6 +76,9 @@ CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
 OBJS-$(GPIO_SEEEDPRO)+=kernel/drivers/gpio/gpio_seeedpro.o
 CFLAGS-$(GPIO_SEEEDPRO)+=-DCONFIG_GPIO_SEEEDPRO
+
+OBJS-$(GPIO_STM32F4)+=kernel/drivers/gpio/gpio_stm32f4.o
+CFLAGS-$(GPIO_STM32F4)+=-DCONFIG_GPIO_STM32F4
 
 CFLAGS+=$(CFLAGS-y)
 

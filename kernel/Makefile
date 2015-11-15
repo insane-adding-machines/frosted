@@ -9,7 +9,7 @@ ifeq ($(ARCH_QEMU),y)
 	BOARD=stellaris -mcpu=cortex-m3
 endif
 
-ifeq ($(ARCH_STM32F4DISCOVERY),y)
+ifeq ($(ARCH_STM32F4),y)
 	CPU=cortex-m
 	BOARD=stm32f4
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft

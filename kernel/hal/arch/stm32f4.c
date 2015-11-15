@@ -46,13 +46,26 @@ const struct hal_iodev UART3 = {
     .clock_id = CHIP_CLOCK_UART3
 };
 
-/* GPIO controller */
-const struct hal_iodev GPIO = { 
-    .base = (uint32_t *)0x2009C000,
-    .irqn = 0,
-    .clock_id = CHIP_CLOCK_GPIO
-};
 #endif
+
+/* GPIOA controller */
+const struct hal_iodev GPIOA = { 
+    .base = (uint32_t *)0x40020000,
+    .irqn = 0,
+    .clock_id = CHIP_CLOCK_GPIOA
+};
+
+const struct hal_iodev GPIOD = { 
+    .base = (uint32_t *)0x40020C00,
+    .irqn = 0,
+    .clock_id = CHIP_CLOCK_GPIOD
+};
+
+const struct hal_iodev GPIOG = { 
+    .base = (uint32_t *)0x40021800,
+    .irqn = 0,
+    .clock_id = CHIP_CLOCK_GPIOG
+};
 
 /* PLL/Systick Configured values */
 const uint32_t SYS_CLOCK =  160000000;
@@ -173,6 +186,7 @@ int hal_board_init(void)
 
 int hal_iodev_on(struct hal_iodev *iodev)
 {
+    clock_on(iodev->clock_id);
     return 0;
 }
 
