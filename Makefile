@@ -82,6 +82,9 @@ CFLAGS-$(GPIO_STM32F4)+=-DCONFIG_GPIO_STM32F4
 
 CFLAGS+=$(CFLAGS-y)
 
+SHELL=/bin/bash
+APPS_START = 0x20000
+PADTO = $$(($(FLASH_ORIGIN)+$(APPS_START)))
 
 all: image.bin
 
@@ -98,7 +101,7 @@ $(PREFIX)/lib/libfrosted.a:
 	make -C libfrosted
 
 image.bin: kernel.elf apps.elf
-	$(CROSS_COMPILE)objcopy -O binary --pad-to=0x20000 kernel.elf $@
+	$(CROSS_COMPILE)objcopy -O binary --pad-to=$(PADTO) kernel.elf $@
 	$(CROSS_COMPILE)objcopy -O binary apps.elf apps.bin
 	cat apps.bin >> $@
 
