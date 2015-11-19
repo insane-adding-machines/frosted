@@ -1,12 +1,14 @@
 include ../kconfig/.config
 ifeq ($(ARCH_SEEEDPRO),y)
 	CPU=cortex-m
-	BOARD=lpc1768 -mcpu=cortex-m3
+	BOARD=lpc1768
+	CFLAGS+=-mcpu=cortex-m3
 endif
 
 ifeq ($(ARCH_QEMU),y)
 	CPU=cortex-m
-	BOARD=stellaris -mcpu=cortex-m3
+	BOARD=stellaris
+	CFLAGS+=-mcpu=cortex-m3
 endif
 
 ifeq ($(ARCH_STM32F4),y)
