@@ -10,7 +10,7 @@ endif
 ifeq ($(ARCH_QEMU),y)
 	CPU=cortex-m
 	BOARD=lm3s
-	CFLAGS+=-DSTELLARIS -mcpu=cortex-m3
+	CFLAGS+=-DLM3S -mcpu=cortex-m3
 endif
 
 ifeq ($(ARCH_STM32F4),y)

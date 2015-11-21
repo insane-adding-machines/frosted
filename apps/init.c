@@ -26,8 +26,8 @@
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
-#ifdef STELLARIS
-int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (0xDCUL); 
+#ifdef LM3S 
+int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (0x26CUL); 
 #endif
 
 #ifdef SEEEDPRO

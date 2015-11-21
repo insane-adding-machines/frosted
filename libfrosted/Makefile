@@ -9,7 +9,7 @@ endif
 ifeq ($(ARCH_QEMU),y)
 	FAMILY=stellaris
 	ARCH=stellaris_qemu
-	CFLAGS+=-DSTELLARIS
+	CFLAGS+=-DLM3S
 endif
 
 CROSS_COMPILE?=arm-none-eabi-
