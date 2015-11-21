@@ -3,31 +3,31 @@
 #include "uart_dev.h"
 //#define CONFIG_UART1
 //#define CONFIG_UART3
+//
+//
+//
+//
 
-extern struct hal_iodev UART0;
-extern struct hal_iodev UART1;
-extern struct hal_iodev UART2;
-extern struct hal_iodev UART3;
+#include "libopencm3/cm3/nvic.h"
 
-static int uart_n(struct hal_iodev *uart)
-{
-    if (0) {}
-#ifdef CONFIG_UART1 
-    else if (uart == &UART1)
-        return 1;
+#ifdef LM3S
+#   include "libopencm3/lm3s/usart.h"
 #endif
 
-#ifdef CONFIG_UART2 
-    else if (uart == &UART2)
-        return 2;
+
+#ifndef UART0
+#   define UART0 USART0
+#   define UART1 USART1
+#   define UART2 USART2
+#endif
+#ifndef NVIC_UART0_IRQ
+#   define NVIC_UART0_IRQ NVIC_USART0_IRQ
+#   define NVIC_UART1_IRQ NVIC_USART1_IRQ
+#   define NVIC_UART2_IRQ NVIC_USART2_IRQ
 #endif
 
-#ifdef CONFIG_UART3 
-    if (uart == &UART3)
-        return 3;
-#endif
-    return 0;
-}
+
+#define UART_N(x) (((uint32_t)x == UART0)?0:(((uint32_t)x == UART1)?1:(((uint32_t)x == UART2)?2:3)))
 
 static struct module mod_devuart = {
 };
@@ -38,32 +38,31 @@ static int devuart_write(int fd, const void *buf, unsigned int len);
 static int uart_pid[4] = {0};
 static mutex_t *uart_mutex;
 
-static int uart_check_fd(int fd, struct hal_iodev **iodev)
+static uint32_t uart_check_fd(int fd)
 {
     struct fnode *fno;
     fno = task_filedesc_get(fd);
     
     if (!fno)
-        return -1;
+        return 0;
     if (fd < 0)
-        return -1;
+        return 0;
 
     if (fno->owner != &mod_devuart)
-        return -1;
-    *iodev = (struct hal_iodev *)fno->priv;
-    return 0;
+        return 0;
+    return (uint32_t)fno->priv;
 }
 static struct cirbuf * inbuf = NULL;
 
-void UART0_Handler(void)
+void uart_isr(uint32_t uart)
 {
     /* Clear RX flag */
-    uart_enter_irq(UART0.base);
+    usart_clear_rx_interrupt(uart);
 
     /* While data available */
-    while (uart_poll_rx(UART0.base))
+    while (usart_rx_data_ready(uart))
     {
-        char byte = uart_rx(UART0.base); 
+        char byte = (char)(usart_recv(uart) & 0xFF); 
         /* read data into circular buffer */
         cirbuf_writebyte(inbuf, byte);
     }
@@ -72,60 +71,31 @@ void UART0_Handler(void)
     if (uart_pid[0] > 0) 
         task_resume(uart_pid[0]);
 }
-#ifdef CONFIG_UART1
-void UART1_Handler(void)
+
+void uart0_isr(void)
 {
-    /* Clear RX flag */
-    uart_enter_irq(UART1.base);
-
-    /* While data available */
-    while (uart_poll_rx(UART1.base))
-    {
-        char byte = uart_rx(UART1.base); 
-        /* read data into circular buffer */
-        cirbuf_writebyte(inbuf, byte);
-    }
-
-    /* If a process is attached, resume the process */
-    if (uart_pid[1] > 0) 
-        task_resume(uart_pid[1]);
+    uart_isr(UART0);
 }
-#endif
 
-#ifdef CONFIG_UART3
-void UART3_Handler(void)
+void usart0_isr(void)
 {
-    /* Clear RX flag */
-    uart_enter_irq(UART3.base);
-
-    /* While data available */
-    while (uart_poll_rx(UART3.base))
-    {
-        char byte = uart_rx(UART3.base); 
-        /* read data into circular buffer */
-        cirbuf_writebyte(inbuf, byte);
-    }
-
-    /* If a process is attached, resume the process */
-    if (uart_pid[3] > 0) 
-        task_resume(uart_pid[3]);
+    uart_isr(USART0);
 }
-#endif
 
 static int devuart_write(int fd, const void *buf, unsigned int len)
 {
     int i;
     char *ch = (char *)buf;
-    struct hal_iodev *dev;
 
-    if (uart_check_fd(fd, &dev) != 0)
+    uint32_t uart = uart_check_fd(fd);
+    if (!uart)
         return -1;
     if (len <= 0)
         return len;
     if (fd < 0)
         return -1;
     for (i = 0; i < len; i++) {
-        uart_tx((dev->base),ch[i]);
+        usart_send(uart,ch[i]);
     }
     return len;
 }
@@ -137,20 +107,22 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     volatile int len_available;
     char *ptr = (char *)buf;
     struct hal_iodev *dev;
+    uint32_t uart;
 
     if (len <= 0)
         return len;
     if (fd < 0)
         return -1;
 
-    if (uart_check_fd(fd, &dev) != 0)
+    uart = uart_check_fd(fd);
+    if (!uart)
         return -1;
 
     frosted_mutex_lock(uart_mutex);
-    hal_irq_off(dev->irqn);
+    usart_disable_rx_interrupt(uart);
     len_available =  cirbuf_bytesinuse(inbuf);
     if (len_available <= 0) {
-        uart_pid[uart_n(dev)] = scheduler_get_cur_pid();
+        uart_pid[UART_N(uart)] = scheduler_get_cur_pid();
         task_suspend();
         out = SYS_CALL_AGAIN;
         goto again;
@@ -165,10 +137,10 @@ static int devuart_read(int fd, void *buf, unsigned int len)
             break;
         ptr++;
     }
-    uart_pid[uart_n(dev)] = 0;
+    uart_pid[UART_N(dev)] = 0;
 
 again:
-    hal_irq_on(dev->irqn);
+    usart_enable_rx_interrupt(uart);
     frosted_mutex_unlock(uart_mutex);
     return out;
 }
@@ -178,14 +150,15 @@ static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
 {
     int ret = 0;
     struct hal_iodev *dev;
-    if (uart_check_fd(fd, &dev) != 0)
+    uint32_t uart = uart_check_fd(fd);
+    if (!uart)
         return -1;
     *revents = 0;
     if (events & POLLOUT) {
         *revents |= POLLOUT;
         ret = 1; /* TODO: implement interrupt for write events */
     }
-    if ((events == POLLIN) && (!(UART_FR(dev->base) & UART_FR_RXFE))) {
+    if ((events == POLLIN) && usart_rx_data_ready(uart)) {
         *revents |= POLLIN;
         ret = 1;
     }
@@ -217,30 +190,13 @@ void devuart_init(struct fnode *dev)
     inbuf = cirbuf_create(256);
 
     uart0 = fno_create(&mod_devuart, "ttyS0", dev);
-    uart0->priv = &UART0;
-    uart_init(UART0.base);
-    hal_iodev_on(&UART0);
-  
-#ifdef CONFIG_UART1 
-    uart3 = fno_create(&mod_devuart, "ttyS1", dev);
-    uart3->priv = &UART1;
-    uart_init(UART1.base);
-    hal_iodev_on(&UART0);
-#endif
-#ifdef CONFIG_UART3 
-    lpc1768_pio_mode(0, 25, 2<<2); 
-    lpc1768_pio_func(0, 25, 3);
-    lpc1768_pio_mode(0, 26, 2<<2); 
-    lpc1768_pio_func(0, 26, 3);
+    uart0->priv = (void *)UART0;
+    usart_enable_rx_interrupt(UART0);
+    nvic_enable_irq(NVIC_UART0_IRQ);
     
-    uart3 = fno_create(&mod_devuart, "ttyS3", dev);
-    uart3->priv = &UART3;
-    uart_init(UART3.base);
-    hal_iodev_on(&UART0);
-#endif
-
     /* Kernel printf associated to devuart_write */
     klog_set_write(devuart_write);
+    nvic_enable_irq(NVIC_UART0_IRQ);
 
     klog(LOG_INFO, "UART Driver: KLOG enabled.\n");
 
