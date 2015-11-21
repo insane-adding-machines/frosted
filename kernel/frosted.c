@@ -47,12 +47,16 @@ void frosted_init(void)
     volatile void * vector = &_k__syscall__;
     (void)vector;
             
-    hal_board_init();
+    //hal_board_init();
+    // TODO: initialize hw via libopencm3
 
     ktimer_init();
 
-    hal_systick_config(SYS_CLOCK / 1000);
-    hal_irqprio_config();
+    //hal_systick_config(SYS_CLOCK / 1000);
+    //hal_irqprio_config();
+    /* TODO: Enable systick via opencm3 */
+
+    //systick_set_frequency();
 
     syscalls_init();
     vfs_init();

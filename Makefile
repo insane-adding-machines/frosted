@@ -9,7 +9,7 @@ endif
 
 ifeq ($(ARCH_QEMU),y)
 	CPU=cortex-m
-	BOARD=stellaris
+	BOARD=lm3s
 	CFLAGS+=-DSTELLARIS -mcpu=cortex-m3
 endif
 
@@ -54,7 +54,6 @@ APPS-$(FRESH)+=apps/fresh.o
 
 
 OBJS-y:=
-CFLAGS-y:=-Ikernel/hal
 
 # device drivers 
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
@@ -119,9 +118,14 @@ apps/apps.ld: apps/apps.ld.in
 apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
 	$(CC) -o $@  $(APPS-y) -Tapps/apps.ld -lfrosted -lc -lfrosted -Wl,-Map,apps.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
+kernel/libopencm3/lib/libopencm3_$(BOARD).a:
+	make -C kernel/libopencm3
 
-kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y)
-	$(CC) -o $@   -Tkernel/hal/arch/$(BOARD).ld $(OBJS-y) -lkernel -Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+$(PREFIX)/lib/libkernel.a: kernel/libopencm3/lib/libopencm3_$(BOARD).a
+
+kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a
+	$(CC) -o $@   -Tkernel/hal/arch/$(BOARD).ld -Wl,--start-group $^ -Wl,--end-group \
+		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
@@ -134,6 +138,7 @@ menuconfig:
 
 clean:
 	@make -C kernel clean
+	@make -C kernel/libopencm3 clean
 	@make -C libfrosted clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf

@@ -2,14 +2,6 @@
 #ifndef FROSTED_INTERRUPTS_H
 #define FROSTED_INTERRUPTS_H
 
-#include "system.h"
-
-#define OS_LOWEST_IRQ_PRIO      ((1<<NVIC_PRIO_BITS)-1)       /* 7 on a Stellaris */
-#define OS_HALFWAY_IRQ_PRIO     ((1<<(NVIC_PRIO_BITS-1))-1)   /* 3 on a Stellaris */
-
-#define OS_IRQ_PRIO         OS_LOWEST_IRQ_PRIO     /* Kernel will run at this prio */
-#define OS_IRQ_MAX_PRIO     OS_HALFWAY_IRQ_PRIO    /* IRQs using kernel API can run at most at this prio */
-
 #ifdef DEBUG
     static void irq_off(void)
     {
@@ -31,7 +23,7 @@
 
     static inline void irq_setmask(void)
     {
-        __set_BASEPRI(OS_IRQ_MAX_PRIO);
+        __set_BASEPRI(3);
     }
     
     static inline void irq_clearmask(void)

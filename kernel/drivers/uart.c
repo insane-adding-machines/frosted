@@ -146,7 +146,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     if (uart_check_fd(fd, &dev) != 0)
         return -1;
 
-    mutex_lock(uart_mutex);
+    frosted_mutex_lock(uart_mutex);
     hal_irq_off(dev->irqn);
     len_available =  cirbuf_bytesinuse(inbuf);
     if (len_available <= 0) {
@@ -169,7 +169,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
 
 again:
     hal_irq_on(dev->irqn);
-    mutex_unlock(uart_mutex);
+    frosted_mutex_unlock(uart_mutex);
     return out;
 }
 
@@ -205,7 +205,7 @@ static struct fnode *uart3 = NULL;
 
 void devuart_init(struct fnode *dev)
 {
-    uart_mutex = mutex_init();
+    uart_mutex = frosted_mutex_init();
     mod_devuart.family = FAMILY_FILE;
     mod_devuart.ops.open = devuart_open;
     mod_devuart.ops.read = devuart_read; 

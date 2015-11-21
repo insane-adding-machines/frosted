@@ -1,8 +1,6 @@
 #ifndef FROSTED_INCLUDED_H
 #define FROSTED_INCLUDED_H
 
-#include "system.h"
-
 #define KERNEL
 #include "frosted_api.h"
 #include "malloc.h"
@@ -86,10 +84,10 @@ int sem_post(sem_t *s);
 sem_t *sem_init(int val);
 int sem_destroy(sem_t *s);
 
-int mutex_lock(mutex_t *s);
-int mutex_unlock(mutex_t *s);
-mutex_t *mutex_init();
-int mutex_destroy(mutex_t *s);
+int frosted_mutex_lock(mutex_t *s);
+int frosted_mutex_unlock(mutex_t *s);
+mutex_t *frosted_mutex_init();
+int frostd_mutex_destroy(mutex_t *s);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 

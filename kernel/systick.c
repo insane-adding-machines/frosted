@@ -19,6 +19,7 @@
  */  
 #include "frosted.h"
 #include "heap.h"
+#include "cm3/nvic.h"
 volatile unsigned int jiffies = 0u;
 volatile unsigned int _n_int = 0u;
 int _clock_interval = 1;
@@ -27,9 +28,9 @@ static int _sched_active = 0;
 
 void frosted_scheduler_on(void)
 {
-    hal_irq_set_prio(IRQN_PSV, 2);
-    hal_irq_set_prio(IRQN_SVC, 1);
-    hal_irq_set_prio(IRQN_TCK, 0);
+    nvic_set_priority(NVIC_PENDSV_IRQ, 2);
+    nvic_set_priority(NVIC_SV_CALL_IRQ, 1);
+    nvic_set_priority(NVIC_SYSTICK_IRQ, 0);
     _sched_active = 1;
 }
 
@@ -88,7 +89,6 @@ static void ktimers_check(void)
 
 void SysTick_Handler(void)
 {
-    //irq_off(); // XXX Fixme
     SysTick_Hook();
     jiffies+= _clock_interval;
     _n_int++;
@@ -98,19 +98,19 @@ void SysTick_Handler(void)
     if (_sched_active && ((task_timeslice() == 0) || (!task_running()))) {
         schedule();
     }
-    //irq_on();
 }
 
 void SysTick_on(void)
 {
     int clock;
-    clock = (SYS_CLOCK * _clock_interval) / 1000;
-    hal_systick_config(clock);
+    //clock = (SYS_CLOCK * _clock_interval) / 1000;
+    //hal_systick_config(clock);
+    /* TODO: Enable systick via opencm3 */
 }
 
 void SysTick_off(void)
 {
-    hal_systick_stop();
+    //hal_systick_stop();
 }
 
 int SysTick_interval(unsigned long interval)

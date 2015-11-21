@@ -467,7 +467,7 @@ static __naked void restore_task_context(void)
 
 
 /* C ABI cannot mess with the stack, we will */
-void __naked  PendSV_Handler(void)
+void __naked  pend_sv_handler(void)
 {
     /* save current context on current stack */
     if (in_kernel()) {
@@ -663,7 +663,7 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
-int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     /* save current context on current stack */
     save_task_context();
@@ -684,11 +684,9 @@ int __attribute__((naked)) SVC_Handler(uint32_t n, uint32_t arg1, uint32_t arg2,
     if (sys_syscall_handlers[n] == NULL)
         return -1;
 
-    //irq_setmask();
     irq_off();
     call = sys_syscall_handlers[n];
     retval = call(arg1, arg2, arg3, *a4, *a5);
-    //irq_clearmask();
     irq_on();
 
     if (_cur_task->tb.state == TASK_WAITING)
