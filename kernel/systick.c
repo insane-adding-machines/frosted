@@ -19,7 +19,7 @@
  */  
 #include "frosted.h"
 #include "heap.h"
-#include "cm3/nvic.h"
+#include "libopencm3/cm3/nvic.h"
 volatile unsigned int jiffies = 0u;
 volatile unsigned int _n_int = 0u;
 int _clock_interval = 1;
@@ -87,7 +87,7 @@ static void ktimers_check(void)
 }
 
 
-void SysTick_Handler(void)
+void sys_tick_handler(void)
 {
     SysTick_Hook();
     jiffies+= _clock_interval;

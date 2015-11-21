@@ -43,8 +43,36 @@ int klog_write(int file, char *ptr, int len)
     return len;
 }
 
+void hard_fault_handler(void)
+{
+    /*
+    volatile uint32_t hfsr = GET_REG(SYSREG_HFSR);
+    volatile uint32_t bfsr = GET_REG(SYSREG_BFSR);
+    volatile uint32_t bfar = GET_REG(SYSREG_BFAR);
+    volatile uint32_t afsr = GET_REG(SYSREG_AFSR);
+    */
+    while(1);
+}
+
+void mem_manage_handler(void)
+{
+    while(1);
+}
+
+void bus_fault_handler(void)
+{
+    while(1);
+}
+
+void usage_fault_handler(void)
+{
+    while(1);
+}
+
+
 static void hw_init(void)
 {
+    systick_clear();
 #   if defined STM32F4
         clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
 #   elif defined LPC17XX
@@ -53,7 +81,8 @@ static void hw_init(void)
 #   else
 #       error "Unknown architecture. Please add proper HW initialization"    
 #   endif
-    systick_set_clocksource(1);
+    systick_set_reload((SYS_CLOCK / 1000) - 1);
+    systick_set_clocksource(STK_CSR_CLKSOURCE);
     systick_interrupt_enable();
     systick_counter_enable();
 
