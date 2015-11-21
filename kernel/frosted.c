@@ -18,6 +18,8 @@
  *
  */  
 #include "frosted.h"
+#include "libopencm3/cm3/systick.h"
+
 #define IDLE() while(1){do{}while(0);}
 
 /* The following needs to be defined by
@@ -41,23 +43,32 @@ int klog_write(int file, char *ptr, int len)
     return len;
 }
 
+static void hw_init(void)
+{
+#   if defined STM32F4
+        clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
+#   elif defined LPC17XX
+#   elif defined LM3S
+        rcc_qemu_init();
+#   else
+#       error "Unknown architecture. Please add proper HW initialization"    
+#   endif
+    systick_set_clocksource(1);
+    systick_interrupt_enable();
+    systick_counter_enable();
+
+}
+
 void frosted_init(void)
 {
     extern void * _k__syscall__;
     volatile void * vector = &_k__syscall__;
     (void)vector;
+
+    /* Set up system */
+    hw_init();
             
-    //hal_board_init();
-    // TODO: initialize hw via libopencm3
-
     ktimer_init();
-
-    //hal_systick_config(SYS_CLOCK / 1000);
-    //hal_irqprio_config();
-    /* TODO: Enable systick via opencm3 */
-
-    //systick_set_frequency();
-
     syscalls_init();
     vfs_init();
     kernel_task_init();

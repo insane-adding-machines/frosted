@@ -136,9 +136,11 @@ qemu2: image.bin
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
 
+libclean:
+	@make -C kernel/libopencm3 clean
+
 clean:
 	@make -C kernel clean
-	@make -C kernel/libopencm3 clean
 	@make -C libfrosted clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf
