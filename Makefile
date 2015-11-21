@@ -124,7 +124,7 @@ kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 $(PREFIX)/lib/libkernel.a: kernel/libopencm3/lib/libopencm3_$(BOARD).a
 
 kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a
-	$(CC) -o $@   -Tkernel/hal/arch/$(BOARD).ld -Wl,--start-group $^ -Wl,--end-group \
+	$(CC) -o $@   -Tkernel/ld/$(BOARD).ld -Wl,--start-group $^ -Wl,--end-group \
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
