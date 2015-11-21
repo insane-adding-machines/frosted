@@ -5,14 +5,12 @@ ifeq ($(ARCH_SEEEDPRO),y)
 	BOARD=lpc1768
 	RAM_BASE=0x10000000
 	CFLAGS+=-DSEEEDPRO -mcpu=cortex-m3
-	SYS_CLOCK=96000000
 endif
 
 ifeq ($(ARCH_QEMU),y)
 	CPU=cortex-m
 	BOARD=lm3s
 	CFLAGS+=-DSTELLARIS -mcpu=cortex-m3
-	SYS_CLOCK=50000000
 endif
 
 ifeq ($(ARCH_STM32F4),y)
@@ -21,7 +19,6 @@ ifeq ($(ARCH_STM32F4),y)
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
 	FLASH_SIZE=1024K
 	FLASH_ORIGIN=0x08000000
-	SYS_CLOCK=168000000
 endif
 
 ifeq ($(FRESH),y)
