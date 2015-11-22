@@ -19,6 +19,9 @@
  */  
 #include "frosted.h"
 #include "libopencm3/cm3/systick.h"
+#if defined STM32F4
+#include <libopencm3/stm32/rcc.h>
+#endif
 
 #define IDLE() while(1){do{}while(0);}
 
@@ -74,7 +77,7 @@ static void hw_init(void)
 {
     systick_clear();
 #   if defined STM32F4
-        clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
+        rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
 #   elif defined LPC17XX
 #   elif defined LM3S
         rcc_qemu_init();

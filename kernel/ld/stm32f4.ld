@@ -6,7 +6,13 @@ MEMORY
 }
 
 __StackTop = ORIGIN(SRAM) + LENGTH(SRAM) - 4;
- 
+
+ /* Enforce emmition of the vector table. */
+EXTERN (vector_table)
+
+/* Define the entry point of the output file. */
+ENTRY(reset_handler)
+
 SECTIONS
 {
     .text :
