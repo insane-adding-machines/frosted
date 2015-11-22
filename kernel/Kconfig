@@ -1,62 +1,140 @@
 menu "Platform Selection"
-    choice ARCH
+
+choice ARCH
     prompt "Architecture"
-    default ARCH_QEMU
+    default ARCH_LM3S
 
-    config ARCH_QEMU
-    bool "TI Stellaris qemu"
+    config ARCH_LM3S
+    bool "LM3S"
+    help
+        Enable support for Stellaris LM3S systems
 
-    config ARCH_SEEEDPRO
-    bool "Seeeduino Arch Pro board"
+    config ARCH_LPC17XX
+    bool "LPC17XX"
+    help
+        Enable support for NXP LPC17xx systems
 
     config ARCH_STM32F4
-    bool "STM32F4 Discovery board"
+    bool "STM32F4"
+    help
+        Enable support for ST STM32F4 systems
+endchoice
+
+source "../kernel//stm32f4/Kconfig"
+source "../kernel//lpc17xx/Kconfig"
+source "../kernel//lm3s/Kconfig"
+
+config FLASH_SIZE_2MB
+        bool
+config FLASH_SIZE_1MB
+        bool
+config FLASH_SIZE_512KB
+        bool
+config FLASH_SIZE_256KB
+        bool
+config FLASH_SIZE_128KB
+        bool
+
+config RAM_SIZE_192KB
+        bool
+config RAM_SIZE_128KB
+        bool
+config RAM_SIZE_64KB
+        bool
+config RAM_SIZE_32KB
+        bool
+config RAM_SIZE_16KB
+        bool
+
+#Temp hack to allow '407 & '411 clock setups to coexist
+choice
+    prompt "Clock Speed"
+    config CLK_48MHZ
+        bool "48MHz"
+        depends on (ARCH_STM32F411_E || ARCH_STM32F411_C)
+    config CLK_96MHZ
+        bool "96MHz"
+        depends on (ARCH_STM32F411_E || ARCH_STM32F411_C)
+    config CLK_168MHZ
+        bool "168MHz"
+        depends on (ARCH_STM32F407_G || ARCH_STM32F407_E)
+endchoice
+
+choice 
+    prompt "Board"
+config MACH_STM32F407Discovery
+    bool "STM32F407Discovery"
+    depends on (ARCH_STM32F407_G || ARCH_STM32F407_E)
+    default y
+config MACH_STM32F411Discovery
+    bool "STM32F411Discovery"
+    depends on (ARCH_STM32F411_E || ARCH_STM32F411_C)
+    default y
+
+config MACH_LPC1768MBED
+    bool "LPC1768MBED"
+    depends on ARCH_LPC1768
+config MACH_SEEEDPRO
+    bool "SEEEDPRO"
+    depends on ARCH_LPC1768
+    default y
+
+config MACH_LM3S6965EVB
+    bool "lm3s6965evb"
+    depends on ARCH_LM3S6965
+    default y
+
 endchoice
 
 endmenu
 
 menu "Kernel Configuration"
 endmenu
+ 
+config KFLASHMEM_SIZE
+   int "Kernel Flash size (KB)"
+   default 4
 
-config KMEM_SIZE
-    int "Kernel memory size (KB)"
-    default 4
+config KRAMMEM_SIZE
+   int "Kernel RAM size (KB)"
+   default 4
 
 menu "Subsystems"
-    menu "Filesystems"
-        config SYSFS
-        bool "SysFS (/sys)"
-        default y
+   menu "Filesystems"
+       config SYSFS
+       bool "SysFS (/sys)"
+       default y
 
-        config MEMFS
-        bool "MemFS"
-        default y
-    endmenu
+       config MEMFS
+       bool "MemFS"
+       default y
+   endmenu
 
-    menu "Sockets"
-        config SOCK_UNIX
-        bool "UNIX Sockets for IPC"
-        default y
-    endmenu
+   menu "Sockets"
+       config SOCK_UNIX
+       bool "UNIX Sockets for IPC"
+       default y
+   endmenu
 
-    menu "Devices"
-        config DEVNULL
-        bool "Support for /dev/null and /dev/zero"
-        default y
+   menu "Devices"
+       config DEVNULL
+       bool "Support for /dev/null and /dev/zero"
+       default y
 
-        config DEVUART
-        bool "Generic UART driver"
-        default y
+       config DEVUART
+       bool "Generic UART driver"
+       default y
 
-        config GPIO_SEEEDPRO
-        depends on ARCH_SEEEDPRO
-        bool "Arch Seeed pro GPIO driver"
-        default y
+       config GPIO_SEEEDPRO
+       depends on ARCH_SEEEDPRO
+       bool "Arch Seeed pro GPIO driver"
+       default y
 
-        config GPIO_STM32F4
-        depends on ARCH_STM32F4
-        bool "STM32F4 GPIO driver"
-        default y
+       config GPIO_STM32F4
+       depends on ARCH_STM32F4
+       bool "STM32F4 GPIO driver"
+       default y
 
-    endmenu
+   endmenu
 endmenu
+

@@ -1,0 +1,12 @@
+if ARCH_LM3S
+
+choice 
+    prompt "MCU"
+    default LM3S6965
+config ARCH_LM3S6965
+    bool "LM3S6965"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_64KB
+endchoice
+
+endif

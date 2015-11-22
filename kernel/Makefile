@@ -1,5 +1,6 @@
 include ../kconfig/.config
-ifeq ($(ARCH_SEEEDPRO),y)
+include ../config.mk
+ifeq ($(ARCH_LPC17XX),y)
 	CPU=cortex-m
 	BOARD=lpc1768
 	CFLAGS+=-mcpu=cortex-m3
@@ -7,7 +8,7 @@ ifeq ($(ARCH_SEEEDPRO),y)
 	SYS_CLOCK=96000000
 endif
 
-ifeq ($(ARCH_QEMU),y)
+ifeq ($(ARCH_LM3S),y)
 	CPU=cortex-m
 	BOARD=stellaris
 	CFLAGS+=-mcpu=cortex-m3

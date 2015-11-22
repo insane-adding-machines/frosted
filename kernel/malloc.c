@@ -60,7 +60,7 @@ static char * heap_end_user;
 
 struct f_malloc_stats f_malloc_stats[2] = {};
 
-static const uint32_t kmem_size = (CONFIG_KMEM_SIZE << 10);
+static const uint32_t kmem_size = (CONFIG_KRAM_SIZE << 10);
 
 /*------------------*/
 /* Local functions  */

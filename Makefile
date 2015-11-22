@@ -1,25 +1,5 @@
 -include kconfig/.config
-
-ifeq ($(ARCH_SEEEDPRO),y)
-	CPU=cortex-m
-	BOARD=lpc1768
-	RAM_BASE=0x10000000
-	CFLAGS+=-DSEEEDPRO -mcpu=cortex-m3
-endif
-
-ifeq ($(ARCH_QEMU),y)
-	CPU=cortex-m
-	BOARD=lm3s
-	CFLAGS+=-DLM3S -mcpu=cortex-m3
-endif
-
-ifeq ($(ARCH_STM32F4),y)
-	CPU=cortex-m
-	BOARD=stm32f4
-	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
-	FLASH_SIZE=1024K
-	FLASH_ORIGIN=0x08000000
-endif
+-include config.mk
 
 ifeq ($(FRESH),y)
 	CFLAGS+=-DCONFIG_FRESH=1
@@ -29,15 +9,10 @@ ifeq ($(PRODCONS),y)
 	CFLAGS+=-DCONFIG_PRODCONS=1
 endif
 
-
-RAM_BASE?=0x20000000
-FLASH_ORIGIN?=0x0
-FLASH_SIZE?=256K
-CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
-
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
+AR:=$(CROSS_COMPILE)ar
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -Ikernel/libopencm3/include -Ikernel -DCORE_M3 -Iinclude -fno-builtin -ffreestanding -DKLOG_LEVEL=6 -DSYS_CLOCK=$(SYS_CLOCK)
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
@@ -100,18 +75,24 @@ $(PREFIX)/lib/libfrosted.a:
 	make -C libfrosted
 
 image.bin: kernel.elf apps.elf
-	$(CROSS_COMPILE)objcopy -O binary --pad-to=$(PADTO) kernel.elf $@
+	export PADTO=`python -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
+	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 	$(CROSS_COMPILE)objcopy -O binary apps.elf apps.bin
 	cat apps.bin >> $@
 
 
 apps/apps.ld: apps/apps.ld.in
-	export KMEM_SIZE_B=`expr $(KMEM_SIZE) \* 1024`; \
-	export KMEM_SIZE_B_HEX=`printf 0x%X $$KMEM_SIZE_B`;	\
+	export KMEM_SIZE_B=`python -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
+	export AMEM_SIZE_B=`python -c "print '0x%X' % ( ($(RAM_SIZE) - $(KRAMMEM_SIZE)) * 1024)"`;	\
+	export KFLASHMEM_SIZE_B=`python -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
+	export AFLASHMEM_SIZE_B=`python -c "print '0x%X' % ( ($(FLASH_SIZE) - $(KFLASHMEM_SIZE)) * 1024)"`;	\
+	export KRAMMEM_SIZE_B=`python -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
 	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
-			 sed -e "s/__FLASH_SIZE/$(FLASH_SIZE)/g" | \
+			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
+			 sed -e "s/__AFLASHMEM_SIZE/$$AFLASHMEM_SIZE_B/g" | \
 			 sed -e "s/__RAM_BASE/$(RAM_BASE)/g" |\
-			 sed -e "s/__KMEM_SIZE/` printf 0x%x $$KMEM_SIZE_B_HEX`/g" \
+			 sed -e "s/__KRAMMEM_SIZE/$$KRAMMEM_SIZE_B/g" |\
+			 sed -e "s/__AMEM_SIZE/$$AMEM_SIZE_B/g" \
 			 >$@
 
 
@@ -123,8 +104,17 @@ kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 
 $(PREFIX)/lib/libkernel.a: kernel/libopencm3/lib/libopencm3_$(BOARD).a
 
-kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a
-	$(CC) -o $@   -Tkernel/ld/$(BOARD).ld -Wl,--start-group $^ -Wl,--end-group \
+kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
+	export KRAMMEM_SIZE_B=`python -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
+	export KFLASHMEM_SIZE_B=`python -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
+	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
+			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
+			 sed -e "s/__RAM_BASE/$(RAM_BASE)/g" |\
+			 sed -e "s/__KRAMMEM_SIZE/$$KRAMMEM_SIZE_B/g" \
+			 >$@
+
+kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a kernel/$(BOARD)/$(BOARD).ld
+	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $^ -Wl,--end-group \
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
