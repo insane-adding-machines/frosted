@@ -21,6 +21,7 @@ ifeq ($(ARCH_STM32F4),y)
 	FLASH_ORIGIN=0x08000000
 	RAM_BASE=0x20000000
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
+	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
 endif
 
 ifeq ($(FLASH_SIZE_2MB),y)

@@ -10,6 +10,7 @@
 #ifdef STM32F4
 #   include "libopencm3/stm32/f4/memorymap.h"
 #   include "libopencm3/stm32/f4/usart.h"
+#   define usart_clear_rx_interrupt(x) do{}while(0)
 #endif
 
 

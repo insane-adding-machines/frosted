@@ -100,7 +100,7 @@ apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
 	$(CC) -o $@  $(APPS-y) -Tapps/apps.ld -lfrosted -lc -lfrosted -Wl,-Map,apps.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
-	make -C kernel/libopencm3
+	make -C kernel/libopencm3 $(OPENCM3FLAGS)
 
 $(PREFIX)/lib/libkernel.a: kernel/libopencm3/lib/libopencm3_$(BOARD).a
 
