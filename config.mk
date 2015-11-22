@@ -32,6 +32,9 @@ endif
 ifeq ($(FLASH_SIZE_512KB),y)
 	FLASH_SIZE=512
 endif
+ifeq ($(FLASH_SIZE_384KB),y)
+	FLASH_SIZE=384
+endif
 ifeq ($(FLASH_SIZE_256KB),y)
 	FLASH_SIZE=256
 endif
@@ -45,6 +48,9 @@ endif
 ifeq ($(RAM_SIZE_128KB),y)
 	RAM_SIZE=128
 endif
+ifeq ($(RAM_SIZE_96KB),y)
+	RAM_SIZE=96
+endif
 ifeq ($(RAM_SIZE_64KB),y)
 	RAM_SIZE=64
 endif
@@ -55,7 +61,22 @@ ifeq ($(RAM_SIZE_16KB),y)
 	RAM_SIZE=16
 endif
 
+ifeq ($(CLK_48MHZ),y)
+	CLK_SPEED=48
+endif
+ifeq ($(CLK_84MHZ),y)
+	CLK_SPEED=84
+endif
+ifeq ($(CLK_120MHZ),y)
+	CLK_SPEED=120
+endif
+ifeq ($(CLK_168MHZ),y)
+	CLK_SPEED=168
+endif
+
 APPS_ORIGIN=$$(( $(KFLASHMEM_SIZE) * 1024))
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
 CFLAGS+=-DAPPS_ORIGIN=$(APPS_ORIGIN)
 CFLAGS+=-DCONFIG_KRAM_SIZE=$(KRAMMEM_SIZE)
+CFLAGS+=-DCONFIG_CLK_SPEED=$(CLK_SPEED)
+

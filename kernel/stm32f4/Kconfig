@@ -2,20 +2,39 @@ if ARCH_STM32F4
 
 choice 
     prompt "MCU"
-    default ARCH_STM32F407_G
-config ARCH_STM32F407_G
+    default ARCH_STM32F407_XG
+
+config ARCH_STM32F401_XB
+    bool "STM32F401xB 128KB"
+    select FLASH_SIZE_128KB
+    select RAM_SIZE_64KB
+config ARCH_STM32F401_XC
+    bool "STM32F401xC 256KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_64KB
+config ARCH_STM32F401_XD
+    bool "STM32F401xD 384KB"
+    select FLASH_SIZE_384KB
+    select RAM_SIZE_96KB
+config ARCH_STM32F401_XE
+    bool "STM32F401xE 512KB"
+    select FLASH_SIZE_512KB
+    select RAM_SIZE_96KB
+
+config ARCH_STM32F407_XG
     bool "STM32F407xG 1MB"
     select FLASH_SIZE_1MB
     select RAM_SIZE_192KB
-config ARCH_STM32F407_E
+config ARCH_STM32F407_XE
     bool "STM32F407xE 512KB"
     select FLASH_SIZE_512KB
     select RAM_SIZE_192KB
-config ARCH_STM32F411_E
+    
+config ARCH_STM32F411_XE
     bool "STM32F411xE 512KB"
     select FLASH_SIZE_512KB
     select RAM_SIZE_128KB
-config ARCH_STM32F411_C
+config ARCH_STM32F411_XC
     bool "STM32F411xC 256KB"
     select FLASH_SIZE_256KB
     select RAM_SIZE_128KB

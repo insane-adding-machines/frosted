@@ -77,7 +77,17 @@ static void hw_init(void)
 {
     systick_clear();
 #   if defined STM32F4
+#       if CONFIG_CLK_SPEED == 48
+        rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_48MHZ]);
+#       elif CONFIG_CLK_SPEED == 84         
+        rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_84MHZ]);
+#       elif CONFIG_CLK_SPEED == 120
+        rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_120MHZ]);
+#       elif CONFIG_CLK_SPEED == 168         
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
+#       else
+#error No valid clock speed selected
+#endif
 #   elif defined LPC17XX
 #   elif defined LM3S
         rcc_qemu_init();
