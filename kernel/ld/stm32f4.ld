@@ -11,12 +11,34 @@ SECTIONS
 {
     .text :
     {
-        KEEP(*(.isr_vector))
+        KEEP(*(.vectors))
         . = ALIGN(4);
         KEEP(*(.syscall_vector))
         *(.text*)
         *(.rodata*)
     } > FLASH
+	/* C++ Static constructors/destructors, also used for __attribute__
+	 * ((constructor)) and the likes */
+	.preinit_array : {
+		. = ALIGN(4);
+		__preinit_array_start = .;
+		KEEP (*(.preinit_array))
+		__preinit_array_end = .;
+	} > FLASH
+	.init_array : {
+		. = ALIGN(4);
+		__init_array_start = .;
+		KEEP (*(SORT(.init_array.*)))
+		KEEP (*(.init_array))
+		__init_array_end = .;
+	} > FLASH
+	.fini_array : {
+		. = ALIGN(4);
+		__fini_array_start = .;
+		KEEP (*(.fini_array))
+		KEEP (*(SORT(.fini_array.*)))
+		__fini_array_end = .;
+	} > FLASH
  
     .data :
     {
@@ -26,6 +48,7 @@ SECTIONS
         *(.data*)
         _edata = .;
     } > SRAM AT > FLASH
+	_data_loadaddr = LOADADDR(.data);
  
     .bss :
     {
@@ -43,3 +66,5 @@ SECTIONS
         PROVIDE(_heap_start = _ebss );
     } > SRAM
 }
+
+PROVIDE(_stack = ORIGIN(SRAM) + LENGTH(SRAM));
