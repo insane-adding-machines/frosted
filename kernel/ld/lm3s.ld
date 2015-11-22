@@ -17,7 +17,7 @@ SECTIONS
     .text :
     {
         KEEP(*(.vectors))
-        . = ALIGN(4);
+        . = ALIGN(1024);
         KEEP(*(.syscall_vector))
         *(.text*)
         *(.rodata*)
