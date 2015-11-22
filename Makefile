@@ -114,7 +114,7 @@ kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 			 >$@
 
 kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a kernel/$(BOARD)/$(BOARD).ld
-	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $^ -Wl,--end-group \
+	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a -Wl,--end-group \
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 qemu: image.bin 
@@ -130,6 +130,7 @@ libclean:
 	@make -C kernel/libopencm3 clean
 
 clean:
+	rm -f  kernel/$(BOARD)/$(BOARD).ld
 	@make -C kernel clean
 	@make -C libfrosted clean
 	@rm -f $(OBJS-y)

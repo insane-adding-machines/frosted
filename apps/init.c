@@ -27,7 +27,7 @@
 #define GREETING "Welcome to frosted!\n"
 
 /* Syscall table is fixed at kernel start + 1K */
-int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) FLASH_ORIGIN + 0x400;
+int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (FLASH_ORIGIN + 0x400);
 
 void task2(void *arg)
 {
