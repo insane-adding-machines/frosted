@@ -52,7 +52,7 @@ How to run the QEMU example synthetic target:
  * Use ```make menuconfig``` to select preferred options. For running under qemu, the CPU type has to be set to "LM3S"
  * Use ```make``` to start the build
  * Use ```make qemu2``` to run frosted in a virtual machine.
- * Use ```make qemu``` to run frosted in a virtual machine. The kernel will refuse to start until connect a GDB debugger to local port 3333.
+ * Use ```make qemu``` to run frosted in a virtual machine. The kernel will wait until a GDB debugger is connected to local port 3333.
 
 ### Joining the team / contacts
 
@@ -63,4 +63,5 @@ As an alternative, please use the [issue board](https://github.com/insane-adding
 
 Enjoy!
 
-_The frosted development team_
+
+_the frosted development team_
