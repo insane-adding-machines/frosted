@@ -1,44 +1,100 @@
 #include "frosted.h"
 #include <stdint.h>
 #include "uart_dev.h"
-//#define CONFIG_UART1
-//#define CONFIG_UART3
-//
-//
-//
-//
 
 #include "libopencm3/cm3/nvic.h"
 
 #ifdef LM3S
 #   include "libopencm3/lm3s/usart.h"
 #endif
+#ifdef STM32F4
+#   include "libopencm3/stm32/f4/memorymap.h"
+#   include "libopencm3/stm32/f4/usart.h"
+#   define usart_clear_rx_interrupt(x) do{}while(0)
+#endif
 
 
 #ifndef UART0
+#ifdef USART0
 #   define UART0 USART0
-#   define UART1 USART1
-#   define UART2 USART2
+#else 
+#   define UART0 (0)
 #endif
-#ifndef NVIC_UART0_IRQ
+#endif
+
+#ifndef UART1
+#ifdef USART1
+#   define UART1 USART1
+#else 
+#   define UART1 (0)
+#endif
+#endif
+
+#ifndef UART2
+#ifdef USART2
+#   define UART2 USART2
+#else 
+#   define UART2 (0)
+#endif
+#endif
+#ifndef UART3
+#ifdef USART3
+#   define UART3 USART3
+#else 
+#   define UART3 (0)
+#endif
+#endif
+
+#ifdef NVIC_USART0_IRQ
 #   define NVIC_UART0_IRQ NVIC_USART0_IRQ
+#endif
+#ifdef NVIC_USART1_IRQ
 #   define NVIC_UART1_IRQ NVIC_USART1_IRQ
+#endif
+#ifdef NVIC_USART2_IRQ
 #   define NVIC_UART2_IRQ NVIC_USART2_IRQ
 #endif
+#ifdef NVIC_USART3_IRQ
+#   define NVIC_UART3_IRQ NVIC_USART2_IRQ
+#endif
 
+#ifndef NVIC_UART0_IRQ
+#define NVIC_UART0_IRQ 0
+#endif
+#ifndef NVIC_UART1_IRQ
+#define NVIC_UART1_IRQ 0
+#endif
+#ifndef NVIC_UART2_IRQ
+#define NVIC_UART2_IRQ 0
+#endif
+#ifndef NVIC_UART3_IRQ
+#define NVIC_UART3_IRQ 0
+#endif
 
-#define UART_N(x) (((uint32_t)x == UART0)?0:(((uint32_t)x == UART1)?1:(((uint32_t)x == UART2)?2:3)))
 
 static struct module mod_devuart = {
 };
 
+struct dev_uart {
+    uint32_t base;
+    uint32_t irq;
+    struct fnode *fno;
+    struct cirbuf *inbuf;
+    mutex_t *mutex;
+    uint16_t pid;
+};
+
+static struct dev_uart DEV_UART[4] = { 
+        { .base = UART0, .irq = NVIC_UART0_IRQ, },
+        { .base = UART1, .irq = NVIC_UART1_IRQ, },
+        { .base = UART2, .irq = NVIC_UART2_IRQ, },
+        { .base = UART3, .irq = NVIC_UART3_IRQ, },
+};
 
 static int devuart_write(int fd, const void *buf, unsigned int len);
 
-static int uart_pid[4] = {0};
-static mutex_t *uart_mutex;
 
-static uint32_t uart_check_fd(int fd)
+static struct dev_uart *uart_check_fd(int fd)
 {
     struct fnode *fno;
     fno = task_filedesc_get(fd);
@@ -50,44 +106,58 @@ static uint32_t uart_check_fd(int fd)
 
     if (fno->owner != &mod_devuart)
         return 0;
-    return (uint32_t)fno->priv;
+    return fno->priv;
 }
-static struct cirbuf * inbuf = NULL;
 
-void uart_isr(uint32_t uart)
+void uart_isr(struct dev_uart *uart)
 {
     /* Clear RX flag */
-    usart_clear_rx_interrupt(uart);
+    usart_clear_rx_interrupt(uart->base);
 
     /* While data available */
-    while (usart_rx_data_ready(uart))
+    while (usart_rx_data_ready(uart->base))
     {
-        char byte = (char)(usart_recv(uart) & 0xFF); 
+        char byte = (char)(usart_recv(uart->base) & 0xFF); 
         /* read data into circular buffer */
-        cirbuf_writebyte(inbuf, byte);
+        cirbuf_writebyte(uart->inbuf, byte);
     }
 
     /* If a process is attached, resume the process */
-    if (uart_pid[0] > 0) 
-        task_resume(uart_pid[0]);
+    if (uart->pid > 0) 
+        task_resume(uart->pid);
 }
 
 void uart0_isr(void)
 {
-    uart_isr(UART0);
+    uart_isr(&DEV_UART[0]);
 }
 
+void uart1_isr(void)
+{
+    uart_isr(&DEV_UART[1]);
+}
+
+#ifdef USART0
 void usart0_isr(void)
 {
-    uart_isr(USART0);
+    uart_isr(&DEV_UART[0]);
 }
+#endif
+
+#ifdef USART1
+void usart1_isr(void)
+{
+    uart_isr(&DEV_UART[1]);
+}
+#endif
 
 static int devuart_write(int fd, const void *buf, unsigned int len)
 {
     int i;
     char *ch = (char *)buf;
+    struct dev_uart *uart;
 
-    uint32_t uart = uart_check_fd(fd);
+    uart = uart_check_fd(fd);
     if (!uart)
         return -1;
     if (len <= 0)
@@ -95,7 +165,7 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     if (fd < 0)
         return -1;
     for (i = 0; i < len; i++) {
-        usart_send(uart,ch[i]);
+        usart_send(uart->base,ch[i]);
     }
     return len;
 }
@@ -107,7 +177,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     volatile int len_available;
     char *ptr = (char *)buf;
     struct hal_iodev *dev;
-    uint32_t uart;
+    struct dev_uart *uart;
 
     if (len <= 0)
         return len;
@@ -118,11 +188,11 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     if (!uart)
         return -1;
 
-    frosted_mutex_lock(uart_mutex);
-    usart_disable_rx_interrupt(uart);
-    len_available =  cirbuf_bytesinuse(inbuf);
+    frosted_mutex_lock(uart->mutex);
+    usart_disable_rx_interrupt(uart->base);
+    len_available =  cirbuf_bytesinuse(uart->inbuf);
     if (len_available <= 0) {
-        uart_pid[UART_N(uart)] = scheduler_get_cur_pid();
+        uart->pid = scheduler_get_cur_pid();
         task_suspend();
         out = SYS_CALL_AGAIN;
         goto again;
@@ -133,15 +203,15 @@ static int devuart_read(int fd, void *buf, unsigned int len)
 
     for(out = 0; out < len; out++) {
         /* read data */
-        if (cirbuf_readbyte(inbuf, ptr) != 0)
+        if (cirbuf_readbyte(uart->inbuf, ptr) != 0)
             break;
         ptr++;
     }
-    uart_pid[UART_N(dev)] = 0;
+    uart->pid = 0;
 
 again:
-    usart_enable_rx_interrupt(uart);
-    frosted_mutex_unlock(uart_mutex);
+    usart_enable_rx_interrupt(uart->base);
+    frosted_mutex_unlock(uart->mutex);
     return out;
 }
 
@@ -149,8 +219,7 @@ again:
 static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
 {
     int ret = 0;
-    struct hal_iodev *dev;
-    uint32_t uart = uart_check_fd(fd);
+    struct dev_uart *uart = uart_check_fd(fd);
     if (!uart)
         return -1;
     *revents = 0;
@@ -158,7 +227,7 @@ static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
         *revents |= POLLOUT;
         ret = 1; /* TODO: implement interrupt for write events */
     }
-    if ((events == POLLIN) && usart_rx_data_ready(uart)) {
+    if ((events == POLLIN) && usart_rx_data_ready(uart->base)) {
         *revents |= POLLIN;
         ret = 1;
     }
@@ -173,32 +242,39 @@ static int devuart_open(const char *path, int flags)
     return task_filedesc_add(f); 
 }
 
-static struct fnode *uart0 = NULL;
-static struct fnode *uart3 = NULL;
+
+static int uart_fno_init(struct fnode *dev, uint32_t n)
+{
+    struct dev_uart *u = &DEV_UART[n];
+    char name[6] = "ttyS";
+    name[4] = n + '0';
+
+    if (u->base == 0)
+        return -1;
+
+    u->fno = fno_create(&mod_devuart, name, dev);
+    u->pid = 0;
+    u->mutex = frosted_mutex_init();
+    u->inbuf = cirbuf_create(256);
+    u->fno->priv = u;
+    usart_enable_rx_interrupt(u->base);
+    nvic_enable_irq(u->irq);
+    return 0;
+
+}
+                        
 
 void devuart_init(struct fnode *dev)
 {
-    uart_mutex = frosted_mutex_init();
+    int i;
     mod_devuart.family = FAMILY_FILE;
     mod_devuart.ops.open = devuart_open;
     mod_devuart.ops.read = devuart_read; 
     mod_devuart.ops.poll = devuart_poll;
     mod_devuart.ops.write = devuart_write;
-
-
-    /* create circular buffer */
-    inbuf = cirbuf_create(256);
-
-    uart0 = fno_create(&mod_devuart, "ttyS0", dev);
-    uart0->priv = (void *)UART0;
-    usart_enable_rx_interrupt(UART0);
-    nvic_enable_irq(NVIC_UART0_IRQ);
     
-    /* Kernel printf associated to devuart_write */
-    klog_set_write(devuart_write);
-    nvic_enable_irq(NVIC_UART0_IRQ);
-
-    klog(LOG_INFO, "UART Driver: KLOG enabled.\n");
+    for (i = 0; i < 4; i++) 
+        uart_fno_init(dev, i);
 
     register_module(&mod_devuart);
 }

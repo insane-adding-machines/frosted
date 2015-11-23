@@ -20,9 +20,9 @@ choice ARCH
         Enable support for ST STM32F4 systems
 endchoice
 
-source "../kernel//stm32f4/Kconfig"
-source "../kernel//lpc17xx/Kconfig"
-source "../kernel//lm3s/Kconfig"
+source "../kernel/stm32f4/Kconfig"
+source "../kernel/lpc17xx/Kconfig"
+source "../kernel/lm3s/Kconfig"
 
 config FLASH_SIZE_2MB
         bool
@@ -100,11 +100,11 @@ endmenu
  
 config KFLASHMEM_SIZE
    int "Kernel Flash size (KB)"
-   default 4
+   default 32
 
 config KRAMMEM_SIZE
    int "Kernel RAM size (KB)"
-   default 4
+   default 6
 
 menu "Subsystems"
    menu "Filesystems"
