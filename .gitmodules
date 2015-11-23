@@ -1,3 +1,3 @@
 [submodule "kernel/libopencm3"]
 	path = kernel/libopencm3
-	url = https://github.com/libopencm3/libopencm3.git
+	url = https://github.com/insane_adding_machines/libopencm3.git
