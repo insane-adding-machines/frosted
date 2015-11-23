@@ -115,7 +115,7 @@ void uart_isr(struct dev_uart *uart)
     usart_clear_rx_interrupt(uart->base);
 
     /* While data available */
-    while (usart_rx_data_ready(uart->base))
+    while (usart_is_recv_ready(uart->base))
     {
         char byte = (char)(usart_recv(uart->base) & 0xFF); 
         /* read data into circular buffer */
@@ -227,7 +227,7 @@ static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
         *revents |= POLLOUT;
         ret = 1; /* TODO: implement interrupt for write events */
     }
-    if ((events == POLLIN) && usart_rx_data_ready(uart->base)) {
+    if ((events == POLLIN) && usart_is_recv_ready(uart->base)) {
         *revents |= POLLIN;
         ret = 1;
     }
