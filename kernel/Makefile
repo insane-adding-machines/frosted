@@ -21,7 +21,6 @@ ifeq ($(ARCH_STM32F4),y)
 	BOARD=stm32f4
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F4
-	SYS_CLOCK=168000000
 endif
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
@@ -38,7 +37,6 @@ CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD) -D$(ARCH)
 CFLAGS+=-DKLOG_LEVEL=6
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
-CFLAGS+=-DSYS_CLOCK=$(SYS_CLOCK)
 #Include paths
 CFLAGS+=-I. -I../include -I.. -Ilibopencm3/include/libopencm3 -Ilibopencm3/include
 #Freestanding options

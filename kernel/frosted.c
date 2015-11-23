@@ -28,7 +28,7 @@
 /* The following needs to be defined by
  * the application code
  */
-void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + 0x20000); /* Expected init process text at 128 KB */
+void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
 static int (*_klog_write)(int, const void *, unsigned int) = NULL;
     
@@ -77,28 +77,31 @@ static void hw_init(void)
 {
     systick_clear();
 #   if defined STM32F4
-#       if CONFIG_CLK_SPEED == 48
+/*    
+
+#       if SYS_CLOCK == 48000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_48MHZ]);
-#       elif CONFIG_CLK_SPEED == 84         
+#       elif SYS_CLOCK == 84000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_84MHZ]);
-#       elif CONFIG_CLK_SPEED == 120
+#       elif SYS_CLOCK == 120000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_120MHZ]);
-#       elif CONFIG_CLK_SPEED == 168         
+#       elif SYS_CLOCK == 168000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
 #       else
 #error No valid clock speed selected
 #endif
+*/
 #   elif defined LPC17XX
 #   elif defined LM3S
         rcc_qemu_init();
 #   else
 #       error "Unknown architecture. Please add proper HW initialization"    
 #   endif
-    systick_set_reload((SYS_CLOCK / 1000) - 1);
-    systick_set_clocksource(STK_CSR_CLKSOURCE);
-    systick_interrupt_enable();
-    systick_counter_enable();
 
+    systick_set_reload(SYS_CLOCK / 1000);
+    systick_set_clocksource(STK_CSR_CLKSOURCE);
+    systick_counter_enable();
+    systick_interrupt_enable();
 }
 
 void frosted_init(void)

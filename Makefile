@@ -135,5 +135,6 @@ clean:
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf
 	@rm -f apps/apps.ld
+	@rm -f kernel/$(BOARD)/$(BOARD).ld
 	@find . |grep "\.o" | xargs -x rm -f
 
