@@ -75,18 +75,18 @@ $(PREFIX)/lib/libfrosted.a:
 	make -C libfrosted
 
 image.bin: kernel.elf apps.elf
-	export PADTO=`python -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
+	export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 	$(CROSS_COMPILE)objcopy -O binary apps.elf apps.bin
 	cat apps.bin >> $@
 
 
 apps/apps.ld: apps/apps.ld.in
-	export KMEM_SIZE_B=`python -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
-	export AMEM_SIZE_B=`python -c "print '0x%X' % ( ($(RAM_SIZE) - $(KRAMMEM_SIZE)) * 1024)"`;	\
-	export KFLASHMEM_SIZE_B=`python -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
-	export AFLASHMEM_SIZE_B=`python -c "print '0x%X' % ( ($(FLASH_SIZE) - $(KFLASHMEM_SIZE)) * 1024)"`;	\
-	export KRAMMEM_SIZE_B=`python -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
+	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
+	export AMEM_SIZE_B=`python2 -c "print '0x%X' % ( ($(RAM_SIZE) - $(KRAMMEM_SIZE)) * 1024)"`;	\
+	export KFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
+	export AFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( ($(FLASH_SIZE) - $(KFLASHMEM_SIZE)) * 1024)"`;	\
+	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
 	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
 			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
 			 sed -e "s/__AFLASHMEM_SIZE/$$AFLASHMEM_SIZE_B/g" | \
@@ -105,8 +105,8 @@ kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 $(PREFIX)/lib/libkernel.a: kernel/libopencm3/lib/libopencm3_$(BOARD).a
 
 kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
-	export KRAMMEM_SIZE_B=`python -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
-	export KFLASHMEM_SIZE_B=`python -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
+	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
+	export KFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
 	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
 			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
 			 sed -e "s/__RAM_BASE/$(RAM_BASE)/g" |\
