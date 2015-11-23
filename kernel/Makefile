@@ -5,7 +5,6 @@ ifeq ($(ARCH_LPC17XX),y)
 	BOARD=lpc1768
 	CFLAGS+=-mcpu=cortex-m3
 	ARCH=LPC17XX
-	SYS_CLOCK=96000000
 endif
 
 ifeq ($(ARCH_LM3S),y)

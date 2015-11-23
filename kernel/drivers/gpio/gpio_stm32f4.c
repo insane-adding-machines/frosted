@@ -2,10 +2,8 @@
 #include <stdint.h>
 #include "ioctl.h"
 
-#if defined(STM32F4)
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#endif
 
 static int gpio_subsys_initialized = 0;
 
@@ -162,7 +160,6 @@ void devgpio_init(struct fnode *dev)
     
 
     if (!gpio_subsys_initialized) {
-//        hal_iodev_on(&GPIOD);
         gpio_subsys_initialized++;
     }
 

@@ -7,26 +7,32 @@ config ARCH_LPC1763
     bool "LPC1763"
     select FLASH_SIZE_256KB
     select RAM_SIZE_32KB
+    select CLK_100MHz
 config ARCH_LPC1764
     bool "LPC1764"
     select FLASH_SIZE_128KB
     select RAM_SIZE_16KB
+    select CLK_100MHz
 config ARCH_LPC1765
     bool "LPC1765"
     select FLASH_SIZE_256KB
     select RAM_SIZE_32KB
+    select CLK_100MHz
 config ARCH_LPC1766
     bool "LPC1766"
     select FLASH_SIZE_256KB
     select RAM_SIZE_32KB
+    select CLK_100MHz
 config ARCH_LPC1767
     bool "LPC1767"
     select FLASH_SIZE_512KB
     select RAM_SIZE_32KB
+    select CLK_100MHz
 config ARCH_LPC1768
     bool "LPC1768"
     select FLASH_SIZE_512KB
     select RAM_SIZE_32KB
+    select CLK_100MHz
 config ARCH_LPC1769
     bool "LPC1769"
     select FLASH_SIZE_512KB

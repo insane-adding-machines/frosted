@@ -86,7 +86,7 @@ void idling(void *arg)
 # define LED1 "/dev/gpio_3_13"
 # define LED2 "/dev/gpio_3_14"
 # define LED3 "/dev/gpio_3_15"
-#elif defined (SEEEDPRO)
+#elif defined (LPC17XX)
 # define LED0 "/dev/gpio_1_18"
 # define LED1 "/dev/gpio_1_20"
 # define LED2 "/dev/gpio_1_21"

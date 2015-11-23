@@ -21,6 +21,8 @@
 #include "libopencm3/cm3/systick.h"
 #if defined STM32F4
 #include <libopencm3/stm32/rcc.h>
+#   elif defined LPC17XX
+#include <libopencm3/lpc17xx/clock.h>
 #endif
 
 #define IDLE() while(1){do{}while(0);}
@@ -77,28 +79,58 @@ static void hw_init(void)
 {
     systick_clear();
 #   if defined STM32F4
-/*    
-
-#       if SYS_CLOCK == 48000000
+#       if CONFIG_SYS_CLOCK == 48000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_48MHZ]);
-#       elif SYS_CLOCK == 84000000
+#       elif CONFIG_SYS_CLOCK == 84000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_84MHZ]);
-#       elif SYS_CLOCK == 120000000
+#       elif CONFIG_SYS_CLOCK == 120000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_120MHZ]);
-#       elif SYS_CLOCK == 168000000
+#       elif CONFIG_SYS_CLOCK == 168000000
         rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
 #       else
 #error No valid clock speed selected
 #endif
-*/
 #   elif defined LPC17XX
+#if CONFIG_SYS_CLOCK == 100000000
+    /* Enable the external clock */
+    CLK_SCS |= 0x20;                
+    while((CLK_SCS & 0x40) == 0);
+    /* Select external oscilator */
+    CLK_CLKSRCSEL = 0x01;   
+    /*N = 2 & M = 25*/
+    CLK_PLL0CFG = (2<<16) |25;
+    /*Feed*/
+    CLK_PLL0FEED=0xAA; 
+    CLK_PLL0FEED=0x55;
+    /*PLL0 Enable */
+    CLK_PLL0CON = 1;
+    /*Feed*/
+    CLK_PLL0FEED=0xAA; 
+    CLK_PLL0FEED=0x55;
+    /* Divide by 3 */
+    CLK_CCLKCFG = 2;
+    /* wait until locked */
+    while (!(CLK_PLL0STAT & (1<<26)));
+    /* see flash accelerator - TBD*/
+    /*_FLASHCFG = (_FLASHCFG & 0xFFF) | (4<<12);*/
+    /* PLL0 connect */
+    CLK_PLL0CON |= 1<<1;
+    /*Feed*/
+    CLK_PLL0FEED=0xAA; 
+    CLK_PLL0FEED=0x55;
+    /* PLL0 operational */
+#elif CONFIG_SYS_CLOCK == 120000000
+#error TBD
+#else
+#error No valid clock speed selected
+#endif
 #   elif defined LM3S
         rcc_qemu_init();
 #   else
 #       error "Unknown architecture. Please add proper HW initialization"    
 #   endif
 
-    systick_set_reload(SYS_CLOCK / 1000);
+    systick_set_reload(CONFIG_SYS_CLOCK / 1000);
     systick_set_clocksource(STK_CSR_CLKSOURCE);
     systick_counter_enable();
     systick_interrupt_enable();

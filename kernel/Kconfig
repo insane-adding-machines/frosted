@@ -59,9 +59,12 @@ choice
     config CLK_84MHZ
         bool "84MHz"
         depends on (ARCH_STM32F401_XB || ARCH_STM32F401_XC || ARCH_STM32F401_XD || ARCH_STM32F401_XE ||ARCH_STM32F411_XE || ARCH_STM32F411_XC)
+    config CLK_100MHZ
+        bool "100MHz"
+        depends on ARCH_LPC17XX
     config CLK_120MHZ
         bool "120MHz"
-        depends on (ARCH_STM32F407_XG || ARCH_STM32F407_XE)
+        depends on (ARCH_STM32F407_XG || ARCH_STM32F407_XE ||ARCH_LPC1769 )
     config CLK_168MHZ
         bool "168MHz"
         depends on (ARCH_STM32F407_XG || ARCH_STM32F407_XE)
@@ -132,9 +135,9 @@ menu "Subsystems"
        bool "Generic UART driver"
        default y
 
-       config GPIO_SEEEDPRO
-       depends on ARCH_SEEEDPRO
-       bool "Arch Seeed pro GPIO driver"
+       config GPIO_LPC17XX
+       depends on ARCH_LPC17XX
+       bool "LPC17XX GPIO driver"
        default y
 
        config GPIO_STM32F4
