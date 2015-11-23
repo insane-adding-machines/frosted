@@ -10,8 +10,7 @@ include Makefile
 #CFLAGS+=-DCURSES_LOC="<ncurses.h>"
 #CFLAGS+=-DLOCALE
 HOSTCC?=gcc
-PATH+=:.
-
+PATH:=$(PATH):.
 
 -include $(obj)/.depend
 $(obj)/.depend: $(wildcard *.h *.c)
