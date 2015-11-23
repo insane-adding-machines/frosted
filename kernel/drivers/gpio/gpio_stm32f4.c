@@ -7,10 +7,6 @@
 #include <libopencm3/stm32/gpio.h>
 #endif
 
-//extern struct hal_iodev GPIOA;
-//extern struct hal_iodev GPIOD;
-//extern struct hal_iodev GPIOG;
-
 static int gpio_subsys_initialized = 0;
 
 static struct module mod_devgpio = {
@@ -24,12 +20,13 @@ static struct fnode *gpio_3_15 = NULL;
 struct gpio_addr {
     uint32_t port;
     uint32_t n;
+    uint32_t rcc;
 };
 
-static struct gpio_addr a_pio_3_12 = {GPIOD, 12};
-static struct gpio_addr a_pio_3_13 = {GPIOD, 13};
-static struct gpio_addr a_pio_3_14 = {GPIOD, 14};
-static struct gpio_addr a_pio_3_15 = {GPIOD, 15};
+static struct gpio_addr a_pio_3_12 = {GPIOD, GPIO12, RCC_GPIOD};
+static struct gpio_addr a_pio_3_13 = {GPIOD, GPIO13, RCC_GPIOD};
+static struct gpio_addr a_pio_3_14 = {GPIOD, GPIO14, RCC_GPIOD};
+static struct gpio_addr a_pio_3_15 = {GPIOD, GPIO15, RCC_GPIOD};
 
 static int gpio_check_fd(int fd, struct fnode **fno)
 {
@@ -90,7 +87,7 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
         return -1;
     a = fno->priv;
     if (cmd == IOCTL_GPIO_ENABLE) {
-        rcc_periph_clock_enable(a->port);
+        rcc_periph_clock_enable(a->rcc);
         gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->n);
     }
     if (cmd == IOCTL_GPIO_DISABLE) {
@@ -101,6 +98,7 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
         gpio_set_output_options(a->port, 0, 0, a->n);
+        gpio_mode_setup(a->port, GPIO_MODE_OUTPUT,GPIO_PUPD_NONE, a->n);
     }
     if (cmd == IOCTL_GPIO_SET_MODE) {
         /* TODO: Set pullup/down or int on edges... */
@@ -121,8 +119,7 @@ static int devgpio_read(int fd, void *buf, unsigned int len)
         gpio_pid = scheduler_get_cur_pid();
         task_suspend();
         out = SYS_CALL_AGAIN;
-       // hal_irq_on(GPIOA.irqn);
-        mutex_unlock(gpio_mutex);
+        frosted_mutex_unlock(gpio_mutex);
     } else {
         /* GPIO: get current value */
         return 1;
@@ -155,7 +152,7 @@ static int devgpio_open(const char *path, int flags)
 
 void devgpio_init(struct fnode *dev)
 {
-//    gpio_mutex = mutex_init();
+    gpio_mutex = frosted_mutex_init();
     mod_devgpio.family = FAMILY_FILE;
     mod_devgpio.ops.open = devgpio_open;
     mod_devgpio.ops.read = devgpio_read; 
