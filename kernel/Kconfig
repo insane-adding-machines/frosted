@@ -88,6 +88,10 @@ config MACH_SEEEDPRO
     bool "SEEEDPRO"
     depends on ARCH_LPC1768
     default y
+config MACH_LPC1679XPRESSO
+    bool "LPC1679XPRESSO"
+    depends on ARCH_LPC1769
+    default y
 
 config MACH_LM3S6965EVB
     bool "lm3s6965evb"

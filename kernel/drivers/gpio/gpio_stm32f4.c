@@ -2,29 +2,13 @@
 #include <stdint.h>
 #include "ioctl.h"
 
-#include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include "gpio.h"
 
 static int gpio_subsys_initialized = 0;
 
 static struct module mod_devgpio = {
 };
-
-static struct fnode *gpio_3_12 = NULL;
-static struct fnode *gpio_3_13 = NULL;
-static struct fnode *gpio_3_14 = NULL;
-static struct fnode *gpio_3_15 = NULL;
-
-struct gpio_addr {
-    uint32_t port;
-    uint32_t n;
-    uint32_t rcc;
-};
-
-static struct gpio_addr a_pio_3_12 = {GPIOD, GPIO12, RCC_GPIOD};
-static struct gpio_addr a_pio_3_13 = {GPIOD, GPIO13, RCC_GPIOD};
-static struct gpio_addr a_pio_3_14 = {GPIOD, GPIO14, RCC_GPIOD};
-static struct gpio_addr a_pio_3_15 = {GPIOD, GPIO15, RCC_GPIOD};
 
 static int gpio_check_fd(int fd, struct fnode **fno)
 {
@@ -85,7 +69,6 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
         return -1;
     a = fno->priv;
     if (cmd == IOCTL_GPIO_ENABLE) {
-        rcc_periph_clock_enable(a->rcc);
         gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->n);
     }
     if (cmd == IOCTL_GPIO_DISABLE) {
@@ -148,7 +131,7 @@ static int devgpio_open(const char *path, int flags)
     return task_filedesc_add(f); 
 }
 
-void devgpio_init(struct fnode *dev)
+struct module *  devgpio_init(struct fnode *dev)
 {
     gpio_mutex = frosted_mutex_init();
     mod_devgpio.family = FAMILY_FILE;
@@ -157,30 +140,12 @@ void devgpio_init(struct fnode *dev)
     mod_devgpio.ops.poll = devgpio_poll;
     mod_devgpio.ops.write = devgpio_write;
     mod_devgpio.ops.ioctl = devgpio_ioctl;
-    
 
     if (!gpio_subsys_initialized) {
         gpio_subsys_initialized++;
     }
 
-
-    gpio_3_12 = fno_create(&mod_devgpio, "gpio_3_12", dev);
-    if (gpio_3_12)
-        gpio_3_12->priv = &a_pio_3_12;
-
-    gpio_3_13 = fno_create(&mod_devgpio, "gpio_3_13", dev);
-    if (gpio_3_13)
-        gpio_3_13->priv = &a_pio_3_13;
-
-    gpio_3_14 = fno_create(&mod_devgpio, "gpio_3_14", dev);
-    if (gpio_3_14)
-        gpio_3_14->priv = &a_pio_3_14;
-
-    gpio_3_15 = fno_create(&mod_devgpio, "gpio_3_15", dev);
-    if (gpio_3_15)
-        gpio_3_15->priv = &a_pio_3_15;
-
     klog(LOG_INFO, "GPIO Driver: KLOG enabled.\n");
-    register_module(&mod_devgpio);
+    return &mod_devgpio;
 }
 
