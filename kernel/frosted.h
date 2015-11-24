@@ -118,9 +118,12 @@ void vfs_init(void);
 #define FL_DIR    0x04
 #define FL_INUSE  0x08
 
+#define FL_LINK   0x80
+
 struct fnode {
     struct module *owner;
     char *fname;
+    char *linkname;
     uint32_t flags;
     struct fnode *parent;
     struct fnode *children;
@@ -135,9 +138,8 @@ struct fnode {
 struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent);
 void fno_unlink(struct fnode *fno);
-
 struct fnode *fno_search(const char *path);
-
+int vfs_symlink(char *file, char *link);
 
 /* Modules (for files/sockets) */
 

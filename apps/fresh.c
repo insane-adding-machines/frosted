@@ -60,9 +60,11 @@ static void ls(int ser, char *start)
         stat(fname, &st);
         write(ser, fname, strlen(fname));
         write(ser, "\t", 1);
-        if (S_ISDIR(st.st_mode))
+        if (S_ISDIR(st.st_mode)) {
             type = 'd';
-        else {
+        } else if (S_ISLNK(st.st_mode)) {
+            type = 'l';
+        } else {
             snprintf(ch_size, 8, "%lu", st.st_size);
             type = 'f';
         }
@@ -216,6 +218,22 @@ void fresh(void *arg) {
         if (!strncmp(input, "ls", 2))
         {
             ls(out, pwd);
+        } else if (!strncmp(input, "ln", 2)) {
+            char *file = input + 3;
+            char *symlink = file;
+            while (*symlink != ' ') {
+                if (*symlink == 0) {
+                    write(out, str_invalidfile, strlen(str_invalidfile));
+                    continue;
+                }
+                symlink++;
+            }
+            while (*symlink == ' ')  {
+                *symlink = '\0';
+                symlink++;
+            }
+            if (link(file, symlink) < 0)
+                write(out, str_invalidfile, strlen(str_invalidfile));
         } else if (!strncmp(input, "help", 4)) {
             write(out, str_help, strlen(str_help));
         } else if (!strncmp(input, "cd", 2)) {

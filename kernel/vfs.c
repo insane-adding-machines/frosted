@@ -19,6 +19,7 @@
  */  
 #include "frosted.h"
 #include <string.h>
+#define MAXPATH 256
 
 
 /* ROOT entity ("/")
@@ -149,6 +150,44 @@ static struct fnode *fno_create_file(char *path)
     return f;
 }
 
+static struct fnode *fno_link(char *src, char *dst)
+{
+    struct fnode *file;
+    struct fnode *link;
+    int file_name_len;
+    char p_src[MAX_FILE];
+    char p_dst[MAX_FILE];
+
+    path_abs(src, p_src, MAX_FILE);
+    path_abs(dst, p_dst, MAX_FILE);
+
+    file = fno_search(p_src);
+    if (!file)
+        return NULL;
+
+    link = fno_create_file(p_dst);
+    if (!link) 
+        return NULL;
+
+    file_name_len = strlen(p_src);
+
+    link->flags |= FL_LINK;
+    link->linkname = kalloc(file_name_len + 1);
+    if (!link->linkname) {
+        fno_unlink(link);
+        return NULL;
+    }
+    strncpy(link->linkname, p_src, file_name_len);
+    return link;
+}
+
+int vfs_symlink(char *file, char *link)
+{
+    if (fno_link(file, link) != NULL)
+        return 0;
+    else return -1;
+}
+
 static struct fnode *fno_create_dir(char *path)
 {
     struct fnode *fno = fno_create_file(path);
@@ -204,7 +243,7 @@ static int path_check(const char *path, const char *dirname)
 }
 
 
-static struct fnode *_fno_search(const char *path, struct fnode *dir)
+static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow)
 {
     struct fnode *cur;
     int check = 0;
@@ -215,20 +254,29 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir)
 
     /* Does not match, try another item */
     if (check == 0)
-        return _fno_search(path, dir->next);
+        return _fno_search(path, dir->next, follow);
 
     /* Item is found! */
-    if (check == 2)
+    if (check == 2) {
+        /* If it's a symlink, restart check */
+        if (follow && ((dir->flags & FL_LINK) == FL_LINK)) {
+            return _fno_search(dir->linkname, &FNO_ROOT, 1);
+        }
         return dir;
+    }
 
     /* path is correct, need to walk more */
-    return _fno_search(path_walk(path), dir->children);
+    return _fno_search(path_walk(path), dir->children, follow);
 }
 
 struct fnode *fno_search(const char *path)
 {
-    struct fnode *cur = &FNO_ROOT;
-    return _fno_search(path, cur);
+    return _fno_search(path, &FNO_ROOT, 1);
+}
+
+struct fnode *fno_search_nofollow(const char *path)
+{
+    return _fno_search(path, &FNO_ROOT, 0);
 }
 
 static struct fnode *_fno_create(struct module *owner, const char *name, struct fnode *parent)
@@ -303,6 +351,8 @@ void fno_unlink(struct fnode *fno)
             child = child->next;
         }
     }
+    
+
     kfree(fno->fname);
     kfree(fno);
 }
@@ -379,6 +429,14 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     } else return -1;
 }
 
+int sys_link_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    struct fnode *fno = fno_link((char*)arg1, (char *)arg2);
+    if (fno)
+        return 0;
+    else return -1;
+}
+
 
 int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
@@ -397,7 +455,7 @@ int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     char abs_p[MAX_FILE];
     struct fnode *f;
     path_abs(path, abs_p, MAX_FILE);
-    f = fno_search(abs_p);
+    f = fno_search_nofollow(abs_p); /* Don't follow symlink */
     if (f) {
         fno_unlink(f);
         return 0;
@@ -455,6 +513,9 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     st->st_owner = fno->owner;
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
+        st->st_size = 0;
+    } else if (fno->flags & FL_LINK) {
+        st->st_mode = S_IFLNK;
         st->st_size = 0;
     } else {
         st->st_mode = S_IFREG;

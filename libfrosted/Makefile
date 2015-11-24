@@ -32,6 +32,7 @@ CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 OBJS-y+=			\
+		newlib_syscalls.o \
 		close.o		\
 		errno.o		\
 		_exit.o		\
@@ -78,7 +79,7 @@ OBJS-y+=			\
 		shutdown.o			\
 		thread_create.o		\
 		thread_join.o		\
-		newlib_syscalls.o
+
 
 CFLAGS+=$(CFLAGS-y)
 
