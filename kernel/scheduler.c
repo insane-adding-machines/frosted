@@ -607,7 +607,6 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
             return 0;
 
         task_suspend();
-        return SYS_CALL_AGAIN;
     }
     return 0;
 }
@@ -676,7 +675,7 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
     a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 4));
 
     /* Execute syscall */
-    int retval;
+    volatile int retval;
     int (*call)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5) = NULL;
 
     if (n >= _SYSCALLS_NR)
@@ -687,13 +686,12 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
     irq_off();
     call = sys_syscall_handlers[n];
     retval = call(arg1, arg2, arg3, *a4, *a5);
+    asm volatile ( "mov %0, r0" : "=r" 
+            (*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
     irq_on();
 
-    if (_cur_task->tb.state == TASK_WAITING)
+    if (_cur_task->tb.state == TASK_WAITING) {
         task_switch();
-    else {
-        asm volatile ( "mov %0, r0" : "=r" 
-                (*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
     }
 
     /* write new stack pointer and restore context */
