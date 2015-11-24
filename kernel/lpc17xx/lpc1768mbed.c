@@ -29,36 +29,29 @@
 #include <libopencm3/lpc17xx/gpio.h>
 #include "gpio.h"
 
-static const struct gpio_addr a_pio_1_18 = {GPIO1, GPIOPIN18};
-static const struct gpio_addr a_pio_1_20 = {GPIO1, GPIOPIN20};
-static const struct gpio_addr a_pio_1_21 = {GPIO1, GPIOPIN21};
-static const struct gpio_addr a_pio_1_23 = {GPIO1, GPIOPIN23};
 
+static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO1, .pin=GPIOPIN18, .name="a_pio_1_18"},
+                                                                                {.port=GPIO1, .pin=GPIOPIN20, .name="a_pio_1_20"},
+                                                                                {.port=GPIO1, .pin=GPIOPIN21, .name="a_pio_1_21"},
+                                                                                {.port=GPIO1, .pin=GPIOPIN23, .name="a_pio_1_23"} };
+
+#define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
+
+/* Common code - to be moved, but where? */
 static void gpio_init(struct fnode * dev)
 {
-    struct fnode *gpio_1_18;
-    struct fnode *gpio_1_20;
-    struct fnode *gpio_1_21;
-    struct fnode *gpio_1_23;
-    
+    int i;
+    struct fnode *node;
+    rcc_periph_clock_enable(RCC_GPIOD);
+
     struct module * devgpio = devgpio_init(dev);
 
-    gpio_1_18 = fno_create(devgpio, "gpio_1_18", dev);
-    if (gpio_1_18)
-        gpio_1_18->priv = &a_pio_1_18;
-
-    gpio_1_20 = fno_create(devgpio, "gpio_1_20", dev);
-    if (gpio_1_20)
-        gpio_1_20->priv = &a_pio_1_20;
-
-    gpio_1_21 = fno_create(devgpio, "gpio_1_21", dev);
-    if (gpio_1_21)
-        gpio_1_21->priv = &a_pio_1_21;
-
-    gpio_1_23 = fno_create(devgpio, "gpio_1_23", dev);
-    if (gpio_1_23)
-        gpio_1_23->priv = &a_pio_1_23;
-
+    for(i=0;i<NUM_GPIOS;i++)
+    {
+        node = fno_create(devgpio, gpio_addrs[i].name, dev);
+        if (node)
+            node->priv = &gpio_addrs[i];
+    }
     register_module(devgpio);
 }
 #endif

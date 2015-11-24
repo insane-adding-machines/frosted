@@ -183,7 +183,7 @@ static int devuart_open(const char *path, int flags)
 }
 
 
-int uart_fno_init(struct fnode *dev, uint32_t n, struct uart_addr * addr)
+int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
 {
     struct dev_uart *u = &DEV_UART[n];
     char name[6] = "ttyS";

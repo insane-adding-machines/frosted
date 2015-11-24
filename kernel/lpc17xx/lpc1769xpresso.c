@@ -28,18 +28,23 @@
 #include <libopencm3/lpc17xx/gpio.h>
 #include "gpio.h"
 
-static struct gpio_addr a_pio_0_22 = {GPIO0, GPIOPIN22};
+static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO0, .pin=GPIOPIN22, .name="a_pio_0_22"} };
 
+/* Common code - to be moved, but where? */
 static void gpio_init(struct fnode * dev)
 {
-    struct fnode *gpio_0_22;
-    
+    int i;
+    struct fnode *node;
+    rcc_periph_clock_enable(RCC_GPIOD);
+
     struct module * devgpio = devgpio_init(dev);
 
-    gpio_0_22 = fno_create(devgpio, "gpio_0_22", dev);
-    if (gpio_0_22)
-        gpio_0_22->priv = &a_pio_0_22;
-
+    for(i=0;i<NUM_GPIOS;i++)
+    {
+        node = fno_create(devgpio, gpio_addrs[i].name, dev);
+        if (node)
+            node->priv = &gpio_addrs[i];
+    }
     register_module(devgpio);
 }
 #endif

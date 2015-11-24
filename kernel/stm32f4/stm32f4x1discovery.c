@@ -31,79 +31,84 @@
 #include <libopencm3/stm32/gpio.h>
 #include "gpio.h"
 
-static const struct gpio_addr a_pio_3_12 = {GPIOD, GPIO12};
-static const struct gpio_addr a_pio_3_13 = {GPIOD, GPIO13};
-static const struct gpio_addr a_pio_3_14 = {GPIOD, GPIO14};
-static const struct gpio_addr a_pio_3_15 = {GPIOD, GPIO15};
+static const struct gpio_addr gpio_addrs[] = { {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12, .name="gpio_3_12"},
+                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO13, .name="gpio_3_13"},
+                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO14, .name="gpio_3_14"},
+                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15, .name="gpio_3_15"} };
 
+#define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
+
+/* Common code - to be moved, but where? */
 static void gpio_init(struct fnode * dev)
 {
-    struct fnode *gpio_3_12;
-    struct fnode *gpio_3_13;
-    struct fnode *gpio_3_14;
-    struct fnode *gpio_3_15;
-
+    int i;
+    struct fnode *node;
     rcc_periph_clock_enable(RCC_GPIOD);
 
     struct module * devgpio = devgpio_init(dev);
 
-    gpio_3_12 = fno_create(devgpio, "gpio_3_12", dev);
-    if (gpio_3_12)
-        gpio_3_12->priv = &a_pio_3_12;
-
-    gpio_3_13 = fno_create(devgpio, "gpio_3_13", dev);
-    if (gpio_3_13)
-        gpio_3_13->priv = &a_pio_3_13;
-
-    gpio_3_14 = fno_create(devgpio, "gpio_3_14", dev);
-    if (gpio_3_14)
-        gpio_3_14->priv = &a_pio_3_14;
-
-    gpio_3_15 = fno_create(devgpio, "gpio_3_15", dev);
-    if (gpio_3_15)
-        gpio_3_15->priv = &a_pio_3_15;
-
+    for(i=0;i<NUM_GPIOS;i++)
+    {
+        node = fno_create(devgpio, gpio_addrs[i].name, dev);
+        if (node)
+            node->priv = &gpio_addrs[i];
+    }
     register_module(devgpio);
-
 }
 #endif
 
 #ifdef CONFIG_DEVUART
-
-//401           - 3 USART
-//410/411   - 3 USART 1,2,6
-//415/417   - 4 USART 1,2,3,6 
-//                    2 UART 4,5 
-//405           - 6 USART
-//407           - 6 USART
-//446           - 4 USART 
-//                    2 UART 
-//427/437   - 4 USART
-//                    4 UART
-//429/439   - 4 USART
-//                    4 UART
-//469/479   - 4 USART
-//                    4 UART
                         
 static const struct uart_addr uart_addrs[] = { 
-        { .base = USART1, .irq = NVIC_USART1_IRQ, .rcc = RCC_USART1, },
-        { .base = USART2, .irq = NVIC_USART2_IRQ, .rcc = RCC_USART2, },
-        { .base = USART6, .irq = NVIC_USART6_IRQ, .rcc = RCC_USART6, },
+        {   
+            .base = USART1, 
+            .irq = NVIC_USART1_IRQ, 
+            .rcc = RCC_USART1, 
+            .num_pins = 2,
+            .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
+            .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
+        },
+        { 
+            .base = USART2, 
+            .irq = NVIC_USART2_IRQ, 
+            .rcc = RCC_USART2, 
+            .num_pins = 2,
+            .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
+            .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
+        },
+        { 
+            .base = USART6, 
+            .irq = NVIC_USART6_IRQ, 
+            .rcc = RCC_USART6, 
+            .num_pins = 2,
+            .pins[0] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
+            .pins[1] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
+        },
 };
 
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
 
 static void uart_init(struct fnode * dev)
 {
-    int i;
+    int i,j;
+    const struct gpio_addr * pcfg;
     struct module * devuart = devuart_init(dev);
 
     for (i = 0; i < NUM_UARTS; i++) 
     {
+        for(j=0;j<uart_addrs[i].num_pins;j++)
+        {
+            pcfg = &uart_addrs[i].pins[j];
+            rcc_periph_clock_enable(pcfg->rcc);
+            gpio_mode_setup(pcfg->port, pcfg->mode, GPIO_PUPD_NONE, pcfg->pin);
+            if(pcfg->mode == GPIO_MODE_AF)
+            {
+                gpio_set_af(pcfg->port, pcfg->af, pcfg->pin);
+            }
+        }
         uart_fno_init(dev, i, &uart_addrs[i]);
-        usart_enable(uart_addrs[i].rcc);
+        rcc_periph_clock_enable(uart_addrs[i].rcc);
     }
-
     register_module(devuart);
 }
 #endif

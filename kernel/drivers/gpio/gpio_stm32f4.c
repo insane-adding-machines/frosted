@@ -43,7 +43,7 @@ void GPIO_Handler(void)
 static int devgpio_write(int fd, const void *buf, unsigned int len)
 {
     struct fnode *fno;
-    struct gpio_addr *a;
+    const struct gpio_addr *a;
     char *arg = (char *)buf;
 
     if (gpio_check_fd(fd, &fno) != 0)
@@ -51,10 +51,10 @@ static int devgpio_write(int fd, const void *buf, unsigned int len)
     a = fno->priv;
 
     if (arg[0] == '1') {
-        gpio_set(a->port, a->n);
+        gpio_set(a->port, a->pin);
         return 1;
     } else if (arg[0] == '0') {
-        gpio_clear(a->port, a->n);
+        gpio_clear(a->port, a->pin);
         return 1;
     } else {
         return -1;
@@ -64,22 +64,22 @@ static int devgpio_write(int fd, const void *buf, unsigned int len)
 static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
 {
     struct fnode *fno;
-    struct gpio_addr *a;
+    const struct gpio_addr *a;
     if (gpio_check_fd(fd, &fno) != 0)
         return -1;
     a = fno->priv;
     if (cmd == IOCTL_GPIO_ENABLE) {
-        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->n);
+        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->pin);
     }
     if (cmd == IOCTL_GPIO_DISABLE) {
-        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->n);
+        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->pin);
     }
     if (cmd == IOCTL_GPIO_SET_INPUT) {
-        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->n);
+        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->pin);
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
-        gpio_set_output_options(a->port, 0, 0, a->n);
-        gpio_mode_setup(a->port, GPIO_MODE_OUTPUT,GPIO_PUPD_NONE, a->n);
+        gpio_set_output_options(a->port, 0, 0, a->pin);
+        gpio_mode_setup(a->port, GPIO_MODE_OUTPUT,GPIO_PUPD_NONE, a->pin);
     }
     if (cmd == IOCTL_GPIO_SET_MODE) {
         /* TODO: Set pullup/down or int on edges... */
