@@ -32,7 +32,7 @@ At the moment, only ARM Cortex M0/M3/M4/M7 CPUs are supported.
 The kernel relies on [libopencm3](https://github.com/libopencm3/libopencm3/) to provide hardware abstraction. 
 The frosted team maintains their own [libopencm3 branch](https://github.com/insane-adding-machines/libopencm3/)
 to guarantee the compatibility with the kernel. However, we try to contribute to the original libopencm3 project
-to get the changes accepted in the master repository.
+as we attempt to propose our changes for acceptance in the master repository.
 
 Here is a list of the platforms that are currently supported:
 
