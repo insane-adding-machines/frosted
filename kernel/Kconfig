@@ -88,6 +88,10 @@ config MACH_SEEEDPRO
     bool "SEEEDPRO"
     depends on ARCH_LPC1768
     default y
+config MACH_LPC1679XPRESSO
+    bool "LPC1679XPRESSO"
+    depends on ARCH_LPC1769
+    default y
 
 config MACH_LM3S6965EVB
     bool "lm3s6965evb"
@@ -131,9 +135,45 @@ menu "Subsystems"
        bool "Support for /dev/null and /dev/zero"
        default y
 
-       config DEVUART
+       menuconfig DEVUART
        bool "Generic UART driver"
        default y
+
+       if DEVUART
+
+            config USART_0
+            bool "USART 0"
+            depends on ARCH_LM3S6965
+
+            config USART_1
+            bool "USART 1"
+            depends on (ARCH_LM3S6965 ||ARCH_STM32F401_XB || ARCH_STM32F401_XC || ARCH_STM32F401_XD || ARCH_STM32F401_XE ||ARCH_STM32F411_XE || ARCH_STM32F411_XC)
+
+            config USART_2
+            bool "USART 2"
+            depends on (ARCH_LM3S6965 ||ARCH_STM32F401_XB || ARCH_STM32F401_XC || ARCH_STM32F401_XD || ARCH_STM32F401_XE ||ARCH_STM32F411_XE || ARCH_STM32F411_XC)
+
+            config USART_6
+            bool "USART 6"
+            depends on (ARCH_STM32F401_XB || ARCH_STM32F401_XC || ARCH_STM32F401_XD || ARCH_STM32F401_XE ||ARCH_STM32F411_XE || ARCH_STM32F411_XC)
+
+            config UART_0
+            bool "UART 0"
+            depends on ARCH_LPC17XX
+
+            config UART_1
+            bool "UART 1"
+            depends on ARCH_LPC17XX
+
+            config UART_2
+            bool "UART 2"
+            depends on ARCH_LPC17XX
+
+            config UART_3
+            bool "UART 3"
+            depends on ARCH_LPC17XX
+
+       endif
 
        config GPIO_LPC17XX
        depends on ARCH_LPC17XX

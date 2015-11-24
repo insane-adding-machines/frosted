@@ -127,7 +127,7 @@ struct fnode {
     uint32_t flags;
     struct fnode *parent;
     struct fnode *children;
-    void *priv;
+    const void *priv;
     uint32_t size;
     uint32_t off;
     struct fnode *next;

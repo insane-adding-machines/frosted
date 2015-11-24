@@ -54,6 +54,13 @@ CFLAGS-$(GPIO_LPC17XX)+=-DCONFIG_GPIO_LPC17XX
 OBJS-$(GPIO_STM32F4)+=kernel/drivers/gpio/gpio_stm32f4.o
 CFLAGS-$(GPIO_STM32F4)+=-DCONFIG_GPIO_STM32F4
 
+OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o
+OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o
+OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
+OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
+OBJS-$(MACH_LPC1679XPRESSO)+=kernel/$(BOARD)/lpc1769xpresso.o
+OBJS-$(MACH_LM3S6965EVB)+=kernel/$(BOARD)/lm3s6965evb.o
+
 CFLAGS+=$(CFLAGS-y)
 
 SHELL=/bin/bash

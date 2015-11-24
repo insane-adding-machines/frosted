@@ -1,6 +1,7 @@
 #include "frosted.h"
 #include <stdint.h>
 #include "uart_dev.h"
+#include "uart.h"
 
 #include "libopencm3/cm3/nvic.h"
 
@@ -8,73 +9,12 @@
 #   include "libopencm3/lm3s/usart.h"
 #endif
 #ifdef STM32F4
-#   include "libopencm3/stm32/f4/memorymap.h"
-#   include "libopencm3/stm32/f4/usart.h"
+#   include "libopencm3/stm32/usart.h"
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #endif
-
-
-#ifndef UART0
-#ifdef USART0
-#   define UART0 USART0
-#else 
-#   define UART0 (0)
+#ifdef LPC176X
+#   define usart_clear_rx_interrupt(x) do{}while(0)
 #endif
-#endif
-
-#ifndef UART1
-#ifdef USART1
-#   define UART1 USART1
-#else 
-#   define UART1 (0)
-#endif
-#endif
-
-#ifndef UART2
-#ifdef USART2
-#   define UART2 USART2
-#else 
-#   define UART2 (0)
-#endif
-#endif
-#ifndef UART3
-#ifdef USART3
-#   define UART3 USART3
-#else 
-#   define UART3 (0)
-#endif
-#endif
-
-#ifdef NVIC_USART0_IRQ
-#   define NVIC_UART0_IRQ NVIC_USART0_IRQ
-#endif
-#ifdef NVIC_USART1_IRQ
-#   define NVIC_UART1_IRQ NVIC_USART1_IRQ
-#endif
-#ifdef NVIC_USART2_IRQ
-#   define NVIC_UART2_IRQ NVIC_USART2_IRQ
-#endif
-#ifdef NVIC_USART3_IRQ
-#   define NVIC_UART3_IRQ NVIC_USART2_IRQ
-#endif
-
-#ifndef NVIC_UART0_IRQ
-#define NVIC_UART0_IRQ 0
-#endif
-#ifndef NVIC_UART1_IRQ
-#define NVIC_UART1_IRQ 0
-#endif
-#ifndef NVIC_UART2_IRQ
-#define NVIC_UART2_IRQ 0
-#endif
-#ifndef NVIC_UART3_IRQ
-#define NVIC_UART3_IRQ 0
-#endif
-
-
-static struct module mod_devuart = {
-};
-
 struct dev_uart {
     uint32_t base;
     uint32_t irq;
@@ -84,15 +24,14 @@ struct dev_uart {
     uint16_t pid;
 };
 
-static struct dev_uart DEV_UART[4] = { 
-        { .base = UART0, .irq = NVIC_UART0_IRQ, },
-        { .base = UART1, .irq = NVIC_UART1_IRQ, },
-        { .base = UART2, .irq = NVIC_UART2_IRQ, },
-        { .base = UART3, .irq = NVIC_UART3_IRQ, },
+#define MAX_UARTS 8
+
+static struct dev_uart DEV_UART[MAX_UARTS];
+
+static struct module mod_devuart = {
 };
 
 static int devuart_write(int fd, const void *buf, unsigned int len);
-
 
 static struct dev_uart *uart_check_fd(int fd)
 {
@@ -115,7 +54,7 @@ void uart_isr(struct dev_uart *uart)
     usart_clear_rx_interrupt(uart->base);
 
     /* While data available */
-    while (usart_is_recv_ready(uart->base))
+//    while (usart_is_recv_ready(uart->base))
     {
         char byte = (char)(usart_recv(uart->base) & 0xFF); 
         /* read data into circular buffer */
@@ -137,6 +76,11 @@ void uart1_isr(void)
     uart_isr(&DEV_UART[1]);
 }
 
+void uart2_isr(void)
+{
+    uart_isr(&DEV_UART[2]);
+}
+
 #ifdef USART0
 void usart0_isr(void)
 {
@@ -148,6 +92,12 @@ void usart0_isr(void)
 void usart1_isr(void)
 {
     uart_isr(&DEV_UART[1]);
+}
+#endif
+#ifdef USART2
+void usart2_isr(void)
+{
+    uart_isr(&DEV_UART[2]);
 }
 #endif
 
@@ -165,7 +115,8 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     if (fd < 0)
         return -1;
     for (i = 0; i < len; i++) {
-        usart_send(uart->base,ch[i]);
+       // usart_send(uart->base,ch[i]);
+        usart_send_blocking(uart->base,ch[i]);
     }
     return len;
 }
@@ -243,14 +194,19 @@ static int devuart_open(const char *path, int flags)
 }
 
 
-static int uart_fno_init(struct fnode *dev, uint32_t n)
+int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
 {
     struct dev_uart *u = &DEV_UART[n];
-    char name[6] = "ttyS";
-    name[4] = n + '0';
+    static int num_ttys = 0;
 
-    if (u->base == 0)
+    char name[6] = "ttyS";
+    name[4] =  '0' + num_ttys++;
+
+    if (addr->base == 0)
         return -1;
+
+    u->base = addr->base;
+    u->irq = addr->irq;
 
     u->fno = fno_create(&mod_devuart, name, dev);
     u->pid = 0;
@@ -262,20 +218,15 @@ static int uart_fno_init(struct fnode *dev, uint32_t n)
     return 0;
 
 }
-                        
 
-void devuart_init(struct fnode *dev)
+struct module * devuart_init(struct fnode *dev)
 {
-    int i;
     mod_devuart.family = FAMILY_FILE;
     mod_devuart.ops.open = devuart_open;
     mod_devuart.ops.read = devuart_read; 
     mod_devuart.ops.poll = devuart_poll;
     mod_devuart.ops.write = devuart_write;
     
-    for (i = 0; i < 4; i++) 
-        uart_fno_init(dev, i);
-
-    register_module(&mod_devuart);
+    return &mod_devuart;
 }
 

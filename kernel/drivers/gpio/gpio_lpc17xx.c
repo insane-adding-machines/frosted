@@ -3,26 +3,13 @@
 #include "ioctl.h"
 
 #include <libopencm3/lpc17xx/gpio.h>
+#include "gpio.h"
 
 static int gpio_subsys_initialized = 0;
 
 static struct module mod_devgpio = {
 };
 
-static struct fnode *gpio_1_18 = NULL;
-static struct fnode *gpio_1_20 = NULL;
-static struct fnode *gpio_1_21 = NULL;
-static struct fnode *gpio_1_23 = NULL;
-
-struct gpio_addr {
-    uint32_t port;
-    uint32_t n;
-};
-
-static struct gpio_addr a_pio_1_18 = {GPIO1, GPIOPIN18};
-static struct gpio_addr a_pio_1_20 = {GPIO1, GPIOPIN20};
-static struct gpio_addr a_pio_1_21 = {GPIO1, GPIOPIN21};
-static struct gpio_addr a_pio_1_23 = {GPIO1, GPIOPIN23};
 
 static int gpio_check_fd(int fd, struct fnode **fno)
 {
@@ -140,7 +127,7 @@ static int devgpio_open(const char *path, int flags)
     return task_filedesc_add(f); 
 }
 
-void devgpio_init(struct fnode *dev)
+struct module * devgpio_init(struct fnode *dev)
 {
     gpio_mutex = frosted_mutex_init();
     mod_devgpio.family = FAMILY_FILE;
@@ -155,25 +142,7 @@ void devgpio_init(struct fnode *dev)
         gpio_subsys_initialized++;
     }
 
-
-    gpio_1_18 = fno_create(&mod_devgpio, "gpio_1_18", dev);
-    if (gpio_1_18)
-        gpio_1_18->priv = &a_pio_1_18;
-
-    gpio_1_20 = fno_create(&mod_devgpio, "gpio_1_20", dev);
-    if (gpio_1_20)
-        gpio_1_20->priv = &a_pio_1_20;
-    
-    gpio_1_21 = fno_create(&mod_devgpio, "gpio_1_21", dev);
-    if (gpio_1_21)
-        gpio_1_21->priv = &a_pio_1_21;
-    
-    gpio_1_23 = fno_create(&mod_devgpio, "gpio_1_23", dev);
-    if (gpio_1_23)
-        gpio_1_23->priv = &a_pio_1_23;
-
     klog(LOG_INFO, "GPIO Driver: KLOG enabled.\n");
-
-    register_module(&mod_devgpio);
+    return &mod_devgpio;
 }
 
