@@ -11,15 +11,19 @@
 #ifdef STM32F4
 #   include "libopencm3/stm32/usart.h"
 #   define usart_clear_rx_interrupt(x) do{}while(0)
+#   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
 #ifdef LPC176X
 #   define usart_clear_rx_interrupt(x) do{}while(0)
+#   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
 struct dev_uart {
     uint32_t base;
     uint32_t irq;
     struct fnode *fno;
     struct cirbuf *inbuf;
+    uint8_t *w_start;
+    uint8_t *w_end;
     mutex_t *mutex;
     uint16_t pid;
 };
@@ -53,14 +57,15 @@ void uart_isr(struct dev_uart *uart)
     /* Clear RX flag */
     usart_clear_rx_interrupt(uart->base);
 
-    /* While data available */
-//    while (usart_is_recv_ready(uart->base))
+    usart_clear_tx_interrupt(uart->base);
+
+    /* if data available */
+    if (usart_is_recv_ready(uart->base))
     {
         char byte = (char)(usart_recv(uart->base) & 0xFF); 
         /* read data into circular buffer */
         cirbuf_writebyte(uart->inbuf, byte);
     }
-
     /* If a process is attached, resume the process */
     if (uart->pid > 0) 
         task_resume(uart->pid);
@@ -114,10 +119,29 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
         return len;
     if (fd < 0)
         return -1;
-    for (i = 0; i < len; i++) {
-       // usart_send(uart->base,ch[i]);
-        usart_send_blocking(uart->base,ch[i]);
+
+    if (uart->w_start == NULL) {
+        uart->w_start = (uint8_t *)buf;
+        uart->w_end = ((uint8_t *)buf) + len;
     }
+
+    frosted_mutex_lock(uart->mutex);
+    usart_disable_tx_interrupt(uart->base);
+
+    while (uart->w_start < uart->w_end) {
+        if (!usart_is_send_ready(uart->base)) {
+            usart_enable_tx_interrupt(uart->base);
+            uart->pid = scheduler_get_cur_pid();
+            task_suspend();
+            frosted_mutex_unlock(uart->mutex);
+            return SYS_CALL_AGAIN;
+        } else {
+            usart_send(uart->base, (uint16_t)(*(uart->w_start++)));
+        }
+    }
+    frosted_mutex_unlock(uart->mutex);
+    uart->w_start = NULL;
+    uart->w_end = NULL;
     return len;
 }
 
@@ -211,7 +235,7 @@ int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
     u->fno = fno_create(&mod_devuart, name, dev);
     u->pid = 0;
     u->mutex = frosted_mutex_init();
-    u->inbuf = cirbuf_create(256);
+    u->inbuf = cirbuf_create(128);
     u->fno->priv = u;
     usart_enable_rx_interrupt(u->base);
     nvic_enable_irq(u->irq);
