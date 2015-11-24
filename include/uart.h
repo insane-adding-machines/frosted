@@ -7,7 +7,7 @@
 #define MAX_UART_PINS 5
 
 struct uart_addr {
-    uint8_t devidx,
+    uint8_t devidx;
     uint32_t base;
     uint32_t irq;
     uint32_t rcc;
