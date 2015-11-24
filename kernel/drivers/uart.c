@@ -33,7 +33,6 @@ static struct module mod_devuart = {
 
 static int devuart_write(int fd, const void *buf, unsigned int len);
 
-
 static struct dev_uart *uart_check_fd(int fd)
 {
     struct fnode *fno;
@@ -55,7 +54,7 @@ void uart_isr(struct dev_uart *uart)
     usart_clear_rx_interrupt(uart->base);
 
     /* While data available */
-    while (usart_is_recv_ready(uart->base))
+//    while (usart_is_recv_ready(uart->base))
     {
         char byte = (char)(usart_recv(uart->base) & 0xFF); 
         /* read data into circular buffer */
@@ -77,6 +76,11 @@ void uart1_isr(void)
     uart_isr(&DEV_UART[1]);
 }
 
+void uart2_isr(void)
+{
+    uart_isr(&DEV_UART[2]);
+}
+
 #ifdef USART0
 void usart0_isr(void)
 {
@@ -88,6 +92,12 @@ void usart0_isr(void)
 void usart1_isr(void)
 {
     uart_isr(&DEV_UART[1]);
+}
+#endif
+#ifdef USART2
+void usart2_isr(void)
+{
+    uart_isr(&DEV_UART[2]);
 }
 #endif
 
@@ -105,7 +115,8 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     if (fd < 0)
         return -1;
     for (i = 0; i < len; i++) {
-        usart_send(uart->base,ch[i]);
+       // usart_send(uart->base,ch[i]);
+        usart_send_blocking(uart->base,ch[i]);
     }
     return len;
 }
@@ -186,8 +197,10 @@ static int devuart_open(const char *path, int flags)
 int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
 {
     struct dev_uart *u = &DEV_UART[n];
+    static int num_ttys = 0;
+
     char name[6] = "ttyS";
-    name[4] = n + '0';
+    name[4] =  '0' + num_ttys++;
 
     if (addr->base == 0)
         return -1;

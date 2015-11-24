@@ -43,12 +43,12 @@ static void gpio_init(struct fnode * dev)
 {
     int i;
     struct fnode *node;
-    rcc_periph_clock_enable(RCC_GPIOD);
 
     struct module * devgpio = devgpio_init(dev);
 
     for(i=0;i<NUM_GPIOS;i++)
     {
+        rcc_periph_clock_enable(gpio_addrs[i].rcc);
         node = fno_create(devgpio, gpio_addrs[i].name, dev);
         if (node)
             node->priv = &gpio_addrs[i];
@@ -60,11 +60,16 @@ static void gpio_init(struct fnode * dev)
 #ifdef CONFIG_DEVUART
                         
 static const struct uart_addr uart_addrs[] = { 
-        {   
 #ifdef CONFIG_USART_1
+        {   .devidx = 1,
             .base = USART1, 
             .irq = NVIC_USART1_IRQ, 
             .rcc = RCC_USART1, 
+            .baudrate = 115200,
+            .stop_bits = USART_STOPBITS_1,
+            .data_bits = 8,
+            .parity = USART_PARITY_NONE,
+            .flow = USART_FLOWCONTROL_NONE,
             .num_pins = 2,
             .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
             .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
@@ -72,9 +77,15 @@ static const struct uart_addr uart_addrs[] = {
 #endif
 #ifdef CONFIG_USART_2
         { 
+            .devidx = 2,
             .base = USART2, 
             .irq = NVIC_USART2_IRQ, 
             .rcc = RCC_USART2, 
+            .baudrate = 115200,
+            .stop_bits = USART_STOPBITS_1,
+            .data_bits = 8,
+            .parity = USART_PARITY_NONE,
+            .flow = USART_FLOWCONTROL_NONE,
             .num_pins = 2,
             .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
             .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
@@ -82,9 +93,15 @@ static const struct uart_addr uart_addrs[] = {
 #endif
 #ifdef CONFIG_USART_6
         { 
+            .devidx = 6,
             .base = USART6, 
             .irq = NVIC_USART6_IRQ, 
             .rcc = RCC_USART6, 
+            .baudrate = 115200,
+            .stop_bits = USART_STOPBITS_1,
+            .data_bits = 8,
+            .parity = USART_PARITY_NONE,
+            .flow = USART_FLOWCONTROL_NONE,
             .num_pins = 2,
             .pins[0] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
             .pins[1] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
@@ -102,6 +119,7 @@ static void uart_init(struct fnode * dev)
 
     for (i = 0; i < NUM_UARTS; i++) 
     {
+        rcc_periph_clock_enable(uart_addrs[i].rcc);
         for(j=0;j<uart_addrs[i].num_pins;j++)
         {
             pcfg = &uart_addrs[i].pins[j];
@@ -111,9 +129,20 @@ static void uart_init(struct fnode * dev)
             {
                 gpio_set_af(pcfg->port, pcfg->af, pcfg->pin);
             }
+// tbd ?  
+//            gpio_set_output_options(GPIOA, GPIO_OTYPE_OD, GPIO_OSPEED_25MHZ, GPIO3);
         }
-        uart_fno_init(dev, i, &uart_addrs[i]);
-        rcc_periph_clock_enable(uart_addrs[i].rcc);
+        uart_fno_init(dev, uart_addrs[i].devidx, &uart_addrs[i]);
+        usart_set_baudrate(uart_addrs[i].base, uart_addrs[i].baudrate);
+        usart_set_databits(uart_addrs[i].base, uart_addrs[i].data_bits);
+        usart_set_stopbits(uart_addrs[i].base, uart_addrs[i].stop_bits);
+        usart_set_mode(uart_addrs[i].base, USART_MODE_TX_RX);
+        usart_set_parity(uart_addrs[i].base, uart_addrs[i].parity);
+        usart_set_flow_control(uart_addrs[i].base, uart_addrs[i].flow);
+        /* one day we will do non blocking UART Tx and will need to enable tx interrupt */
+        usart_enable_rx_interrupt(uart_addrs[i].base);
+        /* Finally enable the USART. */
+        usart_enable(uart_addrs[i].base);
     }
     register_module(devuart);
 }

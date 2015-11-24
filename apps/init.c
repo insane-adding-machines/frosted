@@ -103,7 +103,13 @@ void idling(void *arg)
     led[2] = open(LED2, O_RDWR, 0);
     led[3] = open(LED3, O_RDWR, 0);
 
-    if (led[0] >= 0) {
+    for (i = 0; i < 4; i++) {
+        ioctl(led[i], IOCTL_GPIO_ENABLE, NULL);
+        ioctl(led[i], IOCTL_GPIO_SET_OUTPUT, NULL);
+    }
+
+
+    if (0){ //led[0] >= 0) {
         for (i = 0; i < 4; i++) {
             ioctl(led[i], IOCTL_GPIO_ENABLE, NULL);
             ioctl(led[i], IOCTL_GPIO_SET_OUTPUT, NULL);
