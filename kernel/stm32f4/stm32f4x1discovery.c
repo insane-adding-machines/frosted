@@ -34,7 +34,20 @@
 static const struct gpio_addr gpio_addrs[] = { {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12, .name="gpio_3_12"},
                                                                             {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO13, .name="gpio_3_13"},
                                                                             {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO14, .name="gpio_3_14"},
-                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15, .name="gpio_3_15"} };
+                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15, .name="gpio_3_15"},
+#ifdef CONFIG_USART_1
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, },
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, },
+#endif
+#ifdef CONFIG_USART_2
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, },
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, },
+#endif
+#ifdef CONFIG_USART_6
+                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, },
+                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, },
+#endif
+                                                                            };
 
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
 
@@ -49,6 +62,23 @@ static void gpio_init(struct fnode * dev)
     for(i=0;i<NUM_GPIOS;i++)
     {
         rcc_periph_clock_enable(gpio_addrs[i].rcc);
+        switch(gpio_addrs[i].mode)
+        {
+            case GPIO_MODE_INPUT:
+                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, gpio_addrs[i].pullupdown, gpio_addrs[i].pin);
+                break;
+            case GPIO_MODE_OUTPUT:
+                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
+                gpio_set_output_options(gpio_addrs[i].port, gpio_addrs[i].optype, gpio_addrs[i].speed, gpio_addrs[i].pin);
+                break;
+            case GPIO_MODE_AF:
+                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
+                gpio_set_af(gpio_addrs[i].port, gpio_addrs[i].af, gpio_addrs[i].pin);
+                break;
+            case GPIO_MODE_ANALOG:
+                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
+                break;
+        }
         node = fno_create(devgpio, gpio_addrs[i].name, dev);
         if (node)
             node->priv = &gpio_addrs[i];
@@ -70,9 +100,6 @@ static const struct uart_addr uart_addrs[] = {
             .data_bits = 8,
             .parity = USART_PARITY_NONE,
             .flow = USART_FLOWCONTROL_NONE,
-            .num_pins = 2,
-            .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
-            .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
         },
 #endif
 #ifdef CONFIG_USART_2
@@ -86,9 +113,6 @@ static const struct uart_addr uart_addrs[] = {
             .data_bits = 8,
             .parity = USART_PARITY_NONE,
             .flow = USART_FLOWCONTROL_NONE,
-            .num_pins = 2,
-            .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
-            .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
         },
 #endif
 #ifdef CONFIG_USART_6
@@ -102,9 +126,6 @@ static const struct uart_addr uart_addrs[] = {
             .data_bits = 8,
             .parity = USART_PARITY_NONE,
             .flow = USART_FLOWCONTROL_NONE,
-            .num_pins = 2,
-            .pins[0] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
-            .pins[1] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
         },
 #endif
 };
@@ -114,24 +135,11 @@ static const struct uart_addr uart_addrs[] = {
 static void uart_init(struct fnode * dev)
 {
     int i,j;
-    const struct gpio_addr * pcfg;
     struct module * devuart = devuart_init(dev);
 
     for (i = 0; i < NUM_UARTS; i++) 
     {
         rcc_periph_clock_enable(uart_addrs[i].rcc);
-        for(j=0;j<uart_addrs[i].num_pins;j++)
-        {
-            pcfg = &uart_addrs[i].pins[j];
-            rcc_periph_clock_enable(pcfg->rcc);
-            gpio_mode_setup(pcfg->port, pcfg->mode, GPIO_PUPD_NONE, pcfg->pin);
-            if(pcfg->mode == GPIO_MODE_AF)
-            {
-                gpio_set_af(pcfg->port, pcfg->af, pcfg->pin);
-            }
-// tbd ?  
-//            gpio_set_output_options(GPIOA, GPIO_OTYPE_OD, GPIO_OSPEED_25MHZ, GPIO3);
-        }
         uart_fno_init(dev, uart_addrs[i].devidx, &uart_addrs[i]);
         usart_set_baudrate(uart_addrs[i].base, uart_addrs[i].baudrate);
         usart_set_databits(uart_addrs[i].base, uart_addrs[i].data_bits);

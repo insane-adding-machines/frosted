@@ -16,8 +16,6 @@ struct uart_addr {
     uint8_t data_bits;
     uint8_t parity;
     uint8_t flow;
-    uint8_t num_pins;
-    struct gpio_addr pins[MAX_UART_PINS];
 };
 
 int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr);
