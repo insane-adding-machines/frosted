@@ -507,7 +507,7 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;
     struct stat *st = (struct stat *)arg2;
-    struct fnode *fno = fno_search((char *)arg1);
+    struct fnode *fno = fno_search_nofollow((char *)arg1);
     if (!fno)
         return -1;
     st->st_owner = fno->owner;

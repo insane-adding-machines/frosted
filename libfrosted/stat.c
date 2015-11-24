@@ -1,16 +1,17 @@
 /*
- * Stub version of stat.
+ * Frosted version of stat.
  */
 
 #include "frosted_api.h"
+#include "syscall_table.h"
 #include <errno.h>
 #undef errno
 extern int errno;
-struct stat;
+extern int (**__syscall__)(char * file, struct stat *st);
+
 
 int stat(const char *file, struct stat *st)
 {
-  errno = ENOSYS;
-  return -1;
+    return __syscall__[SYS_STAT](file, st);
 }
 
