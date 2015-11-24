@@ -28,18 +28,24 @@
 
 #ifdef CONFIG_DEVUART
  static const struct uart_addr uart_addrs[] = { 
+#ifdef CONFIG_USART_0
          {   
              .base = USART0, 
              .irq = NVIC_UART0_IRQ, 
          },
+#endif
+#ifdef CONFIG_USART_1
          { 
              .base = USART1, 
              .irq = NVIC_UART1_IRQ, 
          },
+#endif
+#ifdef CONFIG_USART_2
          { 
              .base = USART2, 
              .irq = NVIC_UART2_IRQ, 
          },
+#endif         
  };
  
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))

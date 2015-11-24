@@ -59,10 +59,18 @@ static void gpio_init(struct fnode * dev)
 #ifdef CONFIG_DEVUART
 
 static const struct uart_addr uart_addrs[] = { 
+#ifdef CONFIG_UART_0
         { .base = UART0_BASE, .irq = NVIC_UART0_IRQ, },
+#endif
+#ifdef CONFIG_UART_1
         { .base = UART1_BASE, .irq = NVIC_UART1_IRQ, },
+#endif
+#ifdef CONFIG_UART_2
         { .base = UART2_BASE, .irq = NVIC_UART2_IRQ, },
+#endif
+#ifdef CONFIG_UART_3
         { .base = UART3_BASE, .irq = NVIC_UART3_IRQ, },
+#endif
 };
 
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))

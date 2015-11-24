@@ -61,6 +61,7 @@ static void gpio_init(struct fnode * dev)
                         
 static const struct uart_addr uart_addrs[] = { 
         {   
+#ifdef CONFIG_USART_1
             .base = USART1, 
             .irq = NVIC_USART1_IRQ, 
             .rcc = RCC_USART1, 
@@ -68,6 +69,8 @@ static const struct uart_addr uart_addrs[] = {
             .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
             .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
         },
+#endif
+#ifdef CONFIG_USART_2
         { 
             .base = USART2, 
             .irq = NVIC_USART2_IRQ, 
@@ -76,6 +79,8 @@ static const struct uart_addr uart_addrs[] = {
             .pins[0] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
             .pins[1] = {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7,},
         },
+#endif
+#ifdef CONFIG_USART_6
         { 
             .base = USART6, 
             .irq = NVIC_USART6_IRQ, 
@@ -84,6 +89,7 @@ static const struct uart_addr uart_addrs[] = {
             .pins[0] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
             .pins[1] = {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8,},
         },
+#endif
 };
 
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
