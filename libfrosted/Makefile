@@ -1,4 +1,5 @@
 include ../kconfig/.config
+include ../config.mk
 
 ifeq ($(ARCH_SEEEDPRO),y)
 	FAMILY=lpc17xx 
@@ -79,6 +80,9 @@ OBJS-y+=			\
 		shutdown.o			\
 		thread_create.o		\
 		thread_join.o		\
+		tcsetattr.o		\
+		syscall.o		\
+		waitpid.o		\
 
 
 CFLAGS+=$(CFLAGS-y)

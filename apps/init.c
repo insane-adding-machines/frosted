@@ -26,9 +26,6 @@
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
-/* Syscall table is fixed at kernel start + 1K */
-int (** __syscall__)( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = (int (**)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)) (FLASH_ORIGIN + 0x400);
-
 void task2(void *arg)
 {
     volatile int i = (int)arg;
