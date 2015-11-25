@@ -129,14 +129,13 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     usart_disable_tx_interrupt(uart->base);
 
     while (uart->w_start < uart->w_end) {
+        usart_send(uart->base, (uint16_t)(*(uart->w_start++)));
         if (!usart_is_send_ready(uart->base)) {
             usart_enable_tx_interrupt(uart->base);
             uart->pid = scheduler_get_cur_pid();
             task_suspend();
             frosted_mutex_unlock(uart->mutex);
             return SYS_CALL_AGAIN;
-        } else {
-            usart_send(uart->base, (uint16_t)(*(uart->w_start++)));
         }
     }
     frosted_mutex_unlock(uart->mutex);
