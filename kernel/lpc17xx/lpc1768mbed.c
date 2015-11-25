@@ -42,7 +42,6 @@ static void gpio_init(struct fnode * dev)
 {
     int i;
     struct fnode *node;
-    rcc_periph_clock_enable(RCC_GPIOD);
 
     struct module * devgpio = devgpio_init(dev);
 
@@ -91,33 +90,7 @@ void machine_init(struct fnode * dev)
 {
 
 #if CONFIG_SYS_CLOCK == 100000000
-        /* Enable the external clock */
-        CLK_SCS |= 0x20;                
-        while((CLK_SCS & 0x40) == 0);
-        /* Select external oscilator */
-        CLK_CLKSRCSEL = 0x01;   
-        /*N = 2 & M = 25*/
-        CLK_PLL0CFG = (2<<16) |25;
-        /*Feed*/
-        CLK_PLL0FEED=0xAA; 
-        CLK_PLL0FEED=0x55;
-        /*PLL0 Enable */
-        CLK_PLL0CON = 1;
-        /*Feed*/
-        CLK_PLL0FEED=0xAA; 
-        CLK_PLL0FEED=0x55;
-        /* Divide by 3 */
-        CLK_CCLKCFG = 2;
-        /* wait until locked */
-        while (!(CLK_PLL0STAT & (1<<26)));
-        /* see flash accelerator - TBD*/
-        /*_FLASHCFG = (_FLASHCFG & 0xFFF) | (4<<12);*/
-        /* PLL0 connect */
-        CLK_PLL0CON |= 1<<1;
-        /*Feed*/
-        CLK_PLL0FEED=0xAA; 
-        CLK_PLL0FEED=0x55;
-        /* PLL0 operational */
+     clock_setup(&clock_scale[CLOCK_96MHZ]);
 #else
 #error No valid clock speed selected for lpc1768mbed
 #endif
