@@ -54,13 +54,13 @@ static struct dev_uart *uart_check_fd(int fd)
 
 void uart_isr(struct dev_uart *uart)
 {
-    if (usart_get_interrupt_source(uart->base, UART_SR_TXE)) {
+    if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
         usart_clear_tx_interrupt(uart->base);
         usart_disable_tx_interrupt(uart->base);
     }
 
 
-    if (usart_get_interrupt_source(uart->base, UART_SR_RXNE)) {
+    if (usart_get_interrupt_source(uart->base, USART_SR_RXNE)) {
         usart_clear_rx_interrupt(uart->base);
         /* if data available */
         if (usart_is_recv_ready(uart->base))
@@ -107,6 +107,12 @@ void usart1_isr(void)
 void usart2_isr(void)
 {
     uart_isr(&DEV_UART[2]);
+}
+#endif
+#ifdef USART3
+void usart3_isr(void)
+{
+    uart_isr(&DEV_UART[3]);
 }
 #endif
 

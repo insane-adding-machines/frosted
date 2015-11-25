@@ -48,6 +48,10 @@
                  {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
                  {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
+#ifdef CONFIG_USART_3
+                 {.port=GPIOD,.rcc=RCC_GPIOD,.pin=GPIO8,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                 {.port=GPIOD,.rcc=RCC_GPIOD,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+#endif
 #ifdef CONFIG_USART_6
                  {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
                  {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
@@ -76,6 +80,19 @@
                  .base = USART2, 
                  .irq = NVIC_USART2_IRQ, 
                  .rcc = RCC_USART2, 
+                 .baudrate = 115200,
+                 .stop_bits = USART_STOPBITS_1,
+                 .data_bits = 8,
+                 .parity = USART_PARITY_NONE,
+                 .flow = USART_FLOWCONTROL_NONE,
+             },
+#endif
+#ifdef CONFIG_USART_3
+             { 
+                 .devidx = 3,
+                 .base = USART3, 
+                 .irq = NVIC_USART3_IRQ, 
+                 .rcc = RCC_USART3, 
                  .baudrate = 115200,
                  .stop_bits = USART_STOPBITS_1,
                  .data_bits = 8,

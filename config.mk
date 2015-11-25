@@ -84,29 +84,32 @@ endif
 #USARTs
 ifeq ($(USART_0),y)
     CFLAGS+=-DCONFIG_USART_0
-endif    
+endif
 ifeq ($(USART_1),y)
     CFLAGS+=-DCONFIG_USART_1
-endif    
+endif
 ifeq ($(USART_2),y)
     CFLAGS+=-DCONFIG_USART_2
-endif    
+endif
+ifeq ($(USART_3),y)
+    CFLAGS+=-DCONFIG_USART_3
+endif
 ifeq ($(USART_6),y)
     CFLAGS+=-DCONFIG_USART_6
-endif    
+endif
 #UARTs
 ifeq ($(UART_1),y)
     CFLAGS+=-DCONFIG_UART_1
-endif    
+endif
 ifeq ($(UART_2),y)
     CFLAGS+=-DCONFIG_UART_2
 endif    
 ifeq ($(UART_3),y)
     CFLAGS+=-DCONFIG_UART_3
-endif    
+endif
 ifeq ($(UART_4),y)
     CFLAGS+=-DCONFIG_UART_4
-endif    
+endif
 
 
 APPS_ORIGIN=$$(( $(KFLASHMEM_SIZE) * 1024))
