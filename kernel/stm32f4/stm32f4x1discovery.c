@@ -31,21 +31,21 @@
 #include <libopencm3/stm32/gpio.h>
 #include "gpio.h"
 
-static const struct gpio_addr gpio_addrs[] = { {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12, .name="gpio_3_12"},
-                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO13, .name="gpio_3_13"},
-                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO14, .name="gpio_3_14"},
-                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15, .name="gpio_3_15"},
+static const struct gpio_addr gpio_addrs[] = { {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
+                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
+                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
+                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
 #ifdef CONFIG_USART_1
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, },
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, },
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_2
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, },
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, },
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_6
-                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, },
-                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, },
+                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
                                                                             };
 
@@ -79,9 +79,12 @@ static void gpio_init(struct fnode * dev)
                 gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
                 break;
         }
-        node = fno_create(devgpio, gpio_addrs[i].name, dev);
-        if (node)
-            node->priv = &gpio_addrs[i];
+        if(gpio_addrs[i].name)
+        {
+            node = fno_create(devgpio, gpio_addrs[i].name, dev);
+            if (node)
+                node->priv = &gpio_addrs[i];
+        }
     }
     register_module(devgpio);
 }
