@@ -54,17 +54,23 @@ static struct dev_uart *uart_check_fd(int fd)
 
 void uart_isr(struct dev_uart *uart)
 {
-    /* Clear RX flag */
-    usart_clear_rx_interrupt(uart->base);
+    if (((USART_CR1(uart->base) & USART_CR1_TXEIE) != 0) &&
+        ((USART_SR(uart->base) & USART_SR_TXE) != 0)) {
+        usart_clear_tx_interrupt(uart->base);
+        usart_disable_tx_interrupt(uart->base);
+   }
 
-    usart_clear_tx_interrupt(uart->base);
+    if (((USART_CR1(uart->base) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(uart->base) & USART_SR_RXNE) != 0)) {
 
-    /* if data available */
-    if (usart_is_recv_ready(uart->base))
-    {
-        char byte = (char)(usart_recv(uart->base) & 0xFF); 
-        /* read data into circular buffer */
-        cirbuf_writebyte(uart->inbuf, byte);
+        usart_clear_rx_interrupt(uart->base);
+        /* if data available */
+        if (!usart_is_recv_ready(uart->base))
+        {
+            char byte = (char)(usart_recv(uart->base) & 0xFF); 
+            /* read data into circular buffer */
+            cirbuf_writebyte(uart->inbuf, byte);
+        }
     }
     /* If a process is attached, resume the process */
     if (uart->pid > 0) 
@@ -126,17 +132,16 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     }
 
     frosted_mutex_lock(uart->mutex);
-    usart_disable_tx_interrupt(uart->base);
 
     while (uart->w_start < uart->w_end) {
-        usart_send(uart->base, (uint16_t)(*(uart->w_start++)));
-        if (!usart_is_send_ready(uart->base)) {
-            usart_enable_tx_interrupt(uart->base);
+        usart_enable_tx_interrupt(uart->base);
+        if (usart_is_send_ready(uart->base)) {
             uart->pid = scheduler_get_cur_pid();
             task_suspend();
             frosted_mutex_unlock(uart->mutex);
             return SYS_CALL_AGAIN;
         }
+        usart_send(uart->base, (uint16_t)(*(uart->w_start++)));
     }
     frosted_mutex_unlock(uart->mutex);
     uart->w_start = NULL;
