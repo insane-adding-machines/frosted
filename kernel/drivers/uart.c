@@ -22,6 +22,7 @@ struct dev_uart {
     uint32_t irq;
     struct fnode *fno;
     struct cirbuf *inbuf;
+    struct cirbuf *outbuf;
     uint8_t *w_start;
     uint8_t *w_end;
     mutex_t *mutex;
@@ -54,12 +55,21 @@ static struct dev_uart *uart_check_fd(int fd)
 
 void uart_isr(struct dev_uart *uart)
 {
+    /* TX interrupt */
     if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
+        /* Are there bytes left to be written? */
+        if (cirbuf_bytesinuse(uart->outbuf))
+        {
+            uint8_t outbyte;
+            cirbuf_readbyte(uart->outbuf, &outbyte);
+            usart_send(uart->base, (uint16_t)(outbyte));
+        } else {
+            //usart_disable_tx_interrupt(uart->base);
+        }
         usart_clear_tx_interrupt(uart->base);
-        usart_disable_tx_interrupt(uart->base);
     }
 
-
+    /* RX interrupt */
     if (usart_get_interrupt_source(uart->base, USART_SR_RXNE)) {
         usart_clear_rx_interrupt(uart->base);
         /* if data available */
@@ -70,6 +80,7 @@ void uart_isr(struct dev_uart *uart)
             cirbuf_writebyte(uart->inbuf, byte);
         }
     }
+
     /* If a process is attached, resume the process */
     if (uart->pid > 0) 
         task_resume(uart->pid);
@@ -133,21 +144,28 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     if (uart->w_start == NULL) {
         uart->w_start = (uint8_t *)buf;
         uart->w_end = ((uint8_t *)buf) + len;
+    } else {
+        /* previous transmit not finished */
+        uart->pid = scheduler_get_cur_pid();
+        task_suspend();
+        return SYS_CALL_AGAIN;
     }
 
     frosted_mutex_lock(uart->mutex);
 
-    while (uart->w_start < uart->w_end) {
-        usart_enable_tx_interrupt(uart->base);
-        if (!usart_is_send_ready(uart->base)) {
-            uart->pid = scheduler_get_cur_pid();
-            task_suspend();
-            frosted_mutex_unlock(uart->mutex);
-            return SYS_CALL_AGAIN;
-        }
-        usart_send(uart->base, (uint16_t)(*(uart->w_start++)));
-        usart_disable_tx_interrupt(uart->base);
+    /* write to circular output buffer */
+    uart->w_start += cirbuf_writebytes(uart->outbuf, uart->w_start, uart->w_end - uart->w_start);
+
+    usart_enable_tx_interrupt(uart->base);
+
+    if (uart->w_start < uart->w_end)
+    {
+        uart->pid = scheduler_get_cur_pid();
+        task_suspend();
+        frosted_mutex_unlock(uart->mutex);
+        return SYS_CALL_AGAIN;
     }
+
     frosted_mutex_unlock(uart->mutex);
     uart->w_start = NULL;
     uart->w_end = NULL;
@@ -245,6 +263,7 @@ int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
     u->pid = 0;
     u->mutex = frosted_mutex_init();
     u->inbuf = cirbuf_create(128);
+    u->outbuf = cirbuf_create(128);
     u->fno->priv = u;
     usart_enable_rx_interrupt(u->base);
     nvic_enable_irq(u->irq);

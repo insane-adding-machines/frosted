@@ -25,7 +25,6 @@ struct cirbuf {
     uint8_t *readptr;
     uint8_t *writeptr;
     int     bufsize;
-    int     overflow;
 };
 
 struct cirbuf * cirbuf_create(int size)
@@ -89,19 +88,36 @@ int cirbuf_readbyte(struct cirbuf *cb, uint8_t *byte)
     return 0;
 }
 
-/* 0 on success, -1 on fail */
+/* written len on success, 0 on fail */
 int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
 {
     uint8_t byte;
+    int freesize;
     if (!cb)
-        return -1;
+        return 0;
 
     /* check if there is space */
-    if (!cirbuf_bytesfree(cb))
-        return -1;
+    freesize = cirbuf_bytesfree(cb);
+    if (!freesize)
+        return 0;
+    if (freesize < len)
+        len = freesize;
 
-    /* TODO */
-    // Write in 1 or 2  chunks, depending on wrap needed or not
+    /* Wrap needed ? */
+    if ((cb->writeptr + len) > (cb->buf + cb->bufsize))
+    {
+        int len_first_part = cb->buf + cb->bufsize - cb->writeptr; /* end - current position */
+        memcpy(cb->writeptr, bytes, len_first_part);
+        bytes += len_first_part;
+        cb->writeptr = cb->buf; /* set to start of buffer */
+        len -= len_first_part;
+    }
+    /* write remaining part */
+    if (len)
+    {
+        memcpy(cb->writeptr, bytes, len);
+        cb->writeptr += len;
+    }
 
     return len;
 }

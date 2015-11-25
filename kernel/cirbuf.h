@@ -10,7 +10,7 @@ struct cirbuf * cirbuf_create(int size);
 int cirbuf_writebyte(struct cirbuf *cb, uint8_t byte);
 /* 0 on success, -1 on fail */
 int cirbuf_readbyte(struct cirbuf *cb, uint8_t *byte);
-/* 0 on success, -1 on fail */
+/* len on success, 0 on fail */
 int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len);
 int cirbuf_bytesfree(struct cirbuf *cb);
 int cirbuf_bytesinuse(struct cirbuf *cb);
