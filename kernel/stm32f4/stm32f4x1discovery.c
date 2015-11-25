@@ -30,68 +30,33 @@
 #ifdef CONFIG_GPIO_STM32F4
 #include <libopencm3/stm32/gpio.h>
 #include "gpio.h"
+#endif
 
-static const struct gpio_addr gpio_addrs[] = { {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
-                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
-                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
-                                                                            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
+#include "stm32f4.h"
+
+#ifdef CONFIG_GPIO_STM32F4
+static const struct gpio_addr gpio_addrs[] = { 
+            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
+            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
+            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
+            {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
 #ifdef CONFIG_USART_1
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_2
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_6
-                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
-                                                                            };
-
+};
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
-
-/* Common code - to be moved, but where? */
-static void gpio_init(struct fnode * dev)
-{
-    int i;
-    struct fnode *node;
-
-    struct module * devgpio = devgpio_init(dev);
-
-    for(i=0;i<NUM_GPIOS;i++)
-    {
-        rcc_periph_clock_enable(gpio_addrs[i].rcc);
-        switch(gpio_addrs[i].mode)
-        {
-            case GPIO_MODE_INPUT:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, gpio_addrs[i].pullupdown, gpio_addrs[i].pin);
-                break;
-            case GPIO_MODE_OUTPUT:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
-                gpio_set_output_options(gpio_addrs[i].port, gpio_addrs[i].optype, gpio_addrs[i].speed, gpio_addrs[i].pin);
-                break;
-            case GPIO_MODE_AF:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
-                gpio_set_af(gpio_addrs[i].port, gpio_addrs[i].af, gpio_addrs[i].pin);
-                break;
-            case GPIO_MODE_ANALOG:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
-                break;
-        }
-        if(gpio_addrs[i].name)
-        {
-            node = fno_create(devgpio, gpio_addrs[i].name, dev);
-            if (node)
-                node->priv = &gpio_addrs[i];
-        }
-    }
-    register_module(devgpio);
-}
 #endif
 
 #ifdef CONFIG_DEVUART
-                        
 static const struct uart_addr uart_addrs[] = { 
 #ifdef CONFIG_USART_1
         {   .devidx = 1,
@@ -132,31 +97,7 @@ static const struct uart_addr uart_addrs[] = {
         },
 #endif
 };
-
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
-
-static void uart_init(struct fnode * dev)
-{
-    int i,j;
-    struct module * devuart = devuart_init(dev);
-
-    for (i = 0; i < NUM_UARTS; i++) 
-    {
-        rcc_periph_clock_enable(uart_addrs[i].rcc);
-        uart_fno_init(dev, uart_addrs[i].devidx, &uart_addrs[i]);
-        usart_set_baudrate(uart_addrs[i].base, uart_addrs[i].baudrate);
-        usart_set_databits(uart_addrs[i].base, uart_addrs[i].data_bits);
-        usart_set_stopbits(uart_addrs[i].base, uart_addrs[i].stop_bits);
-        usart_set_mode(uart_addrs[i].base, USART_MODE_TX_RX);
-        usart_set_parity(uart_addrs[i].base, uart_addrs[i].parity);
-        usart_set_flow_control(uart_addrs[i].base, uart_addrs[i].flow);
-        /* one day we will do non blocking UART Tx and will need to enable tx interrupt */
-        usart_enable_rx_interrupt(uart_addrs[i].base);
-        /* Finally enable the USART. */
-        usart_enable(uart_addrs[i].base);
-    }
-    register_module(devuart);
-}
 #endif
 
 void machine_init(struct fnode * dev)
@@ -171,11 +112,10 @@ void machine_init(struct fnode * dev)
 #endif
 
 #ifdef CONFIG_GPIO_STM32F4
-    gpio_init(dev);
+    gpio_init(dev, gpio_addrs, NUM_GPIOS);
 #endif
 #ifdef CONFIG_DEVUART
-    uart_init(dev);
+    uart_init(dev, uart_addrs, NUM_UARTS);
 #endif
-
 }
 
