@@ -28,10 +28,14 @@ SECTIONS
  
     .bss :
     {
+        __bss_start__ = .;
         apps_bss = .;
         *(.bss*)
         *(COMMON)
         . = ALIGN(32 / 8);
         apps_ebss = .;
+        __bss_end__ = .;
     } > SRAM
+
+    /* NOTE: .fini, .rodata, .eh_frame, .init_array not a separate section */
 }

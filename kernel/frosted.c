@@ -27,6 +27,7 @@
  * the application code
  */
 void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
+void (*_start)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN + 0x70);
 
 static int (*_klog_write)(int, const void *, unsigned int) = NULL;
     
@@ -127,7 +128,7 @@ void frosted_kernel(void)
 {
     /* Create "init" task */
     klog(LOG_INFO, "Starting Init task\n");
-    if (task_create(init, (void *)0, 2) < 0)
+    if (task_create(_start, (void *)0, 2) < 0)
         IDLE();
 
     ktimer_add(1000, ktimer_test, NULL);
