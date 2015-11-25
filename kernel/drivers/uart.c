@@ -64,7 +64,7 @@ void uart_isr(struct dev_uart *uart)
             cirbuf_readbyte(uart->outbuf, &outbyte);
             usart_send(uart->base, (uint16_t)(outbyte));
         } else {
-            //usart_disable_tx_interrupt(uart->base);
+            usart_disable_tx_interrupt(uart->base);
         }
         usart_clear_tx_interrupt(uart->base);
     }
@@ -145,10 +145,7 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
         uart->w_start = (uint8_t *)buf;
         uart->w_end = ((uint8_t *)buf) + len;
     } else {
-        /* previous transmit not finished */
-        uart->pid = scheduler_get_cur_pid();
-        task_suspend();
-        return SYS_CALL_AGAIN;
+        /* previous transmit not finished, do not update w_start */
     }
 
     frosted_mutex_lock(uart->mutex);
