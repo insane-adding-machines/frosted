@@ -76,10 +76,12 @@ kernel/syscall_table.c: kernel/syscall_table_gen.py
 
 include/syscall_table.h: kernel/syscall_table.c
 
-$(PREFIX)/lib/libkernel.a:
+.PHONY: FORCE
+
+$(PREFIX)/lib/libkernel.a: FORCE
 	make -C kernel
 
-$(PREFIX)/lib/libfrosted.a:
+$(PREFIX)/lib/libfrosted.a: FORCE
 	make -C libfrosted
 
 image.bin: kernel.elf apps.elf
