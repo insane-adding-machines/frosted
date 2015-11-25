@@ -57,6 +57,7 @@ void uart_isr(struct dev_uart *uart)
 {
     /* TX interrupt */
     if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
+        usart_clear_tx_interrupt(uart->base);
         /* Are there bytes left to be written? */
         if (cirbuf_bytesinuse(uart->outbuf))
         {
@@ -66,7 +67,6 @@ void uart_isr(struct dev_uart *uart)
         } else {
             usart_disable_tx_interrupt(uart->base);
         }
-        usart_clear_tx_interrupt(uart->base);
     }
 
     /* RX interrupt */
@@ -144,16 +144,30 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
     if (uart->w_start == NULL) {
         uart->w_start = (uint8_t *)buf;
         uart->w_end = ((uint8_t *)buf) + len;
+
     } else {
         /* previous transmit not finished, do not update w_start */
     }
 
     frosted_mutex_lock(uart->mutex);
+    usart_enable_tx_interrupt(uart->base);
 
     /* write to circular output buffer */
     uart->w_start += cirbuf_writebytes(uart->outbuf, uart->w_start, uart->w_end - uart->w_start);
+    if (usart_is_send_ready(uart->base)) {
+        char c;
+        cirbuf_readbyte(uart->outbuf, &c);
+        usart_send(uart->base, (uint16_t) c);
+    }
 
-    usart_enable_tx_interrupt(uart->base);
+    if (cirbuf_bytesinuse(uart->outbuf) == 0) {
+        frosted_mutex_unlock(uart->mutex);
+        usart_disable_tx_interrupt(uart->base);
+        uart->w_start = NULL;
+        uart->w_end = NULL;
+        return len;
+    }
+
 
     if (uart->w_start < uart->w_end)
     {
