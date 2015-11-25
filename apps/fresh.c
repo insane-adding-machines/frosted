@@ -72,7 +72,7 @@ static void ls(int ser, char *start)
         write(ser, &type, 1); 
         write(ser, "    ", 4);
         write(ser, ch_size, strlen(ch_size));
-        write(ser, "\r\n", 1);
+        write(ser, "\r\n", 2);
     }
     closedir(d);
     free(ep);
