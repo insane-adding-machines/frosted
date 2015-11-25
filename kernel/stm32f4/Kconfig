@@ -38,6 +38,19 @@ config ARCH_STM32F411_XC
     bool "STM32F411xC 256KB"
     select FLASH_SIZE_256KB
     select RAM_SIZE_128KB
+
+config ARCH_STM32F429_XE
+    bool "STM32F429xE 512KB"
+    select FLASH_SIZE_512KB
+    select RAM_SIZE_256KB
+config ARCH_STM32F429_XG
+    bool "STM32F429xD 1MB"
+    select FLASH_SIZE_1MB
+    select RAM_SIZE_256KB
+config ARCH_STM32F429_XI
+    bool "STM32F429xE 2MB"
+    select FLASH_SIZE_2MB
+    select RAM_SIZE_256KB
 endchoice
 
 endif
