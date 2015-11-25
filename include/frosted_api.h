@@ -46,11 +46,14 @@ struct dirent {
 };
 
 /* stat */
+#ifndef __frosted__
+// XXX temp for busybox
 struct stat {
     uint32_t st_size;
     uint32_t st_mode;
     struct module *st_owner;
 };
+#endif
 
 #define S_IFMT     0170000   // bit mask for the file type bit fields
 #define P_IFMT     0000007   // bit mask for file permissions
@@ -86,9 +89,11 @@ struct pollfd {
 
 
 /* for unix sockets */
+#ifndef __frosted__
 #define AF_UNIX 0
 #define SOCK_STREAM 6
 #define SOCK_DGRAM 17
+#endif
 
 struct __attribute__((packed)) sockaddr {
     uint16_t sa_family;
