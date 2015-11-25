@@ -63,7 +63,7 @@ int cirbuf_writebyte(struct cirbuf *cb, uint8_t byte)
     *cb->writeptr++ = byte;
 
     /* wrap if needed */
-    if (cb->writeptr > cb->buf+cb->bufsize)
+    if (cb->writeptr > (cb->buf + cb->bufsize - 1u))
         cb->writeptr = cb->buf;
 
     return 0;
@@ -82,7 +82,7 @@ int cirbuf_readbyte(struct cirbuf *cb, uint8_t *byte)
     *byte = *cb->readptr++;
 
     /* wrap if needed */
-    if (cb->readptr > cb->buf+cb->bufsize)
+    if (cb->readptr > (cb->buf + cb->bufsize - 1u))
         cb->readptr = cb->buf;
 
     return 0;
@@ -104,7 +104,7 @@ int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
         len = freesize;
 
     /* Wrap needed ? */
-    if ((cb->writeptr + len) > (cb->buf + cb->bufsize))
+    if ((cb->writeptr + len) > (cb->buf + cb->bufsize) - 1u)
     {
         int len_first_part = cb->buf + cb->bufsize - cb->writeptr; /* end - current position */
         memcpy(cb->writeptr, bytes, len_first_part);
