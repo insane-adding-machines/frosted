@@ -156,7 +156,7 @@ void fresh(void *arg) {
             if ((input[len-1] == 0xD))
                 break; /* CR (\r\n) */
             if ((input[len-1] == 0x4)) {
-                write(ser, "\r\n", 1);
+                write(ser, "\r\n", 2);
                 len = 0;
                 break;
             }
@@ -164,9 +164,9 @@ void fresh(void *arg) {
             /* tab */
             if ((input[len-1] == 0x09)) {
                 len--;
-                write(ser, "\r\n", 1);
+                write(ser, "\r\n", 2);
                 write(out, str_help, strlen(str_help));
-                write(ser, "\r\n", 1);
+                write(ser, "\r\n", 2);
                 write(ser, str_prompt, strlen(str_prompt));
                 getcwd(pwd, MAX_FILE);
                 write(ser, pwd, strlen(pwd));
@@ -188,7 +188,7 @@ void fresh(void *arg) {
                 }
             }
         }
-        write(ser, "\r\n", 1);
+        write(ser, "\r\n", 2);
         if (len == 0)
             break;
 
@@ -276,14 +276,14 @@ void fresh(void *arg) {
                     continue;
                 }
                 thread_join(pid, -1);
-                write(out, "\r\n", 1);
+                write(out, "\r\n", 2);
             }
         } else if (!strncmp(input, "echo", 4)) {
             if (strlen(input) > 4) {
                 int fd; 
                 char *arg = input + 5;
                 write(out, arg, strlen(arg));
-                write(out, "\r\n", 1);
+                write(out, "\r\n", 2);
             }
         } else if (!strncmp(input, "cat", 3)) {
             if (strlen(input) > 3) {
