@@ -52,10 +52,10 @@ static int devgpio_write(int fd, const void *buf, unsigned int len)
     a = fno->priv;
 
     if (arg[0] == '1') {
-        gpio_set(a->port, a->n);
+        gpio_set(a->port, a->pin);
         return 1;
     } else if (arg[0] == '0') {
-        gpio_clear(a->port, a->n);
+        gpio_clear(a->port, a->pin);
         return 1;
     } else {
         return -1;
@@ -74,10 +74,10 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
     if (cmd == IOCTL_GPIO_DISABLE) {
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
-        GPIO1_DIR |= a->n; 
+        GPIO1_DIR |= a->pin; 
     }
     if (cmd == IOCTL_GPIO_SET_INPUT) {
-        GPIO1_DIR &= ~(a->n); 
+        GPIO1_DIR &= ~(a->pin); 
     }
     if (cmd == IOCTL_GPIO_SET_MODE) {
     }
