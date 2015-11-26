@@ -98,6 +98,7 @@ void frosted_init(void)
     syscalls_init();
 
     memfs_init();
+    xipfs_init();
     devnull_init(fno_search("/dev"));
     sysfs_init();
 

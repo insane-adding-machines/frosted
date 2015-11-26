@@ -32,6 +32,7 @@ OBJS-y:=kernel/systick.o
 
 # device drivers 
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
+OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
 
 OBJS-$(SYSFS)+= kernel/drivers/sysfs.o

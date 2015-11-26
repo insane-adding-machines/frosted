@@ -62,6 +62,7 @@ syscalls = [
     ["dup", 1, "sys_dup_hdlr"],
     ["dup2", 2, "sys_dup2_hdlr"],
     ["kill", 2, "sys_kill_hdlr"],
+    ["exec", 2, "sys_exec_hdlr"],
     ["exit", 1, "sys_exit_hdlr"]
 ]
 

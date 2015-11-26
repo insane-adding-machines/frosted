@@ -32,5 +32,7 @@ DIR *opendir(const char *path);
 int mkdir(char *path);
 int readdir(DIR *d, struct dirent *ep);
 int closedir(DIR *d);
+int exec(char *cmd, char *args);
+void exit(int retval);
 unsigned int gettimeofday(unsigned int *ms);
 #endif
