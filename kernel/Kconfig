@@ -166,7 +166,7 @@ menu "Subsystems"
 
             config USART_1
             bool "USART 1"
-            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407)
+            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407  || ARCH_STM32F429 )
 
             config USART_2
             bool "USART 2"

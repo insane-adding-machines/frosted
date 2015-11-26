@@ -32,13 +32,13 @@
 #include "gpio.h"
 #endif
 
-#include "stm32f4.h"
-
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { {.port=GPIOG, .rcc=RCC_GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
                                                                             {.port=GPIOG, .rcc=RCC_GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                                                                            {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_2
                                                                             {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
@@ -63,6 +63,19 @@ static const struct gpio_addr gpio_addrs[] = { {.port=GPIOG, .rcc=RCC_GPIOG, .pi
 
 #ifdef CONFIG_DEVUART
 static const struct uart_addr uart_addrs[] = { 
+#ifdef CONFIG_USART_1
+            { 
+                .devidx = 2,
+                .base = USART1, 
+                .irq = NVIC_USART1_IRQ, 
+                .rcc = RCC_USART1, 
+                .baudrate = 115200,
+                .stop_bits = USART_STOPBITS_1,
+                .data_bits = 8,
+                .parity = USART_PARITY_NONE,
+                .flow = USART_FLOWCONTROL_NONE,
+            },
+#endif
 #ifdef CONFIG_USART_2
         { 
             .devidx = 2,
