@@ -66,10 +66,10 @@ choice
     prompt "Clock Speed"
     config CLK_48MHZ
         bool "48MHz"
-        depends on (ARCH_STM32F401  || ARCH_STM32F411)
+        depends on (ARCH_STM32F401  || ARCH_STM32F411 || ARCH_STM32F429)
     config CLK_84MHZ
         bool "84MHz"
-        depends on (ARCH_STM32F401 ||ARCH_STM32F411)
+        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429)
     config CLK_100MHZ
         bool "100MHz"
         depends on ARCH_LPC17XX
