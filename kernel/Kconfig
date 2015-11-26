@@ -85,7 +85,7 @@ choice
     prompt "Board"
 config MACH_STM32F407Discovery
     bool "STM32F407Discovery"
-    depends on (ARCH_STM32F407_XG || ARCH_STM32F407_XE)
+    depends on (ARCH_STM32F407)
     default y
 config MACH_STM32F4x1Discovery
     bool "STM32F4x1Discovery"
