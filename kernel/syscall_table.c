@@ -253,6 +253,16 @@ int sys_dup2(uint32_t arg1, uint32_t arg2){
     syscall(SYS_DUP2, arg1, arg2, 0, 0, 0); 
 }
 
+/* Syscall: mount(5 arguments) */
+int sys_mount(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){
+    syscall(SYS_MOUNT, arg1, arg2, arg3, arg4, arg5); 
+}
+
+/* Syscall: umount(2 arguments) */
+int sys_umount(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_UMOUNT, arg1, arg2, 0, 0, 0); 
+}
+
 /* Syscall: kill(2 arguments) */
 int sys_kill(uint32_t arg1, uint32_t arg2){
     syscall(SYS_KILL, arg1, arg2, 0, 0, 0); 
@@ -319,6 +329,8 @@ extern int sys_getsockopt_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
 extern int sys_shutdown_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_dup_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_dup2_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_mount_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_umount_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_kill_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_exec_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_exit_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -374,7 +386,9 @@ void syscalls_init(void) {
 	sys_register_handler(47, sys_shutdown_hdlr);
 	sys_register_handler(48, sys_dup_hdlr);
 	sys_register_handler(49, sys_dup2_hdlr);
-	sys_register_handler(50, sys_kill_hdlr);
-	sys_register_handler(51, sys_exec_hdlr);
-	sys_register_handler(52, sys_exit_hdlr);
+	sys_register_handler(50, sys_mount_hdlr);
+	sys_register_handler(51, sys_umount_hdlr);
+	sys_register_handler(52, sys_kill_hdlr);
+	sys_register_handler(53, sys_exec_hdlr);
+	sys_register_handler(54, sys_exit_hdlr);
 }

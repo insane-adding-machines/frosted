@@ -437,7 +437,7 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 {
     struct fnode *fno = task_filedesc_get(arg1);
     if (fno && fno->owner->ops.ioctl) {
-        fno->owner->ops.ioctl(arg1, arg2, arg3);
+        fno->owner->ops.ioctl((int)arg1, (uint32_t)arg2, (void *)arg3);
     } else return -1;
 }
 
@@ -614,18 +614,54 @@ int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *ar
     return -1;
 }
 
-int vfs_umount(char *source, char *target, char *module, uint32_t flags, void *args)
+int vfs_umount(char *target, uint32_t flags)
 {
-    struct module *m;
-    if (!module || !target)
+    struct fnode *f; 
+    int ret;
+    struct mountpoint *mp = MTAB, *prev = NULL;
+    if (!target)
         return -1;
-    m = module_search(module);
-    if (!m || !m->mount)
+    f = fno_search(target);
+    if (!f || !f->owner || !f->owner->umount)
         return -1;
-    /* TODO: remove MP */
-    return m->umount(target, flags);
+    ret = f->owner->umount(target, flags);
+    if (ret < 0)
+        return ret;
+
+    while (mp) {
+        if (mp->target == f) {
+            if (!prev) {
+                MTAB = mp->next;
+                break;
+            } else {
+                prev->next = mp;
+
+            }
+            kfree(mp);
+        }
+        prev = mp;
+        mp = mp->next;
+    }
+    return 0;
 }
 
+int sys_mount_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    char *source = (char *)arg1;
+    char *target = (char *)arg2;
+    char *module = (char *)arg3;
+    uint32_t flags = arg4;
+    void *args = (void*)arg5;
+    return vfs_mount(source, target, module, flags, args);
+}
+
+int sys_umount_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    char *target = (char *)arg1;
+    uint32_t flags = arg2;
+    return vfs_umount(target, flags);
+
+}
 void vfs_init(void) 
 {
     struct fnode *dev = NULL;
