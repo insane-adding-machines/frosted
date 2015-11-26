@@ -84,6 +84,8 @@ OBJS-y+=			\
 		syscall.o		\
 		waitpid.o		\
 		exec.o			\
+		mount.o			\
+		umount.o			\
 
 
 
