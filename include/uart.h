@@ -18,8 +18,8 @@ struct uart_addr {
     uint8_t flow;
 };
 
-int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr);
-struct module * devuart_init(struct fnode *dev);
+
+void uart_init(struct fnode *dev, const struct uart_addr uart_addrs[], int num_uarts);
 
 #endif
 

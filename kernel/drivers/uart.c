@@ -7,14 +7,17 @@
 
 #ifdef LM3S
 #   include "libopencm3/lm3s/usart.h"
+#   define CLOCK_ENABLE(C) 
 #endif
 #ifdef STM32F4
 #   include "libopencm3/stm32/usart.h"
+#   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
 #ifdef LPC17XX
 #   include "libopencm3/lpc17xx/uart.h"
+#   define CLOCK_ENABLE(C) 
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
@@ -257,7 +260,7 @@ static int devuart_open(const char *path, int flags)
 }
 
 
-int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
+static int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
 {
     struct dev_uart *u = &DEV_UART[n];
     static int num_ttys = 0;
@@ -283,7 +286,7 @@ int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
 
 }
 
-struct module * devuart_init(struct fnode *dev)
+static struct module * devuart_init(struct fnode *dev)
 {
     mod_devuart.family = FAMILY_FILE;
     mod_devuart.ops.open = devuart_open;
@@ -293,4 +296,28 @@ struct module * devuart_init(struct fnode *dev)
     
     return &mod_devuart;
 }
+
+void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_uarts)
+{
+    int i,j;
+    struct module * devuart = devuart_init(dev);
+
+    for (i = 0; i < num_uarts; i++) 
+    {
+        CLOCK_ENABLE(uart_addrs[i].rcc);
+        uart_fno_init(dev, uart_addrs[i].devidx, &uart_addrs[i]);
+        usart_set_baudrate(uart_addrs[i].base, uart_addrs[i].baudrate);
+        usart_set_databits(uart_addrs[i].base, uart_addrs[i].data_bits);
+        usart_set_stopbits(uart_addrs[i].base, uart_addrs[i].stop_bits);
+        usart_set_mode(uart_addrs[i].base, USART_MODE_TX_RX);
+        usart_set_parity(uart_addrs[i].base, uart_addrs[i].parity);
+        usart_set_flow_control(uart_addrs[i].base, uart_addrs[i].flow);
+        /* one day we will do non blocking UART Tx and will need to enable tx interrupt */
+        usart_enable_rx_interrupt(uart_addrs[i].base);
+        /* Finally enable the USART. */
+        usart_enable(uart_addrs[i].base);
+    }
+    register_module(devuart);
+}
+
 

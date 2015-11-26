@@ -49,25 +49,12 @@
  };
  
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
- 
- static void uart_init(struct fnode * dev)
- {
-     int i,j;
-     const struct gpio_addr * pcfg;
-     struct module * devuart = devuart_init(dev);
- 
-     for (i = 0; i < NUM_UARTS; i++) 
-     {
-         uart_fno_init(dev, i, &uart_addrs[i]);
-     }
-     register_module(devuart);
- }
-#endif
+ #endif
 
  void machine_init(struct fnode * dev)
  {
 #ifdef CONFIG_DEVUART
-     uart_init(dev);
+     uart_init(dev, uart_addrs, NUM_UARTS);
 #endif
 
  }

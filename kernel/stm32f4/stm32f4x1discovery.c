@@ -32,8 +32,6 @@
 #include "gpio.h"
 #endif
 
-#include "stm32f4.h"
-
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { 
             {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},

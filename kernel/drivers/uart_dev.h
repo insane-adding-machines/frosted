@@ -34,13 +34,13 @@ static inline void uart_enter_irq(uint32_t *base)
 {
     UART_IC(base) = UART_IC_RXIC;
 }
-
+/*
 static inline void uart_init(uint32_t *base)
 {
     UART_IR(base) = 0;
     UART_IM(base) = UART_IM_RXIM;
 }
-
+*/
 static inline void uart_tx(uint32_t *base, char c)
 {
     UART_TXREG(base) = c;
