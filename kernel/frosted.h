@@ -99,8 +99,10 @@ void tasklet_add(void (*exe)(void*), void *arg);
 void check_tasklets(void);
 
 /* Modules */
+struct module *MODS;
 int register_module(struct module *m);
 int unregister_module(struct module *m);
+struct module *module_search(char *name);
 
 /* System */
 int sys_register_handler(uint32_t n, int (*_sys_c)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t));
@@ -111,6 +113,7 @@ void syscalls_init(void);
 
 /* VFS */
 void vfs_init(void);
+int fno_fullpath(struct fnode *f, char *dst, int len);
 
 #define FL_RDONLY 0x01
 #define FL_WRONLY 0x02
@@ -134,7 +137,11 @@ struct fnode {
     struct fnode *next;
 };
 
-
+struct mountpoint 
+{
+    struct fnode *target;
+    struct mountpoint *next;
+};
 
 struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent);
@@ -150,9 +157,17 @@ int vfs_symlink(char *file, char *link);
 #define FAMILY_DEV  0x0DEF
 #define FAMILY_FILE 0xFFFF
 
+#define MODNAME_SIZE 32
+
 
 struct module {
     uint16_t family;
+    char name[MODNAME_SIZE];
+
+    /* If this is a filesystem related module, it should probably define these */
+    int (*mount)(char *source, char *target, uint32_t flags, void *arg);
+    int (*umount)(char *target, uint32_t flags);
+    int (*mount_info)(struct fnode *fno, char *buf, int size);
 
     struct module_operations {
         /* Common module operations */

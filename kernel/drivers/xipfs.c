@@ -73,10 +73,38 @@ int xip_add(const char *name, void (*init))
     return 0;
 }
 
+static int xipfs_mount(char *source, char *tgt, uint32_t flags, char *arg)
+{
+    struct fnode *tgt_dir = NULL;
+    /* Source must be NULL */
+    if (source)
+        return -1;
+
+    /* Target must be a valid dir */
+    if (!tgt)
+        return -1;
+
+    tgt_dir = fno_search(tgt);
+
+    if (!tgt_dir || ((tgt_dir->flags & FL_DIR) == 0)) {
+        /* Not a valid mountpoint. */
+        return -1;
+    }
+
+    if (tgt_dir->children) {
+        /* Only allowed to mount on empty directory */
+        return -1;
+    }
+    tgt_dir->owner = &mod_xipfs;
+    return 0;
+}
+
 
 void xipfs_init(void)
 {
     mod_xipfs.family = FAMILY_FILE;
+    mod_xipfs.mount = xipfs_mount;
+    strcpy(mod_xipfs.name,"xipfs");
     mod_xipfs.ops.read = xipfs_read; 
     mod_xipfs.ops.poll = xipfs_poll;
     mod_xipfs.ops.write = xipfs_write;
@@ -84,8 +112,6 @@ void xipfs_init(void)
     mod_xipfs.ops.creat = xipfs_creat;
     mod_xipfs.ops.unlink = xipfs_unlink;
     mod_xipfs.ops.close = xipfs_close;
-    xipfs = fno_mkdir(&mod_xipfs, "bin", NULL);
-    //xip_add("sleep", sleep_task);
     register_module(&mod_xipfs);
 }
 

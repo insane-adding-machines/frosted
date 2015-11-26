@@ -151,9 +151,39 @@ static int memfs_unlink(struct fnode *fno)
     return 0;
 }
 
+static int memfs_mount(char *source, char *tgt, uint32_t flags, char *arg)
+{
+    struct fnode *tgt_dir = NULL;
+    /* Source must be NULL */
+    if (source)
+        return -1;
+
+    /* Target must be a valid dir */
+    if (!tgt)
+        return -1;
+
+    tgt_dir = fno_search(tgt);
+
+    if (!tgt_dir || ((tgt_dir->flags & FL_DIR) == 0)) {
+        /* Not a valid mountpoint. */
+        return -1;
+    }
+
+    if (tgt_dir->children) {
+        /* Only allowed to mount on empty directory */
+        return -1;
+    }
+    tgt_dir->owner = &mod_memfs;
+    return 0;
+}
+
 void memfs_init(void)
 {
     mod_memfs.family = FAMILY_FILE;
+    strcpy(mod_memfs.name,"memfs");
+
+    mod_memfs.mount = memfs_mount;
+
     mod_memfs.ops.read = memfs_read; 
     mod_memfs.ops.poll = memfs_poll;
     mod_memfs.ops.write = memfs_write;
@@ -161,8 +191,6 @@ void memfs_init(void)
     mod_memfs.ops.creat = memfs_creat;
     mod_memfs.ops.unlink = memfs_unlink;
     mod_memfs.ops.close = memfs_close;
-
-    memfs = fno_mkdir(&mod_memfs, "mem", NULL);
     register_module(&mod_memfs);
 }
 
