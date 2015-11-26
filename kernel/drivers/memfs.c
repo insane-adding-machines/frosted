@@ -154,6 +154,7 @@ static int memfs_unlink(struct fnode *fno)
 void memfs_init(void)
 {
     mod_memfs.family = FAMILY_FILE;
+    strcpy(mod_memfs.name,"memfs");
     mod_memfs.ops.read = memfs_read; 
     mod_memfs.ops.poll = memfs_poll;
     mod_memfs.ops.write = memfs_write;

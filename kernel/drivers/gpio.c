@@ -157,6 +157,7 @@ static struct module *  devgpio_init(struct fnode *dev)
 {
     gpio_mutex = frosted_mutex_init();
     mod_devgpio.family = FAMILY_FILE;
+    strcpy(mod_devgpio.name,"gpio");
     mod_devgpio.ops.open = devgpio_open;
     mod_devgpio.ops.read = devgpio_read; 
     mod_devgpio.ops.poll = devgpio_poll;

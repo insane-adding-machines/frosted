@@ -286,6 +286,7 @@ int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
 struct module * devuart_init(struct fnode *dev)
 {
     mod_devuart.family = FAMILY_FILE;
+    strcpy(mod_devuart.name,"uart");
     mod_devuart.ops.open = devuart_open;
     mod_devuart.ops.read = devuart_read; 
     mod_devuart.ops.poll = devuart_poll;

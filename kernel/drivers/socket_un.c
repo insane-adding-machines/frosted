@@ -83,6 +83,7 @@ int sock_shutdown(int fd, uint16_t how)
 void socket_un_init(void)
 {
     mod_socket_un.family = FAMILY_UNIX;
+    strcpy(mod_socket_un.name,"un");
     mod_socket_un.ops.poll = sock_poll;
     mod_socket_un.ops.close = sock_close;
 

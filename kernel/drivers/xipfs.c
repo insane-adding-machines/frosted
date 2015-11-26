@@ -77,6 +77,7 @@ int xip_add(const char *name, void (*init))
 void xipfs_init(void)
 {
     mod_xipfs.family = FAMILY_FILE;
+    strcpy(mod_xipfs.name,"xipfs");
     mod_xipfs.ops.read = xipfs_read; 
     mod_xipfs.ops.poll = xipfs_poll;
     mod_xipfs.ops.write = xipfs_write;

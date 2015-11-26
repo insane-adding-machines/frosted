@@ -1,6 +1,8 @@
 #include "frosted.h"
 #include <string.h>
 
+#define MAX_SYSFS_BUFFER 512
+
 static struct fnode *sysfs;
 static struct module mod_sysfs;
 
@@ -127,7 +129,6 @@ int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
     return fno->off;
 }
 
-#define MAX_TASKLIST 512
 int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
@@ -140,7 +141,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     const char legend[]="pid\tstate\tstack used\n";
     if (fno->off == 0) {
         frosted_mutex_lock(sysfs_mutex);
-        task_txt = kalloc(MAX_TASKLIST);
+        task_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!task_txt)
             return -1;
         off = 0;
@@ -183,7 +184,6 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     return len;
 }
 
-#define MAX_MEMSTATS 512
 int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
@@ -200,7 +200,7 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
         const char free_banner[] = "\tFree calls: ";
         const char mem_banner[] = "\tMemory in use: ";
         frosted_mutex_lock(sysfs_mutex);
-        mem_txt = kalloc(MAX_MEMSTATS);
+        mem_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!mem_txt)
             return -1;
         off = 0;
@@ -256,6 +256,47 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
     return len;
 }
 
+int sysfs_modules_read(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    static char *mem_txt;
+    static int off;
+    int i;
+    int stack_used;
+    int p_state;
+    struct module *m = MODS;
+    if (fno->off == 0) {
+        const char mod_banner[] = "Loaded modules:\n";
+        frosted_mutex_lock(sysfs_mutex);
+        mem_txt = kalloc(MAX_SYSFS_BUFFER);
+        if (!mem_txt)
+            return -1;
+        off = 0;
+        strcpy(mem_txt + off, mod_banner);
+        off += strlen(mod_banner);
+
+        while (m) {
+            strcpy(mem_txt + off, m->name);
+            off += strlen(m->name);
+            *(mem_txt + (off++)) = '\r';
+            *(mem_txt + (off++)) = '\n';
+            m = m->next;
+        }
+    }
+    if (off == fno->off) {
+        kfree(mem_txt);
+        frosted_mutex_unlock(sysfs_mutex);
+        return -1;
+    }
+    if (len > (off - fno->off)) {
+       len = off - fno->off;
+    }
+    memcpy(res, mem_txt + fno->off, len);
+    fno->off += len;
+    return len;
+}
+
 int sysfs_no_write(struct sysfs_fnode *sfs, const void *buf, int len)
 {
     return -1;
@@ -282,6 +323,8 @@ int sysfs_register(char *name,
 void sysfs_init(void)
 {
     mod_sysfs.family = FAMILY_FILE;
+    strcpy(mod_sysfs.name, "sysfs");
+
     mod_sysfs.ops.read = sysfs_read; 
     mod_sysfs.ops.poll = sysfs_poll;
     mod_sysfs.ops.write = sysfs_write;
@@ -293,6 +336,7 @@ void sysfs_init(void)
     sysfs_register("time", sysfs_time_read, sysfs_no_write);
     sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
     sysfs_register("mem", sysfs_mem_read, sysfs_no_write);
+    sysfs_register("modules", sysfs_modules_read, sysfs_no_write);
 }
 
 

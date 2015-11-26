@@ -99,6 +99,7 @@ void tasklet_add(void (*exe)(void*), void *arg);
 void check_tasklets(void);
 
 /* Modules */
+struct module *MODS;
 int register_module(struct module *m);
 int unregister_module(struct module *m);
 
@@ -150,9 +151,13 @@ int vfs_symlink(char *file, char *link);
 #define FAMILY_DEV  0x0DEF
 #define FAMILY_FILE 0xFFFF
 
+#define MODNAME_SIZE 32
+
 
 struct module {
     uint16_t family;
+    char name[MODNAME_SIZE];
+
 
     struct module_operations {
         /* Common module operations */
