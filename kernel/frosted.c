@@ -90,6 +90,7 @@ void frosted_init(void)
     (void)vector;
 
     vfs_init();
+    devnull_init(fno_search("/dev"));
 
     /* Set up system */
     hw_init();
@@ -99,8 +100,11 @@ void frosted_init(void)
 
     memfs_init();
     xipfs_init();
-    devnull_init(fno_search("/dev"));
     sysfs_init();
+
+    vfs_mount(NULL, "/mem", "memfs", 0, NULL);
+    vfs_mount(NULL, "/bin", "xipfs", 0, NULL);
+    vfs_mount(NULL, "/sys", "sysfs", 0, NULL);
 
     kernel_task_init();
 

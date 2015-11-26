@@ -21,6 +21,7 @@
 #include <string.h>
 #define MAXPATH 256
 
+struct mountpoint *MTAB = NULL;
 
 /* ROOT entity ("/")
  *.
@@ -82,7 +83,7 @@ static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
     return 0;
 }
 
-static int fno_fullpath(struct fnode *f, char *dst, int len) 
+int fno_fullpath(struct fnode *f, char *dst, int len) 
 {
     char *p = NULL;
     int ret;
@@ -593,6 +594,38 @@ void __attribute__((weak)) devuart_init(struct fnode *dev)
 
 }
 
+int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *args)
+{
+    struct module *m;
+    if (!module || !target)
+        return -1;
+    m = module_search(module);
+    if (!m || !m->mount)
+        return -1;
+    if (m->mount(source, target, flags, args) == 0) {
+        struct mountpoint *mp = kalloc(sizeof(struct mountpoint));
+        if (mp) {
+            mp->target = fno_search(target);
+            mp->next = MTAB;
+            MTAB = mp;
+        }
+        return 0;
+    }
+    return -1;
+}
+
+int vfs_umount(char *source, char *target, char *module, uint32_t flags, void *args)
+{
+    struct module *m;
+    if (!module || !target)
+        return -1;
+    m = module_search(module);
+    if (!m || !m->mount)
+        return -1;
+    /* TODO: remove MP */
+    return m->umount(target, flags);
+}
+
 void vfs_init(void) 
 {
     struct fnode *dev = NULL;
@@ -606,5 +639,14 @@ void vfs_init(void)
 
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
+    
+    /* Init "/sys" dir */
+    dev = fno_mkdir(NULL, "sys", NULL);
+
+    /* Init "/mem" dir */
+    dev = fno_mkdir(NULL, "mem", NULL);
+    
+    /* Init "/bin" dir */
+    dev = fno_mkdir(NULL, "bin", NULL);
 }
 

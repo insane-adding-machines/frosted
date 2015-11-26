@@ -8,6 +8,8 @@ static struct module mod_sysfs;
 
 static mutex_t *sysfs_mutex;
 
+extern struct mountpoint *MTAB;
+
 struct sysfs_fnode {
     struct fnode *fnode;
     int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len);
@@ -297,6 +299,72 @@ int sysfs_modules_read(struct sysfs_fnode *sfs, void *buf, int len)
     return len;
 }
 
+int sysfs_mtab_read(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    static char *mem_txt;
+    static int off;
+    int i;
+    int stack_used;
+    int p_state;
+    struct mountpoint *m = MTAB;
+    int l = 0;
+    if (fno->off == 0) {
+        const char mtab_banner[] = "Mountpoint\tDriver\t\tInfo\r\n--------------------------------------\r\n";
+        frosted_mutex_lock(sysfs_mutex);
+        mem_txt = kalloc(MAX_SYSFS_BUFFER);
+        if (!mem_txt)
+            return -1;
+        off = 0;
+        strcpy(mem_txt + off, mtab_banner);
+        off += strlen(mtab_banner);
+
+        while (m) {
+            l = fno_fullpath(m->target, mem_txt + off, MAX_SYSFS_BUFFER - off);
+            if (l > 0)
+                off += l; 
+            *(mem_txt + (off++)) = '\t';
+            *(mem_txt + (off++)) = '\t';
+
+            if (m->target->owner) {
+                strcpy(mem_txt + off, m->target->owner->name);
+                off += strlen(m->target->owner->name);
+            }
+            *(mem_txt + (off++)) = '\t';
+            *(mem_txt + (off++)) = '\t';
+
+            l = 0;
+            if (m->target->owner->mount_info) {
+                l = m->target->owner->mount_info(m->target, mem_txt + off, MAX_SYSFS_BUFFER - off);
+            }
+            if (l > 0) {
+                off += l;
+            } else {
+                strcpy(mem_txt + off, "None");
+                off += 4;
+            }
+            *(mem_txt + (off++)) = '\r';
+            *(mem_txt + (off++)) = '\n';
+
+            m = m->next;
+        }
+        *(mem_txt + (off++)) = '\r';
+        *(mem_txt + (off++)) = '\n';
+    }
+    if (off == fno->off) {
+        kfree(mem_txt);
+        frosted_mutex_unlock(sysfs_mutex);
+        return -1;
+    }
+    if (len > (off - fno->off)) {
+       len = off - fno->off;
+    }
+    memcpy(res, mem_txt + fno->off, len);
+    fno->off += len;
+    return len;
+}
+
 int sysfs_no_write(struct sysfs_fnode *sfs, const void *buf, int len)
 {
     return -1;
@@ -320,23 +388,52 @@ int sysfs_register(char *name,
     return -1;
 }
 
+static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
+{
+    struct fnode *tgt_dir = NULL;
+    /* Source must be NULL */
+    if (source)
+        return -1;
+
+    /* Target must be a valid dir */
+    if (!tgt)
+        return -1;
+
+    tgt_dir = fno_search(tgt);
+
+    if (!tgt_dir || ((tgt_dir->flags & FL_DIR) == 0)) {
+        /* Not a valid mountpoint. */
+        return -1;
+    }
+
+    if (tgt_dir->children) {
+        /* Only allowed to mount on empty directory */
+        return -1;
+    }
+    tgt_dir->owner = &mod_sysfs;
+    sysfs_register("time", sysfs_time_read, sysfs_no_write);
+    sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
+    sysfs_register("mem", sysfs_mem_read, sysfs_no_write);
+    sysfs_register("modules", sysfs_modules_read, sysfs_no_write);
+    sysfs_register("mtab", sysfs_mtab_read, sysfs_no_write);
+    return 0;
+}
+
 void sysfs_init(void)
 {
     mod_sysfs.family = FAMILY_FILE;
     strcpy(mod_sysfs.name, "sysfs");
+
+    mod_sysfs.mount = sysfs_mount;
 
     mod_sysfs.ops.read = sysfs_read; 
     mod_sysfs.ops.poll = sysfs_poll;
     mod_sysfs.ops.write = sysfs_write;
     mod_sysfs.ops.close = sysfs_close;
 
-    sysfs = fno_mkdir(&mod_sysfs, "sys", NULL);
+    sysfs = fno_search("/sys");
     register_module(&mod_sysfs);
     sysfs_mutex = frosted_mutex_init();
-    sysfs_register("time", sysfs_time_read, sysfs_no_write);
-    sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
-    sysfs_register("mem", sysfs_mem_read, sysfs_no_write);
-    sysfs_register("modules", sysfs_modules_read, sysfs_no_write);
 }
 
 

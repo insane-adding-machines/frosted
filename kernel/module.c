@@ -44,6 +44,17 @@ int unregister_module(struct module *m)
     }
 }
 
+struct module *module_search(char *name)
+{
+    struct module *m = MODS;
+    while(m) {
+        if (strcmp(m->name, name) == 0)
+            return m;
+        m = m->next;
+    }
+    return NULL;
+}
+
 static struct module *af_to_module(uint16_t family)
 {
     struct address_family *af = AF;
