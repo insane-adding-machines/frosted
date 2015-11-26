@@ -25,38 +25,31 @@
 #include "uart.h"
 #endif
 
-#ifdef CONFIG_GPIO_LPC17XX
+#ifdef CONFIG_DEVGPIO
 #include <libopencm3/lpc17xx/gpio.h>
 #include "gpio.h"
+#endif
 
-
-static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO1, .pin=GPIOPIN18, .name="a_pio_1_18"},
-                                                                                {.port=GPIO1, .pin=GPIOPIN20, .name="a_pio_1_20"},
-                                                                                {.port=GPIO1, .pin=GPIOPIN21, .name="a_pio_1_21"},
-                                                                                {.port=GPIO1, .pin=GPIOPIN23, .name="a_pio_1_23"} };
-
+#ifdef CONFIG_DEVGPIO
+static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO1, .pin=GPIOPIN18, .mode=GPIO_MODE_OUTPUT, .name="gpio_1_18"},
+                                                                                {.port=GPIO1, .pin=GPIOPIN20, .mode=GPIO_MODE_OUTPUT, .name="gpio_1_20"},
+                                                                                {.port=GPIO1, .pin=GPIOPIN21, .mode=GPIO_MODE_OUTPUT, .name="gpio_1_21"},
+                                                                                {.port=GPIO1, .pin=GPIOPIN23, .mode=GPIO_MODE_OUTPUT, .name="gpio_1_23"} 
+#ifdef CONFIG_DEVUART
+#ifdef CONFIG_UART_0
+#endif
+#ifdef CONFIG_UART_1
+#endif
+#ifdef CONFIG_UART_2
+#endif
+#ifdef CONFIG_UART_3
+#endif
+#endif
+};
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
-
-/* Common code - to be moved, but where? */
-static void gpio_init(struct fnode * dev)
-{
-    int i;
-    struct fnode *node;
-
-    struct module * devgpio = devgpio_init(dev);
-
-    for(i=0;i<NUM_GPIOS;i++)
-    {
-        node = fno_create(devgpio, gpio_addrs[i].name, dev);
-        if (node)
-            node->priv = &gpio_addrs[i];
-    }
-    register_module(devgpio);
-}
 #endif
 
 #ifdef CONFIG_DEVUART
-
 static const struct uart_addr uart_addrs[] = { 
 #ifdef CONFIG_UART_0
         { .base = UART0_BASE, .irq = NVIC_UART0_IRQ, },
@@ -95,8 +88,8 @@ void machine_init(struct fnode * dev)
 #error No valid clock speed selected for lpc1768mbed
 #endif
 
-#ifdef CONFIG_GPIO_LPC17XX
-    gpio_init(dev);
+#ifdef CONFIG_DEVGPIO
+    gpio_init(dev, gpio_addrs, NUM_GPIOS);
 #endif
 #ifdef CONFIG_DEVUART
     uart_init(dev);

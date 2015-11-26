@@ -1,5 +1,5 @@
-#ifndef INC_STM32F4
-#define INC_STM32F4
+#ifndef INC_LPC17CC
+#define INC_LPC17CC
 
 #ifdef CONFIG_DEVUART
 #include "uart.h"
@@ -10,4 +10,3 @@ void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_
 #endif
 
 #endif
-

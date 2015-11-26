@@ -13,6 +13,6 @@ struct gpio_addr {
     const char* name;
 };
 
-struct module * devgpio_init(struct fnode *dev);
+void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num_gpios);
 
 #endif

@@ -27,19 +27,20 @@
 #include "uart.h"
 #endif
      
-#ifdef CONFIG_GPIO_STM32F4
+#ifdef CONFIG_DEVGPIO
 #include <libopencm3/stm32/gpio.h>
 #include "gpio.h"
 #endif
      
 #include "stm32f4.h"
      
-#ifdef CONFIG_GPIO_STM32F4
+#ifdef CONFIG_DEVGPIO
      static const struct gpio_addr gpio_addrs[] = { 
                  {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
                  {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
                  {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
                  {.port=GPIOD, .rcc=RCC_GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
+#ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
                  {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
                  {.port=GPIOA,.rcc=RCC_GPIOA,.pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
@@ -55,6 +56,7 @@
 #ifdef CONFIG_USART_6
                  {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
                  {.port=GPIOC,.rcc=RCC_GPIOC,.pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+#endif
 #endif
      };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
@@ -131,7 +133,7 @@ void machine_init(struct fnode * dev)
 #error No valid clock speed selected
 #endif
 
-#ifdef CONFIG_GPIO_STM32F4
+#ifdef CONFIG_DEVGPIO
     gpio_init(dev, gpio_addrs, NUM_GPIOS);
 #endif
 #ifdef CONFIG_DEVUART

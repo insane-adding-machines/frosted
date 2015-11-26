@@ -13,7 +13,8 @@
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
-#ifdef LPC176X
+#ifdef LPC17XX
+#   include "libopencm3/lpc17xx/uart.h"
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif

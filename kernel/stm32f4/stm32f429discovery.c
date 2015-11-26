@@ -27,16 +27,17 @@
 #include "uart.h"
 #endif
 
-#ifdef CONFIG_GPIO_STM32F4
+#ifdef CONFIG_DEVGPIO
 #include <libopencm3/stm32/gpio.h>
 #include "gpio.h"
 #endif
 
 #include "stm32f4.h"
 
-#ifdef CONFIG_GPIO_STM32F4
+#ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { {.port=GPIOG, .rcc=RCC_GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
                                                                             {.port=GPIOG, .rcc=RCC_GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
+#ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
 #endif
 #ifdef CONFIG_USART_2
@@ -54,6 +55,7 @@ static const struct gpio_addr gpio_addrs[] = { {.port=GPIOG, .rcc=RCC_GPIOG, .pi
 #ifdef CONFIG_UART_7
 #endif
 #ifdef CONFIG_UART_8
+#endif
 #endif
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
@@ -86,7 +88,7 @@ void machine_init(struct fnode * dev)
 #error No valid clock speed selected for STM32F429 Discovery
 #endif
 
-#ifdef CONFIG_GPIO_STM32F4
+#ifdef CONFIG_DEVGPIO
     gpio_init(dev, gpio_addrs, NUM_GPIOS);
 #endif
 #ifdef CONFIG_DEVUART

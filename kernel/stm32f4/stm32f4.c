@@ -33,53 +33,6 @@
 #include "uart.h"
 #endif
 
-#ifdef CONFIG_GPIO_STM32F4
-#include <libopencm3/stm32/gpio.h>
-#include "gpio.h"
-#endif
-
-
-
-
-#ifdef CONFIG_GPIO_STM32F4
-void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num_gpios)
-{
-    int i;
-    struct fnode *node;
-
-    struct module * devgpio = devgpio_init(dev);
-
-    for(i=0;i<num_gpios;i++)
-    {
-        rcc_periph_clock_enable(gpio_addrs[i].rcc);
-        switch(gpio_addrs[i].mode)
-        {
-            case GPIO_MODE_INPUT:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, gpio_addrs[i].pullupdown, gpio_addrs[i].pin);
-                break;
-            case GPIO_MODE_OUTPUT:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
-                gpio_set_output_options(gpio_addrs[i].port, gpio_addrs[i].optype, gpio_addrs[i].speed, gpio_addrs[i].pin);
-                break;
-            case GPIO_MODE_AF:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
-                gpio_set_af(gpio_addrs[i].port, gpio_addrs[i].af, gpio_addrs[i].pin);
-                break;
-            case GPIO_MODE_ANALOG:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
-                break;
-        }
-        if(gpio_addrs[i].name)
-        {
-            node = fno_create(devgpio, gpio_addrs[i].name, dev);
-            if (node)
-                node->priv = &gpio_addrs[i];
-        }
-    }
-    register_module(devgpio);
-}
-#endif
-
 #ifdef CONFIG_DEVUART
 void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_uarts)
 {

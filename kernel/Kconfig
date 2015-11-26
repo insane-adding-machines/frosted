@@ -185,14 +185,9 @@ menu "Subsystems"
 
        endif
 
-       config GPIO_LPC17XX
-       depends on ARCH_LPC17XX
-       bool "LPC17XX GPIO driver"
-       default y
-
-       config GPIO_STM32F4
-       depends on ARCH_STM32F4
-       bool "STM32F4 GPIO driver"
+       config DEVGPIO
+       depends on (ARCH_STM32F4 || ARCH_LPC17XX)
+       bool "Generic GPIO driver"
        default y
 
    endmenu

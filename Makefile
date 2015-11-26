@@ -48,11 +48,8 @@ CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
-OBJS-$(GPIO_LPC17XX)+=kernel/drivers/gpio/gpio_lpc17xx.o
-CFLAGS-$(GPIO_LPC17XX)+=-DCONFIG_GPIO_LPC17XX
-
-OBJS-$(GPIO_STM32F4)+=kernel/drivers/gpio/gpio_stm32f4.o
-CFLAGS-$(GPIO_STM32F4)+=-DCONFIG_GPIO_STM32F4
+OBJS-$(DEVGPIO)+=kernel/drivers/gpio.o
+CFLAGS-$(DEVGPIO)+=-DCONFIG_DEVGPIO
 
 OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o kernel/$(BOARD)/$(BOARD).o
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o kernel/$(BOARD)/$(BOARD).o
