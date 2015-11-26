@@ -119,6 +119,7 @@ void vfs_init(void);
 #define FL_INUSE  0x08
 
 #define FL_LINK   0x80
+#define FL_EXEC   0xC0
 
 struct fnode {
     struct module *owner;
@@ -166,6 +167,7 @@ struct module {
         int (*seek)(int fd, int offset, int whence);
         int (*creat)(struct fnode *fno);
         int (*unlink)(struct fnode *fno);
+        int (*exec)(struct fnode *fno, void *arg);
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);

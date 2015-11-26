@@ -83,6 +83,8 @@ OBJS-y+=			\
 		tcsetattr.o		\
 		syscall.o		\
 		waitpid.o		\
+		exec.o			\
+
 
 
 CFLAGS+=$(CFLAGS-y)

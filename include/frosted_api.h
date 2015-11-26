@@ -53,6 +53,7 @@ struct stat {
 };
 
 #define S_IFMT     0170000   // bit mask for the file type bit fields
+#define P_IFMT     0000007   // bit mask for file permissions
 
 #define S_IFSOCK   0140000   // socket
 #define S_IFLNK    0120000   // symbolic link
@@ -61,6 +62,8 @@ struct stat {
 #define S_IFDIR    0040000   // directory
 #define S_IFCHR    0020000   // character device
 #define S_IFIFO    0010000   // FIFO
+
+#define P_EXEC     0000001   // exec
 
 #define S_ISREG(m)  (((m) & S_IFMT) == S_IFREG)    // is it a regular file?
 #define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)    // directory?

@@ -81,13 +81,6 @@ static void ls(int ser, char *start)
 
 static char lastcmd[100] = "";
 
-void sleep_task(void *_arg) {
-    char *arg = _arg;
-    int s;
-    s = atoi(arg);
-    sleep(s);
-    exit(0);
-}
 
 void fresh(void *arg) {
     int ser;
@@ -191,7 +184,10 @@ void fresh(void *arg) {
         write(ser, "\r\n", 2);
         if (len == 0)
             break;
-
+        
+        if (strlen(input) == 0)
+            continue;
+        /* First, check redirections */
         input[len - 1] = '\0';
         strcpy(lastcmd, input);
         for (i = 0; i < len; i++) {
@@ -211,9 +207,31 @@ void fresh(void *arg) {
                 }
             }
         }
-        
-        if (strlen(input) == 0)
+
+
+        /* Find executable command */
+        char *cmd = input;
+        char *args = cmd;
+        struct stat st;
+        for (i = 0; i < len; i++) {
+            if (args[i] == ' ') {
+                args[i] = 0;
+                args += (i + 1);
+                break;
+            }
+        }
+        if (args == cmd)
+            args = NULL;
+
+        if ((stat(cmd, &st) == 0) && ((st.st_mode & P_EXEC) == P_EXEC)) {
+            int pid = exec(cmd, args);
+            thread_join(pid, -1);
             continue;
+        } else {
+            /* Restore space */
+            if (args != NULL)
+                *(args - 1) = ' ';
+        } 
         
         if (!strncmp(input, "ls", 2))
         {
@@ -265,18 +283,6 @@ void fresh(void *arg) {
                 if (fd < 0) {
                     write(out, str_invalidfile, strlen(str_invalidfile));
                 } else close(fd);
-            }
-        } else if (!strncmp(input, "sleep", 5)) {
-            if (strlen(input) > 5) {
-                int fd; 
-                char *arg = input + 6;
-                int pid = thread_create(sleep_task, arg, 1);
-                if (pid < 0) {
-                    write(out, str_invalidfile, strlen(str_invalidfile));
-                    continue;
-                }
-                thread_join(pid, -1);
-                write(out, "\r\n", 2);
             }
         } else if (!strncmp(input, "echo", 4)) {
             if (strlen(input) > 4) {

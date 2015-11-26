@@ -357,6 +357,17 @@ void fno_unlink(struct fnode *fno)
     kfree(fno);
 }
 
+int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    char *path = (char *)arg1;
+    char *arg = (char *)arg2;
+    struct fnode *f;
+    f = fno_search(path);
+    if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exec) {
+        return f->owner->ops.exec(f, arg);
+    }
+    return -1;
+}
 
 int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
@@ -521,6 +532,10 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
         st->st_mode = S_IFREG;
         st->st_size = fno->size;
     }
+
+    if (fno->flags & FL_EXEC) {
+        st->st_mode |= P_EXEC;
+    }
     return 0;
 }
 
@@ -553,6 +568,11 @@ void __attribute__((weak)) devnull_init(struct fnode *dev)
 }
 
 void __attribute__((weak)) memfs_init(void)
+{
+
+}
+
+void __attribute__((weak)) xipfs_init(void)
 {
 
 }

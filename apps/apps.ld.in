@@ -13,6 +13,8 @@ SECTIONS
         KEEP(*(.init*))
         *(.text*)
         *(.rodata*)
+        . = ALIGN(4);
+        *(.xipfs*)
     } > FLASH
  
     .data :
