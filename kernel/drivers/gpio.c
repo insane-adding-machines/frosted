@@ -23,13 +23,13 @@
                                                                 case GPIOK:rcc_periph_clock_enable(RCC_GPIOK);  break;  \
                                                                 }
                                                                 
-#define SET_INPUT(P, M, D,I)               gpio_mode_setup(P, M, D, I);
+#define SET_INPUT(P, D, I)               gpio_mode_setup(P, IOCTL_GPIO_SET_INPUT, D, I);
 
-#define SET_OUTPUT(P, M, I, O, S)     gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);   \
-                                                                gpio_set_output_options(P, O, S, I);
+#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, IOCTL_GPIO_SET_OUTPUT, GPIO_PUPD_NONE, I);   \
+                                                          gpio_set_output_options(P, O, S, I);
 
-#define SET_AF(P, M, A, I)                   gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);  \
-                                                                gpio_set_af(P, A, I);
+#define SET_AF(P, M, A, I)              gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);  \
+                                                         gpio_set_af(P, A, I);
 
 
 void exti_isr(uint32_t exti_base)
@@ -70,12 +70,14 @@ void exti15_10_isr(void)
 #include <libopencm3/lpc17xx/gpio.h>
 #define GPIO_CLOCK_ENABLE(C, E) 
 
-#define SET_INPUT(P, M, D,I)              gpio_mode_setup(P, M, D, I);    \
+#define SET_INPUT(P, D, I)              gpio_mode_setup(P, IOCTL_GPIO_SET_INPUT, D, I);    \
                                                                gpio_set_af(P, GPIO_AF0, I);
 
-#define SET_OUTPUT(P, M, I, O, S)     gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);   \
+#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, IOCTL_GPIO_SET_OUTPUT, GPIO_PUPD_NONE, I);   \
                                                                 gpio_set_af(P, GPIO_AF0, I);
-#define SET_AF(P, M, A, I)
+
+#define SET_AF(P, M, A, I)                   gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);    \
+                                                                gpio_set_af(P, A, I);
 #endif
 
 #include "gpio.h"
@@ -152,14 +154,14 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
     }
     if (cmd == IOCTL_GPIO_SET_INPUT) {
         /* user land commanded input defaults to no pull up/down*/
-        SET_INPUT(a->port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, a->pin)
+        SET_INPUT(a->port, GPIO_PUPD_NONE, a->pin)
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
-        SET_OUTPUT(a->port, GPIO_MODE_OUTPUT, a->pin, a->optype, a->speed)
+        SET_OUTPUT(a->port, a->pin, a->optype, a->speed)
     }
     if (cmd == IOCTL_GPIO_SET_PULLUPDOWN) {
         /* Setting pullup/down implies an input */
-        SET_INPUT(a->port, GPIO_MODE_INPUT, *((uint32_t*)arg), a->pin)
+        SET_INPUT(a->port, *((uint32_t*)arg), a->pin)
     }
     if (cmd == IOCTL_GPIO_SET_ALT_FUNC) {
          gpio_set_af(a->port, *((uint32_t*)arg), a->pin);
@@ -250,18 +252,19 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
         switch(gpio_addrs[i].mode)
         {
             case GPIO_MODE_INPUT:
-                SET_INPUT(gpio_addrs[i].port, gpio_addrs[i].mode, gpio_addrs[i].pullupdown, gpio_addrs[i].pin)
+                SET_INPUT(gpio_addrs[i].port, gpio_addrs[i].pullupdown, gpio_addrs[i].pin)
                 break;
             case GPIO_MODE_OUTPUT:
-                SET_OUTPUT(gpio_addrs[i].port, gpio_addrs[i].mode, gpio_addrs[i].pin, gpio_addrs[i].optype, gpio_addrs[i].speed)
+                SET_OUTPUT(gpio_addrs[i].port, gpio_addrs[i].pin, gpio_addrs[i].optype, gpio_addrs[i].speed)
                 break;
             case GPIO_MODE_AF:
-                SET_AF(gpio_addrs[i].port, gpio_addrs[i].mode, gpio_addrs[i].af,  gpio_addrs[i].pin)
+                SET_AF(gpio_addrs[i].port, GPIO_MODE_AF, gpio_addrs[i].af,  gpio_addrs[i].pin)
                 break;
             case GPIO_MODE_ANALOG:
                 gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
                 break;
         }
+        gpio_set(gpio_addrs[i].port,gpio_addrs[i].pin);
 #ifdef STM32F4
         if(gpio_addrs[i].exti)
         {
