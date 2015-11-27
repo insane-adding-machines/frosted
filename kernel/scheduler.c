@@ -387,7 +387,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
         new = task_space_alloc(sizeof(struct task));
     }
     if (!new) {
-        return -1;
+        return -ENOMEM;
     }
 
     irq_off();
@@ -599,7 +599,7 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     uint32_t timeout = jiffies + arg1;
 
     if (arg1 < 0)
-        return -1;
+        return -EINVAL;
 
     if (pid > 0) {
         ktimer_add(arg1, sleepy_task_wakeup, (void *)_cur_task->tb.pid);
@@ -618,7 +618,7 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     struct task *t = NULL; 
 
     if (arg1 <= 1)
-        return -1;
+        return -EINVAL;
 
     t = tasklist_get(&tasks_running, arg1);
     if (!t)
@@ -626,7 +626,7 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
 
 
     if (!t || _cur_task->tb.pid == arg1 || t->tb.ppid != _cur_task->tb.pid)
-        return -1;
+        return -EINVAL;
 
 
     if (t->tb.state == TASK_ZOMBIE) {
@@ -636,13 +636,13 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     }
 
     if (to_arg == 0)
-        return -1;
+        return -EINVAL;
 
     if (to_arg > 0)  {
         timeout = jiffies + to_arg;
         ktimer_add(to_arg, sleepy_task_wakeup, (void *)_cur_task->tb.pid);
         if (timeout < jiffies)
-            return -1;
+            return -ETIMEDOUT;
     }
     task_suspend();
     return SYS_CALL_AGAIN;

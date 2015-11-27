@@ -88,9 +88,12 @@ void frosted_init(void)
     devnull_init(fno_search("/dev"));
 
     /* Set up system */
+
+    /* ktimers must be enabled before systick */
+    ktimer_init();
+
     hw_init();
             
-    ktimer_init();
     syscalls_init();
 
     memfs_init();

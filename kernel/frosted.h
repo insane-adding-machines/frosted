@@ -6,6 +6,7 @@
 #include "malloc.h"
 #include "interrupts.h"
 #include "string.h"
+#include "errno.h"
 
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1

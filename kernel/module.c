@@ -87,23 +87,25 @@ int sys_read_hdlr(int fd, void *buf, int len)
     if (fno) {
         return fno->owner->ops.read(fd, buf, len);
     }
-    return -1;
+    return -ENOENT;
 }
 
 int sys_write_hdlr(int fd, void *buf, int len)
 {
     struct fnode *fno = task_filedesc_get(fd);
-    if (fno && fno->owner && fno->owner->ops.write) {
+    if (!fno)
+        return -ENOENT;
+    if (fno->owner && fno->owner->ops.write) {
         return fno->owner->ops.write(fd, buf, len);
     }
-    return -1;
+    return -EOPNOTSUPP;
 }
 
 int sys_socket_hdlr(int family, int type, int proto)
 {
     struct module *m = af_to_module(family);
     if(!m || !(m->ops.socket))
-        return -1;
+        return -EOPNOTSUPP;
     return m->ops.socket(family, type, proto);
 }
 
@@ -113,7 +115,7 @@ int sys_bind_hdlr(int sd, struct sockaddr_env *se)
     if (fno && fno->owner && fno->owner->ops.bind) {
         return fno->owner->ops.bind(sd, se->se_addr, se->se_len);
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_listen_hdlr(int sd, unsigned int backlog)
@@ -122,7 +124,7 @@ int sys_listen_hdlr(int sd, unsigned int backlog)
     if (fno && fno->owner && fno->owner->ops.listen) {
         return fno->owner->ops.listen(sd, backlog);
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_connect_hdlr(int sd, struct sockaddr_env *se)
@@ -131,7 +133,7 @@ int sys_connect_hdlr(int sd, struct sockaddr_env *se)
     if (fno && fno->owner && fno->owner->ops.connect) {
         return fno->owner->ops.connect(sd, se->se_addr, se->se_len);
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_accept_hdlr(int sd, struct sockaddr_env *se)
@@ -140,7 +142,7 @@ int sys_accept_hdlr(int sd, struct sockaddr_env *se)
     if (fno && fno->owner && fno->owner->ops.accept) {
         return fno->owner->ops.accept(sd, se->se_addr, &(se->se_len));
     }
-    return -1;
+    return -EINVAL;
 }
 
 
@@ -150,7 +152,7 @@ int sys_recvfrom_hdlr(int sd, void *buf, int len, int flags, struct sockaddr_env
     if (fno && fno->owner && fno->owner->ops.recvfrom) {
         return fno->owner->ops.recvfrom(sd, buf, len, flags, se->se_addr, &(se->se_len));
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_sendto_hdlr(int sd, const void *buf, int len, int flags, struct sockaddr_env *se )
@@ -159,7 +161,7 @@ int sys_sendto_hdlr(int sd, const void *buf, int len, int flags, struct sockaddr
     if (fno && fno->owner && fno->owner->ops.sendto) {
         return fno->owner->ops.sendto(sd, buf, len, flags, se->se_addr, se->se_len);
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_shutdown_hdlr(int sd, int how)
@@ -168,7 +170,7 @@ int sys_shutdown_hdlr(int sd, int how)
     if (fno && fno->owner && fno->owner->ops.shutdown) {
         return fno->owner->ops.shutdown(sd, how);
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_setsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned int optlen)
@@ -177,7 +179,7 @@ int sys_setsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned i
     if (fno && fno->owner && fno->owner->ops.setsockopt) {
         return fno->owner->ops.setsockopt(sd, level, optname, optval, optlen);
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_getsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned int *optlen)
@@ -186,5 +188,5 @@ int sys_getsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned i
     if (fno && fno->owner && fno->owner->ops.getsockopt) {
         return fno->owner->ops.getsockopt(sd, level, optname, optval, optlen);
     }
-    return -1;
+    return -EINVAL;
 }

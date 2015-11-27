@@ -19,6 +19,7 @@
  */  
 
 #include "frosted.h"
+#include "errno.h"
 
 struct cirbuf {
     uint8_t *buf;

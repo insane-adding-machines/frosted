@@ -130,6 +130,12 @@ void usart3_isr(void)
     uart_isr(&DEV_UART[3]);
 }
 #endif
+#ifdef USART6
+void usart6_isr(void)
+{
+    uart_isr(&DEV_UART[6]);
+}
+#endif
 
 static int devuart_write(int fd, const void *buf, unsigned int len)
 {

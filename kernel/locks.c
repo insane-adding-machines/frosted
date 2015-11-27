@@ -60,7 +60,7 @@ static void _del_listener(sem_t *s)
 int sem_wait(sem_t *s)
 {
     if (!s)
-        return -1;
+        return -EINVAL;
     if(_sem_wait(s) != 0) {
         _add_listener(s);
         task_suspend();
@@ -73,7 +73,7 @@ int sem_wait(sem_t *s)
 int sem_post(sem_t *s)
 {
     if (!s)
-        return -1;
+        return -EINVAL;
     if (_sem_post(s) > 0) {
         int i;
         for(i = 0; i < s->listeners; i++) {
@@ -141,7 +141,7 @@ mutex_t *frosted_mutex_init()
 int frosted_mutex_lock(mutex_t *s)
 {
     if (!s)
-        return -1;
+        return -EINVAL;
     if(_mutex_lock(s) != 0) {
         _add_listener(s);
         task_suspend();
@@ -154,7 +154,7 @@ int frosted_mutex_lock(mutex_t *s)
 int frosted_mutex_unlock(mutex_t *s)
 {
     if (!s)
-        return -1;
+        return -EINVAL;
     if (_mutex_unlock(s) == 0) {
         int i;
         for(i = 0; i < s->listeners; i++) {
@@ -165,7 +165,7 @@ int frosted_mutex_unlock(mutex_t *s)
         }
         return 0;
     }
-    return -1;
+    return -EAGAIN;
 }
 
 /* Mutex: Syscalls */

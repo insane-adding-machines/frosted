@@ -74,7 +74,7 @@ static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
     }
     nlen = strlen(f->fname);
     if (nlen + (*p - dst) > (len -1))
-        return -1;
+        return -ENAMETOOLONG;
     memcpy(*p, f->fname, nlen);
     *p += nlen;
     *(*p) = '/';
@@ -100,7 +100,7 @@ int fno_fullpath(struct fnode *f, char *dst, int len)
         }
         return nlen;
     }
-    return -1;
+    return -ENOENT;
 }
 
 static int path_abs(char *src, char *dst, int len)
@@ -186,7 +186,7 @@ int vfs_symlink(char *file, char *link)
 {
     if (fno_link(file, link) != NULL)
         return 0;
-    else return -1;
+    else return -EINVAL;
 }
 
 static struct fnode *fno_create_dir(char *path)
@@ -367,7 +367,7 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exec) {
         return f->owner->ops.exec(f, arg);
     }
-    return -1;
+    return -EINVAL;
 }
 
 int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -389,7 +389,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         f = fno_search(path);
         if (flags & O_EXCL) {
             if (f != NULL)
-                return -1; /* XXX: EEXIST */
+                return -EEXIST; 
         }
         if (f && (flags & O_TRUNC)) {
             if (f) {
@@ -402,11 +402,11 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
             f = fno_create_file(path);
     }
     if (f == NULL)
-       return -1; /* XXX: ENOENT */
+       return -ENOENT; 
     if (f->flags & FL_INUSE)
-        return -1; /* XXX: EBUSY */
+        return -EBUSY;
     if (f->flags & FL_DIR)
-        return -1; /* XXX: is a dir */
+        return -EISDIR;
     if (flags & O_APPEND) {
         f->off = f->size;
     }
@@ -422,23 +422,27 @@ int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
         task_filedesc_del(arg1);
         return 0;
     }
-    return -1; /* XXX: EINVAL */
+    return -EINVAL; 
 }
     
 int sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     struct fnode *fno = task_filedesc_get(arg1);
-    if (fno && fno->owner->ops.seek) {
-        fno->owner->ops.seek(arg1, arg2, arg3);
-    } else return -1;
+    if (!fno)
+        return -EINVAL;
+    if (fno->owner->ops.seek) {
+        return fno->owner->ops.seek(arg1, arg2, arg3);
+    } else return -EOPNOTSUPP;
 }
 
 int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     struct fnode *fno = task_filedesc_get(arg1);
-    if (fno && fno->owner->ops.ioctl) {
+    if (!fno)
+        return -EINVAL;
+    if (fno->owner->ops.ioctl) {
         fno->owner->ops.ioctl((int)arg1, (uint32_t)arg2, (void *)arg3);
-    } else return -1;
+    } else return -EOPNOTSUPP;
 }
 
 int sys_link_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -446,7 +450,7 @@ int sys_link_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     struct fnode *fno = fno_link((char*)arg1, (char *)arg2);
     if (fno)
         return 0;
-    else return -1;
+    else return -EINVAL;
 }
 
 
@@ -458,7 +462,7 @@ int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     path_abs(path, abs_p, MAX_FILE);
     if (fno_create_dir(abs_p))
         return 0;
-    return -1;
+    return -ENOENT;
 }
 
 int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -472,7 +476,7 @@ int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         fno_unlink(f);
         return 0;
     }
-    return -1;
+    return -ENOENT;
 }
 
 int sys_opendir_hdlr(uint32_t arg1)
@@ -496,7 +500,7 @@ int sys_readdir_hdlr(uint32_t arg1, uint32_t arg2)
     struct fnode *next = (struct fnode *)fno->off;
     struct dirent *ep = (struct dirent *)arg2;
     if (!fno || !ep)
-        return -1;
+        return -ENOENT;
     if (!next) {
         return -1;
     }
@@ -521,7 +525,7 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     struct stat *st = (struct stat *)arg2;
     struct fnode *fno = fno_search_nofollow((char *)arg1);
     if (!fno)
-        return -1;
+        return -ENOENT;
     st->st_owner = fno->owner;
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
@@ -551,7 +555,7 @@ int sys_chdir_hdlr(uint32_t arg1)
 
     f = fno_search(abs_p);
     if (!f || (!(f->flags & FL_DIR)))
-        return -1;
+        return -ENOTDIR;
     task_chdir(f);
     return 0;
 }
@@ -598,10 +602,10 @@ int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *ar
 {
     struct module *m;
     if (!module || !target)
-        return -1;
+        return -ENOMEDIUM;
     m = module_search(module);
     if (!m || !m->mount)
-        return -1;
+        return -EOPNOTSUPP;
     if (m->mount(source, target, flags, args) == 0) {
         struct mountpoint *mp = kalloc(sizeof(struct mountpoint));
         if (mp) {
@@ -611,7 +615,7 @@ int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *ar
         }
         return 0;
     }
-    return -1;
+    return -ENOENT;
 }
 
 int vfs_umount(char *target, uint32_t flags)
@@ -620,10 +624,10 @@ int vfs_umount(char *target, uint32_t flags)
     int ret;
     struct mountpoint *mp = MTAB, *prev = NULL;
     if (!target)
-        return -1;
+        return -ENOENT;
     f = fno_search(target);
     if (!f || !f->owner || !f->owner->umount)
-        return -1;
+        return -ENOMEDIUM;
     ret = f->owner->umount(target, flags);
     if (ret < 0)
         return ret;

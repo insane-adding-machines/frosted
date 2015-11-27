@@ -33,7 +33,7 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
         for (i = 0; i < n; i++) {
             f = task_filedesc_get(pfd[i].fd);
             if (!f || !f->owner || !f->owner->ops.poll) {
-                return -1;
+                return -EOPNOTSUPP;
             }
             ret += f->owner->ops.poll(pfd[i].fd, pfd[i].events, &pfd[i].revents);
         }
