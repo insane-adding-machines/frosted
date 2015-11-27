@@ -23,9 +23,9 @@
                                                                 case GPIOK:rcc_periph_clock_enable(RCC_GPIOK);  break;  \
                                                                 }
                                                                 
-#define SET_INPUT(P, D, I)               gpio_mode_setup(P, IOCTL_GPIO_SET_INPUT, D, I);
+#define SET_INPUT(P, D, I)               gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);
 
-#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, IOCTL_GPIO_SET_OUTPUT, GPIO_PUPD_NONE, I);   \
+#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);   \
                                                           gpio_set_output_options(P, O, S, I);
 
 #define SET_AF(P, M, A, I)              gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);  \
@@ -70,10 +70,10 @@ void exti15_10_isr(void)
 #include <libopencm3/lpc17xx/gpio.h>
 #define GPIO_CLOCK_ENABLE(C, E) 
 
-#define SET_INPUT(P, D, I)              gpio_mode_setup(P, IOCTL_GPIO_SET_INPUT, D, I);    \
+#define SET_INPUT(P, D, I)              gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);    \
                                                                gpio_set_af(P, GPIO_AF0, I);
 
-#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, IOCTL_GPIO_SET_OUTPUT, GPIO_PUPD_NONE, I);   \
+#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);   \
                                                                 gpio_set_af(P, GPIO_AF0, I);
 
 #define SET_AF(P, M, A, I)                   gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);    \
@@ -264,7 +264,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
                 break;
         }
-        gpio_set(gpio_addrs[i].port,gpio_addrs[i].pin);
+
 #ifdef STM32F4
         if(gpio_addrs[i].exti)
         {
