@@ -18,6 +18,7 @@
  *
  */  
 #include "frosted.h"
+#include "libopencmsis/core_cm3.h"
 #include "libopencm3/cm3/systick.h"
 
 #define IDLE() while(1){do{}while(0);}
@@ -73,14 +74,8 @@ void machine_init(struct fnode * dev);
 
 static void hw_init(void)
 {
-    systick_clear();
-
     machine_init(fno_search("/dev"));
-
-    systick_set_reload(CONFIG_SYS_CLOCK / 1000);
-    systick_set_clocksource(STK_CSR_CLKSOURCE);
-    systick_counter_enable();
-    systick_interrupt_enable();
+    SysTick_Config(CONFIG_SYS_CLOCK / 1000);
 }
 
 void frosted_init(void)
