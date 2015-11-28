@@ -62,6 +62,7 @@ void uart_isr(struct dev_uart *uart)
     /* TX interrupt */
     if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
         usart_clear_tx_interrupt(uart->base);
+        frosted_mutex_lock(uart->mutex);
         /* Are there bytes left to be written? */
         if (cirbuf_bytesinuse(uart->outbuf))
         {
@@ -71,6 +72,7 @@ void uart_isr(struct dev_uart *uart)
         } else {
             usart_disable_tx_interrupt(uart->base);
         }
+        frosted_mutex_unlock(uart->mutex);
     }
 
     /* RX interrupt */
@@ -217,6 +219,7 @@ static int devuart_read(int fd, void *buf, unsigned int len)
     if (len_available <= 0) {
         uart->pid = scheduler_get_cur_pid();
         task_suspend();
+        frosted_mutex_unlock(uart->mutex);
         out = SYS_CALL_AGAIN;
         goto again;
     }
@@ -230,7 +233,6 @@ static int devuart_read(int fd, void *buf, unsigned int len)
             break;
         ptr++;
     }
-    uart->pid = 0;
 
 again:
     usart_enable_rx_interrupt(uart->base);

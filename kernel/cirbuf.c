@@ -61,7 +61,8 @@ int cirbuf_writebyte(struct cirbuf *cb, uint8_t byte)
     if (!cirbuf_bytesfree(cb))
         return -1;
 
-    *cb->writeptr++ = byte;
+    *cb->writeptr = byte;
+    cb->writeptr++;
 
     /* wrap if needed */
     if (cb->writeptr > (cb->buf + cb->bufsize - 1u))
@@ -94,6 +95,7 @@ int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
 {
     uint8_t byte;
     int freesize;
+    int tot_len = len;
     if (!cb)
         return 0;
 
@@ -101,8 +103,10 @@ int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
     freesize = cirbuf_bytesfree(cb);
     if (!freesize)
         return 0;
-    if (freesize < len)
+    if (freesize < len) {
         len = freesize;
+        tot_len = freesize;
+    }
 
     /* Wrap needed ? */
     if ((cb->writeptr + len) > (cb->buf + cb->bufsize) - 1u)
@@ -120,7 +124,7 @@ int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
         cb->writeptr += len;
     }
 
-    return len;
+    return tot_len;
 }
 
 int cirbuf_bytesfree(struct cirbuf *cb)
