@@ -78,7 +78,12 @@ void idling(void *arg)
     int led[4];
     int i, j;
 
-#ifdef STM32F4
+#ifdef PYBOARD
+# define LED0 "/dev/gpio_1_13"
+# define LED1 "/dev/gpio_1_14"
+# define LED2 "/dev/gpio_1_15"
+# define LED3 "/dev/gpio_1_4"
+#elif defined (STM32F4)
 # define LED0 "/dev/gpio_3_12"
 # define LED1 "/dev/gpio_3_13"
 # define LED2 "/dev/gpio_3_14"

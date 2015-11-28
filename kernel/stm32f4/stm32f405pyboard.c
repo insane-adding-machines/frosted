@@ -34,11 +34,11 @@
      
 #ifdef CONFIG_DEVGPIO
      static const struct gpio_addr gpio_addrs[] = { 
-                 {.port=GPIOA, .pin=GPIO4,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_4"},
-                 {.port=GPIOA, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
-                 {.port=GPIOA, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
-                 {.port=GPIOA, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
-                 {.port=GPIOB, .pin=GPIO3,.mode=GPIO_MODE_INPUT, .optype=GPIO_OTYPE_PP, .pullupdown=GPIO_PUPD_NONE, .name="gpio_0_0"},
+                 {.port=GPIOA, .pin=GPIO4,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_4"},
+                 {.port=GPIOA, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_13"},
+                 {.port=GPIOA, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_14"},
+                 {.port=GPIOA, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_15"},
+                 {.port=GPIOB, .pin=GPIO3,.mode=GPIO_MODE_INPUT, .optype=GPIO_OTYPE_PP, .pullupdown=GPIO_PUPD_NONE, .name="gpio_2_3"},
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
                  {.port=GPIOB, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
