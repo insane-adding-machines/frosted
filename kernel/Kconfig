@@ -54,6 +54,8 @@ config RAM_SIZE_16KB
 
 config ARCH_STM32F401
     bool
+config ARCH_STM32F405
+    bool
 config ARCH_STM32F407
     bool
 config ARCH_STM32F411
@@ -75,10 +77,10 @@ choice
         depends on ARCH_LPC17XX
     config CLK_120MHZ
         bool "120MHz"
-        depends on (ARCH_STM32F407 ||ARCH_LPC1769 )
+        depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_LPC1769 )
     config CLK_168MHZ
         bool "168MHz"
-        depends on (ARCH_STM32F407 || ARCH_STM32F429)
+        depends on (ARCH_STM32F407 ||  ARCH_STM32F405 || ARCH_STM32F429)
 endchoice
 
 choice 
@@ -86,6 +88,10 @@ choice
 config MACH_STM32F407Discovery
     bool "STM32F407Discovery"
     depends on (ARCH_STM32F407)
+    default y
+config MACH_STM32F405Pyboard
+    bool "STM32F405 PyBoard (micropython)"
+    depends on (ARCH_STM32F405)
     default y
 config MACH_STM32F4x1Discovery
     bool "STM32F4x1Discovery"
@@ -166,19 +172,19 @@ menu "Subsystems"
 
             config USART_1
             bool "USART 1"
-            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407  || ARCH_STM32F429 )
+            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 )
 
             config USART_2
             bool "USART 2"
-            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429  || ARCH_STM32F407)
+            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407)
 
             config USART_3
             bool "USART 3"
-            depends on (ARCH_STM32F407)
+            depends on (ARCH_STM32F407 || ARCH_STM32F405)
 
             config USART_6
             bool "USART 6"
-            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407)
+            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405)
 
             config UART_0
             bool "UART 0"
