@@ -1,14 +1,25 @@
 #include "frosted.h"
 #include <stdint.h>
 #include "ioctl.h"
-
-#ifdef LM3S
-#endif
 #ifdef STM32F4
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/rcc.h>
-#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/cm3/nvic.h>                        <<<<<<<<<<<<<<<<<<<<
+#endif
+#ifdef LPC17XX
+#include <libopencm3/lpc17xx/nvic.h>
+#include <libopencm3/lpc17xx/gpio.h>
+#include <libopencm3/lpc17xx/exti.h>
+#endif
+#include "gpio.h"
+
+
+
+
+#ifdef LM3S
+#endif
+#ifdef STM32F4
 #define GPIO_CLOCK_ENABLE(P, E)       switch(P){    \
                                                                 case GPIOA:rcc_periph_clock_enable(RCC_GPIOA);  break;  \
                                                                 case GPIOB:rcc_periph_clock_enable(RCC_GPIOB);  break;  \
@@ -67,20 +78,40 @@ void exti15_10_isr(void)
 #endif
 
 #ifdef LPC17XX
-#include <libopencm3/lpc17xx/gpio.h>
 #define GPIO_CLOCK_ENABLE(C, E) 
 
-#define SET_INPUT(P, D, I)              gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);    \
+#define SET_INPUT(P, D, I)                  gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);    \
                                                                gpio_set_af(P, GPIO_AF0, I);
 
-#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);   \
+#define SET_OUTPUT(P, I, O, S)          gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);   \
                                                                 gpio_set_af(P, GPIO_AF0, I);
 
 #define SET_AF(P, M, A, I)                   gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);    \
                                                                 gpio_set_af(P, A, I);
-#endif
 
-#include "gpio.h"
+void eint_isr(uint32_t exti_base)
+{
+    /* What next? */
+    exti_clear_flag(exti_base);
+}
+void eint0_isr(void)
+{
+    eint_isr(EXTI0);
+}
+void eint1_isr(void)
+{
+    eint_isr(EXTI1);
+}
+void eint2_isr(void)
+{
+    eint_isr(EXTI2);
+}
+void eint3_isr(void)
+{
+    eint_isr(EXTI3);
+}
+
+#endif
 
 static int gpio_subsys_initialized = 0;
 
@@ -259,15 +290,57 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 break;
             case GPIO_MODE_AF:
                 SET_AF(gpio_addrs[i].port, GPIO_MODE_AF, gpio_addrs[i].af,  gpio_addrs[i].pin)
+#ifdef LPC17XX
+                if((gpio_addrs[i].port == GPIO2) && (gpio_addrs[i].af == GPIO_AF1))
+                {
+                    switch(gpio_addrs[i].pin)
+                    {
+                        /* LPC17XX only supports EXTI on P2.10 - P2.13 
+                            Doesn't seem to matter what we do here we always
+                            get an interrupt when configuring the EXTI :( */
+                        case GPIOPIN10: 
+                            nvic_disable_irq(NVIC_EINT0_IRQ);
+                            exti_set_trigger(EXTI0, gpio_addrs[i].trigger);
+                            exti_clear_flag(EXTI0);
+                            nvic_clear_pending_irq(NVIC_EINT0_IRQ);
+                            nvic_enable_irq(NVIC_EINT0_IRQ);                    break;
+                            break;
+                        case GPIOPIN11: 
+                            nvic_disable_irq(NVIC_EINT1_IRQ);
+                            exti_set_trigger(EXTI1, gpio_addrs[i].trigger);
+                            nvic_clear_pending_irq(NVIC_EINT1_IRQ);
+                            exti_clear_flag(EXTI1);
+                            nvic_enable_irq(NVIC_EINT1_IRQ);                    break;
+                            break;
+                        case GPIOPIN12: 
+                            nvic_disable_irq(NVIC_EINT2_IRQ);
+                            exti_set_trigger(EXTI2, gpio_addrs[i].trigger);
+                            nvic_clear_pending_irq(NVIC_EINT2_IRQ);
+                            exti_clear_flag(EXTI2);
+                            nvic_enable_irq(NVIC_EINT2_IRQ);                    break;
+                            break;
+                        case GPIOPIN13: 
+                            nvic_disable_irq(NVIC_EINT3_IRQ);
+                            exti_set_trigger(EXTI3, gpio_addrs[i].trigger);
+                            nvic_clear_pending_irq(NVIC_EINT3_IRQ);
+                            exti_clear_flag(EXTI3);
+                            nvic_enable_irq(NVIC_EINT3_IRQ);                    break;
+                            break;
+                        default: 
+                            break;
+                    }
+                }
+#endif
                 break;
             case GPIO_MODE_ANALOG:
                 gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
                 break;
         }
 
-#ifdef STM32F4
+
         if(gpio_addrs[i].exti)
         {
+#ifdef STM32F4
             switch(gpio_addrs[i].pin)
             {
                 case GPIO0:     exti = EXTI0;       exti_irq = NVIC_EXTI0_IRQ;  break;
@@ -275,13 +348,17 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 case GPIO2:     exti = EXTI2;       exti_irq = NVIC_EXTI2_IRQ;  break;
                 case GPIO3:     exti = EXTI3;       exti_irq = NVIC_EXTI3_IRQ;  break;
                 case GPIO4:     exti = EXTI4;       exti_irq = NVIC_EXTI4_IRQ;  break;
+                /* More to add here 5_9 10_15 */
+                default: break;
             }
             nvic_enable_irq(exti_irq);
             exti_select_source(exti, gpio_addrs[i].port);
             exti_set_trigger(exti, gpio_addrs[i].trigger);
             exti_enable_request(exti);
+#endif
+
         }
-#endif         
+
         if(gpio_addrs[i].name)
         {
             node = fno_create(devgpio, gpio_addrs[i].name, dev);
@@ -289,6 +366,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 node->priv = &gpio_addrs[i];
         }
     }
+
     register_module(devgpio);
 }
 
