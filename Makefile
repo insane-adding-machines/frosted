@@ -86,9 +86,10 @@ $(PREFIX)/lib/libfrosted.a: FORCE
 image.bin: kernel.elf apps.elf
 	export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
-	#$(CROSS_COMPILE)objcopy -O binary apps.elf apps.bin
-	$(CROSS_COMPILE)objcopy -O binary apps/busybox/busybox_unstripped apps.bin
-	cat apps.bin >> $@
+	#$(CROSS_COMPILE)objcopy -O binary --pad-to=0x40000 apps.elf apps.bin
+	#$(CROSS_COMPILE)objcopy -O binary apps/busybox/busybox_unstripped apps.bin
+	#cat apps.bin >> $@
+	cat apps/busybox/busybox_unstripped >> $@
 
 
 apps/apps.ld: apps/apps.ld.in
