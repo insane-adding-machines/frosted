@@ -84,10 +84,19 @@ void idling(void *arg)
 # define LED2 "/dev/gpio_3_14"
 # define LED3 "/dev/gpio_3_15"
 #elif defined (LPC17XX)
+#if 0
+/*LPCXpresso 1769 */
+# define LED0 "/dev/gpio_0_22"
+# define LED1 "/dev/null"
+# define LED2 "/dev/null"
+# define LED3 "/dev/null"
+#else
+/* mbed 1768 */
 # define LED0 "/dev/gpio_1_18"
 # define LED1 "/dev/gpio_1_20"
 # define LED2 "/dev/gpio_1_21"
 # define LED3 "/dev/gpio_1_23"
+#endif
 #else
 # define LED0 "/dev/null"
 # define LED1 "/dev/null"
