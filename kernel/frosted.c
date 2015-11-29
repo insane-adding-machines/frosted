@@ -28,8 +28,8 @@
  * the application code
  */
 void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
-uint8_t * flt_file = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 void (*_start)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN + 0x70);
+uint8_t * flt_file = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
 static int (*_klog_write)(int, const void *, unsigned int) = NULL;
     
