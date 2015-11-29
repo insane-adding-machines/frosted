@@ -163,7 +163,7 @@ static inline void endian_fix32(uint32_t * tofix, size_t count) {
 
 }
 
-static void load_header(struct flat_hdr * from_hdr, struct flat_hdr * to_hdr) {
+static void load_header(struct flat_hdr * to_hdr, struct flat_hdr * from_hdr) {
     memcpy((uint8_t*)to_hdr, (uint8_t*)from_hdr, sizeof(struct flat_hdr));
     endian_fix32(&to_hdr->rev, ( &to_hdr->build_date - &to_hdr->rev ) + 1);
 }

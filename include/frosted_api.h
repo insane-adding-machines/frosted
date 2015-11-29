@@ -110,4 +110,6 @@ struct sockaddr_env {
     unsigned int se_len;
 };
 
+extern int errno;
+
 #endif
