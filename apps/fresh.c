@@ -21,16 +21,12 @@
 #include "syscalls.h"
 #include <string.h>
 #include <stdio.h>
-static const char str_welcome[]      = "Welcome to Frosted\r\n";
-static const char str_unknowncmd[]   = "Unknown command. Try 'help'.\r\n";
-static const char str_invaliddir[]   = "Directory not found.\r\n";
-static const char str_invalidfile[]  = "File not found.\r\n";
-static const char str_help[]         = "Supported commands: help ls mkdir touch cat echo rm.\r\n";
+
 static const char str_prompt[]       = "[frosted]:";
 
 #define FRESH_DEV "/dev/ttyS0"
 
-static void ls(int ser, char *start)
+static void ls(void *arg)
 {
     char *fname;
     char *fname_start;
@@ -46,11 +42,13 @@ static void ls(int ser, char *start)
     if (!ep || !fname_start)
         while(1);;
 
-    d = opendir(start);
+    getcwd(fname_start, MAX_FILE);
+
+    d = opendir(fname_start);
     while(readdir(d, ep) == 0) {
         fname = fname_start;
         fname[0] = '\0';
-        strncat(fname, start, MAX_FILE);
+        strncat(fname, fname_start, MAX_FILE);
         strncat(fname, "/", MAX_FILE);
         strncat(fname, ep->d_name, MAX_FILE);
 
@@ -58,8 +56,8 @@ static void ls(int ser, char *start)
             fname++;
 
         stat(fname, &st);
-        write(ser, fname, strlen(fname));
-        write(ser, "\t", 1);
+        printf(fname);
+        printf( "\t");
         if (S_ISDIR(st.st_mode)) {
             type = 'd';
         } else if (S_ISLNK(st.st_mode)) {
@@ -69,10 +67,10 @@ static void ls(int ser, char *start)
             type = 'f';
         }
 
-        write(ser, &type, 1); 
-        write(ser, "    ", 4);
-        write(ser, ch_size, strlen(ch_size));
-        write(ser, "\r\n", 2);
+        printf( &type);
+        printf( "    ");
+        printf( ch_size);
+        printf( "\r\n");
     }
     closedir(d);
     free(ep);
@@ -83,14 +81,22 @@ static char lastcmd[100] = "";
 
 
 void fresh(void *arg) {
-    int ser;
+    int stdin_fileno, stdout_fileno, stderr_fileno;
     char pwd[MAX_FILE] = "";
 
     do {
-        ser = open(FRESH_DEV, O_RDWR);
-    } while (ser < 0);
+        stdin_fileno = open(FRESH_DEV, O_RDONLY);
+    } while (stdin_fileno < 0);
 
-    write(ser, str_welcome, strlen(str_welcome));
+    do {
+        stdout_fileno = open(FRESH_DEV, O_WRONLY);
+    } while (stdout_fileno < 0);
+    
+    do {
+        stderr_fileno = open(FRESH_DEV, O_WRONLY);
+    } while (stderr_fileno < 0);
+
+    printf("Welcome to Frosted!\r\n");
     mkdir("/home");
     mkdir("/home/test");
     chdir("/home/test");
@@ -100,15 +106,15 @@ void fresh(void *arg) {
         char input[100];
         int len = 0;
         struct pollfd pfd;
-        int out = ser;
+        int out = stdout_fileno;
         int i;
-        pfd.fd = ser;
+        pfd.fd = stdin_fileno;
         pfd.events = POLLIN;
         len = 0;
-        write(ser, str_prompt, strlen(str_prompt));
+        printf(str_prompt);
         getcwd(pwd, MAX_FILE);
-        write(ser, pwd, strlen(pwd));
-        write(ser, "$ ", 2);
+        printf( pwd);
+        printf( "$ ");
 
         /* Blocking calls: WIP
         if (poll(&pfd, 1, 1000) <= 0)
@@ -117,7 +123,7 @@ void fresh(void *arg) {
         while(len < 100)
         {
             const char del = 0x08;
-            int ret = read(ser, input + len, 3);
+            int ret = read(stdin_fileno, input + len, 3);
             
             /* arrows */
             if ((ret == 3) && (input[len] == 0x1b)) {
@@ -127,12 +133,12 @@ void fresh(void *arg) {
                 }
 
                 while (len > 0) {
-                    write(ser, &del, 1);
-                    write(ser, " ", 1);
-                    write(ser, &del, 1);
+                    write(stdout_fileno, &del, 1);
+                    printf( " ");
+                    write(stdout_fileno, &del, 1);
                     len--;
                 }
-                write(ser, lastcmd, strlen(lastcmd));
+                printf( lastcmd);
                 len = strlen(lastcmd);
                 strcpy(input, lastcmd);
                 continue;
@@ -142,14 +148,14 @@ void fresh(void *arg) {
                 continue;
             if ((ret == 1) && (input[len] >= 0x20 && input[len] <= 0x7e)) {
                 /* Echo to terminal */
-                write(ser, &input[len], 1);
+                write(stdout_fileno, &input[len], 1);
             }
             len += ret;
 
             if ((input[len-1] == 0xD))
                 break; /* CR (\r\n) */
             if ((input[len-1] == 0x4)) {
-                write(ser, "\r\n", 2);
+                printf( "\r\n");
                 len = 0;
                 break;
             }
@@ -157,14 +163,14 @@ void fresh(void *arg) {
             /* tab */
             if ((input[len-1] == 0x09)) {
                 len--;
-                write(ser, "\r\n", 2);
-                write(out, str_help, strlen(str_help));
-                write(ser, "\r\n", 2);
-                write(ser, str_prompt, strlen(str_prompt));
+                printf("\r\n");
+                printf("Supported commands: help ls mkdir touch cat echo rm.\r\n");
+                printf("\r\n");
+                printf( str_prompt);
                 getcwd(pwd, MAX_FILE);
-                write(ser, pwd, strlen(pwd));
-                write(ser, "$ ", 2);
-                write(ser, input, len);
+                printf( pwd);
+                printf( "$ ");
+                printf( input);
                 continue;
             }
 
@@ -172,16 +178,16 @@ void fresh(void *arg) {
             /* backspace */
             if ((input[len-1] == 127)) {
                 if (len > 1) {
-                    write(ser, &del, 1);
-                    write(ser, " ", 1);
-                    write(ser, &del, 1);
+                    printf( &del);
+                    printf( " ");
+                    printf( &del);
                     len -= 2;
                 }else {
                     len -=1;
                 }
             }
         }
-        write(ser, "\r\n", 2);
+        printf("\r\n");
         if (len == 0)
             break;
         
@@ -203,7 +209,7 @@ void fresh(void *arg) {
                     i++;
                 out = open(&input[i], flags);
                 if (out < 0) {
-                    write(ser, str_invalidfile, strlen(str_invalidfile));
+                    printf("File not found.\r\n");
                 }
             }
         }
@@ -235,13 +241,16 @@ void fresh(void *arg) {
         
         if (!strncmp(input, "ls", 2))
         {
-            ls(out, pwd);
+            int ls_pid = thread_create(ls, NULL, 0);
+            if (ls_pid > 0)
+                thread_join(ls_pid);
+        
         } else if (!strncmp(input, "ln", 2)) {
             char *file = input + 3;
             char *symlink = file;
             while (*symlink != ' ') {
                 if (*symlink == 0) {
-                    write(out, str_invalidfile, strlen(str_invalidfile));
+                    printf("File not found.\r\n");
                     continue;
                 }
                 symlink++;
@@ -251,28 +260,28 @@ void fresh(void *arg) {
                 symlink++;
             }
             if (link(file, symlink) < 0)
-                write(out, str_invalidfile, strlen(str_invalidfile));
+                printf("File not found.\r\n");
         } else if (!strncmp(input, "help", 4)) {
-            write(out, str_help, strlen(str_help));
+            printf("Supported commands: help ls mkdir touch cat echo rm.\r\n");
         } else if (!strncmp(input, "cd", 2)) {
             if (strlen(input) > 2) {
                 char *arg = input + 3;
                 if (chdir(arg) < 0) {
-                    write(out, str_invaliddir, strlen(str_invaliddir));
+                    printf("Directory not found.\r\n");
                 }
             }
         } else if (!strncmp(input, "rm", 2)) {
             if (strlen(input) > 2) {
                 char *arg = input + 3;
                 if (unlink(arg) < 0) {
-                    write(out, str_invalidfile, strlen(str_invalidfile));
+                    printf("File not found.\r\n");
                 }
             }
         } else if (!strncmp(input, "mkdir", 5)) {
             if (strlen(input) > 5) {
                 char *arg = input + 6;
                 if (mkdir(arg) < 0) {
-                    write(out, str_invaliddir, strlen(str_invaliddir));
+                    printf("Directory not found.\r\n");
                 }
             }
         } else if (!strncmp(input, "touch", 5)) {
@@ -281,7 +290,7 @@ void fresh(void *arg) {
                 char *arg = input + 6;
                 fd = open(arg, O_CREAT|O_TRUNC|O_EXCL);
                 if (fd < 0) {
-                    write(out, str_invalidfile, strlen(str_invalidfile));
+                    printf("File not found.\r\n");
                 } else close(fd);
             }
         } else if (!strncmp(input, "echo", 4)) {
@@ -297,7 +306,7 @@ void fresh(void *arg) {
                 int fd; 
                 fd = open(arg, O_RDONLY);
                 if (fd < 0) {
-                    write(out, str_invalidfile, strlen(str_invalidfile));
+                    printf("File not found.\r\n");
                 } else {
                     int r;
                     char buf[10];
@@ -311,12 +320,12 @@ void fresh(void *arg) {
                 }
             }
         } else if (strlen(input) > 0){
-            write(out, str_unknowncmd, strlen(str_unknowncmd));
+            printf("Unknown command. Try 'help'.\r\n");
         }
-        if (ser != out)
+        if (stdout_fileno != out)
             close(out);
-        out = ser;
+        out = stdout_fileno;
 
     }
-    close(ser);
+    close(stdout_fileno);
 }
