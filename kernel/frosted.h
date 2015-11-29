@@ -121,6 +121,7 @@ int fno_fullpath(struct fnode *f, char *dst, int len);
 #define FL_RDWR   (FL_RDONLY | FL_WRONLY)
 #define FL_DIR    0x04
 #define FL_INUSE  0x08
+#define FL_TTY    0x10
 
 #define FL_LINK   0x80
 #define FL_EXEC   0xC0

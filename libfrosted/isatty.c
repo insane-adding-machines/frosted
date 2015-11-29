@@ -1,15 +1,16 @@
 /*
- * Stub version of isatty.
+ * Frosted version of isatty.
  */
 
 #include "frosted_api.h"
+#include "syscall_table.h"
 #include <errno.h>
 #undef errno
 extern int errno;
+extern int (**__syscall__)(int fd);
 
-int isatty(int file)
+int isatty(int fd)
 {
-  errno = ENOSYS;
-  return 0;
+    return __syscall__[SYS_ISATTY](fd);
 }
 

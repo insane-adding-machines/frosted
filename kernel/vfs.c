@@ -560,6 +560,14 @@ int sys_chdir_hdlr(uint32_t arg1)
     return 0;
 }
 
+int sys_isatty_hdlr(uint32_t arg1)
+{
+    struct fnode *f = task_filedesc_get(arg1);
+    if (f && f->flags & FL_TTY)
+        return 1;
+    return 0;
+}
+
 int sys_getcwd_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;

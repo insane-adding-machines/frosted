@@ -45,6 +45,7 @@ void task2(void *arg)
     ret = mkdir("/mem/test");
     ret = read(fdz, addr, 20);
     ret = write(fdn, addr, 20);
+
     close(fdn);
     close(fdz);
     now = gettimeofday(NULL);
@@ -161,6 +162,7 @@ void init(void *arg)
 
     /* open/close test */
     fd = open("/dev/null", 0, 0);
+    printf("/dev/null %s a tty.\r\n",isatty(fd)?"is":"is not");
     close(fd);
     
     /* socket/close test */

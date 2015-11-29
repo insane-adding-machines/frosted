@@ -64,6 +64,7 @@ syscalls = [
     ["mount", 5, "sys_mount_hdlr"],
     ["umount", 2, "sys_umount_hdlr"],
     ["kill", 2, "sys_kill_hdlr"],
+    ["isatty", 1, "sys_isatty_hdlr"],
     ["exec", 2, "sys_exec_hdlr"],
     ["exit", 1, "sys_exit_hdlr"]
 ]
