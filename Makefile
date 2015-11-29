@@ -91,7 +91,6 @@ image.bin: kernel.elf apps.elf
 	#cat apps.bin >> $@
 	cat apps/busybox/busybox_unstripped >> $@
 
-
 apps/apps.ld: apps/apps.ld.in
 	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
 	export AMEM_SIZE_B=`python2 -c "print '0x%X' % ( ($(RAM_SIZE) - $(KRAMMEM_SIZE)) * 1024)"`;	\

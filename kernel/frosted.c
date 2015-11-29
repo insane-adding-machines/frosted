@@ -198,7 +198,7 @@ int bflt_fload(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_add
         /// ("Recieved bad file pointer");
     }
 
-    read_header(&header, (struct flat_hdr *)from);
+    load_header(&header, (struct flat_hdr *)from);
 
     if (check_header(&header) != 0) {
         klog(LOG_ERR, "Bad FLT header\n");
@@ -217,24 +217,15 @@ int bflt_fload(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_add
     //if (copy_segments(from, &header, mem, binary_size) != 0) error_goto_error("Failed to copy segments");
     //if (process_relocs(from, &header, mem) != 0) error_goto_error("Failed to relocate");
 
-    /* only attempt to process GOT if the flags tell us a GOT exists AND
-       if the Ndless startup file is not already doing so */
-    //if (header.flags & FLAT_FLAG_GOTPIC && memcmp(mem, "PRG\0", 4) != 0) {
-    //    if (process_got(&header, mem) != 0) error_goto_error("Failed to process got");
+    /* only attempt to process GOT if the flags tell us a GOT exists  */
+    //if (header.flags & FLAT_FLAG_GOTPIC) {
+    //    if (process_got(&header, mem) != 0) error_goto_error("Failed to process GOT");
     //}else{
-    //    klog(LOG_INFO, "No need to process got - skipping");
+    //    klog(LOG_INFO, "No need to process GOT - skipping");
     //}
 
     *mem_ptr = mem;
     *mem_size = binary_size;
-
-    //if (memcmp(mem, "PRG\0", 4) == 0) {
-    //    klog(LOG_INFO, "Detected as ndless program packaged in a bFLT file");
-    //    *entry_address_ptr = (int (*)(int,char*[]))((char*)mem + 4);
-    //}else{
-    //    klog(LOG_INFO, "Detected as ordinary bFLT executable");
-    //    *entry_address_ptr = (int (*)(int,char*[]))mem;
-    //}
 
     klog(LOG_INFO, "Successfully loaded bFLT executable to memory");
     return 0;
