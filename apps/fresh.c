@@ -67,7 +67,7 @@ static void ls(void *arg)
             type = 'f';
         }
 
-        printf( &type);
+        printf( "%c", type);
         printf( "    ");
         printf( ch_size);
         printf( "\r\n");
@@ -178,9 +178,9 @@ void fresh(void *arg) {
             /* backspace */
             if ((input[len-1] == 127)) {
                 if (len > 1) {
-                    printf( &del);
+                    printf( "%c", &del);
                     printf( " ");
-                    printf( &del);
+                    printf( "%c", &del);
                     len -= 2;
                 }else {
                     len -=1;
@@ -241,9 +241,12 @@ void fresh(void *arg) {
         
         if (!strncmp(input, "ls", 2))
         {
+            /*
             int ls_pid = thread_create(ls, NULL, 0);
             if (ls_pid > 0)
                 thread_join(ls_pid);
+            */
+            ls(NULL);
         
         } else if (!strncmp(input, "ln", 2)) {
             char *file = input + 3;
