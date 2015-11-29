@@ -53,6 +53,7 @@
 
  void machine_init(struct fnode * dev)
  {
+     rcc_qemu_init();
 #ifdef CONFIG_DEVUART
      uart_init(dev, uart_addrs, NUM_UARTS);
 #endif
