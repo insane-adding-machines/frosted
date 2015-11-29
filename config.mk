@@ -24,6 +24,10 @@ ifeq ($(ARCH_STM32F4),y)
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
 endif
 
+ifeq ($(MACH_STM32F405Pyboard),y)
+	CFLAGS+=-DPYBOARD
+endif
+
 ifeq ($(FLASH_SIZE_2MB),y)
 	FLASH_SIZE=2048
 endif

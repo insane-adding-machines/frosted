@@ -126,6 +126,7 @@ int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
         return -1;
 
     fno->off += ul_to_str(jiffies, res);
+    res[fno->off++] = '\r';
     res[fno->off++] = '\n';
     res[fno->off] = '\0';
     return fno->off;
@@ -140,7 +141,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     int i;
     int stack_used;
     int p_state;
-    const char legend[]="pid\tstate\tstack used\n";
+    const char legend[]="pid\tstate\tstack used\r\n";
     if (fno->off == 0) {
         frosted_mutex_lock(sysfs_mutex);
         task_txt = kalloc(MAX_SYSFS_BUFFER);
@@ -168,6 +169,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
                 task_txt[off++] = '\t';
                 stack_used = scheduler_stack_used(i);
                 off += ul_to_str(stack_used, task_txt + off);
+                task_txt[off++] = '\r';
                 task_txt[off++] = '\n';
             }
         }
@@ -196,8 +198,8 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
     int stack_used;
     int p_state;
     if (fno->off == 0) {
-        const char k_stat_banner[] = "\n\nKernel statistics\n";
-        const char t_stat_banner[] = "\n\nTasks statistics\n";
+        const char k_stat_banner[] = "\r\n\nKernel statistics\r\n";
+        const char t_stat_banner[] = "\r\n\nTasks statistics\r\n";
         const char malloc_banner[] = "\tMalloc calls: ";
         const char free_banner[] = "\tFree calls: ";
         const char mem_banner[] = "\tMemory in use: ";
@@ -212,17 +214,23 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
         strcpy(mem_txt + off, malloc_banner);
         off += strlen(malloc_banner);
         off += ul_to_str(f_malloc_stats[0].malloc_calls, mem_txt + off);
+        *(mem_txt + off) = '\r'; 
+        off++;
         *(mem_txt + off) = '\n'; 
         off++;
         strcpy(mem_txt + off, free_banner);
         off += strlen(free_banner);
         off += ul_to_str(f_malloc_stats[0].free_calls, mem_txt + off);
+        *(mem_txt + off) = '\r'; 
+        off++;
         *(mem_txt + off) = '\n'; 
         off++;
 
         strcpy(mem_txt + off, mem_banner);
         off += strlen(mem_banner);
         off += ul_to_str(f_malloc_stats[0].mem_allocated, mem_txt + off);
+        *(mem_txt + off) = '\r'; 
+        off++;
         *(mem_txt + off) = '\n'; 
         off++;
         
@@ -231,16 +239,22 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
         strcpy(mem_txt + off, malloc_banner);
         off += strlen(malloc_banner);
         off += ul_to_str(f_malloc_stats[1].malloc_calls, mem_txt + off);
+        *(mem_txt + off) = '\r'; 
+        off++;
         *(mem_txt + off) = '\n'; 
         off++;
         strcpy(mem_txt + off, free_banner);
         off += strlen(free_banner);
         off += ul_to_str(f_malloc_stats[1].free_calls, mem_txt + off);
+        *(mem_txt + off) = '\r'; 
+        off++;
         *(mem_txt + off) = '\n'; 
         off++;
         strcpy(mem_txt + off, mem_banner);
         off += strlen(mem_banner);
         off += ul_to_str(f_malloc_stats[1].mem_allocated, mem_txt + off);
+        *(mem_txt + off) = '\r'; 
+        off++;
         *(mem_txt + off) = '\n'; 
         off++;
         mem_txt[off++] = '\0';
@@ -269,7 +283,7 @@ int sysfs_modules_read(struct sysfs_fnode *sfs, void *buf, int len)
     int p_state;
     struct module *m = MODS;
     if (fno->off == 0) {
-        const char mod_banner[] = "Loaded modules:\n";
+        const char mod_banner[] = "Loaded modules:\r\n";
         frosted_mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!mem_txt)

@@ -209,11 +209,10 @@ static int next_pid(void)
 }
 
 /* Handling of file descriptors */
-int task_filedesc_add(struct fnode *f)
+static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
 {
     int i;
     void *re;
-    struct task *t = _cur_task;
     if (!t)
         return -1;
     for (i = 0; i < t->tb.n_files; i++) {
@@ -229,6 +228,11 @@ int task_filedesc_add(struct fnode *f)
     t->tb.filedesc = re;
     t->tb.filedesc[t->tb.n_files - 1] = f;
     return t->tb.n_files - 1;
+}
+
+int task_filedesc_add(struct fnode *f)
+{
+    return task_filedesc_add_to_task(_cur_task, f);
 }
 
 struct fnode *task_filedesc_get(int fd)
@@ -381,6 +385,8 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     struct extra_stack_frame *extra_frame;
     uint8_t *sp;
     struct task *new;
+    int i;
+
     if (number_of_tasks == 0) {
         new = &struct_task_init;
     } else {
@@ -401,6 +407,14 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.cwd = fno_search("/");
+
+    /* Inherit cwd, file descriptors from parent */
+    if (new->tb.ppid > 1) { /* Start from parent #2 */
+        new->tb.cwd = task_getcwd();
+        for (i = 0; i < _cur_task->tb.n_files; i++) {
+            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i]);
+        }
+    } 
     
     /* stack memory */
     sp = (((uint8_t *)(&new->stack)) + STACK_SIZE - NVIC_FRAME_SIZE);
