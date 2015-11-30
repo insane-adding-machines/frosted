@@ -139,7 +139,7 @@ static int devgpio_write(int fd, const void *buf, unsigned int len);
 
 /* Use static state for now. Future drivers can have multiple structs for this. */
 static int gpio_pid = 0;
-static mutex_t *gpio_mutex;
+static frosted_mutex_t *gpio_mutex;
 
 void GPIO_Handler(void)
 {

@@ -134,7 +134,7 @@ void idling(void *arg)
 }
 
 static sem_t *sem = NULL;
-static mutex_t *mut = NULL;
+static frosted_mutex_t *mut = NULL;
 void prod(void *arg)
 {
     sem = sem_init(0);

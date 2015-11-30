@@ -29,7 +29,7 @@ struct dev_uart {
     struct cirbuf *outbuf;
     uint8_t *w_start;
     uint8_t *w_end;
-    mutex_t *mutex;
+    frosted_mutex_t *mutex;
     uint16_t pid;
 };
 

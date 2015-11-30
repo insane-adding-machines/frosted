@@ -6,7 +6,7 @@
 static struct fnode *sysfs;
 static struct module mod_sysfs;
 
-static mutex_t *sysfs_mutex;
+static frosted_mutex_t *sysfs_mutex;
 
 extern struct mountpoint *MTAB;
 

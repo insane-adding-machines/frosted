@@ -26,8 +26,6 @@ struct semaphore {
     int *listener;
 };
 
-typedef struct semaphore sem_t;
-typedef struct semaphore mutex_t;
 
 /* Semaphore: internal functions */
 static void _add_listener(sem_t *s)
@@ -127,9 +125,9 @@ int sys_sem_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 }
 
 /* Mutex: API */
-mutex_t *frosted_mutex_init()
+frosted_mutex_t *frosted_mutex_init()
 {
-    mutex_t *s = kalloc(sizeof(mutex_t));
+    frosted_mutex_t *s = kalloc(sizeof(frosted_mutex_t));
     if (s) {
         s->value = 1; /* Unlocked. */
         s->listeners = 0;
@@ -138,7 +136,7 @@ mutex_t *frosted_mutex_init()
     return s;
 }
 
-int frosted_mutex_lock(mutex_t *s)
+int frosted_mutex_lock(frosted_mutex_t *s)
 {
     if (!s)
         return -EINVAL;
@@ -151,7 +149,7 @@ int frosted_mutex_lock(mutex_t *s)
     return 0;
 }
 
-int frosted_mutex_unlock(mutex_t *s)
+int frosted_mutex_unlock(frosted_mutex_t *s)
 {
     if (!s)
         return -EINVAL;
@@ -176,12 +174,12 @@ int sys_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 
 int sys_mutex_lock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    return frosted_mutex_lock((mutex_t *)arg1);
+    return frosted_mutex_lock((frosted_mutex_t *)arg1);
 }
 
 int sys_mutex_unlock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    return frosted_mutex_unlock((mutex_t *)arg1);
+    return frosted_mutex_unlock((frosted_mutex_t *)arg1);
 }
 
 int sys_mutex_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)

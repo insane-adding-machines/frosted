@@ -26,6 +26,8 @@
 struct task;
 struct fnode;
 struct semaphore;
+typedef struct semaphore sem_t;
+typedef struct semaphore frosted_mutex_t;
 
 /* generics */
 volatile unsigned int jiffies;
@@ -85,10 +87,10 @@ int sem_post(sem_t *s);
 sem_t *sem_init(int val);
 int sem_destroy(sem_t *s);
 
-int frosted_mutex_lock(mutex_t *s);
-int frosted_mutex_unlock(mutex_t *s);
-mutex_t *frosted_mutex_init();
-int frostd_mutex_destroy(mutex_t *s);
+int frosted_mutex_lock(frosted_mutex_t *s);
+int frosted_mutex_unlock(frosted_mutex_t *s);
+frosted_mutex_t *frosted_mutex_init();
+int frostd_mutex_destroy(frosted_mutex_t *s);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 
