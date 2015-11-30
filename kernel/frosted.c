@@ -126,6 +126,14 @@ static void ktimer_test(uint32_t time, void *arg)
     tasklet_add(tasklet_test, NULL);
 }
 
+
+
+
+/*************************
+ * bFLT start 
+ *************************/
+#define RELOC_FAILED 0xff00ff01		/* Relocation incorrect somewhere */
+
 static inline uint16_t short_be(uint16_t le)
 {
     return (uint16_t)(((le & 0xFFu) << 8) | ((le >> 8u) & 0xFFu));
@@ -165,12 +173,118 @@ int check_header(struct flat_hdr * header) {
     return 0;
 }
 
+static uint8_t * calc_reloc(uint8_t * base, uint32_t offset)
+{
+    /* the library id is in top byte of offset */
+    int id = (offset >> 24) & 0x000000FFu;
+    if (id)
+    {
+        klog(LOG_ERR, "No shared library support\n");
+        return RELOC_FAILED;
+    }
+    return (uint8_t*)(base + (offset & 0x00FFFFFFu));
+}
 
-int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_address_ptr)(int,char*[])) {
+int process_GOT_relocs(uint8_t * base, unsigned long * got_start)
+{
+    unsigned long * rp = got_start;
+    for (rp; *rp != 0xffffffff; rp++) {
+        if (*rp) {
+            unsigned long addr = calc_reloc(base, *rp);
+            if (addr == RELOC_FAILED) {
+                //errno = -ENOEXEC;
+                return -1;
+            }
+            *rp = addr;
+        }
+    }
+    return 0;
+}
+
+void process_relocs(int rev, uint8_t *relocs_start)
+{
+	/*
+	 * Now run through the relocation entries.
+	 * We've got to be careful here as C++ produces relocatable zero
+	 * entries in the constructor and destructor tables which are then
+	 * tested for being not zero (which will always occur unless we're
+	 * based from address zero).  This causes an endless loop as __start
+	 * is at zero.  The solution used is to not relocate zero addresses.
+	 * This has the negative side effect of not allowing a global data
+	 * reference to be statically initialised to _stext (I've moved
+	 * __start to address 4 so that is okay).
+	 */
+	if (rev > OLD_FLAT_VERSION) {
+		//unsigned long persistent = 0;
+		//for (i=0; i < relocs; i++) {
+		//	unsigned long addr, relval;
+
+		//	/* Get the address of the pointer to be
+		//	   relocated (of course, the address has to be
+		//	   relocated first).  */
+		//	relval = long_be(reloc[i]);
+		//	if (flat_set_persistent (relval, &persistent))
+		//		continue;
+		//	addr = flat_get_relocate_addr(relval);
+		//	rp = (unsigned long *) calc_reloc(addr, libinfo, id, 1);
+		//	if (rp == (unsigned long *)RELOC_FAILED) {
+		//		ret = -ENOEXEC;
+		//		goto err;
+		//	}
+
+		//	/* Get the pointer's value.  */
+		//	addr = flat_get_addr_from_rp(rp, relval, flags,
+		//					&persistent);
+		//	if (addr != 0) {
+		//		/*
+		//		 * Do the relocation.  PIC relocs in the data section are
+		//		 * already in target order
+		//		 */
+		//		if ((flags & FLAT_FLAG_GOTPIC) == 0)
+		//			addr = long_be(addr);
+		//		addr = calc_reloc(addr, libinfo, id, 0);
+		//		if (addr == RELOC_FAILED) {
+		//			ret = -ENOEXEC;
+		//			goto err;
+		//		}
+
+		//		/* Write back the relocated pointer.  */
+		//		flat_put_addr_at_rp(rp, addr, relval);
+		//	}
+		//}
+	} else {
+        /* no support for OLD relocs for now */
+		//for (i=0; i < relocs; i++)
+		//	old_reloc(long_be(reloc[i]));
+	}
+}
+
+
+/* BFLT file structure:
+ *
+ * +------------------------+   0x0
+ * | BFLT header            |
+ * +------------------------+
+ * | padding                |
+ * +------------------------+   entry
+ * | .text section          |
+ * |                        |
+ * +------------------------+   data_start
+ * | .data section          |
+ * |                        |   
+ * +------------------------+   data_end, relocs_start, bss_start
+ * | relocations (and .bss) |
+ * |........................|   relocs_end   <- BFLT ends here
+ * | (.bss section)         |
+ * +------------------------+   bss_end
+ */
+
+int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_address_ptr)(int,char*[]), size_t *stack_size) {
     struct flat_hdr hdr;
     void * mem = NULL;
-	uint32_t text_len, data_len, bss_len, stack_len, flags, extra;
+	uint32_t text_len, data_len, bss_len, stack_len, flags, alloc_len;
 	uint32_t full_data;
+    uint8_t *data_start, *data_dest, *relocs_start;
     int relocs;
     int rev;
 
@@ -197,89 +311,76 @@ int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_addr
 	flags     = long_be(hdr.flags);
 	rev       = long_be(hdr.rev);
 	full_data = data_len + relocs * sizeof(unsigned long);
+    data_start = from + long_be(hdr.data_start);
     /* start of text */
-    *mem_ptr = from + long_be(hdr.entry);
+    *entry_address_ptr = from + long_be(hdr.entry);
+	*stack_size = stack_len;
 
 	/*
-	 * calculate the extra space we need to map in
+	 * calculate the extra space we need to malloc
 	 */
-	extra = bss_len + stack_len;
-    if (relocs * sizeof(unsigned long) > extra)
-        extra = relocs * sizeof(unsigned long);
+    /* relocs are located in the .bss part of the BFLT binary, so we need whichever is biggest */
+    if ((relocs * sizeof(unsigned long)) > bss_len)
+        alloc_len = relocs * sizeof(unsigned long);
+    else
+        alloc_len = bss_len;
+    alloc_len += data_len;
 
-    //printf("Extra size needed: %d\n", extra);
-    size_t binary_size = hdr.bss_end - hdr.entry;
 
 	/*
 	 * there are a couple of cases here,  the separate code/data
 	 * case,  and then the fully copied to RAM case which lumps
 	 * it all together.
 	 */
-#if 0
 	if ((flags & (FLAT_FLAG_RAM|FLAT_FLAG_GZIP)) == 0) {
 		/*
 		 * this should give us a ROM ptr,  but if it doesn't we don't
 		 * really care
 		 */
 		//DBG_FLT("BINFMT_FLAT: ROM mapping of file (we hope)\n");
+        
+        /* Allocate enough memory for .data and .bss */
+        data_dest = kalloc(alloc_len);
+        if (!(data_dest))
+        {
+            klog(LOG_ERR, "Could not allocate enough memory for process");
+            goto error;
+        }
+        *mem_ptr = data_dest;
 
-		textpos = vm_mmap(bprm->file, 0, text_len, PROT_READ|PROT_EXEC,
-				  MAP_PRIVATE|MAP_EXECUTABLE, 0);
-		if (!textpos || IS_ERR_VALUE(textpos)) {
-			if (!textpos)
-				textpos = (unsigned long) -ENOMEM;
-			printk("Unable to mmap process text, errno %d\n", (int)-textpos);
-			ret = textpos;
-			goto err;
-		}
+        /* copy segments .data and .bss */
+        memcpy(data_dest, data_start, data_len);    /* init .data */
+        memset(data_dest + data_len, 0, bss_len);   /* zero .bss  */
 
-		len = data_len + extra + MAX_SHARED_LIBS * sizeof(unsigned long);
-		len = PAGE_ALIGN(len);
-		realdatastart = vm_mmap(0, 0, len,
-			PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE, 0);
-
-		if (realdatastart == 0 || IS_ERR_VALUE(realdatastart)) {
-			if (!realdatastart)
-				realdatastart = (unsigned long) -ENOMEM;
-			printk("Unable to allocate RAM for process data, errno %d\n",
-					(int)-realdatastart);
-			vm_munmap(textpos, text_len);
-			ret = realdatastart;
-			goto err;
-		}
-		datapos = ALIGN(realdatastart +
-				MAX_SHARED_LIBS * sizeof(unsigned long),
-				FLAT_DATA_ALIGN);
-
-		DBG_FLT("BINFMT_FLAT: Allocated data+bss+stack (%d bytes): %x\n",
-				(int)(data_len + bss_len + stack_len), (int)datapos);
-
-		fpos = ntohl(hdr->data_start);
-#ifdef CONFIG_BINFMT_ZFLAT
-		if (flags & FLAT_FLAG_GZDATA) {
-			result = decompress_exec(bprm, fpos, (char *) datapos, 
-						 full_data, 0);
-		} else
-#endif
-		{
-			result = read_code(bprm->file, datapos, fpos,
-					full_data);
-		}
-		if (IS_ERR_VALUE(result)) {
-			printk("Unable to read data+bss, errno %d\n", (int)-result);
-			vm_munmap(textpos, text_len);
-			vm_munmap(realdatastart, len);
-			ret = result;
-			goto err;
-		}
-
-		reloc = (unsigned long *) (datapos+(ntohl(hdr->reloc_start)-text_len));
-		memp = realdatastart;
-		memp_size = len;
+		relocs_start = (unsigned long *) (data_dest+(long_be(hdr.reloc_start)));
 	} else {
         /* GZIP or FULL RAM bFLTs not supported for now */
 	}
-#endif
+
+
+	/*
+	 * We just load the allocations into some temporary memory to
+	 * help simplify all this mumbo jumbo
+	 *
+	 * We've got two different sections of relocation entries.
+	 * The first is the GOT which resides at the beginning of the data segment
+	 * and is terminated with a -1.  This one can be relocated in place.
+	 * The second is the extra relocation entries tacked after the image's
+	 * data segment. These require a little more processing as the entry is
+	 * really an offset into the image which contains an offset into the
+	 * image.
+	 */
+
+    /* init relocations */
+	if (flags & FLAT_FLAG_GOTPIC) {
+        //printf("GOT-PIC!\n");
+        process_GOT_relocs(from, data_dest);
+	}
+
+	/*
+	 * Now run through the relocation entries.
+     */
+    process_relocs(rev, relocs_start);
 
     klog(LOG_INFO, "Successfully loaded bFLT executable to memory");
     return 0;
@@ -295,17 +396,18 @@ error:
 
 void frosted_kernel(void)
 {
-    void *program_entry;
+    void *bin_mem;
     int (*entry_point)(int, char*[]);
     size_t bin_size;
+    unsigned int stack_size;
 
     /* Create "init" task */
     klog(LOG_INFO, "Loading BFLT executable\n");
 
-    bflt_load(flt_file, &program_entry, &bin_size, &entry_point);
+    bflt_load(flt_file, &bin_mem, &bin_size, &entry_point, &stack_size);
 
     klog(LOG_INFO, "Starting Init task\n");
-    if (task_create(program_entry, (void *)0, 2) < 0)
+    if (task_create(entry_point, (void *)0, 2) < 0)
         IDLE();
 
     ktimer_add(1000, ktimer_test, NULL);
