@@ -364,8 +364,12 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     char *arg = (char *)arg2;
     struct fnode *f;
     f = fno_search(path);
-    if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exec) {
-        return f->owner->ops.exec(f, arg);
+    void (*start)(void *arg) = NULL;
+
+    if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exe) {
+        start = f->owner->ops.exe(f, arg);
+        if (start) 
+            scheduler_exec(start, arg);
     }
     return -EINVAL;
 }

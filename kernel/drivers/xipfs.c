@@ -41,14 +41,13 @@ static int xipfs_creat(struct fnode *fno)
     
 }
 
-static int xipfs_exec(struct fnode *fno, void *arg)
+static void *xipfs_exe(struct fnode *fno, void *arg)
 {
     int pid;
     struct xipfs_fnode *xip = fno->priv;
-    pid = task_create(xip->init, arg, 1);
-    if (pid < 0)
-        return -1;
-    return pid;
+    if (!xip)
+        return NULL;
+    return xip->init;
 }
 
 static int xipfs_unlink(struct fnode *fno)
@@ -112,6 +111,7 @@ void xipfs_init(void)
     mod_xipfs.ops.creat = xipfs_creat;
     mod_xipfs.ops.unlink = xipfs_unlink;
     mod_xipfs.ops.close = xipfs_close;
+    mod_xipfs.ops.exe = xipfs_exe;
     register_module(&mod_xipfs);
 }
 

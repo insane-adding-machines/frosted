@@ -69,6 +69,7 @@ void ktimer_cancel(struct ktimer *t);
 
 /* Scheduler */
 void frosted_scheduler_on(void);
+int scheduler_exec(void (*init)(void *), void *arg);
 uint16_t scheduler_get_cur_pid(void);
 uint16_t scheduler_get_cur_ppid(void);
 int task_timeslice(void);
@@ -186,7 +187,7 @@ struct module {
         int (*seek)(int fd, int offset, int whence);
         int (*creat)(struct fnode *fno);
         int (*unlink)(struct fnode *fno);
-        int (*exec)(struct fnode *fno, void *arg);
+        void * (*exe)(struct fnode *fno, void *arg);
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);
