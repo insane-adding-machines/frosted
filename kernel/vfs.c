@@ -572,6 +572,16 @@ int sys_isatty_hdlr(uint32_t arg1)
     return 0;
 }
 
+int sys_ttyname_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
+{
+    struct fnode *f = task_filedesc_get(arg1);
+    if (f && f->flags & FL_TTY) {
+        strncpy((char *)arg2, f->fname, arg3);
+        return 0;
+    }
+    return -EBADF;
+}
+
 int sys_getcwd_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;

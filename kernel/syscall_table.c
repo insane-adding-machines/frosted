@@ -278,6 +278,11 @@ int sys_exec(uint32_t arg1, uint32_t arg2){
     syscall(SYS_EXEC, arg1, arg2, 0, 0, 0); 
 }
 
+/* Syscall: ttyname_r(3 arguments) */
+int sys_ttyname_r(uint32_t arg1, uint32_t arg2, uint32_t arg3){
+    syscall(SYS_TTYNAME_R, arg1, arg2, arg3, 0,  0); 
+}
+
 /* Syscall: exit(1 arguments) */
 int sys_exit(uint32_t arg1){
     syscall(SYS_EXIT, arg1, 0, 0, 0, 0); 
@@ -339,6 +344,7 @@ extern int sys_umount_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_kill_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_isatty_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_exec_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_ttyname_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_exit_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
@@ -397,5 +403,6 @@ void syscalls_init(void) {
 	sys_register_handler(52, sys_kill_hdlr);
 	sys_register_handler(53, sys_isatty_hdlr);
 	sys_register_handler(54, sys_exec_hdlr);
-	sys_register_handler(55, sys_exit_hdlr);
+	sys_register_handler(55, sys_ttyname_hdlr);
+	sys_register_handler(56, sys_exit_hdlr);
 }

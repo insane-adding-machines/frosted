@@ -44,6 +44,7 @@ OBJS-y+=			\
 		fstat.o		\
 		getpid.o	\
 		isatty.o	\
+		ttyname.o	\
 		kill.o		\
 		link.o		\
 		lseek.o		\

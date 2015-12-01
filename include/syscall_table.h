@@ -56,5 +56,6 @@
 #define SYS_KILL 			(52)
 #define SYS_ISATTY 			(53)
 #define SYS_EXEC 			(54)
-#define SYS_EXIT 			(55)
-#define _SYSCALLS_NR (56) /* We have 56 syscalls! */
+#define SYS_TTYNAME_R 			(55)
+#define SYS_EXIT 			(56)
+#define _SYSCALLS_NR (57) /* We have 57 syscalls! */
