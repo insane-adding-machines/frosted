@@ -14,3 +14,8 @@ int exit(int val)
     return __syscall__[SYS_EXIT](val);
 }
 
+int _exit(int val) {
+    return __syscall__[SYS_EXIT](val);
+}
+
+

@@ -39,7 +39,6 @@ OBJS-y+=			\
 		newlib_syscalls.o \
 		close.o		\
 		errno.o		\
-		_exit.o		\
 		fork.o		\
 		fstat.o		\
 		getpid.o	\
