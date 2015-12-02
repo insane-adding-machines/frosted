@@ -28,6 +28,7 @@ extern "C" {
 
 // XXX defined in frosted_api.h
 //#ifndef __frosted__
+#if 0
 struct	stat 
 {
   dev_t		st_dev;
@@ -64,6 +65,7 @@ struct	stat
 #endif
 };
 //#endif
+#endif
 
 #if defined(__rtems__)
 #define st_atime st_atim.tv_sec

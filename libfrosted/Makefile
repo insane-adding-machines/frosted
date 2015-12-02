@@ -86,8 +86,16 @@ OBJS-y+=			\
 		waitpid.o		\
 		exec.o			\
 		mount.o			\
-		umount.o			\
-
+		umount.o		\
+		posix/collate_error.o   \
+		posix/collcmp.o			\
+		posix/execl.o			\
+		posix/execle.o			\
+		posix/execlp.o			\
+		posix/execv.o			\
+		posix/execve.o			\
+		posix/execvp.o			\
+		posix/glob.o			\
 
 
 CFLAGS+=$(CFLAGS-y)

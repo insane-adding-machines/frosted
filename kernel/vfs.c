@@ -19,7 +19,6 @@
  */  
 #include "frosted.h"
 #include <string.h>
-#define MAXPATH 256
 
 struct mountpoint *MTAB = NULL;
 
