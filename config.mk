@@ -115,6 +115,26 @@ ifeq ($(UART_4),y)
     CFLAGS+=-DCONFIG_UART_4
 endif
 
+#SPIs
+ifeq ($(SPI_1),y)
+    CFLAGS+=-DCONFIG_SPI_1
+endif
+ifeq ($(SPI_2),y)
+    CFLAGS+=-DCONFIG_SPI_2
+endif
+ifeq ($(SPI_3),y)
+    CFLAGS+=-DCONFIG_SPI_3
+endif
+ifeq ($(SPI_4),y)
+    CFLAGS+=-DCONFIG_SPI_4
+endif
+ifeq ($(SPI_5),y)
+    CFLAGS+=-DCONFIG_SPI_5
+endif
+ifeq ($(SPI_6),y)
+    CFLAGS+=-DCONFIG_SPI_6
+endif
+
 
 APPS_ORIGIN=$$(( $(KFLASHMEM_SIZE) * 1024))
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)

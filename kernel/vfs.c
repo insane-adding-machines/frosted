@@ -620,6 +620,11 @@ void __attribute__((weak)) devuart_init(struct fnode *dev)
 
 }
 
+void __attribute__((weak)) devspi_init(struct fnode *dev)
+{
+
+}
+
 int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *args)
 {
     struct module *m;
