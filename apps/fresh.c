@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 
-static const char str_prompt[]       = "[frosted]:";
+static const char str_prompt[]       = "[frosted (%s)]:";
 
 #define FRESH_DEV "/dev/ttyS0"
 
@@ -108,10 +108,14 @@ void fresh(void *arg) {
         struct pollfd pfd;
         int out = stdout_fileno;
         int i;
+        char term[20] = "(none)";
         pfd.fd = stdin_fileno;
         pfd.events = POLLIN;
         len = 0;
-        printf(str_prompt);
+        
+        ttyname_r(0, term, 20);
+
+        printf(str_prompt, term);
         getcwd(pwd, MAX_FILE);
         printf( pwd);
         printf( "$ ");

@@ -54,6 +54,8 @@
 #define SYS_MOUNT 			(50)
 #define SYS_UMOUNT 			(51)
 #define SYS_KILL 			(52)
-#define SYS_EXEC 			(53)
-#define SYS_EXIT 			(54)
-#define _SYSCALLS_NR (55) /* We have 55 syscalls! */
+#define SYS_ISATTY 			(53)
+#define SYS_EXEC 			(54)
+#define SYS_TTYNAME_R 			(55)
+#define SYS_EXIT 			(56)
+#define _SYSCALLS_NR (57) /* We have 57 syscalls! */

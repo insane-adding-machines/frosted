@@ -45,6 +45,7 @@ void task2(void *arg)
     ret = mkdir("/mem/test");
     ret = read(fdz, addr, 20);
     ret = write(fdn, addr, 20);
+
     close(fdn);
     close(fdz);
     now = gettimeofday(NULL);
@@ -89,10 +90,19 @@ void idling(void *arg)
 # define LED2 "/dev/gpio_3_14"
 # define LED3 "/dev/gpio_3_15"
 #elif defined (LPC17XX)
+#if 0
+/*LPCXpresso 1769 */
+# define LED0 "/dev/gpio_0_22"
+# define LED1 "/dev/null"
+# define LED2 "/dev/null"
+# define LED3 "/dev/null"
+#else
+/* mbed 1768 */
 # define LED0 "/dev/gpio_1_18"
 # define LED1 "/dev/gpio_1_20"
 # define LED2 "/dev/gpio_1_21"
 # define LED3 "/dev/gpio_1_23"
+#endif
 #else
 # define LED0 "/dev/null"
 # define LED1 "/dev/null"
@@ -124,7 +134,7 @@ void idling(void *arg)
 }
 
 static sem_t *sem = NULL;
-static mutex_t *mut = NULL;
+static frosted_mutex_t *mut = NULL;
 void prod(void *arg)
 {
     sem = sem_init(0);
@@ -161,6 +171,7 @@ void init(void *arg)
 
     /* open/close test */
     fd = open("/dev/null", 0, 0);
+    printf("/dev/null %s a tty.\r\n",isatty(fd)?"is":"is not");
     close(fd);
     
     /* socket/close test */

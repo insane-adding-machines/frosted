@@ -7,9 +7,9 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern mutex_t *(**__syscall__)(void);
+extern frosted_mutex_t *(**__syscall__)(void);
 
-mutex_t *mutex_init(void)
+frosted_mutex_t *mutex_init(void)
 {
     return __syscall__[SYS_MUTEX_INIT]();
 }

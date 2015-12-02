@@ -33,15 +33,17 @@ CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 OBJS-y+=			\
+		exit.o		\
+		poll.o		\
 		printf.o	\
 		newlib_syscalls.o \
 		close.o		\
 		errno.o		\
-		_exit.o		\
 		fork.o		\
 		fstat.o		\
 		getpid.o	\
 		isatty.o	\
+		ttyname.o	\
 		kill.o		\
 		link.o		\
 		lseek.o		\

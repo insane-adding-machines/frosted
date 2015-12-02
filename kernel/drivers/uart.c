@@ -29,7 +29,7 @@ struct dev_uart {
     struct cirbuf *outbuf;
     uint8_t *w_start;
     uint8_t *w_end;
-    mutex_t *mutex;
+    frosted_mutex_t *mutex;
     uint16_t pid;
 };
 
@@ -288,6 +288,7 @@ static int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr *
     u->inbuf = cirbuf_create(128);
     u->outbuf = cirbuf_create(128);
     u->fno->priv = u;
+    u->fno->flags |= FL_TTY;
     usart_enable_rx_interrupt(u->base);
     nvic_enable_irq(u->irq);
     return 0;

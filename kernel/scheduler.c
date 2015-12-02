@@ -379,42 +379,18 @@ void task_end(void)
     }
 }
 
-int task_create(void (*init)(void *), void *arg, unsigned int prio)
+void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio)
 {
     struct nvic_stack_frame *nvic_frame;
     struct extra_stack_frame *extra_frame;
     uint8_t *sp;
-    struct task *new;
-    int i;
 
-    if (number_of_tasks == 0) {
-        new = &struct_task_init;
-    } else {
-        new = task_space_alloc(sizeof(struct task));
-    }
-    if (!new) {
-        return -ENOMEM;
-    }
-
-    irq_off();
-    new->tb.pid = next_pid();
-    new->tb.ppid = scheduler_get_cur_pid();
-    new->tb.prio = prio;
     new->tb.start = init;
     new->tb.arg = arg;
-    new->tb.filedesc = NULL;
-    new->tb.n_files = 0;
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.cwd = fno_search("/");
 
-    /* Inherit cwd, file descriptors from parent */
-    if (new->tb.ppid > 1) { /* Start from parent #2 */
-        new->tb.cwd = task_getcwd();
-        for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i]);
-        }
-    } 
     
     /* stack memory */
     sp = (((uint8_t *)(&new->stack)) + STACK_SIZE - NVIC_FRAME_SIZE);
@@ -428,17 +404,53 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     nvic_frame->psr = 0x01000000u;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
-    //extra_frame->lr = RUN_USER;
     new->tb.sp = (uint32_t *)sp;
-    new->tb.state = TASK_RUNNABLE;
+} 
+
+int task_create(void (*init)(void *), void *arg, unsigned int prio)
+{
+    struct task *new;
+    int i;
+
+    irq_off();
+    if (number_of_tasks == 0) {
+        new = &struct_task_init;
+    } else {
+        new = task_space_alloc(sizeof(struct task));
+    }
+    if (!new) {
+        return -ENOMEM;
+    }
+    new->tb.pid = next_pid();
+    new->tb.ppid = scheduler_get_cur_pid();
+    new->tb.prio = prio;
+    new->tb.filedesc = NULL;
+    new->tb.n_files = 0;
+
+    /* Inherit cwd, file descriptors from parent */
+    if (new->tb.ppid > 1) { /* Start from parent #2 */
+        new->tb.cwd = task_getcwd();
+        for (i = 0; i < _cur_task->tb.n_files; i++) {
+            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i]);
+        }
+    } 
+
     new->tb.next = NULL;
     tasklist_add(&tasks_running, new);
+
     number_of_tasks++;
-
+    task_create_real(new, init, arg, prio);
+    new->tb.state = TASK_RUNNABLE;
     irq_on();
-
     return new->tb.pid;
-} 
+}
+
+int scheduler_exec(void (*init)(void *), void *arg)
+{
+    volatile struct task *t = _cur_task;
+    task_create_real(t, init, arg, t->tb.prio);
+    return 0;
+}
 
 static __naked void save_kernel_context(void)
 {

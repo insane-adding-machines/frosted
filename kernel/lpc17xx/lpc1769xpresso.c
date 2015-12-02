@@ -26,11 +26,16 @@
 
 #ifdef CONFIG_DEVGPIO
 #include <libopencm3/lpc17xx/gpio.h>
+#include <libopencm3/lpc17xx/exti.h>
 #include "gpio.h"
 #endif
 
 #ifdef CONFIG_DEVGPIO
-static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO0, .pin=GPIOPIN22, .mode=GPIO_MODE_OUTPUT, .name="gpio_0_22"} 
+static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO0, .pin=GPIOPIN22, .mode=GPIO_MODE_OUTPUT, .name="gpio_0_22"} ,
+                                                                                {.port=GPIO2, .pin=GPIOPIN10, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING}, 
+                                                                                {.port=GPIO2, .pin=GPIOPIN11, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
+                                                                                {.port=GPIO2, .pin=GPIOPIN12, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
+                                                                                {.port=GPIO2, .pin=GPIOPIN13, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_UART_0
 #endif
