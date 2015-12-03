@@ -379,7 +379,7 @@ void task_end(void)
     }
 }
 
-void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio)
+static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio)
 {
     struct nvic_stack_frame *nvic_frame;
     struct extra_stack_frame *extra_frame;

@@ -16,7 +16,7 @@ int _close(int fd)
  
 int _execve(char *name, char **argv, char **env)
 {
-    return _execve(name, argv, env);
+    return execve(name, argv, env);
 }
 
 int _fork(void)
