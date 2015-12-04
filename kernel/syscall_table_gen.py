@@ -67,7 +67,10 @@ syscalls = [
     ["isatty", 1, "sys_isatty_hdlr"],
     ["exec", 2, "sys_exec_hdlr"],
     ["ttyname_r", 3, "sys_ttyname_hdlr"],  
-    ["exit", 1, "sys_exit_hdlr"]
+    ["exit", 1, "sys_exit_hdlr"],
+    ["tcsetattr", 3, "sys_tcsetattr_hdlr"],
+    ["tcgetattr", 2, "sys_tcgetattr_hdlr"],
+    ["tcsendbreak", 2, "sys_tcsendbreak_hdlr"]
 ]
 
    #

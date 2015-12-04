@@ -58,4 +58,7 @@
 #define SYS_EXEC 			(54)
 #define SYS_TTYNAME_R 			(55)
 #define SYS_EXIT 			(56)
-#define _SYSCALLS_NR (57) /* We have 57 syscalls! */
+#define SYS_TCSETATTR 			(57)
+#define SYS_TCGETATTR 			(58)
+#define SYS_TCSENDBREAK 			(59)
+#define _SYSCALLS_NR (60) /* We have 60 syscalls! */

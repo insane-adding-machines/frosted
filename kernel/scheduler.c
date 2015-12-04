@@ -107,10 +107,13 @@ static void * _top_stack;
 #define __naked __attribute__((naked))
 
 
+#define TASK_FLAG_VFORK 0x01
+
 struct __attribute__((packed)) task_block {
     void (*start)(void *);
     void *arg;
-    uint16_t state;
+    uint8_t state;
+    uint8_t flags;
     uint16_t prio;
     uint16_t timeslice;
     uint16_t pid;
@@ -426,6 +429,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     new->tb.prio = prio;
     new->tb.filedesc = NULL;
     new->tb.n_files = 0;
+    new->tb.flags = 0;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -450,6 +454,41 @@ int scheduler_exec(void (*init)(void *), void *arg)
     volatile struct task *t = _cur_task;
     task_create_real(t, init, arg, t->tb.prio);
     return 0;
+}
+
+int scheduler_vfork(void)
+{
+    struct task *new;
+    int i;
+
+    irq_off();
+    new = task_space_alloc(sizeof(struct task_block));
+    if (!new) {
+        return -ENOMEM;
+    }
+    new->tb.pid = next_pid();
+    new->tb.ppid = scheduler_get_cur_pid();
+    new->tb.prio = _cur_task->tb.prio;
+    new->tb.filedesc = NULL;
+    new->tb.n_files = 0;
+    new->tb.flags = TASK_FLAG_VFORK;
+
+    /* Inherit cwd, file descriptors from parent */
+    if (new->tb.ppid > 1) { /* Start from parent #2 */
+        new->tb.cwd = task_getcwd();
+        for (i = 0; i < _cur_task->tb.n_files; i++) {
+            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i]);
+        }
+    } 
+
+    new->tb.next = NULL;
+    tasklist_add(&tasks_running, new);
+    number_of_tasks++;
+    new->tb.sp = _cur_task->tb.sp;
+
+    new->tb.state = TASK_RUNNABLE;
+    irq_on();
+    return new->tb.pid;
 }
 
 static __naked void save_kernel_context(void)

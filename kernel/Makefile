@@ -66,6 +66,8 @@ OBJS-y+= \
 	poll.o				\
 	cirbuf.o			\
 	timer.o				\
+	term.o				\
+	pipe.o
 
 OBJS-y += vfs.o
 OBJS-y += syscall_vector.o
