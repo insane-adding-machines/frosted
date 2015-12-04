@@ -1,4 +1,5 @@
 #include "frosted.h"
+#include "device.h"
 #include <stdint.h>
 #include "ioctl.h"
 #ifdef STM32F4
@@ -14,8 +15,15 @@
 #endif
 #include "gpio.h"
 
+struct dev_gpio {
+    struct device * dev;
+    uint32_t base;
+    uint16_t pin;
+};
 
+#define MAX_GPIOS   32      /* FIX THIS! */
 
+static struct dev_gpio DEV_GPIO[MAX_GPIOS];
 
 #ifdef LM3S
 #endif
@@ -113,29 +121,21 @@ void eint3_isr(void)
 
 #endif
 
-static int gpio_subsys_initialized = 0;
+static int devgpio_write(int fd, const void *buf, unsigned int len);
+static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg);
+static int devgpio_read(int fd, void *buf, unsigned int len);
+static int devgpio_poll(int fd, uint16_t events, uint16_t *revents);
+
 
 static struct module mod_devgpio = {
+    .family = FAMILY_FILE,
+    .name = "gpio",
+    .ops.open = device_open,
+    .ops.read = devgpio_read, 
+    .ops.poll = devgpio_poll,
+    .ops.write = devgpio_write,
+    .ops.ioctl = devgpio_ioctl,
 };
-
-
-static int gpio_check_fd(int fd, struct fnode **fno)
-{
-    *fno = task_filedesc_get(fd);
-    
-    if (!fno)
-        return -1;
-    if (fd < 0)
-        return -1;
-
-    if ((*fno)->owner != &mod_devgpio)
-        return -1;
-
-    return 0;
-}
-
-
-static int devgpio_write(int fd, const void *buf, unsigned int len);
 
 /* Use static state for now. Future drivers can have multiple structs for this. */
 static int gpio_pid = 0;
@@ -143,7 +143,6 @@ static frosted_mutex_t *gpio_mutex;
 
 void GPIO_Handler(void)
 {
-
     /* If a process is attached, resume the process */
     if (gpio_pid > 0) 
         task_resume(gpio_pid);
@@ -151,19 +150,18 @@ void GPIO_Handler(void)
 
 static int devgpio_write(int fd, const void *buf, unsigned int len)
 {
-    struct fnode *fno;
-    const struct gpio_addr *a;
+     struct dev_gpio *gpio;
     char *arg = (char *)buf;
 
-    if (gpio_check_fd(fd, &fno) != 0)
+    gpio = (struct dev_gpio*)device_check_fd(fd, &mod_devgpio);
+    if(!gpio)
         return -1;
-    a = fno->priv;
 
     if (arg[0] == '1') {
-        gpio_set(a->port, a->pin);
+        gpio_set(gpio->base, gpio->pin);
         return 1;
     } else if (arg[0] == '0') {
-        gpio_clear(a->port, a->pin);
+        gpio_clear(gpio->base, gpio->pin);
         return 1;
     } else {
         return -1;
@@ -172,30 +170,31 @@ static int devgpio_write(int fd, const void *buf, unsigned int len)
 
 static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
 {
-    struct fnode *fno;
-    const struct gpio_addr *a;
-    if (gpio_check_fd(fd, &fno) != 0)
+     struct dev_gpio *gpio;
+
+    gpio = (struct dev_gpio *)device_check_fd(fd, &mod_devgpio);
+    if(!gpio)
         return -1;
-    a = fno->priv;
+
     if (cmd == IOCTL_GPIO_ENABLE) {
-//        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->pin);
+//        gpio_mode_setup(gpio->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, gpio->pin);
     }
     if (cmd == IOCTL_GPIO_DISABLE) {
-//        gpio_mode_setup(a->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, a->pin);
+//        gpio_mode_setup(gpio->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, gpio->pin);
     }
     if (cmd == IOCTL_GPIO_SET_INPUT) {
         /* user land commanded input defaults to no pull up/down*/
-        SET_INPUT(a->port, GPIO_PUPD_NONE, a->pin)
+        SET_INPUT(gpio->base, GPIO_PUPD_NONE, gpio->pin)
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
-        SET_OUTPUT(a->port, a->pin, a->optype, a->speed)
+//        SET_OUTPUT(gpio->port, gpio->pin, gpio->optype, gpio->speed)
     }
     if (cmd == IOCTL_GPIO_SET_PULLUPDOWN) {
         /* Setting pullup/down implies an input */
-        SET_INPUT(a->port, *((uint32_t*)arg), a->pin)
+        SET_INPUT(gpio->base, *((uint32_t*)arg), gpio->pin)
     }
     if (cmd == IOCTL_GPIO_SET_ALT_FUNC) {
-         gpio_set_af(a->port, *((uint32_t*)arg), a->pin);
+         gpio_set_af(gpio->base, *((uint32_t*)arg), gpio->pin);
     }
     return 0;
 }
@@ -203,14 +202,13 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
 static int devgpio_read(int fd, void *buf, unsigned int len)
 {
     int out;
-    struct fnode *fno;
-    const struct gpio_addr *a;
+    struct dev_gpio *gpio;
     volatile int len_available = 1;
     char *ptr = (char *)buf;
 
-    if (gpio_check_fd(fd, &fno) != 0)
+    gpio = (struct dev_gpio *)device_check_fd(fd, &mod_devgpio);
+    if(!gpio)
         return -1;
-    a = fno->priv;
 
     if (len_available < len) {
         gpio_pid = scheduler_get_cur_pid();
@@ -219,7 +217,7 @@ static int devgpio_read(int fd, void *buf, unsigned int len)
         frosted_mutex_unlock(gpio_mutex);
     } else {
         /* GPIO: get current value */
-        *((uint8_t*)buf) = gpio_get(a->port, a->pin) ? '1':'0';
+        *((uint8_t*)buf) = gpio_get(gpio->base, gpio->pin) ? '1':'0';
         return 1;
     }
 }
@@ -240,58 +238,40 @@ static int devgpio_poll(int fd, uint16_t events, uint16_t *revents)
     return ret;
 }
 
-static int devgpio_open(const char *path, int flags)
+static void gpio_fno_init(struct fnode *dev, uint32_t n, const struct gpio_addr * addr)
 {
-    struct fnode *f = fno_search(path);
-    if (!f)
-        return -1;
-    return task_filedesc_add(f); 
-}
-
-static struct module *  devgpio_init(struct fnode *dev)
-{
-    gpio_mutex = frosted_mutex_init();
-    mod_devgpio.family = FAMILY_FILE;
-    strcpy(mod_devgpio.name,"gpio");
-    mod_devgpio.ops.open = devgpio_open;
-    mod_devgpio.ops.read = devgpio_read; 
-    mod_devgpio.ops.poll = devgpio_poll;
-    mod_devgpio.ops.write = devgpio_write;
-    mod_devgpio.ops.ioctl = devgpio_ioctl;
-
-    /* Module initialization */
-    if (!gpio_subsys_initialized) {
-        gpio_subsys_initialized++;
-    }
-
-    klog(LOG_INFO, "GPIO Driver: KLOG enabled.\n");
-    return &mod_devgpio;
+    struct dev_gpio *g = &DEV_GPIO[n];
+    g->dev = device_fno_init(&mod_devgpio, addr->name, dev, FL_RDWR, g);
+    g->base = addr->base;
+    g->pin = addr->pin;
 }
 
 void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num_gpios)
 {
     int i;
     uint32_t exti,exti_irq;
-    struct fnode *node;
-
-    struct module * devgpio = devgpio_init(dev);
 
     for(i=0;i<num_gpios;i++)
     {
-        GPIO_CLOCK_ENABLE(gpio_addrs[i].port, gpio_addrs[i].exti)
+        if(gpio_addrs[i].base == 0)
+            continue;
+
+        gpio_fno_init(dev, i, &gpio_addrs[i]);
+    
+        GPIO_CLOCK_ENABLE(gpio_addrs[i].base, gpio_addrs[i].exti)
             
         switch(gpio_addrs[i].mode)
         {
             case GPIO_MODE_INPUT:
-                SET_INPUT(gpio_addrs[i].port, gpio_addrs[i].pullupdown, gpio_addrs[i].pin)
+                SET_INPUT(gpio_addrs[i].base, gpio_addrs[i].pullupdown, gpio_addrs[i].pin)
                 break;
             case GPIO_MODE_OUTPUT:
-                SET_OUTPUT(gpio_addrs[i].port, gpio_addrs[i].pin, gpio_addrs[i].optype, gpio_addrs[i].speed)
+                SET_OUTPUT(gpio_addrs[i].base, gpio_addrs[i].pin, gpio_addrs[i].optype, gpio_addrs[i].speed)
                 break;
             case GPIO_MODE_AF:
-                SET_AF(gpio_addrs[i].port, GPIO_MODE_AF, gpio_addrs[i].af,  gpio_addrs[i].pin)
+                SET_AF(gpio_addrs[i].base, GPIO_MODE_AF, gpio_addrs[i].af,  gpio_addrs[i].pin)
 #ifdef LPC17XX
-                if((gpio_addrs[i].port == GPIO2) && (gpio_addrs[i].af == GPIO_AF1))
+                if((gpio_addrs[i].base == GPIO2) && (gpio_addrs[i].af == GPIO_AF1))
                 {
                     switch(gpio_addrs[i].pin)
                     {
@@ -333,10 +313,9 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
 #endif
                 break;
             case GPIO_MODE_ANALOG:
-                gpio_mode_setup(gpio_addrs[i].port, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
+                gpio_mode_setup(gpio_addrs[i].base, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
                 break;
         }
-
 
         if(gpio_addrs[i].exti)
         {
@@ -352,21 +331,13 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 default: break;
             }
             nvic_enable_irq(exti_irq);
-            exti_select_source(exti, gpio_addrs[i].port);
+            exti_select_source(exti, gpio_addrs[i].base);
             exti_set_trigger(exti, gpio_addrs[i].trigger);
             exti_enable_request(exti);
 #endif
-
         }
-
-        if(gpio_addrs[i].name)
-        {
-            node = fno_create(devgpio, gpio_addrs[i].name, dev);
-            if (node)
-                node->priv = &gpio_addrs[i];
-        }
+        
     }
-
-    register_module(devgpio);
+    register_module(&mod_devgpio);
 }
 

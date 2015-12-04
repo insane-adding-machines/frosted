@@ -28,7 +28,7 @@ APPS-y:= apps/init.o
 APPS-$(FRESH)+=apps/fresh.o
 
 
-OBJS-y:=kernel/systick.o
+OBJS-y:=kernel/systick.o kernel/drivers/device.o
 
 # device drivers 
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
@@ -45,6 +45,12 @@ CFLAGS-$(DEVNULL)+=-DCONFIG_DEVNULL
 
 OBJS-$(SOCK_UNIX)+= kernel/drivers/socket_un.o
 CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
+
+OBJS-$(DEVL3GD20)+= kernel/drivers/l3gd20.o
+CFLAGS-$(DEVL3GD20)+=-DCONFIG_DEVL3GD20
+
+OBJS-$(DEVSPI)+= kernel/drivers/spi.o
+CFLAGS-$(DEVSPI)+=-DCONFIG_DEVSPI
 
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART

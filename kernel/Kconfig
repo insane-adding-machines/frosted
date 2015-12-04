@@ -206,15 +206,18 @@ menu "Subsystems"
        
        menuconfig DEVSPI
        bool "Generic SPI driver"
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
        default n
 
        if DEVSPI
-
             config SPI_1
             bool "SPI 1"
-            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
-
        endif
+
+       config DEVL3GD20
+       tristate "L3GD20 driver"
+       depends on ( MACH_STM32F4x1Discovery && SPI_1)
+       default n
 
        config DEVGPIO
        depends on (ARCH_STM32F4 || ARCH_LPC17XX)

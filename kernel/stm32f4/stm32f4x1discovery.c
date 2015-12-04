@@ -33,25 +33,51 @@
 #include "gpio.h"
 #endif
 
+#ifdef CONFIG_DEVSPI
+#include <libopencm3/stm32/spi.h>
+#include "spi.h"
+#endif
+
+#ifdef CONFIG_DEVL3GD20
+#include "l3gd20.h"
+#endif
+
+
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { 
-            {.port=GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
-            {.port=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
-            {.port=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
-            {.port=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
-            {.port=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .optype=GPIO_OTYPE_PP, .pullupdown=GPIO_PUPD_NONE, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="gpio_0_0"},
+            {.base=GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
+            {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
+            {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
+            {.base=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
+            {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="gpio_0_0"},
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
-            {.port=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-            {.port=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+            {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_2
-            {.port=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-            {.port=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+            {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_6
-            {.port=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-            {.port=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+            /* DO NOT use, pins are wired as SPI bus - see schematic */
+            {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+#endif
+#endif
+#ifdef CONFIG_DEVSPI
+#ifdef CONFIG_SPI_1
+            /* SCK - PA5 MISO - PA6 MOSI - */
+            {.base=GPIOA, .pin=GPIO5,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.base=GPIOA, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            {.base=GPIOA, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+
+#endif
+#ifdef CONFIG_L3GD20
+            /* PA7 CS - PE3 INT1 - PE0 INT2 - PE1 */
+            {.base=GPIOE, .pin=GPIO3,.mode=GPIO_MODE_OUTPUT, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL},
+            {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name=NULL},
+            {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name=NULL},
 #endif
 #endif
 };
@@ -99,7 +125,44 @@ static const struct uart_addr uart_addrs[] = {
         },
 #endif
 };
+
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
+#endif
+
+#ifdef CONFIG_DEVSPI
+static const struct spi_addr spi_addrs[] = { 
+#ifdef CONFIG_SPI_1
+        {
+            .base = SPI1, 
+            .irq = NVIC_SPI1_IRQ, 
+            .rcc = RCC_SPI1,
+            .baudrate_prescaler = SPI_CR1_BR_FPCLK_DIV_64,
+            .clock_pol = 0,
+            .clock_phase = 0,
+            .rx_only = 0,
+            .bidir_mode = 0,
+            .dff_16 = 0,
+            .enable_software_slave_management = 1,
+            .send_msb_first = 1,
+            .name = "spi1",
+        },
+#endif
+};
+#define NUM_SPIS (sizeof(spi_addrs) / sizeof(struct spi_addr))
+
+#ifdef CONFIG_DEVL3GD20
+static const struct l3gd20_addr l3gd20_addrs[] = { 
+        {
+            .spi_name = "spi1",
+            .spi_cs_name = "",
+            .int_1_name = "",
+            .int_2_name = "",
+            .name = "l3gd20",
+        }
+};
+#define NUM_L3GD20 (sizeof(l3gd20_addrs)/sizeof(struct l3gd20_addr))
+#endif
+
 #endif
 
 void machine_init(struct fnode * dev)
@@ -118,6 +181,12 @@ void machine_init(struct fnode * dev)
 #endif
 #ifdef CONFIG_DEVUART
     uart_init(dev, uart_addrs, NUM_UARTS);
+#endif
+#ifdef CONFIG_DEVSPI
+    spi_init(dev, spi_addrs, NUM_SPIS);
+#ifdef CONFIG_DEVL3GD20
+    l3gd20_init(dev, l3gd20_addrs, NUM_L3GD20);
+#endif
 #endif
 }
 

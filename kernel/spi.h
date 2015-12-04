@@ -1,22 +1,23 @@
 #ifndef INC_SPI
 #define INC_SPI
 
-#include "gpio.h"
-
-/* MISO, MOSI, CLK, N * CS*/
 #define MAX_SPI_PINS 3
 
 struct spi_addr {
-/*
-    uint8_t devidx;
     uint32_t base;
     uint32_t irq;
     uint32_t rcc;
-    uint32_t baudrate;
-    uint8_t stop_bits;
-    uint8_t data_bits;
-    uint8_t parity;
-    uint8_t flow;   */
+    /* For simplicity we assume all devices on the SPI bus use the same setup,
+        this may change later... */
+    uint8_t baudrate_prescaler;
+    uint8_t clock_pol;
+    uint8_t clock_phase;
+    uint8_t rx_only;
+    uint8_t bidir_mode;
+    uint16_t dff_16;
+    uint8_t enable_software_slave_management;
+    uint8_t send_msb_first;
+    const char * name;
 };
 
 
