@@ -18,7 +18,7 @@ AR:=$(CROSS_COMPILE)ar
 
 # COMPILER FLAGS
 CFLAGS+=-I$(FROSTED_PATH)/kernel/libopencm3/include -I$(FROSTED_PATH)/kernel -I$(FROSTED_PATH)/include -I$(FROSTED_PATH)/include/libc 
-CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -fno-builtin
+CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -fno-builtin -ffunction-sections
 CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common
 CFLAGS+=-DCORE_M3 -DKLOG_LEVEL=6 
 #-DSYS_CLOCK=$(SYS_CLOCK)
