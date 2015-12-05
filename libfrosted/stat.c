@@ -15,3 +15,8 @@ int stat(const char *file, struct stat *st)
     return __syscall__[SYS_STAT](file, st);
 }
 
+/* TODO: stub - lstat should stat symbolic links themselves, instead of following them */
+int lstat(const char *file, struct stat *st)
+{
+    return __syscall__[SYS_STAT](file, st);
+}

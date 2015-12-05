@@ -1,10 +1,15 @@
 #ifndef INC_FROSTED_API
 #define INC_FROSTED_API
 #include <stdint.h>
+#include <sys/types.h>
 
 #define INIT __attribute__((section(".init")))
 
 /* Constants */
+
+/* move to limits.h ? */
+#define MAXPATHLEN 256
+
 
 /* open */
 #define O_RDONLY 0x01
@@ -46,11 +51,26 @@ struct dirent {
 };
 
 /* stat */
+//#ifndef __frosted__
+// XXX temp for busybox
 struct stat {
     uint32_t st_size;
     uint32_t st_mode;
     struct module *st_owner;
+
+    dev_t		st_dev;
+    ino_t		st_ino;
+    //mode_t	    st_mode;
+    nlink_t	    st_nlink;
+    uid_t		st_uid;
+    gid_t		st_gid;
+    dev_t		st_rdev;
+    //off_t		st_size;
+    time_t      st_atime;
+    time_t      st_mtime;
+    time_t      st_ctime;
 };
+//#endif
 
 #define S_IFMT     0170000   // bit mask for the file type bit fields
 #define P_IFMT     0000007   // bit mask for file permissions
@@ -86,9 +106,11 @@ struct pollfd {
 
 
 /* for unix sockets */
+#ifndef __frosted__
 #define AF_UNIX 0
 #define SOCK_STREAM 6
 #define SOCK_DGRAM 17
+#endif
 
 struct __attribute__((packed)) sockaddr {
     uint16_t sa_family;
@@ -104,5 +126,7 @@ struct sockaddr_env {
     struct sockaddr *se_addr;
     unsigned int se_len;
 };
+
+extern int errno;
 
 #endif

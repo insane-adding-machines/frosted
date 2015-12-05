@@ -3,7 +3,7 @@
  *
  *      frosted is free software: you can redistribute it and/or modify
  *      it under the terms of the GNU General Public License version 2, as 
- *      published by the Free Software Foundation.
+ *      published by the free Software Foundation.
  *      
  *
  *      frosted is distributed in the hope that it will be useful,
@@ -27,6 +27,7 @@
  * the application code
  */
 void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
+uint8_t * flt_file = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
 static int (*_klog_write)(int, const void *, unsigned int) = NULL;
     
@@ -122,6 +123,7 @@ static void ktimer_test(uint32_t time, void *arg)
 {
     tasklet_add(tasklet_test, NULL);
 }
+
 
 void frosted_kernel(void)
 {
