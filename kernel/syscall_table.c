@@ -303,6 +303,11 @@ int sys_tcsendbreak(uint32_t arg1, uint32_t arg2){
     syscall(SYS_TCSENDBREAK, arg1, arg2, 0, 0, 0); 
 }
 
+/* Syscall: pipe2(2 arguments) */
+int sys_pipe2(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_PIPE2, arg1, arg2, 0, 0, 0); 
+}
+
 /* External handlers (defined elsewhere) : */ 
 extern int sys_setclock_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_sleep_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
@@ -364,6 +369,7 @@ extern int sys_exit_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_tcsetattr_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_tcgetattr_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_tcsendbreak_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_pipe2_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -426,4 +432,5 @@ void syscalls_init(void) {
 	sys_register_handler(57, sys_tcsetattr_hdlr);
 	sys_register_handler(58, sys_tcgetattr_hdlr);
 	sys_register_handler(59, sys_tcsendbreak_hdlr);
+	sys_register_handler(60, sys_pipe2_hdlr);
 }

@@ -60,7 +60,8 @@ extern int sys_exit( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_tcsetattr( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_tcgetattr( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
 extern int sys_tcsendbreak( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
-int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[60])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
+extern int sys_pipe2( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );
+int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[61])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {
 	sys_setclock,
 	sys_sleep,
 	sys_suspend,
@@ -120,5 +121,6 @@ int __attribute__((used,section(".syscall_vector"))) (* const _k__syscall__[60])
 	sys_exit,
 	sys_tcsetattr,
 	sys_tcgetattr,
-	sys_tcsendbreak
+	sys_tcsendbreak,
+	sys_pipe2
 };
