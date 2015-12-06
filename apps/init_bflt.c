@@ -191,3 +191,9 @@ void main(void *arg)
     (void)i;
 }
 
+void _start(void)
+{
+    //_init();
+    main(NULL);
+}
+

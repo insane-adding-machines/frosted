@@ -127,6 +127,11 @@ static void ktimer_test(uint32_t time, void *arg)
 
 void frosted_kernel(void)
 {
+    /* Load init from BFLT */
+    void * memptr;
+    size_t mem_size;
+    //bflt_load(flt_file, &memptr, &mem_size, &init);
+
     /* Create "init" task */
     klog(LOG_INFO, "Starting Init task\n");
     if (task_create(init, (void *)0, 2) < 0)

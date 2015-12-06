@@ -67,6 +67,7 @@ OBJS-y+= \
 	cirbuf.o			\
 	timer.o				\
 	term.o				\
+	bflt.o				\
 	pipe.o
 
 OBJS-y += vfs.o
