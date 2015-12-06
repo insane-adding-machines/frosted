@@ -26,6 +26,7 @@
 struct task;
 struct fnode;
 struct semaphore;
+struct termios;
 typedef struct semaphore sem_t;
 typedef struct semaphore frosted_mutex_t;
 
@@ -174,6 +175,7 @@ struct module {
     int (*umount)(char *target, uint32_t flags);
     int (*mount_info)(struct fnode *fno, char *buf, int size);
 
+    /* TODO: perhaps we should make a union here... */
     struct module_operations {
         /* Common module operations */
         int (*read)(int fd, void *buf, unsigned int len);
@@ -200,6 +202,12 @@ struct module {
         int (*shutdown)(int fd, uint16_t how);
         int (*setsockopt)(int sd, int level, int optname, void *optval, unsigned int optlen);
         int (*getsockopt)(int sd, int level, int optname, void *optval, unsigned int *optlen);
+
+
+        /* Terminal operations */
+        int (*tcsetattr)(int td, int opts, const struct termios *tp);
+        int (*tcgetattr)(int td, struct termios *tp);
+
     } ops;
     struct module *next;
 };
