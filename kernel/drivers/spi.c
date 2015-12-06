@@ -33,7 +33,6 @@ static struct dev_spi DEV_SPI[MAX_SPIS];
 
 static int devspi_write(int fd, const void *buf, unsigned int len);
 static int devspi_read(int fd, void *buf, unsigned int len);
-static int devspi_poll(int fd, uint16_t events, uint16_t *revents);
 
 static struct module mod_devspi = {
     .family = FAMILY_FILE,
@@ -41,11 +40,35 @@ static struct module mod_devspi = {
     .ops.open = device_open,
     .ops.read = devspi_read,
     .ops.write = devspi_write,
-    .ops.poll = devspi_poll,
 };
 
 void spi_isr(struct dev_spi *spi)
 {
+    /* TX interrupt */
+    if (SPI_SR(spi->base) & SPI_SR_TXE) {
+        spi_disable_tx_buffer_empty_interrupt(spi->base);
+        frosted_mutex_lock(spi->dev->mutex);
+        /* Are there bytes left to be written? */
+        if (cirbuf_bytesinuse(spi->outbuf))
+        {
+            uint8_t outbyte;
+            cirbuf_readbyte(spi->outbuf, &outbyte);
+            usart_send(spi->base, (uint16_t)(outbyte));
+        } else {
+            spi_disable_tx_buffer_empty_interrupt(spi->base);
+        }
+        frosted_mutex_unlock(spi->dev->mutex);
+    }
+
+    /* RX interrupt, data available */
+    if (SPI_SR(spi->base) & SPI_SR_RXNE) {
+        /* read data into circular buffer */
+        cirbuf_writebyte(spi->inbuf, spi_read(spi->base));
+    }
+
+    /* If a process is attached, resume the process */
+    if (spi->dev->pid > 0) 
+        task_resume(spi->dev->pid);
 }
 
 #ifdef CONFIG_SPI_1
@@ -68,48 +91,48 @@ static int devspi_write(int fd, const void *buf, unsigned int len)
         return len;
     if (fd < 0)
         return -1;
-#if 0
-    if (uart->w_start == NULL) {
-        uart->w_start = (uint8_t *)buf;
-        uart->w_end = ((uint8_t *)buf) + len;
+
+    if (spi->w_start == NULL) {
+        spi->w_start = (uint8_t *)buf;
+        spi->w_end = ((uint8_t *)buf) + len;
 
     } else {
         /* previous transmit not finished, do not update w_start */
     }
-#endif
+
     frosted_mutex_lock(spi->dev->mutex);
-#if 0
-    usart_enable_tx_interrupt(uart->base);
+    spi_enable_tx_buffer_empty_interrupt(spi->base);
 
     /* write to circular output buffer */
-    uart->w_start += cirbuf_writebytes(uart->outbuf, uart->w_start, uart->w_end - uart->w_start);
-    if (usart_is_send_ready(uart->base)) {
-        char c;
-        cirbuf_readbyte(uart->outbuf, &c);
-        usart_send(uart->base, (uint16_t) c);
+    spi->w_start += cirbuf_writebytes(spi->outbuf, spi->w_start, spi->w_end - spi->w_start);
+    if (!(SPI_SR(spi->base) & SPI_SR_TXE)) {
+        uint8_t c;
+        /* Doesn't block because of test above */
+        cirbuf_readbyte(spi->outbuf, &c);
+        spi_send(spi->base, c);
     }
 
-    if (cirbuf_bytesinuse(uart->outbuf) == 0) {
-        frosted_mutex_unlock(uart->mutex);
-        usart_disable_tx_interrupt(uart->base);
-        uart->w_start = NULL;
-        uart->w_end = NULL;
+    if (cirbuf_bytesinuse(spi->outbuf) == 0) {
+        frosted_mutex_unlock(spi->dev->mutex);
+        spi_disable_tx_buffer_empty_interrupt(spi->base);
+        spi->w_start = NULL;
+        spi->w_end = NULL;
         return len;
     }
 
 
-    if (uart->w_start < uart->w_end)
+    if (spi->w_start < spi->w_end)
     {
-        uart->pid = scheduler_get_cur_pid();
+        spi->dev->pid = scheduler_get_cur_pid();
         task_suspend();
-        frosted_mutex_unlock(uart->mutex);
+        frosted_mutex_unlock(spi->dev->mutex);
         return SYS_CALL_AGAIN;
     }
 
-    frosted_mutex_unlock(uart->mutex);
-    uart->w_start = NULL;
-    uart->w_end = NULL;
-#endif
+    frosted_mutex_unlock(spi->dev->mutex);
+    spi->w_start = NULL;
+    spi->w_end = NULL;
+
     return len;
 }
 
@@ -131,13 +154,12 @@ static int devspi_read(int fd, void *buf, unsigned int len)
         return -1;
 
     frosted_mutex_lock(spi->dev->mutex);
-#if 0
-    usart_disable_rx_interrupt(uart->base);
-    len_available =  cirbuf_bytesinuse(uart->inbuf);
+    spi_disable_rx_buffer_not_empty_interrupt(spi->base);
+    len_available =  cirbuf_bytesinuse(spi->inbuf);
     if (len_available <= 0) {
-        uart->pid = scheduler_get_cur_pid();
+        spi->dev->pid = scheduler_get_cur_pid();
         task_suspend();
-        frosted_mutex_unlock(uart->mutex);
+        frosted_mutex_unlock(spi->dev->mutex);
         out = SYS_CALL_AGAIN;
         goto again;
     }
@@ -147,37 +169,14 @@ static int devspi_read(int fd, void *buf, unsigned int len)
 
     for(out = 0; out < len; out++) {
         /* read data */
-        if (cirbuf_readbyte(uart->inbuf, ptr) != 0)
+        if (cirbuf_readbyte(spi->inbuf, ptr) != 0)
             break;
         ptr++;
     }
-#endif
 again:
 //    usart_enable_rx_interrupt(uart->base);
     frosted_mutex_unlock(spi->dev->mutex);
     return out;
-}
-
-
-static int devspi_poll(int fd, uint16_t events, uint16_t *revents)
-{
-    int ret = 0;
-    struct dev_spi *spi;
-
-    spi = (struct dev_spi *)device_check_fd(fd, &mod_devspi);
-    if (!spi)
-        return -1;
-
-    *revents = 0;
-    if (events & POLLOUT) {
-        *revents |= POLLOUT;
-        ret = 1; /* TODO: implement interrupt for write events */
-    }
-    if ((events == POLLIN) && usart_is_recv_ready(spi->base)) {
-        *revents |= POLLIN;
-        ret = 1;
-    }
-    return ret;
 }
 
 static void spi_fno_init(struct fnode *dev, uint32_t n, const struct spi_addr * addr)
