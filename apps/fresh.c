@@ -52,25 +52,26 @@ static void ls(void *arg)
         strncat(fname, "/", MAX_FILE);
         strncat(fname, ep->d_name, MAX_FILE);
 
-        while (fname[0] == '/' && fname[1] == '/')
+        while (fname[0] == '/')
             fname++;
 
-        stat(fname, &st);
-        printf(fname);
-        printf( "\t");
-        if (S_ISDIR(st.st_mode)) {
-            type = 'd';
-        } else if (S_ISLNK(st.st_mode)) {
-            type = 'l';
-        } else {
-            snprintf(ch_size, 8, "%lu", st.st_size);
-            type = 'f';
-        }
+        if (stat(fname, &st) == 0) {
+            printf(fname);
+            printf( "\t");
+            if (S_ISDIR(st.st_mode)) {
+                type = 'd';
+            } else if (S_ISLNK(st.st_mode)) {
+                type = 'l';
+            } else {
+                snprintf(ch_size, 8, "%lu", st.st_size);
+                type = 'f';
+            }
 
-        printf( "%c", type);
-        printf( "    ");
-        printf( ch_size);
-        printf( "\r\n");
+            printf( "%c", type);
+            printf( "    ");
+            printf( ch_size);
+            printf( "\r\n");
+        }
     }
     closedir(d);
     free(ep);

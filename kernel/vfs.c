@@ -526,7 +526,10 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;
     struct stat *st = (struct stat *)arg2;
-    struct fnode *fno = fno_search_nofollow((char *)arg1);
+    char abs_p[MAX_FILE];
+    struct fnode *fno;
+    path_abs(path, abs_p, MAX_FILE);
+    fno = fno_search_nofollow(abs_p);
     if (!fno)
         return -ENOENT;
     st->st_owner = fno->owner;
