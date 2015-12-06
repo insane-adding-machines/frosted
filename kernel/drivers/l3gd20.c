@@ -20,7 +20,7 @@ static int devl3gd20_read(int fd, void *buf, unsigned int len);
 static int devl3gd20_write(int fd, const void *buf, unsigned int len);
 
 
-static struct module mod_devl3gd20 = {
+static const struct module mod_devl3gd20 = {
     .family = FAMILY_FILE,
     .name = "l3gd20",
     .ops.open = device_open,

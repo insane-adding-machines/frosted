@@ -34,7 +34,7 @@ static struct dev_spi DEV_SPI[MAX_SPIS];
 static int devspi_write(int fd, const void *buf, unsigned int len);
 static int devspi_read(int fd, void *buf, unsigned int len);
 
-static struct module mod_devspi = {
+static const struct module mod_devspi = {
     .family = FAMILY_FILE,
     .name = "spi",
     .ops.open = device_open,

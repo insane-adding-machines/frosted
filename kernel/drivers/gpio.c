@@ -127,7 +127,7 @@ static int devgpio_read(int fd, void *buf, unsigned int len);
 static int devgpio_poll(int fd, uint16_t events, uint16_t *revents);
 
 
-static struct module mod_devgpio = {
+static const struct module mod_devgpio = {
     .family = FAMILY_FILE,
     .name = "gpio",
     .ops.open = device_open,
