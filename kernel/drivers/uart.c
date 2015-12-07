@@ -42,7 +42,7 @@ static int devuart_write(int fd, const void *buf, unsigned int len);
 static int devuart_read(int fd, void *buf, unsigned int len);
 static int devuart_poll(int fd, uint16_t events, uint16_t *revents);
 
-static const struct module mod_devuart = {
+static struct module mod_devuart = {
     .family = FAMILY_FILE,
     .name = "uart",
     .ops.open = device_open,

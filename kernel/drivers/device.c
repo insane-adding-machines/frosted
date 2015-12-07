@@ -9,7 +9,7 @@ int device_open(const char *path, int flags)
     return task_filedesc_add(f); 
 }
 
-const void *device_check_fd(int fd, struct module * mod)
+const void *device_check_fd(int fd, const struct module * mod)
 {
     struct fnode *fno;
     fno = task_filedesc_get(fd);
