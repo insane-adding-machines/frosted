@@ -23,6 +23,7 @@
 #include "libopencm3/stm32/usart.h"
 #include "libopencm3/cm3/nvic.h"
 #include <libopencm3/stm32/exti.h>
+#include <libopencm3/stm32/adc.h>
 
 #ifdef CONFIG_DEVUART
 #include "uart.h"
@@ -42,6 +43,9 @@
 #include "l3gd20.h"
 #endif
 
+#ifdef CONFIG_DEVADC
+#include "adc.h"
+#endif
 
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { 
@@ -73,12 +77,15 @@ static const struct gpio_addr gpio_addrs[] = {
             {.base=GPIOA, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
 
 #endif
-#ifdef CONFIG_L3GD20
-            /* PA7 CS - PE3 INT1 - PE0 INT2 - PE1 */
-            {.base=GPIOE, .pin=GPIO3,.mode=GPIO_MODE_OUTPUT, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL},
-            {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name=NULL},
-            {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name=NULL},
+#ifdef CONFIG_DEVL3GD20
+            /* CS - PE3 INT1 - PE0 INT2 - PE1 */
+            {.base=GPIOE, .pin=GPIO3,.mode=GPIO_MODE_OUTPUT, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name="L3GD20_CS"},
+            {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="L3GD20_INT1"},
+            {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="L3GD20_INT2"},
 #endif
+#endif
+#ifdef CONFIG_DEVADC
+            {.base=GPIOA, .pin=GPIO1,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
 #endif
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
@@ -154,16 +161,30 @@ static const struct spi_addr spi_addrs[] = {
 static const struct l3gd20_addr l3gd20_addrs[] = { 
         {
             .spi_name = "spi1",
-            .spi_cs_name = "",
-            .int_1_name = "",
-            .int_2_name = "",
+            .spi_cs_name = "L3GD20_CS",
+            .int_1_name = "L3GD20_INT1",
+            .int_2_name = "L3GD20_INT2",
             .name = "l3gd20",
         }
 };
 #define NUM_L3GD20 (sizeof(l3gd20_addrs)/sizeof(struct l3gd20_addr))
 #endif
-
 #endif
+
+#ifdef CONFIG_DEVADC
+static const struct adc_addr adc_addrs[] = { 
+        {
+            .base = ADC1, 
+            .irq = NVIC_ADC_IRQ, 
+            .rcc = RCC_ADC1,
+            .name = "adc",
+            .channel_array = {1},     /*ADC_IN1 on PA1 */
+            .num_channels = 1,
+        }
+};
+#define NUM_ADC (sizeof(adc_addrs)/sizeof(struct adc_addr))
+#endif
+
 
 void machine_init(struct fnode * dev)
 {
@@ -187,6 +208,9 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_DEVL3GD20
     l3gd20_init(dev, l3gd20_addrs, NUM_L3GD20);
 #endif
+#endif
+#ifdef CONFIG_DEVADC
+    adc_init(dev, adc_addrs, NUM_ADC);
 #endif
 }
 

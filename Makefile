@@ -58,6 +58,9 @@ CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 OBJS-$(DEVGPIO)+=kernel/drivers/gpio.o
 CFLAGS-$(DEVGPIO)+=-DCONFIG_DEVGPIO
 
+OBJS-$(DEVADC)+=kernel/drivers/adc.o
+CFLAGS-$(DEVADC)+=-DCONFIG_DEVADC
+
 OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o 
 OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o 
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o 
