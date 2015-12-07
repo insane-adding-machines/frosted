@@ -143,6 +143,8 @@ struct fnode {
     struct fnode *next;
 };
 
+#define FNO_MOD_PRIV(fno,mod) (((fno == NULL)?NULL:((mod != fno->owner)?NULL:(fno->priv))))
+
 struct mountpoint 
 {
     struct fnode *target;
@@ -178,15 +180,15 @@ struct module {
     /* TODO: perhaps we should make a union here... */
     struct module_operations {
         /* Common module operations */
-        int (*read)(int fd, void *buf, unsigned int len);
-        int (*write)(int fd, const void *buf, unsigned int len);
-        int (*poll)(int fd, uint16_t events, uint16_t *revents);
-        int (*close)(int fd);
-        int (*ioctl)(int fd, const uint32_t cmd, void *arg);
+        int (*read) (struct fnode *fno, void *buf, unsigned int len);
+        int (*write)(struct fnode *fno, const void *buf, unsigned int len);
+        int (*poll) (struct fnode *fno, uint16_t events, uint16_t *revents);
+        int (*close)(struct fnode *fno);
+        int (*ioctl)(struct fnode *fno, const uint32_t cmd, void *arg);
 
         /* Files only (NULL == socket) */
         int (*open)(const char *path, int flags);
-        int (*seek)(int fd, int offset, int whence);
+        int (*seek)(struct fnode *fno, int offset, int whence);
         int (*creat)(struct fnode *fno);
         int (*unlink)(struct fnode *fno);
         void * (*exe)(struct fnode *fno, void *arg);

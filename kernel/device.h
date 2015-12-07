@@ -10,7 +10,6 @@ struct device {
 };
 
 int device_open(const char *path, int flags);
-const void *device_check_fd(int fd, const struct module * mod);
 struct device *  device_fno_init(struct module * mod, const char * name, struct fnode *node, uint32_t flags,void * priv);
 
 

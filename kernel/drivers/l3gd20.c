@@ -20,8 +20,8 @@ struct dev_l3gd20 {
 
 static struct dev_l3gd20 DEV_L3GD20S[MAX_L3GD20S];
 
-static int devl3gd20_read(int fd, void *buf, unsigned int len);
-static int devl3gd20_write(int fd, const void *buf, unsigned int len);
+static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len);
+static int devl3gd20_write(struct fnode *fno, const void *buf, unsigned int len);
 
 
 static struct module mod_devl3gd20 = {
@@ -32,27 +32,23 @@ static struct module mod_devl3gd20 = {
     .ops.write = devl3gd20_write,
 };
 
-static int devl3gd20_write(int fd, const void *buf, unsigned int len)
+static int devl3gd20_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     int i;
     char *ch = (char *)buf;
     const struct dev_l3gd20 *l3gd20;
 
-    l3gd20 = device_check_fd(fd, &mod_devl3gd20);
+    l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
     if (!l3gd20)
         return -1;
     if (len <= 0)
         return len;
-    if (fd < 0)
-        return -1;
-
-
 
     return len;
 }
 
 
-static int devl3gd20_read(int fd, void *buf, unsigned int len)
+static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
 {
     int out;
     volatile int len_available;
@@ -62,17 +58,9 @@ static int devl3gd20_read(int fd, void *buf, unsigned int len)
 
     if (len <= 0)
         return len;
-    if (fd < 0)
-        return -1;
-
-    l3gd20 = device_check_fd(fd, &mod_devl3gd20);
+    l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
     if (!l3gd20)
         return -1;
-
-
-
-
-
     return out;
 }
 

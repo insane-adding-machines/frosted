@@ -74,30 +74,28 @@ int sys_pipe2_hdlr(int paddr, int flags)
     return 0;
 }
 
-static int pipe_poll(int fd, uint16_t events, uint16_t *revents)
+static int pipe_poll(struct fnode *f, uint16_t events, uint16_t *revents)
 {
-    struct fnode *f = task_filedesc_get(fd);
     struct pipe_priv *pp;
+    /* TODO: Check direction ! */
     if (f->owner != &mod_pipe)
         return -EINVAL;
     pp = (struct pipe_priv *)f->priv;
     if (!pp) {
         return -EINVAL;
     }
-    if (fd < 0)
-        return -EINVAL;
 
-    if ((pp->r == fd) && pp->w < 0)
+    if (pp->w < 0)
        *revents = POLLHUP; 
 
-    if ((pp->w == fd) && pp->r < 0)
+    if (pp->r < 0)
        *revents = POLLHUP; 
 
-    if ((pp->r == fd) && (events & POLLIN) && (cirbuf_bytesinuse(pp->cb) > 0)) {
+    if ((events & POLLIN) && (cirbuf_bytesinuse(pp->cb) > 0)) {
         *revents |= POLLIN;
         return 1;
     }
-    if ((pp->w == fd) && (events & POLLOUT) && (cirbuf_bytesfree(pp->cb) > 0)) {
+    if ((events & POLLOUT) && (cirbuf_bytesfree(pp->cb) > 0)) {
         *revents |= POLLOUT;
         return 1;
     }
@@ -107,10 +105,12 @@ static int pipe_poll(int fd, uint16_t events, uint16_t *revents)
 }
 
 
-static int pipe_close(int fd)
+static int pipe_close(struct fnode *f)
 {
-    struct fnode *f = task_filedesc_get(fd);
     struct pipe_priv *pp;
+    uint16_t pid;
+    pid = scheduler_get_cur_pid();
+
     if (f->owner != &mod_pipe)
         return -EINVAL;
 
@@ -119,13 +119,13 @@ static int pipe_close(int fd)
         return -EINVAL;
 
     /* TODO: implement a fork hook, so fnodes have usage count */
-    if (pp->r == fd) {
+    if (pp->w_pid != pid) {
         pp->r = -1;
         if (pp->w_pid > 0)
             task_resume(pp->w_pid);
     }
     
-    if (pp->w == fd) {
+    if (pp->r_pid != pid) {
         pp->w = -1;
         if (pp->r_pid > 0)
             task_resume(pp->r_pid);
@@ -138,9 +138,8 @@ static int pipe_close(int fd)
     return 0;
 }
 
-static int pipe_read(int fd, void *buf, unsigned int len)
+static int pipe_read(struct fnode *f, void *buf, unsigned int len)
 {
-    struct fnode *f = task_filedesc_get(fd);
     struct pipe_priv *pp;
     int out, len_available;
     uint8_t *ptr = buf;
@@ -152,9 +151,6 @@ static int pipe_read(int fd, void *buf, unsigned int len)
     if (!pp)
         return -EINVAL;
 
-    if (pp->r != fd)
-        return -EPERM;
-    
     if (pp->w < 0)
         return -EPIPE;
     
@@ -175,9 +171,8 @@ static int pipe_read(int fd, void *buf, unsigned int len)
     return out;
 }
 
-static int pipe_write(int fd, const void *buf, unsigned int len)
+static int pipe_write(struct fnode *f, const void *buf, unsigned int len)
 {
-    struct fnode *f = task_filedesc_get(fd);
     struct pipe_priv *pp;
     int out, len_available;
     const uint8_t *ptr = buf;
@@ -188,9 +183,6 @@ static int pipe_write(int fd, const void *buf, unsigned int len)
     pp = (struct pipe_priv *)f->priv;
     if (!pp)
         return -EINVAL;
-
-    if (pp->w != fd)
-        return -EPERM;
 
     if (pp->r < 0)
         return -EPIPE;

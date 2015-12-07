@@ -10,27 +10,27 @@ struct xipfs_fnode {
     uint16_t pid;
 };
 
-static int xipfs_read(int fd, void *buf, unsigned int len)
+static int xipfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
     return -1;
 }
 
-static int xipfs_write(int fd, const void *buf, unsigned int len)
+static int xipfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     return -1; /* Cannot write! */
 }
 
-static int xipfs_poll(int fd, uint16_t events, uint16_t *revents)
+static int xipfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
     return -1;
 }
 
-static int xipfs_seek(int fd, int off, int whence)
+static int xipfs_seek(struct fnode *fno, int off, int whence)
 {
     return -1;
 }
 
-static int xipfs_close(int fd)
+static int xipfs_close(struct fnode *fno)
 {
     return 0;
 }

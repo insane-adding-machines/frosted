@@ -38,9 +38,9 @@ struct dev_uart {
 
 static struct dev_uart DEV_UART[MAX_UARTS];
 
-static int devuart_write(int fd, const void *buf, unsigned int len);
-static int devuart_read(int fd, void *buf, unsigned int len);
-static int devuart_poll(int fd, uint16_t events, uint16_t *revents);
+static int devuart_write(struct fnode *fno, const void *buf, unsigned int len);
+static int devuart_read(struct fnode *fno, void *buf, unsigned int len);
+static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents);
 
 static struct module mod_devuart = {
     .family = FAMILY_FILE,
@@ -133,21 +133,18 @@ void usart6_isr(void)
 }
 #endif
 
-static int devuart_write(int fd, const void *buf, unsigned int len)
+static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     int i;
     char *ch = (char *)buf;
     struct dev_uart *uart;
 
-    uart = (struct dev_uart *)device_check_fd(fd, &mod_devuart);
+    uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
     if (!uart)
         return -1;
     
     if (len <= 0)
         return len;
-    if (fd < 0)
-        return -1;
-
     if (uart->w_start == NULL) {
         uart->w_start = (uint8_t *)buf;
         uart->w_end = ((uint8_t *)buf) + len;
@@ -191,7 +188,7 @@ static int devuart_write(int fd, const void *buf, unsigned int len)
 }
 
 
-static int devuart_read(int fd, void *buf, unsigned int len)
+static int devuart_read(struct fnode *fno, void *buf, unsigned int len)
 {
     int out;
     volatile int len_available;
@@ -200,10 +197,8 @@ static int devuart_read(int fd, void *buf, unsigned int len)
 
     if (len <= 0)
         return len;
-    if (fd < 0)
-        return -1;
 
-    uart = (struct dev_uart *)device_check_fd(fd, &mod_devuart);
+    uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
     if (!uart)
         return -1;
 
@@ -235,12 +230,12 @@ again:
 }
 
 
-static int devuart_poll(int fd, uint16_t events, uint16_t *revents)
+static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
     int ret = 0;
     struct dev_uart *uart;
 
-    uart = (struct dev_uart *)device_check_fd(fd, &mod_devuart);
+    uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
     if (!uart)
         return -1;
 

@@ -85,7 +85,7 @@ int sys_read_hdlr(int fd, void *buf, int len)
 {
     struct fnode *fno = task_filedesc_get(fd);
     if (fno) {
-        return fno->owner->ops.read(fd, buf, len);
+        return fno->owner->ops.read(fno, buf, len);
     }
     return -ENOENT;
 }
@@ -96,7 +96,7 @@ int sys_write_hdlr(int fd, void *buf, int len)
     if (!fno)
         return -ENOENT;
     if (fno->owner && fno->owner->ops.write) {
-        return fno->owner->ops.write(fd, buf, len);
+        return fno->owner->ops.write(fno, buf, len);
     }
     return -EOPNOTSUPP;
 }

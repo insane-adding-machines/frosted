@@ -31,8 +31,8 @@ struct dev_spi {
 
 static struct dev_spi DEV_SPI[MAX_SPIS];
 
-static int devspi_write(int fd, const void *buf, unsigned int len);
-static int devspi_read(int fd, void *buf, unsigned int len);
+static int devspi_write(struct fnode *fno, const void *buf, unsigned int len);
+static int devspi_read(struct fnode *fno, void *buf, unsigned int len);
 
 static struct module mod_devspi = {
     .family = FAMILY_FILE,
@@ -78,19 +78,17 @@ void spi1_isr(void)
 }
 #endif
 
-static int devspi_write(int fd, const void *buf, unsigned int len)
+static int devspi_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     int i;
     char *ch = (char *)buf;
     struct dev_spi *spi;
 
-    spi = (struct dev_spi *)device_check_fd(fd, &mod_devspi);
+    spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
     if (!spi)
         return -1;
     if (len <= 0)
         return len;
-    if (fd < 0)
-        return -1;
 
     if (spi->w_start == NULL) {
         spi->w_start = (uint8_t *)buf;
@@ -137,7 +135,7 @@ static int devspi_write(int fd, const void *buf, unsigned int len)
 }
 
 
-static int devspi_read(int fd, void *buf, unsigned int len)
+static int devspi_read(struct fnode *fno, void *buf, unsigned int len)
 {
     int out;
     volatile int len_available;
@@ -146,10 +144,8 @@ static int devspi_read(int fd, void *buf, unsigned int len)
 
     if (len <= 0)
         return len;
-    if (fd < 0)
-        return -1;
 
-    spi = (struct dev_spi *)device_check_fd(fd, &mod_devspi);
+    spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
     if (!spi)
         return -1;
 

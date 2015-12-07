@@ -1,7 +1,6 @@
 #include "frosted.h"
 #include <string.h>
 
-static struct fnode *memfs;
 static struct module mod_memfs;
 
 
@@ -10,34 +9,15 @@ struct memfs_fnode {
     uint8_t *content;
 };
 
-static int memfs_check_fd(int fd, struct fnode **fno)
+static int memfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
-    *fno = task_filedesc_get(fd);
-    
-    if (!fno)
-        return -1;
-
-    if (fd < 0)
-        return -1;
-    if ((*fno)->owner != &mod_memfs)
-        return -1;
-    if ((*fno)->priv == NULL)
-        return -1;
-
-    return 0;
-}
-
-static int memfs_read(int fd, void *buf, unsigned int len)
-{
-    struct fnode *fno;
     struct memfs_fnode *mfno;
     if (len <= 0)
         return len;
 
-    if (memfs_check_fd(fd, &fno))
+    mfno = FNO_MOD_PRIV(fno, &mod_memfs);
+    if (!mfno)
         return -1;
-
-    mfno = fno->priv;
 
     if (fno->size <= (fno->off))
         return -1;
@@ -51,17 +31,15 @@ static int memfs_read(int fd, void *buf, unsigned int len)
 }
 
 
-static int memfs_write(int fd, const void *buf, unsigned int len)
+static int memfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
-    struct fnode *fno;
     struct memfs_fnode *mfno;
     if (len <= 0)
         return len;
 
-    if (memfs_check_fd(fd, &fno))
+    mfno = FNO_MOD_PRIV(fno, &mod_memfs);
+    if (!mfno)
         return -1;
-
-    mfno = fno->priv;
 
     if (fno->size < (fno->off + len)) {
         mfno->content = krealloc(mfno->content, fno->off + len);
@@ -75,21 +53,19 @@ static int memfs_write(int fd, const void *buf, unsigned int len)
     return len;
 }
 
-static int memfs_poll(int fd, uint16_t events, uint16_t *revents)
+static int memfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
     *revents = events;
     return 1;
 }
 
-static int memfs_seek(int fd, int off, int whence)
+static int memfs_seek(struct fnode *fno, int off, int whence)
 {
-    struct fnode *fno;
     struct memfs_fnode *mfno;
     int new_off;
-    if (memfs_check_fd(fd, &fno))
+    mfno = FNO_MOD_PRIV(fno, &mod_memfs);
+    if (!mfno)
         return -1;
-
-    mfno = fno->priv;
     switch(whence) {
         case SEEK_CUR:
             new_off = fno->off + off;
@@ -116,13 +92,12 @@ static int memfs_seek(int fd, int off, int whence)
     return 0;
 }
 
-static int memfs_close(int fd)
+static int memfs_close(struct fnode *fno)
 {
-    struct fnode *fno;
     struct memfs_fnode *mfno;
-    if (memfs_check_fd(fd, &fno))
+    mfno = FNO_MOD_PRIV(fno, &mod_memfs);
+    if (!mfno)
         return -1;
-    mfno = fno->priv;
     fno->off = 0;
     return 0;
 }

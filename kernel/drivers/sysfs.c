@@ -16,34 +16,16 @@ struct sysfs_fnode {
     int (*do_write)(struct sysfs_fnode *sfs, const void *buf, int len);
 };
 
-static int sysfs_check_fd(int fd, struct fnode **fno)
+static int sysfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
-    *fno = task_filedesc_get(fd);
-    
-    if (!fno)
-        return -1;
-
-    if (fd < 0)
-        return -1;
-    if ((*fno)->owner != &mod_sysfs)
-        return -1;
-    if ((*fno)->priv == NULL)
-        return -1;
-
-    return 0;
-}
-
-static int sysfs_read(int fd, void *buf, unsigned int len)
-{
-    struct fnode *fno;
     struct sysfs_fnode *mfno;
     if (len <= 0)
         return len;
 
-    if (sysfs_check_fd(fd, &fno))
+    mfno = FNO_MOD_PRIV(fno, &mod_sysfs);
+    if (!mfno)
         return -1;
 
-    mfno = fno->priv;
     if (mfno->do_read) {
         return mfno->do_read(mfno, buf, len);
     }
@@ -51,17 +33,16 @@ static int sysfs_read(int fd, void *buf, unsigned int len)
 
 }
 
-static int sysfs_write(int fd, const void *buf, unsigned int len)
+static int sysfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
-    struct fnode *fno;
     struct sysfs_fnode *mfno;
     if (len <= 0)
         return len;
 
-    if (sysfs_check_fd(fd, &fno))
+    mfno = FNO_MOD_PRIV(fno, &mod_sysfs);
+    if (mfno)
         return -1;
 
-    mfno = fno->priv;
     if (mfno->do_write) {
         return mfno->do_write(mfno, buf, len);
     }
@@ -69,19 +50,18 @@ static int sysfs_write(int fd, const void *buf, unsigned int len)
 
 }
 
-static int sysfs_poll(int fd, uint16_t events, uint16_t *revents)
+static int sysfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
     *revents = events;
     return 1;
 }
 
-static int sysfs_close(int fd)
+static int sysfs_close(struct fnode *fno)
 {
-    struct fnode *fno;
     struct sysfs_fnode *mfno;
-    if (sysfs_check_fd(fd, &fno))
+    mfno = FNO_MOD_PRIV(fno, &mod_sysfs);
+    if (!mfno)
         return -1;
-    mfno = fno->priv;
     fno->off = 0;
     return 0;
 }
@@ -392,7 +372,6 @@ int sysfs_register(char *name,
     struct fnode *fno = fno_create(&mod_sysfs, name, sysfs);
     struct sysfs_fnode *mfs = kalloc(sizeof(struct sysfs_fnode));
     if (mfs) {
-
         mfs->fnode = fno;
         fno->priv = mfs;
         mfs->do_read = do_read;

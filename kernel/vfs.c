@@ -412,6 +412,8 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         return -EISDIR;
     if (flags & O_APPEND) {
         f->off = f->size;
+    } else {
+        f->off = 0;
     }
     return task_filedesc_add(f); 
 }
