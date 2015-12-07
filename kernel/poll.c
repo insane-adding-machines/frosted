@@ -35,7 +35,7 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
             if (!f || !f->owner || !f->owner->ops.poll) {
                 return -EOPNOTSUPP;
             }
-            ret += f->owner->ops.poll(pfd[i].fd, pfd[i].events, &pfd[i].revents);
+            ret += f->owner->ops.poll(f, pfd[i].events, &pfd[i].revents);
         }
         if (ret > 0)
             return ret;

@@ -121,10 +121,10 @@ void eint3_isr(void)
 
 #endif
 
-static int devgpio_write(int fd, const void *buf, unsigned int len);
-static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg);
-static int devgpio_read(int fd, void *buf, unsigned int len);
-static int devgpio_poll(int fd, uint16_t events, uint16_t *revents);
+static int devgpio_write(struct fnode *fno, const void *buf, unsigned int len);
+static int devgpio_ioctl(struct fnode *fno, const uint32_t cmd, void *arg);
+static int devgpio_read (struct fnode *fno, void *buf, unsigned int len);
+static int devgpio_poll (struct fnode *fno, uint16_t events, uint16_t *revents);
 
 
 static const struct module mod_devgpio = {
@@ -148,7 +148,7 @@ void GPIO_Handler(void)
         task_resume(gpio_pid);
 }
 
-static int devgpio_write(int fd, const void *buf, unsigned int len)
+static int devgpio_write(struct fnode *, const void *buf, unsigned int len)
 {
      struct dev_gpio *gpio;
     char *arg = (char *)buf;
@@ -168,7 +168,7 @@ static int devgpio_write(int fd, const void *buf, unsigned int len)
     }
 }
 
-static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
+static int devgpio_ioctl(struct fnode *, const uint32_t cmd, void *arg)
 {
      struct dev_gpio *gpio;
 
@@ -199,7 +199,7 @@ static int devgpio_ioctl(int fd, const uint32_t cmd, void *arg)
     return 0;
 }
 
-static int devgpio_read(int fd, void *buf, unsigned int len)
+static int devgpio_read(struct fnode *, void *buf, unsigned int len)
 {
     int out;
     struct dev_gpio *gpio;
@@ -223,7 +223,7 @@ static int devgpio_read(int fd, void *buf, unsigned int len)
 }
 
 
-static int devgpio_poll(int fd, uint16_t events, uint16_t *revents)
+static int devgpio_poll(struct fnode *, uint16_t events, uint16_t *revents)
 {
     int ret = 0;
     *revents = 0;
