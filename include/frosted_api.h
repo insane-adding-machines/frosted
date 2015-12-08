@@ -52,20 +52,7 @@ struct dirent {
 #define S_IFMT     0170000   // bit mask for the file type bit fields
 #define P_IFMT     0000007   // bit mask for file permissions
 
-#define S_IFSOCK   0140000   // socket
-#define S_IFLNK    0120000   // symbolic link
-#define S_IFREG    0100000   // regular file
-#define S_IFBLK    0060000   // block device
-#define S_IFDIR    0040000   // directory
-#define S_IFCHR    0020000   // character device
-#define S_IFIFO    0010000   // FIFO
-
 #define P_EXEC     0000001   // exec
-
-#define S_ISREG(m)  (((m) & S_IFMT) == S_IFREG)    // is it a regular file?
-#define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)    // directory?
-#define S_ISLNK(m)  (((m) & S_IFMT) == S_IFLNK)    // link?
-#define S_ISCHR(m)  (((m) & S_IFMT) == S_IFCHR)    // character device?
 
 
 /* for unix sockets */

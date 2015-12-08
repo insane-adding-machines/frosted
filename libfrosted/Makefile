@@ -85,6 +85,8 @@ OBJS-y+=						\
 		sleep.o					\
 		shutdown.o				\
 		syscall.o				\
+		syscall_table.o			\
+		svc.o	    			\
 		ttyname.o				\
 		thread_create.o			\
 		thread_join.o			\
@@ -115,6 +117,7 @@ all: $(OBJS-y)
 	@$(AR) cru $(PREFIX)/lib/$(LIBNAME) $(OBJS-y)
 
 clean:
+	@rm -f syscall_table.c
 	@rm -f $(OBJS-y)
 	@rm -f $(PREFIX)/lib/$(LIBNAME)
 

@@ -80,10 +80,11 @@ syscalls = [
 #######
 #################################################################
 hdr = open("../include/syscall_table.h", "w")
+usercode = open("../libfrosted/syscall_table.c", "w")
 code = open("syscall_table.c", "w")
-vector_c = open("syscall_vector.c", "w")
 
 hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n")
+usercode.write("/* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include <stdint.h>\n#include \"syscall_table.h\"\n")
 code.write("/* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include \"frosted.h\"\n#include \"syscall_table.h\"\n")
 
 for n in range(len(syscalls)):
@@ -94,38 +95,39 @@ hdr.write("#define _SYSCALLS_NR (%d) /* We have %d syscalls! */\n" % (len(syscal
 for n in range(len(syscalls)):
     name = syscalls[n][0]
     tp = syscalls[n][1]
-    code.write( "/* Syscall: %s(%d arguments) */\n" % (name, tp))
+    usercode.write( "/* Syscall: %s(%d arguments) */\n" % (name, tp))
     if (tp == 0):
-        code.write( "int sys_%s(void){\n" % name)
-        code.write( "    syscall(SYS_%s, 0, 0, 0, 0, 0); \n" % name.upper())
-        code.write( "}\n")
-        code.write("\n")
+        usercode.write( "int sys_%s(void){\n" % name)
+        usercode.write( "    syscall(SYS_%s, 0, 0, 0, 0, 0); \n" % name.upper())
+        usercode.write( "}\n")
+        usercode.write("\n")
     if (tp == 1):
-        code.write( "int sys_%s(uint32_t arg1){\n" % name)
-        code.write( "    syscall(SYS_%s, arg1, 0, 0, 0, 0); \n" % name.upper())
-        code.write( "}\n")
-        code.write("\n")
+        usercode.write( "int sys_%s(uint32_t arg1){\n" % name)
+        usercode.write( "    syscall(SYS_%s, arg1, 0, 0, 0, 0); \n" % name.upper())
+        usercode.write( "}\n")
+        usercode.write("\n")
     if (tp == 2):
-        code.write( "int sys_%s(uint32_t arg1, uint32_t arg2){\n" % name)
-        code.write( "    syscall(SYS_%s, arg1, arg2, 0, 0, 0); \n" % name.upper())
-        code.write( "}\n")
-        code.write("\n")
+        usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2){\n" % name)
+        usercode.write( "    syscall(SYS_%s, arg1, arg2, 0, 0, 0); \n" % name.upper())
+        usercode.write( "}\n")
+        usercode.write("\n")
     if (tp == 3):
-        code.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3){\n" % name)
-        code.write( "    syscall(SYS_%s, arg1, arg2, arg3, 0,  0); \n" % name.upper())
-        code.write( "}\n")
-        code.write("\n")
+        usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3){\n" % name)
+        usercode.write( "    syscall(SYS_%s, arg1, arg2, arg3, 0,  0); \n" % name.upper())
+        usercode.write( "}\n")
+        usercode.write("\n")
     if (tp == 4):
-        code.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4){\n" % name)
-        code.write( "    syscall(SYS_%s, arg1, arg2, arg3, arg4, 0); \n" % name.upper())
-        code.write( "}\n")
-        code.write("\n")
+        usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4){\n" % name)
+        usercode.write( "    syscall(SYS_%s, arg1, arg2, arg3, arg4, 0); \n" % name.upper())
+        usercode.write( "}\n")
+        usercode.write("\n")
     if (tp == 5):
-        code.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){\n" % name)
-        code.write( "    syscall(SYS_%s, arg1, arg2, arg3, arg4, arg5); \n" % name.upper())
-        code.write( "}\n")
-        code.write("\n")
+        usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){\n" % name)
+        usercode.write( "    syscall(SYS_%s, arg1, arg2, arg3, arg4, arg5); \n" % name.upper())
+        usercode.write( "}\n")
+        usercode.write("\n")
 
+usercode.close()
 
 
 code.write("/* External handlers (defined elsewhere) : */ \n")
@@ -141,18 +143,3 @@ for n in range(len(syscalls)):
     code.write( "\tsys_register_handler(%d, %s);\n" % (n, call) );
 code.write("}\n")
 code.close()
-
-vector_c.write("#include <stdint.h>\n")
-vector_c.write("/* Syscall table Vector array */ \n")
-for s in syscalls:
-    vector_c.write("extern int sys_%s( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t );\n" % s[0])
-vector_c.write("int __attribute__((used,section(\".syscall_vector\"))) (* const _k__syscall__[%d])( uint32_t, uint32_t, uint32_t, uint32_t, uint32_t ) = {\n" % len(syscalls))
-
-for n in range(len(syscalls) - 1):
-    name = syscalls[n][0]
-    vector_c.write("\tsys_%s,\n" % (name))
-name = syscalls[-1][0]
-vector_c.write("\tsys_%s\n" % (name))
-vector_c.write("};\n")
-
-vector_c.close()

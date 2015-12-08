@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int fd);
+extern int sys_close(int fd);
 
 int close(int fd)
 {
-    return __syscall__[SYS_CLOSE](fd);
+    return sys_close(fd);
 }
 

@@ -99,7 +99,6 @@ image.bin: kernel.elf apps.elf
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=0x40000 apps.elf apps.bin
 	cat apps.bin >> $@
 	#cat apps/apps.bflt >> $@
-	#cat apps/apps.bin >> $@
 
 apps/apps.ld: apps/apps.ld.in
 	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\

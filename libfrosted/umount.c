@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char *target, uint32_t flags);
+extern int sys_umount(char *target, uint32_t flags);
 
 int umount(char *target, uint32_t flags)
 {
     (void)flags; /* flags unimplemented for now */
-    return __syscall__[SYS_UMOUNT](target, flags);
+    return sys_umount(target, flags);
 }

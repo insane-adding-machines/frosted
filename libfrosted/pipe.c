@@ -8,15 +8,15 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int fd[2], int flags);
+extern int sys_pipe2(int fd[2], int flags);
 
 
 int pipe2(int fd[2], int flags)
 {
-    return __syscall__[SYS_PIPE2](fd, flags);
+    return sys_pipe2(fd, flags);
 }
 
 int pipe(int fd[2])
 {
-    return __syscall__[SYS_PIPE2](fd, 0);
+    return sys_pipe2(fd, 0);
 }

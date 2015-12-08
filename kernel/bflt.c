@@ -84,7 +84,7 @@ int process_GOT_relocs(uint8_t * base, unsigned long * got_start)
     for (rp; *rp != 0xffffffff; rp++) {
         if (*rp) {
             /* this will remap pointers starting from address 0x0, to wherever they are actually loaded in the memory map (.text reloc) */
-            unsigned long addr = (unsigned long)calc_reloc(base, *rp);
+            unsigned long addr = (unsigned long)calc_reloc(base + sizeof(struct flat_hdr), *rp);
             if (addr == RELOC_FAILED) {
                 //errno = -ENOEXEC;
                 return -1;
@@ -170,7 +170,7 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base,  unsigned long *
  * +------------------------+   bss_end
  */
 
-int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_point)(int,char*[]), size_t *stack_size) {
+int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_point)(int,char*[]), size_t *stack_size, uint32_t *got_loc) {
     struct flat_hdr hdr;
     void * mem = NULL;
 	uint32_t text_len, data_len, bss_len, stack_len, flags, alloc_len, start_of_file;
@@ -266,6 +266,7 @@ int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_poin
 	if (flags & FLAT_FLAG_GOTPIC) {
         //printf("GOT-PIC!\n");
         process_GOT_relocs(address_zero, data_dest_start); // .data section is beginning of GOT
+        *got_loc = data_dest_start;
 	}
 
 	/*

@@ -10,9 +10,9 @@ extern int errno;
 
 struct pollfd;
 
-extern int (**__syscall__)(struct pollfd *pfd, int nfds, int timeout);
+extern int sys_poll(struct pollfd *pfd, int nfds, int timeout);
 
 int poll(struct pollfd *pfd, int nfds, int timeout)
 {
-    return __syscall__[SYS_POLL](pfd, nfds, timeout);
+    return sys_poll(pfd, nfds, timeout);
 }

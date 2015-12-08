@@ -7,9 +7,9 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(void);
+extern int sys_getppid(void);
 
 int getppid(void)
 {
-    return __syscall__[SYS_GETPPID]();
+    return sys_getppid();
 }

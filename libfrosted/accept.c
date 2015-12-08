@@ -9,8 +9,7 @@
 #include <string.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int sd, struct sockaddr_env *se);
-
+extern int sys_accept(int sd, struct sockaddr_env *se);
 
 int accept(int sd, struct sockaddr *sa, unsigned int *socklen)
 {
@@ -18,7 +17,7 @@ int accept(int sd, struct sockaddr *sa, unsigned int *socklen)
     int ret;
     se.se_addr = sa;
     se.se_len = *socklen;
-    ret =  __syscall__[SYS_ACCEPT](sd, &se);
+    ret =  sys_accept(sd, &se);
     if (ret > 0) {
         if (*socklen < se.se_len)
             return -1;

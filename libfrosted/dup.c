@@ -8,10 +8,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int fd);
+extern int sys_dup(int fd);
 
 
 int dup(int fd)
 {
-    return __syscall__[SYS_DUP](fd);
+    return sys_dup(fd);
 }

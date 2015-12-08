@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern void (**__syscall__)(void * ptr);
+extern void sys_mem_init(void * ptr);
 
 void mem_init(void * ptr)
 {
-    __syscall__[SYS_MEM_INIT](ptr);
+    sys_mem_init(ptr);
 }
 

@@ -8,11 +8,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(const char *path, mode_t mode);
+extern int sys_mkdir(const char *path, mode_t mode);
 
-/* TODO: add mode */
 int mkdir(const char *path, mode_t mode)
 {
-    return __syscall__[SYS_MKDIR](path, mode);
+    return sys_mkdir(path, mode);
 }
 

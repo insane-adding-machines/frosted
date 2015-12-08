@@ -7,15 +7,15 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char *cmd, char **args);
+extern int sys_exec(char *cmd, char **args);
 
 int exec(char *cmd, char **args)
 {
-    return __syscall__[SYS_EXEC](cmd, args);
+    return sys_exec(cmd, args);
 }
 
 int execve(char *cmd, char *argv[], char *envp[])
 {
     (void)envp;
-    return __syscall__[SYS_EXEC](cmd, (char **)argv);
+    return sys_exec(cmd, (char **)argv);
 }

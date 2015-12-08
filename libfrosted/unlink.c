@@ -7,9 +7,9 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char *name);
+extern int sys_unlink(char *name);
 
 int unlink (char * name)
 {
-    return __syscall__[SYS_UNLINK](name);
+    return sys_unlink(name);
 }

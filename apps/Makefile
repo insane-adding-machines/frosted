@@ -19,14 +19,14 @@ AR:=$(CROSS_COMPILE)ar
 # COMPILER FLAGS
 CFLAGS+=-I$(FROSTED_PATH)/kernel/libopencm3/include -I$(FROSTED_PATH)/kernel -I$(FROSTED_PATH)/include -I$(FROSTED_PATH)/include/libc 
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -fno-builtin -ffunction-sections -mcpu=cortex-m3
-CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common
+CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common -msingle-pic-base -mpic-register=r9 -mno-pic-data-is-text-relative
 CFLAGS+=-DCORE_M3 -DKLOG_LEVEL=6 
 #-DSYS_CLOCK=$(SYS_CLOCK)
 #debugging
 CFLAGS+=-ggdb
 
 # LINKER FLAGS
-LDFLAGS:=-L$(FROSTED_PATH)/build/lib -gc-sections --specs=nano.specs -nostartfiles
+LDFLAGS:=-L$(FROSTED_PATH)/build/lib -gc-sections --specs=nano.specs
 LDFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common -Wl,-elf2flt
 
 all: apps.bflt

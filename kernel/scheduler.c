@@ -439,7 +439,7 @@ void task_end(void)
     }
 }
 
-static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio)
+static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio, uint32_t r9val)
 {
     struct nvic_stack_frame *nvic_frame;
     struct extra_stack_frame *extra_frame;
@@ -464,8 +464,49 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     nvic_frame->psr = 0x01000000u;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
+    extra_frame->r9 = r9val;
     new->tb.sp = (uint32_t *)sp;
 } 
+
+int task_create_GOT(void (*init)(void *), void *arg, unsigned int prio, uint32_t got_loc)
+{
+    struct task *new;
+    int i;
+
+    irq_off();
+    if (number_of_tasks == 0) {
+        new = &struct_task_init;
+    } else {
+        new = task_space_alloc(sizeof(struct task));
+    }
+    if (!new) {
+        return -ENOMEM;
+    }
+    new->tb.pid = next_pid();
+    new->tb.ppid = scheduler_get_cur_pid();
+    new->tb.prio = prio;
+    new->tb.filedesc = NULL;
+    new->tb.n_files = 0;
+    new->tb.flags = 0;
+
+    /* Inherit cwd, file descriptors from parent */
+    if (new->tb.ppid > 1) { /* Start from parent #2 */
+        new->tb.cwd = task_getcwd();
+        for (i = 0; i < _cur_task->tb.n_files; i++) {
+            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
+        }
+    } 
+
+    new->tb.next = NULL;
+    tasklist_add(&tasks_running, new);
+
+    number_of_tasks++;
+    task_create_real(new, init, arg, prio, got_loc);
+    new->tb.state = TASK_RUNNABLE;
+    irq_on();
+    return new->tb.pid;
+}
+
 
 int task_create(void (*init)(void *), void *arg, unsigned int prio)
 {
@@ -500,7 +541,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
-    task_create_real(new, init, arg, prio);
+    task_create_real(new, init, arg, prio, 0);
     new->tb.state = TASK_RUNNABLE;
     irq_on();
     return new->tb.pid;
@@ -509,7 +550,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
 int scheduler_exec(void (*init)(void *), void *arg)
 {
     volatile struct task *t = _cur_task;
-    task_create_real(t, init, arg, t->tb.prio);
+    task_create_real(t, init, arg, t->tb.prio, 0);
     return 0;
 }
 

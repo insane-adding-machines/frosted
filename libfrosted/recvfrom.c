@@ -9,7 +9,7 @@
 #include <string.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int sd, void *buf, unsigned int len, int flags, struct sockaddr_env *se);
+extern int sys_recvfrom(int sd, void *buf, unsigned int len, int flags, struct sockaddr_env *se);
 
 
 int recvfrom(int sd, void *buf, unsigned int len, int flags, struct sockaddr *sa, unsigned int *socklen)
@@ -18,7 +18,7 @@ int recvfrom(int sd, void *buf, unsigned int len, int flags, struct sockaddr *sa
     int ret;
     se.se_addr = sa;
     se.se_len = *socklen;
-    ret = __syscall__[SYS_RECVFROM](sd, buf, len, flags, &se);
+    ret = sys_recvfrom(sd, buf, len, flags, &se);
     if (ret > 0) {
         if (*socklen < se.se_len)
             return -1;

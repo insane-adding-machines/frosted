@@ -9,10 +9,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int fd, int duration);
+extern int sys_tcsendbreak(int fd, int duration);
 
 
 int tcsendbreak(int fd, int duration)
 {
-    return __syscall__[SYS_TCSETATTR](fd, duration);
+    return sys_tcsendbreak(fd, duration);
 }

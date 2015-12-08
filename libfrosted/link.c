@@ -7,9 +7,9 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char *src, char *dst);
+extern int sys_link(char *src, char *dst);
 
 int link(char *src, char *dst)
 {
-    return __syscall__[SYS_LINK](src, dst);
+    return sys_link(src, dst);
 }
