@@ -250,10 +250,20 @@ int task_filedesc_add(struct fnode *f)
 
 int task_fd_setmask(int fd, uint32_t mask)
 {
-    /* TODO: This is where file permissions can be checked against open flags*/
+    struct fnode *fno = _cur_task->tb.filedesc[fd].fno;
+    if (!fno)
+        return -EINVAL;
 
-    if (_cur_task->tb.filedesc[fd].fno)
-        _cur_task->tb.filedesc[fd].mask = mask;
+    if (mask & O_RDONLY) {
+        if ((fno->flags & FL_RDONLY)== 0)
+            return -EPERM;
+    }
+    if (mask & O_WRONLY) {
+        if ((fno->flags & FL_WRONLY)== 0)
+            return -EPERM;
+    }
+
+    _cur_task->tb.filedesc[fd].mask = mask;
     return 0;
 }
 

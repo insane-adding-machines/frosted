@@ -192,7 +192,7 @@ static struct fnode *fno_create_dir(char *path)
 {
     struct fnode *fno = fno_create_file(path);
     if (fno) {
-        fno->flags |= FL_DIR;
+        fno->flags |= (FL_DIR | FL_RDWR);
     }
     return fno;
 }
@@ -311,6 +311,25 @@ struct fnode *fno_create(struct module *owner, const char *name, struct fnode *p
     struct fnode *fno = _fno_create(owner, name, parent);
     if (fno && parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
+    fno->flags |= FL_RDWR;
+    return fno;
+}
+
+struct fnode *fno_create_wronly(struct module *owner, const char *name, struct fnode *parent)
+{
+    struct fnode *fno = _fno_create(owner, name, parent);
+    if (fno && parent && parent->owner && parent->owner->ops.creat)
+        parent->owner->ops.creat(fno);
+    fno->flags = FL_WRONLY;
+    return fno;
+}
+
+struct fnode *fno_create_rdonly(struct module *owner, const char *name, struct fnode *parent)
+{
+    struct fnode *fno = _fno_create(owner, name, parent);
+    if (fno && parent && parent->owner && parent->owner->ops.creat)
+        parent->owner->ops.creat(fno);
+    fno->flags = FL_RDONLY;
     return fno;
 }
 
@@ -384,8 +403,12 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     path_abs(rel_path, path, MAX_FILE);
     f = fno_search(path);
     if (f && f->owner && f->owner->ops.open) {
+        if ((flags & O_RDONLY) && ((f->flags & FL_RDONLY)== 0))
+            return -EPERM;
+        if ((flags & O_WRONLY) && ((f->flags & FL_WRONLY)== 0))
+            return -EPERM;
         ret = f->owner->ops.open(path, flags);
-        if (ret >= 0)
+        if (ret >= 0) 
             task_fd_setmask(ret, flags);
         return ret;
     }
@@ -421,10 +444,12 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     } else {
         f->off = 0;
     }
-
+    if ((flags & O_RDONLY) && ((f->flags & FL_RDONLY)== 0))
+        return -EPERM;
+    if ((flags & O_WRONLY) && ((f->flags & FL_WRONLY)== 0))
+        return -EPERM;
     ret = task_filedesc_add(f);
-    if (ret >= 0)
-        task_fd_setmask(ret, flags);
+    task_fd_setmask(ret, flags);
     return ret; 
 }
 
