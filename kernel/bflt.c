@@ -233,7 +233,7 @@ int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_poin
 		//DBG_FLT("BINFMT_FLAT: ROM mapping of file (we hope)\n");
         
         /* Allocate enough memory for .data and .bss */
-        data_dest_start = kalloc(alloc_len);
+        data_dest_start = f_malloc(MEM_USER, alloc_len);
         if (!(data_dest_start))
         {
             klog(LOG_ERR, "Could not allocate enough memory for process");

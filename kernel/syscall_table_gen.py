@@ -28,7 +28,6 @@ syscalls = [
     ["unlink", 1, "sys_unlink_hdlr"],
     ["gettimeofday",1, "sys_gettimeofday_hdlr"],
     ["malloc", 1, "sys_malloc_hdlr"],
-    ["mem_init", 1, "sys_mem_init_hdlr"],
     ["free", 1, "sys_free_hdlr"],
     ["calloc", 2, "sys_calloc_hdlr"],
     ["realloc", 2, "sys_realloc_hdlr"],

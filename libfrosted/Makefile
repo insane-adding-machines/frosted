@@ -60,7 +60,6 @@ OBJS-y+=						\
 		link.o					\
 		lseek.o					\
 		listen.o				\
-		mem_init.o  			\
 		malloc.o				\
 		mkdir.o					\
 		mutex_init.o			\
