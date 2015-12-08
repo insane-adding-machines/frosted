@@ -40,6 +40,7 @@
 static char sccsid[] = "@(#)glob.c	8.3 (Berkeley) 10/13/93";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
+#include <sys/stat.h>
 
 /*
  * glob(3) -- a superset of the one defined in POSIX 1003.2.

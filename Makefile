@@ -13,7 +13,8 @@ CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
-CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -Ikernel/libopencm3/include -Ikernel -DCORE_M3 -Iinclude -Iinclude/libc -fno-builtin -ffreestanding -DKLOG_LEVEL=6 -DSYS_CLOCK=$(SYS_CLOCK)
+CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DKLOG_LEVEL=6 -DSYS_CLOCK=$(SYS_CLOCK)
+CFLAGS+=-Ikernel/libopencm3/include -Ikernel -Iinclude -Inewlb/include
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 
@@ -98,6 +99,7 @@ image.bin: kernel.elf apps.elf
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=0x40000 apps.elf apps.bin
 	cat apps.bin >> $@
 	#cat apps/apps.bflt >> $@
+	#cat apps/apps.bin >> $@
 
 apps/apps.ld: apps/apps.ld.in
 	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\

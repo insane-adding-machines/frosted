@@ -18,7 +18,8 @@
  *
  */  
 #include "frosted.h"
-#include <string.h>
+#include "string.h"
+#include "sys/stat.h"
 
 struct mountpoint *MTAB = NULL;
 

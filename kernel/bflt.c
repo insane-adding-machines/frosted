@@ -206,7 +206,7 @@ int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_poin
     //text_src_start      = address_zero + sizeof(struct flat_hdr);   // UNUSED?
     data_src_start      = address_zero + long_be(hdr.data_start);
     relocs_src_start    = address_zero + long_be(hdr.reloc_start);
-    *entry_point        = address_zero + long_be(hdr.entry); /* entrypoint */
+    *entry_point        = address_zero + (long_be(hdr.entry) & 0xFFFFFFFE); /* entrypoint - reset THUMB bit */
 	*stack_size         = stack_len;
 
 	/*

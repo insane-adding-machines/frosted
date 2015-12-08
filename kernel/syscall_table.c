@@ -68,9 +68,9 @@ int sys_seek(uint32_t arg1, uint32_t arg2, uint32_t arg3){
     syscall(SYS_SEEK, arg1, arg2, arg3, 0,  0); 
 }
 
-/* Syscall: mkdir(1 arguments) */
-int sys_mkdir(uint32_t arg1){
-    syscall(SYS_MKDIR, arg1, 0, 0, 0, 0); 
+/* Syscall: mkdir(2 arguments) */
+int sys_mkdir(uint32_t arg1, uint32_t arg2){
+    syscall(SYS_MKDIR, arg1, arg2, 0, 0, 0); 
 }
 
 /* Syscall: unlink(1 arguments) */

@@ -134,7 +134,9 @@ void frosted_kernel(void)
 
     /* Create "init" task */
     klog(LOG_INFO, "Starting Init task\n");
-    if (task_create(init, (void *)0, 2) < 0)
+    //if (task_create(init + 0x60 + 0x40, (void *)0, 2) < 0)
+    //if (task_create(flt_file + 0x60 + 0x40, (void *)0, 2) < 0)
+    if (task_create(init, (void *)0, 2) < 0) /* reset THUMB bit */
         IDLE();
 
     ktimer_add(1000, ktimer_test, NULL);

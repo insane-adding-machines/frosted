@@ -223,7 +223,6 @@ struct addrinfo {
  */
 #define	SCOPE_DELIMITER	'%'
 
-__BEGIN_DECLS
 void		endhostent(void);
 void		endhostent_r(FILE **, int *);
 void		endnetent(void);
@@ -266,26 +265,5 @@ void		freeaddrinfo(struct addrinfo *);
 char		*gai_strerror(int);
 int		setnetgrent(const char *);
 void		setservent(int);
-
-/*
- * PRIVATE functions specific to the FreeBSD implementation
- */
-
-/* DO NOT USE THESE, THEY ARE SUBJECT TO CHANGE AND ARE NOT PORTABLE!!! */
-void	_sethosthtent(int);
-void	_sethosthtent_r(int, FILE **, int *);
-void	_endhosthtent(void);
-void	_endhosthtent_r(FILE **, int *);
-void	_sethostdnsent(int);
-void	_endhostdnsent(void);
-void	_setnethtent(int);
-void	_endnethtent(void);
-void	_setnetdnsent(int);
-void	_endnetdnsent(void);
-struct hostent * _gethostbynisname(const char *, int);
-struct hostent * _gethostbynisaddr(const char *, int, int);
-void _map_v4v6_address(const char *, char *);
-void _map_v4v6_hostent(struct hostent *, char **, int *);
-__END_DECLS
 
 #endif /* !_NETDB_H_ */

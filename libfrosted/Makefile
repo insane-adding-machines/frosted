@@ -24,7 +24,7 @@ CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DARCH_$(ARCH)
 CFLAGS+=-DKLOG_LEVEL=6
 #Include paths
-CFLAGS+=-I. -I../include
+CFLAGS+=-I. -I../include -I../newlib/include
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding

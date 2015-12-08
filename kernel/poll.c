@@ -18,6 +18,7 @@
  *
  */  
 #include "frosted.h"
+#include "poll.h"
 
 int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
