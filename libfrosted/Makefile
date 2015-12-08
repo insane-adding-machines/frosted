@@ -69,6 +69,7 @@ OBJS-y+=						\
 		newlib_syscalls.o		\
 		open.o					\
 		opendir.o				\
+		pipe.o					\
 		poll.o					\
 		printf.o				\
 		pwd.o					\
