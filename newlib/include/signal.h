@@ -6,6 +6,10 @@
 
 _BEGIN_STD_C
 
+#ifdef __frosted__
+#define SA_RESTART	0x10000000u
+#endif
+
 typedef int	sig_atomic_t;		/* Atomic entity type (ANSI) */
 #ifndef _POSIX_SOURCE
 typedef _sig_func_ptr sig_t;		/* BSD naming */
