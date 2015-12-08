@@ -185,9 +185,9 @@ void fresh(void *arg) {
             /* backspace */
             if ((input[len-1] == 127)) {
                 if (len > 1) {
-                    printf( "%c", &del);
+                    write(out, &del, 1);
                     printf( " ");
-                    printf( "%c", &del);
+                    write(out, &del, 1);
                     len -= 2;
                 }else {
                     len -=1;
