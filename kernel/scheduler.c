@@ -109,6 +109,12 @@ static void * _top_stack;
 
 #define TASK_FLAG_VFORK 0x01
 
+struct filedesc {
+    struct fnode *fno;
+    uint32_t mask;
+};
+
+
 struct __attribute__((packed)) task_block {
     void (*start)(void *);
     void *arg;
@@ -120,7 +126,7 @@ struct __attribute__((packed)) task_block {
     uint16_t ppid;
     uint16_t n_files;
     struct fnode *cwd;
-    struct fnode **filedesc;
+    struct filedesc *filedesc;
     void *sp;
     struct task *next;
 };
@@ -211,25 +217,29 @@ static int next_pid(void)
     return ret;
 }
 
+
 /* Handling of file descriptors */
 static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
 {
     int i;
     void *re;
-    if (!t)
-        return -1;
+    if (!t || !f)
+        return -EINVAL;
     for (i = 0; i < t->tb.n_files; i++) {
-        if (t->tb.filedesc[i] == NULL) {
-            t->tb.filedesc[i] = f;
+        if (t->tb.filedesc[i].fno == NULL) {
+            t->tb.filedesc[i].fno = f;
+            f->usage++;
             return i;
         }
     }
     t->tb.n_files++;
-    re = (void *)krealloc(t->tb.filedesc, t->tb.n_files * sizeof(struct fnode *));
+    re = (void *)krealloc(t->tb.filedesc, t->tb.n_files * sizeof(struct filedesc));
     if (!re)
         return -1;
     t->tb.filedesc = re;
-    t->tb.filedesc[t->tb.n_files - 1] = f;
+    memset(&(t->tb.filedesc[t->tb.n_files - 1]), 0, sizeof(struct filedesc));
+    t->tb.filedesc[t->tb.n_files - 1].fno = f;
+    f->usage++;
     return t->tb.n_files - 1;
 }
 
@@ -238,24 +248,61 @@ int task_filedesc_add(struct fnode *f)
     return task_filedesc_add_to_task(_cur_task, f);
 }
 
+int task_fd_setmask(int fd, uint32_t mask)
+{
+    /* TODO: This is where file permissions can be checked against open flags*/
+
+    if (_cur_task->tb.filedesc[fd].fno)
+        _cur_task->tb.filedesc[fd].mask = mask;
+    return 0;
+}
+
+uint32_t task_fd_getmask(int fd)
+{
+    if (_cur_task->tb.filedesc[fd].fno)
+        return _cur_task->tb.filedesc[fd].mask;
+    return 0;
+}
+
 struct fnode *task_filedesc_get(int fd)
 {
     struct task *t = _cur_task;
     if (fd < 0)
         return NULL;
+    if (fd >= t->tb.n_files)
+        return NULL;
     if (!t)
         return NULL;
     if (!t->tb.filedesc || (( t->tb.n_files - 1) < fd))
         return NULL;
-    return t->tb.filedesc[fd];
+    if (t->tb.filedesc[fd].fno == NULL)
+        return NULL;
+    return t->tb.filedesc[fd].fno;
+}
+
+int task_fd_readable(int fd)
+{
+    if (!task_filedesc_get(fd) || ((_cur_task->tb.filedesc[fd].mask & O_RDONLY) == 0))
+        return 0;
+    return 1;
+}
+
+int task_fd_writable(int fd)
+{
+    if (!task_filedesc_get(fd) || ((_cur_task->tb.filedesc[fd].mask & O_WRONLY) == 0))
+        return 0;
+    return 1;
 }
 
 int task_filedesc_del(int fd)
 {
     struct task *t = _cur_task;
     if (!t)
-        return -1;
-    t->tb.filedesc[fd] = NULL;
+        return -EINVAL;
+    if (!t->tb.filedesc[fd].fno)
+        return -ENOENT;
+    t->tb.filedesc[fd].fno->usage--;
+    t->tb.filedesc[fd].fno = NULL;
 }
 
 int sys_dup_hdlr(int fd)
@@ -280,9 +327,9 @@ int sys_dup2_hdlr(int fd, int newfd)
         return -1;
     if (newfd >= t->tb.n_files)
         return -1;
-    if (t->tb.filedesc[newfd] != NULL)
+    if (t->tb.filedesc[newfd].fno != NULL)
         return -1;
-    t->tb.filedesc[newfd] = f;
+    t->tb.filedesc[newfd].fno = f;
     return newfd;
 }
 
@@ -435,7 +482,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     if (new->tb.ppid > 1) { /* Start from parent #2 */
         new->tb.cwd = task_getcwd();
         for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i]);
+            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
         }
     } 
 
@@ -477,7 +524,7 @@ int scheduler_vfork(void)
     if (new->tb.ppid > 1) { /* Start from parent #2 */
         new->tb.cwd = task_getcwd();
         for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i]);
+            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
         }
     } 
 
