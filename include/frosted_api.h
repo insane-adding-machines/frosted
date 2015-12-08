@@ -56,7 +56,6 @@ struct dirent {
 struct stat {
     uint32_t st_size;
     uint32_t st_mode;
-    struct module *st_owner;
 
     dev_t		st_dev;
     ino_t		st_ino;

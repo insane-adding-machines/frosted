@@ -569,7 +569,6 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     fno = fno_search_nofollow(abs_p);
     if (!fno)
         return -ENOENT;
-    st->st_owner = fno->owner;
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
         st->st_size = 0;
