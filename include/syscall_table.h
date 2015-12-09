@@ -61,4 +61,5 @@
 #define SYS_TCGETATTR 			(57)
 #define SYS_TCSENDBREAK 			(58)
 #define SYS_PIPE2 			(59)
-#define _SYSCALLS_NR (60) /* We have 60 syscalls! */
+#define SYS_SIGACTION 			(60)
+#define _SYSCALLS_NR (61) /* We have 61 syscalls! */

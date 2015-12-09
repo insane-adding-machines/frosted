@@ -20,6 +20,7 @@
 #include "frosted.h"
 #include "syscall_table.h"
 #include "string.h" /* flibc string.h */
+#include "signal.h"
 
 
 /* Full kernel space separation */
@@ -115,6 +116,13 @@ struct filedesc {
 };
 
 
+struct task_handler 
+{
+    int signo;
+    void (*hdlr)(int);
+    struct task_handler *next;
+};
+
 struct __attribute__((packed)) task_block {
     void (*start)(void *);
     void *arg;
@@ -126,6 +134,7 @@ struct __attribute__((packed)) task_block {
     uint16_t ppid;
     uint16_t n_files;
     struct fnode *cwd;
+    struct task_handler *sighdlr;
     struct filedesc *filedesc;
     void *sp;
     struct task *next;
@@ -217,8 +226,14 @@ static int next_pid(void)
     return ret;
 }
 
-
+/********************************/
 /* Handling of file descriptors */
+/********************************/
+/********************************/
+/********************************/
+/**/
+/**/
+/**/
 static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
 {
     int i;
@@ -343,6 +358,126 @@ int sys_dup2_hdlr(int fd, int newfd)
     return newfd;
 }
 
+/********************************/
+/*            Signals           */
+/********************************/
+/********************************/
+/********************************/
+/**/
+/**/
+/**/
+
+static int add_handler(struct task *t, int signo, void (*hdlr)(int))
+{
+    
+    struct task_handler *sighdlr;
+    if (!t || (t->tb.pid < 1))
+        return -EINVAL;
+
+    sighdlr = kalloc(sizeof(struct task_handler));
+    if (!sighdlr)
+        return -ENOMEM;
+
+    sighdlr->signo = signo;
+    sighdlr->hdlr = hdlr;
+    sighdlr->next = t->tb.sighdlr;
+    t->tb.sighdlr = sighdlr;
+    return 0;
+}
+
+static int del_handler(struct task *t, int signo)
+{
+    struct task_handler *sighdlr;
+    struct task_handler *prev = NULL;
+    if (!t || (t->tb.pid < 1))
+        return -EINVAL;
+
+    sighdlr = t->tb.sighdlr;
+    while(sighdlr) {
+        if (sighdlr->signo == signo) {
+            if (prev == NULL) {
+                t->tb.sighdlr = sighdlr->next;
+            } else {
+                prev->next = sighdlr->next;
+            }
+            kfree(sighdlr);
+            return 0;
+        }
+        prev = sighdlr;
+        sighdlr = sighdlr->next;
+    }
+    return -ESRCH;
+}
+
+void task_terminate(int pid);
+
+static int catch_signal(struct task *t, int signo)
+{
+    int i;
+    struct task_handler *sighdlr;
+    struct task_handler *h = NULL;
+
+    if (!t || (t->tb.pid < 1))
+        return -EINVAL;
+
+    if ((t->tb.state == TASK_ZOMBIE) || t->tb.state == TASK_OVER)
+        return -ESRCH;
+
+    sighdlr = t->tb.sighdlr;
+    while(sighdlr) {
+        if (signo == sighdlr->signo)
+            h = sighdlr;
+        sighdlr = sighdlr->next;
+    }
+
+    if (h) {
+        /* Handler is present */
+        if (_cur_task == t)
+        {
+            h->hdlr(signo); 
+        } else {
+            /* Execute signal handler on top of the current task stack */
+            struct nvic_stack_frame *old_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
+            struct nvic_stack_frame *nvic = t->tb.sp - NVIC_FRAME_SIZE;
+            nvic->lr = old_nvic->pc;
+            nvic->pc = (uint32_t)h->hdlr;
+            nvic->r0 = (uint32_t)signo;
+            t->tb.sp -= (NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE);
+            task_resume(t->tb.pid);
+        }
+    } else {
+        if (signo != SIGCHLD) {
+            /* Handler not present: SIG_DFL for now...*/
+            task_terminate(t->tb.pid);
+        }
+    }
+    return 0;
+}
+
+int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    struct sigaction *sa = (struct sigaction *)arg2;
+    struct sigaction *sa_old = (struct sigaction *)arg3;
+    
+    if (_cur_task->tb.pid < 1)
+        return -EINVAL;
+
+    if (arg1 >= SIGMAX || arg1 < 1)
+        return -EINVAL;
+
+    /* TODO: Populate sa_old */
+    add_handler(_cur_task, arg1, sa->sa_handler);
+    return 0; 
+}
+
+/********************************/
+/*           Scheduler          */
+/********************************/
+/********************************/
+/********************************/
+/**/
+/**/
+/**/
 struct fnode *task_getcwd(void)
 {
     return _cur_task->tb.cwd;
@@ -450,6 +585,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.cwd = fno_search("/");
+    new->tb.sighdlr = NULL;
 
     
     /* stack memory */
@@ -813,9 +949,12 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
 
 int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    /* For now, signal param is ignored. */
-    task_terminate(arg1);
-    return 0;
+    struct task *t = tasklist_get(&tasks_idling, arg1);
+    if (!t)
+        t = tasklist_get(&tasks_running, arg1);
+    if (!t)
+        return -ESRCH;
+    return catch_signal(t, arg2);
 }
 
 int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)

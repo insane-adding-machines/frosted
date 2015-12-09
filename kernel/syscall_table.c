@@ -64,6 +64,7 @@ extern int sys_tcsetattr_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_tcgetattr_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_tcsendbreak_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 extern int sys_pipe2_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern int sys_sigaction_hdlr(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 void syscalls_init(void) {
 	sys_register_handler(0, sys_setclock_hdlr);
@@ -126,4 +127,5 @@ void syscalls_init(void) {
 	sys_register_handler(57, sys_tcgetattr_hdlr);
 	sys_register_handler(58, sys_tcsendbreak_hdlr);
 	sys_register_handler(59, sys_pipe2_hdlr);
+	sys_register_handler(60, sys_sigaction_hdlr);
 }

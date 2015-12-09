@@ -78,6 +78,7 @@ OBJS-y+=						\
 		stat.o					\
 		sem_init.o				\
 		semaphore.o				\
+		sigaction.o				\
 		socket.o				\
 		sendto.o				\
 		setsockopt.o			\
@@ -93,6 +94,7 @@ OBJS-y+=						\
 		unlink.o				\
 		umount.o				\
 		uid.o					\
+		umask.o					\
 		wait.o					\
 		waitpid.o				\
 		write.o					\
