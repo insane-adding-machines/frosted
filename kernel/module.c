@@ -84,6 +84,8 @@ int register_addr_family(struct module *m, uint16_t family)
 int sys_read_hdlr(int fd, void *buf, int len)
 {
     struct fnode *fno = task_filedesc_get(fd);
+    if (!task_fd_readable(fd))
+        return -EPERM;
     if (fno) {
         return fno->owner->ops.read(fno, buf, len);
     }
@@ -93,6 +95,8 @@ int sys_read_hdlr(int fd, void *buf, int len)
 int sys_write_hdlr(int fd, void *buf, int len)
 {
     struct fnode *fno = task_filedesc_get(fd);
+    if (!task_fd_writable(fd))
+        return -EPERM;
     if (!fno)
         return -ENOENT;
     if (fno->owner && fno->owner->ops.write) {

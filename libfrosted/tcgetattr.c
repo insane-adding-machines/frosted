@@ -9,10 +9,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int fd, struct termios *termios_p);
+extern int sys_tcgetattr(int fd, struct termios *termios_p);
 
 
 int tcgetattr(int fd, struct termios *termios_p)
 {
-    return __syscall__[SYS_TCGETATTR](fd, termios_p);
+    return sys_tcgetattr(fd, termios_p);
 }

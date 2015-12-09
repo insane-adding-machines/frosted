@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern DIR *(**__syscall__)(const char *path);
+extern DIR *sys_opendir(const char *path);
 
 DIR *opendir(const char *path)
 {
-    return __syscall__[SYS_OPENDIR](path);
+    return sys_opendir(path);
 }
 

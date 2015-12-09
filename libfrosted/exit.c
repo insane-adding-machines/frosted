@@ -7,15 +7,15 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int val);
+extern int sys_exit(int val);
 
 int exit(int val)
 {
-    return __syscall__[SYS_EXIT](val);
+    return sys_exit(val);
 }
 
 int _exit(int val) {
-    return __syscall__[SYS_EXIT](val);
+    return sys_exit(val);
 }
 
 

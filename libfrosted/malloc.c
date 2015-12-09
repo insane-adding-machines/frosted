@@ -7,9 +7,9 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern void* (**__syscall__)(int size);
+extern void* sys_malloc(int size);
 
 void * malloc(int size)
 {
-    return __syscall__[SYS_MALLOC](size);
+    return sys_malloc(size);
 }

@@ -76,7 +76,12 @@ uint16_t scheduler_get_cur_ppid(void);
 int task_timeslice(void);
 int task_running(void);
 int task_filedesc_add(struct fnode *f);
+int task_fd_setmask(int fd, uint32_t mask);
+uint32_t task_fd_getmask(int fd);
 struct fnode *task_filedesc_get(int fd);
+
+int task_fd_readable(int fd);
+int task_fd_writable(int fd);
 int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
@@ -140,6 +145,7 @@ struct fnode {
     const void *priv;
     uint32_t size;
     uint32_t off;
+    uint32_t usage;
     struct fnode *next;
 };
 
@@ -152,6 +158,8 @@ struct mountpoint
 };
 
 struct fnode *fno_create(struct module *owner, const char *name, struct fnode *parent);
+struct fnode *fno_create_rdonly(struct module *owner, const char *name, struct fnode *parent);
+struct fnode *fno_create_wronly(struct module *owner, const char *name, struct fnode *parent);
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent);
 void fno_unlink(struct fnode *fno);
 struct fnode *fno_search(const char *path);

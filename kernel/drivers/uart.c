@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "uart_dev.h"
 #include "uart.h"
+#include "poll.h"
 
 #include "libopencm3/cm3/nvic.h"
 

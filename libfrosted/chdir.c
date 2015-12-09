@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char *path);
+extern int sys_chdir(char *path);
 
 int chdir(char *path)
 {
-    return __syscall__[SYS_CHDIR](path);
+    return sys_chdir(path);
 }
 

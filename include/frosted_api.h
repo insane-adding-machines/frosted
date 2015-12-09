@@ -1,7 +1,6 @@
 #ifndef INC_FROSTED_API
 #define INC_FROSTED_API
-#include <stdint.h>
-#include <sys/types.h>
+#include "stdint.h"
 
 #define INIT __attribute__((section(".init")))
 
@@ -50,59 +49,10 @@ struct dirent {
     char d_name[MAX_FILE];
 };
 
-/* stat */
-//#ifndef __frosted__
-// XXX temp for busybox
-struct stat {
-    uint32_t st_size;
-    uint32_t st_mode;
-    struct module *st_owner;
-
-    dev_t		st_dev;
-    ino_t		st_ino;
-    //mode_t	    st_mode;
-    nlink_t	    st_nlink;
-    uid_t		st_uid;
-    gid_t		st_gid;
-    dev_t		st_rdev;
-    //off_t		st_size;
-    time_t      st_atime;
-    time_t      st_mtime;
-    time_t      st_ctime;
-};
-//#endif
-
 #define S_IFMT     0170000   // bit mask for the file type bit fields
 #define P_IFMT     0000007   // bit mask for file permissions
 
-#define S_IFSOCK   0140000   // socket
-#define S_IFLNK    0120000   // symbolic link
-#define S_IFREG    0100000   // regular file
-#define S_IFBLK    0060000   // block device
-#define S_IFDIR    0040000   // directory
-#define S_IFCHR    0020000   // character device
-#define S_IFIFO    0010000   // FIFO
-
 #define P_EXEC     0000001   // exec
-
-#define S_ISREG(m)  (((m) & S_IFMT) == S_IFREG)    // is it a regular file?
-#define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)    // directory?
-#define S_ISLNK(m)  (((m) & S_IFMT) == S_IFLNK)    // link?
-#define S_ISCHR(m)  (((m) & S_IFMT) == S_IFCHR)    // character device?
-
-/* poll */
-#define POLLIN		0x0001
-#define POLLPRI		0x0002
-#define POLLOUT		0x0004
-#define POLLERR		0x0008
-#define POLLHUP		0x0010
-#define POLLNVAL	0x0020
-
-struct pollfd {
-    int fd;
-    uint16_t events;
-    uint16_t revents;
-};
 
 
 /* for unix sockets */

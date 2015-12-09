@@ -8,7 +8,7 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int sd, const void *buf, unsigned int len, int flags, struct sockaddr_env *se);
+extern int sys_sendto(int sd, const void *buf, unsigned int len, int flags, struct sockaddr_env *se);
 
 
 int sendto(int sd, const void *buf, unsigned int len, int flags, struct sockaddr *sa, unsigned int socklen)
@@ -17,5 +17,5 @@ int sendto(int sd, const void *buf, unsigned int len, int flags, struct sockaddr
     int ret;
     se.se_addr = sa;
     se.se_len = socklen;
-    return __syscall__[SYS_SENDTO](sd, buf, len, flags, &se);
+    return sys_sendto(sd, buf, len, flags, &se);
 }

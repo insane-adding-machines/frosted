@@ -8,7 +8,7 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int sd, struct sockaddr_env *se);
+extern int sys_connect(int sd, struct sockaddr_env *se);
 
 
 int connect(int sd, struct sockaddr *sa, unsigned int socklen)
@@ -17,5 +17,5 @@ int connect(int sd, struct sockaddr *sa, unsigned int socklen)
     int ret;
     se.se_addr = sa;
     se.se_len = socklen;
-    return __syscall__[SYS_CONNECT](sd, &se);
+    return sys_connect(sd, &se);
 }

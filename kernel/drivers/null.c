@@ -48,8 +48,8 @@ void devnull_init(struct fnode *dev)
     mod_devnull.ops.poll = devnull_poll;
     mod_devnull.ops.write = devnull_write;
 
-    devnull = fno_create(&mod_devnull, "null", dev);
-    devzero = fno_create(&mod_devnull, "zero", dev);
+    devnull = fno_create_wronly(&mod_devnull, "null", dev);
+    devzero = fno_create_rdonly(&mod_devnull, "zero", dev);
     register_module(&mod_devnull);
 }
 

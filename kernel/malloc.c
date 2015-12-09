@@ -60,7 +60,7 @@ static char * heap_end_user;
 
 struct f_malloc_stats f_malloc_stats[2] = {};
 
-static const uint32_t kmem_size = (CONFIG_KRAM_SIZE << 10);
+#define KMEM_SIZE   (CONFIG_KRAM_SIZE << 10)
 
 /*------------------*/
 /* Local functions  */
@@ -144,7 +144,7 @@ static void * f_sbrk(int user, int incr)
 
     if (heap_end_kernel == 0) {
         heap_end_kernel = &end;
-        heap_end_user = NULL;
+        heap_end_user = heap_end_kernel + KMEM_SIZE;
     }
 
     if (user) {
@@ -153,7 +153,7 @@ static void * f_sbrk(int user, int incr)
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
     } else {
-        if ((heap_end_kernel + incr) > ((&end) + kmem_size))
+        if ((heap_end_kernel + incr) > ((&end) + KMEM_SIZE))
             return (void*)(0 - 1);
         prev_heap_end = heap_end_kernel;
         heap_end_kernel += incr;
@@ -335,15 +335,6 @@ int sys_realloc_hdlr(int addr, int size)
 {
     return (int)f_realloc(MEM_USER, (void *)addr, size);
 }
-
-int sys_mem_init_hdlr(int addr)
-{
-    if (heap_end_user != NULL)
-        return -1;
-    heap_end_user = (uint8_t *)addr;
-
-}
-
 
 /*------------------*/
 /* Test functions   */

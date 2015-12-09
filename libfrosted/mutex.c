@@ -7,19 +7,21 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int(**__syscall__)(frosted_mutex_t *s);
+extern sys_mutex_unlock(frosted_mutex_t *s);
+extern sys_mutex_lock(frosted_mutex_t *s);
+extern sys_mutex_destroy(frosted_mutex_t *s);
 
 int mutex_unlock(frosted_mutex_t *s)
 {
-    return __syscall__[SYS_MUTEX_UNLOCK](s);
+    return sys_mutex(s);
 }
 
 int mutex_lock(frosted_mutex_t *s)
 {
-    return __syscall__[SYS_MUTEX_LOCK](s);
+    return sys_mutex_lock(s);
 }
 
 int mutex_destroy(frosted_mutex_t *s)
 {
-    return __syscall__[SYS_MUTEX_DESTROY](s);
+    return sys_mutex_destroy(s);
 }

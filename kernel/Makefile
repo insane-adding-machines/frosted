@@ -50,11 +50,9 @@ ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 
 OBJS-y+= \
-	svc.o				\
 	frosted.o			\
 	string.o			\
 	sys.o				\
-	syscall.o			\
 	locks.o				\
 	semaphore.o			\
 	mutex.o				\
@@ -71,7 +69,6 @@ OBJS-y+= \
 	pipe.o
 
 OBJS-y += vfs.o
-OBJS-y += syscall_vector.o
 
 CFLAGS+=$(CFLAGS-y)
 
@@ -87,6 +84,7 @@ syscall_table.c: syscall_table_gen.py
 syscall_table.h: syscall_table.c
 
 clean:
+	@rm -f syscall_table.c
 	@rm -f $(OBJS-y)
 	@rm -f $(PREFIX)/lib/$(LIBNAME)
 

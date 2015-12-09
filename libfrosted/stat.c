@@ -7,16 +7,16 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char * file, struct stat *st);
+extern int sys_stat(char * file, struct stat *st);
 
 
 int stat(const char *file, struct stat *st)
 {
-    return __syscall__[SYS_STAT](file, st);
+    return sys_stat(file, st);
 }
 
 /* TODO: stub - lstat should stat symbolic links themselves, instead of following them */
 int lstat(const char *file, struct stat *st)
 {
-    return __syscall__[SYS_STAT](file, st);
+    return sys_stat(file, st);
 }

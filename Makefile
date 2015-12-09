@@ -13,7 +13,8 @@ CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
-CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -Ikernel/libopencm3/include -Ikernel -DCORE_M3 -Iinclude -Iinclude/libc -fno-builtin -ffreestanding -DKLOG_LEVEL=6 -DSYS_CLOCK=$(SYS_CLOCK)
+CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DKLOG_LEVEL=6 -DSYS_CLOCK=$(SYS_CLOCK)
+CFLAGS+=-Ikernel/libopencm3/include -Ikernel -Iinclude -Inewlb/include
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 

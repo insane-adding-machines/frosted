@@ -7,9 +7,9 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int file, const void *ptr, int len);
+extern int sys_write(int file, const void *ptr, int len);
 
 int write (int file, const void *ptr, int len)
 {
-    return __syscall__[SYS_WRITE](file, ptr, len);
+    return sys_write(file, ptr, len);
 }

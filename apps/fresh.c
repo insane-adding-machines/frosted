@@ -21,6 +21,8 @@
 #include "syscalls.h"
 #include <string.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <poll.h>
 
 static const char str_prompt[]       = "[frosted (%s)]:";
 
@@ -98,8 +100,8 @@ void fresh(void *arg) {
     } while (stderr_fileno < 0);
 
     printf("Welcome to Frosted!\r\n");
-    mkdir("/home");
-    mkdir("/home/test");
+    mkdir("/home", O_RDWR);
+    mkdir("/home/test", O_RDWR);
     chdir("/home/test");
 
     while (2>1)
@@ -183,9 +185,9 @@ void fresh(void *arg) {
             /* backspace */
             if ((input[len-1] == 127)) {
                 if (len > 1) {
-                    printf( "%c", &del);
+                    write(out, &del, 1);
                     printf( " ");
-                    printf( "%c", &del);
+                    write(out, &del, 1);
                     len -= 2;
                 }else {
                     len -=1;
@@ -288,7 +290,7 @@ void fresh(void *arg) {
         } else if (!strncmp(input, "mkdir", 5)) {
             if (strlen(input) > 5) {
                 char *arg = input + 6;
-                if (mkdir(arg) < 0) {
+                if (mkdir(arg, O_RDWR) < 0) {
                     printf("Directory not found.\r\n");
                 }
             }

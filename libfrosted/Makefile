@@ -24,7 +24,7 @@ CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DARCH_$(ARCH)
 CFLAGS+=-DKLOG_LEVEL=6
 #Include paths
-CFLAGS+=-I. -I../include
+CFLAGS+=-I. -I../include -I../newlib/include
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
@@ -60,7 +60,6 @@ OBJS-y+=						\
 		link.o					\
 		lseek.o					\
 		listen.o				\
-		mem_init.o  			\
 		malloc.o				\
 		mkdir.o					\
 		mutex_init.o			\
@@ -69,6 +68,7 @@ OBJS-y+=						\
 		newlib_syscalls.o		\
 		open.o					\
 		opendir.o				\
+		pipe.o					\
 		poll.o					\
 		printf.o				\
 		pwd.o					\
@@ -84,6 +84,8 @@ OBJS-y+=						\
 		sleep.o					\
 		shutdown.o				\
 		syscall.o				\
+		syscall_table.o			\
+		svc.o	    			\
 		ttyname.o				\
 		thread_create.o			\
 		thread_join.o			\
@@ -114,6 +116,7 @@ all: $(OBJS-y)
 	@$(AR) cru $(PREFIX)/lib/$(LIBNAME) $(OBJS-y)
 
 clean:
+	@rm -f syscall_table.c
 	@rm -f $(OBJS-y)
 	@rm -f $(PREFIX)/lib/$(LIBNAME)
 

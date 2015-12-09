@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(DIR *d);
+extern int sys_closedir(DIR *d);
 
 int closedir(DIR *d)
 {
-    return __syscall__[SYS_CLOSEDIR](d);
+    return sys_closedir(d);
 }
 

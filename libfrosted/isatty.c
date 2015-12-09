@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int fd);
+extern int sys_isatty(int fd);
 
 int isatty(int fd)
 {
-    return __syscall__[SYS_ISATTY](fd);
+    return sys_isatty(fd);
 }
 

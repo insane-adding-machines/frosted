@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char * source, char *target, char *module, uint32_t flags, void *args);
+extern int sys_mount(char * source, char *target, char *module, uint32_t flags, void *args);
 
 int mount(char * source, char *target, char *module, uint32_t flags, void *args)
 {
     (void)flags; /* flags unimplemented for now */
-    return __syscall__[SYS_MOUNT](source, target, module, flags, args);
+    return sys_mount(source, target, module, flags, args);
 }

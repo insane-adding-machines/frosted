@@ -42,7 +42,7 @@ void task2(void *arg)
     close(ser);
 
     addr = (void *)malloc(20);
-    ret = mkdir("/mem/test");
+    ret = mkdir("/mem/test", O_RDWR);
     ret = read(fdz, addr, 20);
     ret = write(fdn, addr, 20);
 
@@ -256,9 +256,6 @@ void INIT _init(void)
         *bssDest++ = 0u;
     }
 
-    /* Set initial point for userspace memory */
-    mem_init(&apps_ebss);
- 
     //
     // Call the application's entry point.
     //

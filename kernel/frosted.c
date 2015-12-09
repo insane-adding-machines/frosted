@@ -20,6 +20,7 @@
 #include "frosted.h"
 #include "libopencmsis/core_cm3.h"
 #include "libopencm3/cm3/systick.h"
+#include "bflt.h"
 
 #define IDLE() while(1){do{}while(0);}
 
@@ -82,8 +83,6 @@ static void hw_init(void)
 void frosted_init(void)
 {
     extern void * _k__syscall__;
-    volatile void * vector = &_k__syscall__;
-    (void)vector;
 
     vfs_init();
     devnull_init(fno_search("/dev"));
@@ -127,15 +126,22 @@ static void ktimer_test(uint32_t time, void *arg)
 
 void frosted_kernel(void)
 {
-    /* Load init from BFLT */
-    void * memptr;
-    size_t mem_size;
-    //bflt_load(flt_file, &memptr, &mem_size, &init);
-
-    /* Create "init" task */
-    klog(LOG_INFO, "Starting Init task\n");
-    if (task_create(init, (void *)0, 2) < 0)
-        IDLE();
+    if (0)
+    {
+        /* Load init from BFLT */
+        void * memptr;
+        size_t mem_size;
+        size_t stack_size;
+        uint32_t got_loc;
+        bflt_load(flt_file, &memptr, &mem_size, &init, &stack_size, &got_loc);
+        if (task_create_GOT(init, (void *)0, 2, got_loc) < 0)
+            IDLE();
+    } else {
+        /* Create "init" task */
+        klog(LOG_INFO, "Starting Init task\n");
+        if (task_create(init, (void *)0, 2) < 0)
+            IDLE();
+    }
 
     ktimer_add(1000, ktimer_test, NULL);
 

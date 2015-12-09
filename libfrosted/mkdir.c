@@ -4,13 +4,14 @@
 
 #include "frosted_api.h"
 #include "syscall_table.h"
+#include "sys/types.h"
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(char *path);
+extern int sys_mkdir(const char *path, mode_t mode);
 
-int mkdir(char *path)
+int mkdir(const char *path, mode_t mode)
 {
-    return __syscall__[SYS_MKDIR](path);
+    return sys_mkdir(path, mode);
 }
 

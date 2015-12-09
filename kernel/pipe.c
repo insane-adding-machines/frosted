@@ -18,8 +18,9 @@
  */  
 #include "frosted.h"
 #include "cirbuf.h"
-#include <string.h>
-#include <sys/termios.h>
+#include "string.h"
+#include "sys/termios.h"
+#include "poll.h"
 
 #define PIPE_BUFSIZE 64
 

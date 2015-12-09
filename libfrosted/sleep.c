@@ -7,10 +7,10 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int (**__syscall__)(int s);
+extern int sys_sleep(int s);
 
 int sleep(int s)
 {
-    return __syscall__[SYS_SLEEP](s);
+    return sys_sleep(s);
 }
 

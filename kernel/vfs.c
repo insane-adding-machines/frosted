@@ -18,7 +18,8 @@
  *
  */  
 #include "frosted.h"
-#include <string.h>
+#include "string.h"
+#include "sys/stat.h"
 
 struct mountpoint *MTAB = NULL;
 
@@ -192,7 +193,7 @@ static struct fnode *fno_create_dir(char *path)
 {
     struct fnode *fno = fno_create_file(path);
     if (fno) {
-        fno->flags |= FL_DIR;
+        fno->flags |= (FL_DIR | FL_RDWR);
     }
     return fno;
 }
@@ -311,6 +312,25 @@ struct fnode *fno_create(struct module *owner, const char *name, struct fnode *p
     struct fnode *fno = _fno_create(owner, name, parent);
     if (fno && parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
+    fno->flags |= FL_RDWR;
+    return fno;
+}
+
+struct fnode *fno_create_wronly(struct module *owner, const char *name, struct fnode *parent)
+{
+    struct fnode *fno = _fno_create(owner, name, parent);
+    if (fno && parent && parent->owner && parent->owner->ops.creat)
+        parent->owner->ops.creat(fno);
+    fno->flags = FL_WRONLY;
+    return fno;
+}
+
+struct fnode *fno_create_rdonly(struct module *owner, const char *name, struct fnode *parent)
+{
+    struct fnode *fno = _fno_create(owner, name, parent);
+    if (fno && parent && parent->owner && parent->owner->ops.creat)
+        parent->owner->ops.creat(fno);
+    fno->flags = FL_RDONLY;
     return fno;
 }
 
@@ -379,16 +399,26 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     struct fnode *f;
     uint32_t flags = arg2;
     char path[MAX_FILE];
+    int ret;
 
     path_abs(rel_path, path, MAX_FILE);
     f = fno_search(path);
     if (f && f->owner && f->owner->ops.open) {
-        return f->owner->ops.open(path, flags);
+        if ((flags & O_RDONLY) && ((f->flags & FL_RDONLY)== 0))
+            return -EPERM;
+        if ((flags & O_WRONLY) && ((f->flags & FL_WRONLY)== 0))
+            return -EPERM;
+        ret = f->owner->ops.open(path, flags);
+        if (ret >= 0) 
+            task_fd_setmask(ret, flags);
+        return ret;
     }
 
     if ((flags & O_CREAT) == 0) {
         f = fno_search(path);
     } else {
+        if ((flags & O_WRONLY) == 0)
+            return -EPERM;
         f = fno_search(path);
         if (flags & O_EXCL) {
             if (f != NULL)
@@ -415,7 +445,13 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     } else {
         f->off = 0;
     }
-    return task_filedesc_add(f); 
+    if ((flags & O_RDONLY) && ((f->flags & FL_RDONLY)== 0))
+        return -EPERM;
+    if ((flags & O_WRONLY) && ((f->flags & FL_WRONLY)== 0))
+        return -EPERM;
+    ret = task_filedesc_add(f);
+    task_fd_setmask(ret, flags);
+    return ret; 
 }
 
 int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -423,7 +459,7 @@ int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     struct fnode *f = task_filedesc_get(arg1);
     if (f != NULL) {
         if (f->owner && f->owner->ops.close)
-            f->owner->ops.close(arg1);
+            f->owner->ops.close(f);
         task_filedesc_del(arg1);
         return 0;
     }
@@ -436,7 +472,7 @@ int sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if (!fno)
         return -EINVAL;
     if (fno->owner->ops.seek) {
-        return fno->owner->ops.seek(arg1, arg2, arg3);
+        return fno->owner->ops.seek(fno, arg2, arg3);
     } else return -EOPNOTSUPP;
 }
 
@@ -446,7 +482,7 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     if (!fno)
         return -EINVAL;
     if (fno->owner->ops.ioctl) {
-        fno->owner->ops.ioctl((int)arg1, (uint32_t)arg2, (void *)arg3);
+        fno->owner->ops.ioctl(fno, (uint32_t)arg2, (void *)arg3);
     } else return -EOPNOTSUPP;
 }
 
@@ -534,7 +570,6 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     fno = fno_search_nofollow(abs_p);
     if (!fno)
         return -ENOENT;
-    st->st_owner = fno->owner;
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
         st->st_size = 0;
