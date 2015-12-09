@@ -1,7 +1,7 @@
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
-//#include "spi_dev.h"
+#include "cirbuf.h"
 #include "spi.h"
 
 #ifdef LM3S
@@ -20,7 +20,6 @@
 struct dev_spi {
     struct device * dev;
     uint32_t base;
-    uint32_t irq;
     struct cirbuf *inbuf;
     struct cirbuf *outbuf;
     uint8_t *w_start;
@@ -74,7 +73,7 @@ void spi_isr(struct dev_spi *spi)
 #ifdef CONFIG_SPI_1
 void spi1_isr(void)
 {
-    uart_isr(&DEV_SPI[0]);  /* NOTE the -1, spi numbering starts at 1*/
+    spi_isr(&DEV_SPI[0]);  /* NOTE the -1, spi numbering starts at 1*/
 }
 #endif
 
@@ -100,10 +99,11 @@ static int devspi_write(struct fnode *fno, const void *buf, unsigned int len)
 
     frosted_mutex_lock(spi->dev->mutex);
     spi_enable_tx_buffer_empty_interrupt(spi->base);
+    spi_enable_rx_buffer_not_empty_interrupt(spi->base);
 
     /* write to circular output buffer */
     spi->w_start += cirbuf_writebytes(spi->outbuf, spi->w_start, spi->w_end - spi->w_start);
-    if (!(SPI_SR(spi->base) & SPI_SR_TXE)) {
+    if ((SPI_SR(spi->base) & SPI_SR_TXE)) {
         uint8_t c;
         /* Doesn't block because of test above */
         cirbuf_readbyte(spi->outbuf, &c);
@@ -117,7 +117,6 @@ static int devspi_write(struct fnode *fno, const void *buf, unsigned int len)
         spi->w_end = NULL;
         return len;
     }
-
 
     if (spi->w_start < spi->w_end)
     {
@@ -179,6 +178,9 @@ static void spi_fno_init(struct fnode *dev, uint32_t n, const struct spi_addr * 
 {
     struct dev_spi *s = &DEV_SPI[n];
     s->dev = device_fno_init(&mod_devspi, addr->name, dev, FL_RDWR, s);
+    s->base = addr->base;
+    s->inbuf = cirbuf_create(128);
+    s->outbuf = cirbuf_create(128);
 }
 
 void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spis)
@@ -211,8 +213,9 @@ void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spi
         spi_set_nss_high(spi_addrs[i].base);
 
         SPI_I2SCFGR(spi_addrs[i].base) &= ~SPI_I2SCFGR_I2SMOD;
-        spi_enable(spi_addrs[i].base);
+
         nvic_enable_irq(spi_addrs[i].irq);
+        spi_enable(spi_addrs[i].base);
     }
     register_module(&mod_devspi);
 }

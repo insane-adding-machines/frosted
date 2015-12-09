@@ -27,7 +27,6 @@
 struct dev_uart {
     struct device * dev;
     uint32_t base;
-    uint32_t irq;
     struct cirbuf *inbuf;
     struct cirbuf *outbuf;
     uint8_t *w_start;
@@ -260,8 +259,6 @@ static int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr *
     name[4] =  '0' + num_ttys++;
 
     u->base = addr->base;
-    u->irq = addr->irq;
-
     u->dev = device_fno_init(&mod_devuart, name, dev, FL_TTY, u);
     u->inbuf = cirbuf_create(128);
     u->outbuf = cirbuf_create(128);
@@ -279,12 +276,8 @@ void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_
             continue;
 
         uart_fno_init(dev, uart_addrs[i].devidx, &uart_addrs[i]);
-
         CLOCK_ENABLE(uart_addrs[i].rcc);
-
         usart_enable_rx_interrupt(uart_addrs[i].base);
-        nvic_enable_irq(uart_addrs[i].irq);
-
         usart_set_baudrate(uart_addrs[i].base, uart_addrs[i].baudrate);
         usart_set_databits(uart_addrs[i].base, uart_addrs[i].data_bits);
         usart_set_stopbits(uart_addrs[i].base, uart_addrs[i].stop_bits);
@@ -292,6 +285,7 @@ void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_
         usart_set_parity(uart_addrs[i].base, uart_addrs[i].parity);
         usart_set_flow_control(uart_addrs[i].base, uart_addrs[i].flow);
         usart_enable_rx_interrupt(uart_addrs[i].base);
+
         nvic_enable_irq(uart_addrs[i].irq);
         usart_enable(uart_addrs[i].base);
     }

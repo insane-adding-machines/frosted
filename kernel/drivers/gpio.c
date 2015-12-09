@@ -28,7 +28,7 @@ static struct dev_gpio DEV_GPIO[MAX_GPIOS];
 #ifdef LM3S
 #endif
 #ifdef STM32F4
-#define GPIO_CLOCK_ENABLE(P, E)       switch(P){    \
+#define GPIO_CLOCK_ENABLE(P)       switch(P){    \
                                                                 case GPIOA:rcc_periph_clock_enable(RCC_GPIOA);  break;  \
                                                                 case GPIOB:rcc_periph_clock_enable(RCC_GPIOB);  break;  \
                                                                 case GPIOC:rcc_periph_clock_enable(RCC_GPIOC);  break;  \
@@ -86,7 +86,7 @@ void exti15_10_isr(void)
 #endif
 
 #ifdef LPC17XX
-#define GPIO_CLOCK_ENABLE(C, E) 
+#define GPIO_CLOCK_ENABLE(C) 
 
 #define SET_INPUT(P, D, I)                  gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);    \
                                                                gpio_set_af(P, GPIO_AF0, I);
@@ -148,12 +148,12 @@ void GPIO_Handler(void)
         task_resume(gpio_pid);
 }
 
-static int devgpio_write(struct fnode *, const void *buf, unsigned int len)
+static int devgpio_write(struct fnode * fno, const void *buf, unsigned int len)
 {
      struct dev_gpio *gpio;
     char *arg = (char *)buf;
 
-    gpio = (struct dev_gpio*)device_check_fd(fd, &mod_devgpio);
+    gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
     if(!gpio)
         return -1;
 
@@ -168,11 +168,11 @@ static int devgpio_write(struct fnode *, const void *buf, unsigned int len)
     }
 }
 
-static int devgpio_ioctl(struct fnode *, const uint32_t cmd, void *arg)
+static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 {
      struct dev_gpio *gpio;
 
-    gpio = (struct dev_gpio *)device_check_fd(fd, &mod_devgpio);
+    gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
     if(!gpio)
         return -1;
 
@@ -199,14 +199,14 @@ static int devgpio_ioctl(struct fnode *, const uint32_t cmd, void *arg)
     return 0;
 }
 
-static int devgpio_read(struct fnode *, void *buf, unsigned int len)
+static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
 {
     int out;
     struct dev_gpio *gpio;
     volatile int len_available = 1;
     char *ptr = (char *)buf;
 
-    gpio = (struct dev_gpio *)device_check_fd(fd, &mod_devgpio);
+    gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
     if(!gpio)
         return -1;
 
@@ -223,7 +223,7 @@ static int devgpio_read(struct fnode *, void *buf, unsigned int len)
 }
 
 
-static int devgpio_poll(struct fnode *, uint16_t events, uint16_t *revents)
+static int devgpio_poll(struct fnode * fno, uint16_t events, uint16_t *revents)
 {
     int ret = 0;
     *revents = 0;
@@ -258,7 +258,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
 
         gpio_fno_init(dev, i, &gpio_addrs[i]);
     
-        GPIO_CLOCK_ENABLE(gpio_addrs[i].base, gpio_addrs[i].exti)
+        GPIO_CLOCK_ENABLE(gpio_addrs[i].base)
             
         switch(gpio_addrs[i].mode)
         {

@@ -38,15 +38,17 @@ static int devl3gd20_write(struct fnode *fno, const void *buf, unsigned int len)
     char *ch = (char *)buf;
     const struct dev_l3gd20 *l3gd20;
 
-    l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
-    if (!l3gd20)
-        return -1;
     if (len <= 0)
         return len;
 
+    l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
+    if (!l3gd20)
+        return -1;
+
+
+
     return len;
 }
-
 
 static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
 {
@@ -56,11 +58,27 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
     const struct dev_spi *spi;
     const struct dev_l3gd20 *l3gd20;
 
+    uint8_t p[2] = {0x20, 0x0F};
+    uint8_t o[2] = {0x8F, 0x00};
+    uint8_t i[2];
+
     if (len <= 0)
         return len;
+    
     l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
     if (!l3gd20)
         return -1;
+
+    l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
+    l3gd20->spi_fnode->owner->ops.write(l3gd20->spi_fnode, p, 2);
+    l3gd20->spi_fnode->owner->ops.read(l3gd20->spi_fnode, i, 2);
+    l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
+
+    l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
+    l3gd20->spi_fnode->owner->ops.write(l3gd20->spi_fnode, o, 2);
+    l3gd20->spi_fnode->owner->ops.read(l3gd20->spi_fnode, i, 2);
+    l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
+
     return out;
 }
 

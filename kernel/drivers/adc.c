@@ -21,8 +21,7 @@ struct dev_adc{
 
 static struct dev_adc DEV_ADC[MAX_ADCS];
 
-static int devadc_write(int fd, const void *buf, unsigned int len);
-static int devadc_read(int fd, void *buf, unsigned int len);
+static int devadc_read(struct fnode * fno, void *buf, unsigned int len);
 
 static struct module mod_devadc = {
     .family = FAMILY_FILE,
@@ -47,7 +46,7 @@ void adc_isr(void)
     }
 }
 
-static int devadc_read(int fd, void *buf, unsigned int len)
+static int devadc_read(struct fnode *fno, void *buf, unsigned int len)
 {
     int out;
     volatile int len_available;
@@ -56,10 +55,8 @@ static int devadc_read(int fd, void *buf, unsigned int len)
 
     if (len <= 0)
         return len;
-    if (fd < 0)
-        return -1;
 
-    adc = (struct dev_adc*)device_check_fd(fd, &mod_devadc);
+    adc = (struct dev_adc *)FNO_MOD_PRIV(fno, &mod_devadc);
     if (!adc)
         return -1;
 

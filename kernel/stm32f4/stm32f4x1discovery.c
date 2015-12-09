@@ -79,9 +79,9 @@ static const struct gpio_addr gpio_addrs[] = {
 #endif
 #ifdef CONFIG_DEVL3GD20
             /* CS - PE3 INT1 - PE0 INT2 - PE1 */
-            {.base=GPIOE, .pin=GPIO3,.mode=GPIO_MODE_OUTPUT, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name="L3GD20_CS"},
-            {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="L3GD20_INT1"},
-            {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="L3GD20_INT2"},
+            {.base=GPIOE, .pin=GPIO3,.mode=GPIO_MODE_OUTPUT, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name="l3gd20_cs"},
+            {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i1"},
+            {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i2"},
 #endif
 #endif
 #ifdef CONFIG_DEVADC
@@ -143,7 +143,7 @@ static const struct spi_addr spi_addrs[] = {
             .base = SPI1, 
             .irq = NVIC_SPI1_IRQ, 
             .rcc = RCC_SPI1,
-            .baudrate_prescaler = SPI_CR1_BR_FPCLK_DIV_64,
+            .baudrate_prescaler = SPI_CR1_BR_FPCLK_DIV_256,
             .clock_pol = 0,
             .clock_phase = 0,
             .rx_only = 0,
@@ -161,9 +161,9 @@ static const struct spi_addr spi_addrs[] = {
 static const struct l3gd20_addr l3gd20_addrs[] = { 
         {
             .spi_name = "spi1",
-            .spi_cs_name = "L3GD20_CS",
-            .int_1_name = "L3GD20_INT1",
-            .int_2_name = "L3GD20_INT2",
+            .spi_cs_name = "l3gd20_cs",
+            .int_1_name = "l3gd20_i1",
+            .int_2_name = "l3gd20_i2",
             .name = "l3gd20",
         }
 };
