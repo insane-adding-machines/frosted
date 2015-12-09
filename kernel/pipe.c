@@ -25,11 +25,13 @@
 #define PIPE_BUFSIZE 64
 
 static struct module mod_pipe;
+
+
 struct pipe_priv {
-    int r;
-    int w;
-    int r_pid;
-    int w_pid;
+    struct fnode *fno_r;
+    struct fnode *fno_w;
+    int pid_r;
+    int pid_w;
     int w_off;
     struct cirbuf *cb;
 };
@@ -37,48 +39,64 @@ struct pipe_priv {
 static struct fnode PIPE_ROOT = {
 };
 
+
 int sys_pipe2_hdlr(int paddr, int flags)
 {
     int *pfd = (int*)paddr;
-    struct fnode *new = fno_create(&mod_pipe, "", &PIPE_ROOT); 
+    struct fnode *rd, *wr;
     struct pipe_priv *pp;
-
-    /* TODO: Implement flags */
-
-    if (!new)
-       return -ENOMEM; 
-
-    pfd[0] = task_filedesc_add(new);
-    pfd[1] = task_filedesc_add(new);
-    if (pfd[0] < 0 || pfd[1] < 0)
-        return -ENOMEM;
-    
     pp = kalloc(sizeof (struct pipe_priv));
     if (!pp) {
-        kfree(new);
         return -ENOMEM;
     }
-    new->priv = pp;
 
-    pp->r = pfd[0];
-    pp->w = pfd[1];
-    pp->r_pid = 0;
-    pp->w_pid = 0;
+    rd = fno_create(&mod_pipe, "", &PIPE_ROOT); 
+    if (!rd) {
+        goto fail_rd;
+    }
+    wr = fno_create(&mod_pipe, "", &PIPE_ROOT); 
+    if (!wr) {
+        goto fail_wr;
+    }
+
+    pfd[0] = task_filedesc_add(rd);
+    pfd[1] = task_filedesc_add(wr);
+
+    if (pfd[0] < 0 || pfd[1] < 0) {
+        goto fail_all;
+    }
+    
+    task_fd_setmask(pfd[0], O_RDONLY);
+    task_fd_setmask(pfd[1], O_WRONLY);
+    
+    rd->priv = pp;
+    wr->priv = pp;
+
+    pp->fno_r = rd;
+    pp->fno_w = wr;
+    pp->pid_r = 0;
+    pp->pid_w = 0;
     pp->w_off = 0;
     pp->cb = cirbuf_create(PIPE_BUFSIZE);
     if (!pp->cb) {
-        kfree(pp);
-        kfree(new);
-        return -ENOMEM;
+        goto fail_all;
     }
-
     return 0;
+
+fail_all:
+        fno_unlink(wr);
+fail_wr:
+        fno_unlink(rd);
+fail_rd:
+        kfree(pp);
+        return -ENOMEM;
+
 }
 
 static int pipe_poll(struct fnode *f, uint16_t events, uint16_t *revents)
 {
     struct pipe_priv *pp;
-    /* TODO: Check direction ! */
+    *revents = 0;
     if (f->owner != &mod_pipe)
         return -EINVAL;
     pp = (struct pipe_priv *)f->priv;
@@ -86,23 +104,22 @@ static int pipe_poll(struct fnode *f, uint16_t events, uint16_t *revents)
         return -EINVAL;
     }
 
-    if (pp->w < 0)
-       *revents = POLLHUP; 
+    if (f == pp->fno_w) {
+        if(pp->fno_r == 0) {
+            *revents |= POLLHUP;
+            return 1;
+        }
+        else if ((events & POLLOUT) && (cirbuf_bytesfree(pp->cb) > 0)) {
+            *revents = POLLOUT;
+            return 1;
+        }
+    }
 
-    if (pp->r < 0)
-       *revents = POLLHUP; 
-
-    if ((events & POLLIN) && (cirbuf_bytesinuse(pp->cb) > 0)) {
+    if ((f == pp->fno_r) && (events & POLLIN) && (cirbuf_bytesinuse(pp->cb) > 0)) {
         *revents |= POLLIN;
         return 1;
     }
-    if ((events & POLLOUT) && (cirbuf_bytesfree(pp->cb) > 0)) {
-        *revents |= POLLOUT;
-        return 1;
-    }
-
-    *revents = events;
-    return 1;
+    return 0;
 }
 
 
@@ -111,31 +128,33 @@ static int pipe_close(struct fnode *f)
     struct pipe_priv *pp;
     uint16_t pid;
     pid = scheduler_get_cur_pid();
+    if (!f)
+        return -EINVAL;
 
     if (f->owner != &mod_pipe)
         return -EINVAL;
-
+    
     pp = (struct pipe_priv *)f->priv;
     if (!pp)
         return -EINVAL;
 
-    /* TODO: implement a fork hook, so fnodes have usage count */
-    if (pp->w_pid != pid) {
-        pp->r = -1;
-        if (pp->w_pid > 0)
-            task_resume(pp->w_pid);
-    }
-    
-    if (pp->r_pid != pid) {
-        pp->w = -1;
-        if (pp->r_pid > 0)
-            task_resume(pp->r_pid);
-    }
 
-    if ((pp->w == -1) && (pp->r == -1)) {
-        kfree(pp);
+    if ((f == pp->fno_r) && (f->usage == 1)) {
+        pp->fno_r = NULL;
         fno_unlink(f);
+        if ((pp->pid_w != pid) && (pp->pid_w > 0)) {
+            task_resume(pp->pid_w);
+        }
     }
+    if ((f == pp->fno_w) && (f->usage == 1)) {
+        pp->fno_w = NULL;
+        fno_unlink(f);
+        if ((pp->pid_r != pid) && (pp->pid_r > 0)) {
+            task_resume(pp->pid_r);
+        }
+    }
+    if ((!pp->fno_w) && (!pp->fno_r))
+        kfree(pp);
     return 0;
 }
 
@@ -152,12 +171,12 @@ static int pipe_read(struct fnode *f, void *buf, unsigned int len)
     if (!pp)
         return -EINVAL;
 
-    if (pp->w < 0)
-        return -EPIPE;
-    
+    if (pp->fno_r != f)
+        return -EPERM;
+
     len_available =  cirbuf_bytesinuse(pp->cb);
     if (len_available <= 0) {
-        pp->r_pid = scheduler_get_cur_pid();
+        pp->pid_r = scheduler_get_cur_pid();
         task_suspend();
         return SYS_CALL_AGAIN;
     }
@@ -168,7 +187,7 @@ static int pipe_read(struct fnode *f, void *buf, unsigned int len)
             break;
         ptr++;
     }
-    pp->r_pid = 0;
+    pp->pid_r = 0;
     return out;
 }
 
@@ -184,9 +203,9 @@ static int pipe_write(struct fnode *f, const void *buf, unsigned int len)
     pp = (struct pipe_priv *)f->priv;
     if (!pp)
         return -EINVAL;
-
-    if (pp->r < 0)
-        return -EPIPE;
+    
+    if (pp->fno_w != f)
+        return -EPERM;
 
     out = pp->w_off;
     
@@ -200,14 +219,14 @@ static int pipe_write(struct fnode *f, const void *buf, unsigned int len)
     }
 
     if (out < len) {
-        pp->w_pid = scheduler_get_cur_pid();
+        pp->pid_w = scheduler_get_cur_pid();
         pp->w_off = out;
         task_suspend();
         return SYS_CALL_AGAIN;
     }
 
     pp->w_off = 0;
-    pp->w_pid = 0;
+    pp->pid_w = 0;
     return out;
 }
 

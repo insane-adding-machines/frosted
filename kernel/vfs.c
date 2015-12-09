@@ -189,11 +189,11 @@ int vfs_symlink(char *file, char *link)
     else return -EINVAL;
 }
 
-static struct fnode *fno_create_dir(char *path)
+static struct fnode *fno_create_dir(char *path, uint32_t flags)
 {
     struct fnode *fno = fno_create_file(path);
     if (fno) {
-        fno->flags |= (FL_DIR | FL_RDWR);
+        fno->flags |= (FL_DIR | flags);
     }
     return fno;
 }
@@ -501,7 +501,7 @@ int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     char abs_p[MAX_FILE];
     struct fnode *f;
     path_abs(path, abs_p, MAX_FILE);
-    if (fno_create_dir(abs_p))
+    if (fno_create_dir(abs_p, arg2))
         return 0;
     return -ENOENT;
 }
