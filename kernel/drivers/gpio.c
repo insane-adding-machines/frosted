@@ -2,6 +2,7 @@
 #include "device.h"
 #include <stdint.h>
 #include "ioctl.h"
+#include "poll.h"
 #ifdef STM32F4
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/exti.h>
