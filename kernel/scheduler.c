@@ -136,6 +136,7 @@ struct __attribute__((packed)) task_block {
     uint16_t n_files;
     struct fnode *cwd;
     struct task_handler *sighdlr;
+    sigset_t sigmask;
     struct filedesc *filedesc;
     void *sp;
     struct task *next;
@@ -192,13 +193,13 @@ static struct task *tasklist_get(struct task **list, uint16_t pid)
 static struct task *tasks_running = NULL;
 static struct task *tasks_idling = NULL;
 
-static void idling_to_running(struct task *t)
+static void idling_to_running(volatile struct task *t)
 {
     if (tasklist_del(&tasks_idling, t->tb.pid) == 0)
         tasklist_add(&tasks_running, t);
 }
 
-static void running_to_idling(struct task *t)
+static void running_to_idling(volatile struct task *t)
 {
     if (tasklist_del(&tasks_running, t->tb.pid) == 0)
         tasklist_add(&tasks_idling, t);
@@ -292,7 +293,7 @@ uint32_t task_fd_getmask(int fd)
 
 struct fnode *task_filedesc_get(int fd)
 {
-    struct task *t = _cur_task;
+    volatile struct task *t = _cur_task;
     if (fd < 0)
         return NULL;
     if (fd >= t->tb.n_files)
@@ -322,7 +323,7 @@ int task_fd_writable(int fd)
 
 int task_filedesc_del(int fd)
 {
-    struct task *t = _cur_task;
+    volatile struct task *t = _cur_task;
     if (!t)
         return -EINVAL;
     if (!t->tb.filedesc[fd].fno)
@@ -333,7 +334,7 @@ int task_filedesc_del(int fd)
 
 int sys_dup_hdlr(int fd)
 {
-    struct task *t = _cur_task;
+    volatile struct task *t = _cur_task;
     struct fnode *f = task_filedesc_get(fd);
     int newfd = -1;
     if (!f)
@@ -343,7 +344,7 @@ int sys_dup_hdlr(int fd)
 
 int sys_dup2_hdlr(int fd, int newfd)
 {
-    struct task *t = _cur_task;
+    volatile struct task *t = _cur_task;
     struct fnode *f = task_filedesc_get(fd);
     if (newfd < 0)
         return -1;
@@ -368,7 +369,7 @@ int sys_dup2_hdlr(int fd, int newfd)
 /**/
 /**/
 
-static int add_handler(struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
+static int add_handler(volatile struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
 {
     
     struct task_handler *sighdlr;
@@ -413,7 +414,7 @@ static int del_handler(struct task *t, int signo)
 
 void task_terminate(int pid);
 
-static int catch_signal(struct task *t, int signo)
+static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
 {
     int i;
     struct task_handler *sighdlr;
@@ -422,8 +423,14 @@ static int catch_signal(struct task *t, int signo)
     if (!t || (t->tb.pid < 1))
         return -EINVAL;
 
-    if ((t->tb.state == TASK_ZOMBIE) || t->tb.state == TASK_OVER)
+    if ((t->tb.state == TASK_ZOMBIE) || (t->tb.state == TASK_OVER))
         return -ESRCH;
+
+    if ((1 << signo) & t->tb.sigmask)
+    {
+        /* Signal is blocked via t->tb.sigmask */
+        return 0;
+    }
 
     sighdlr = t->tb.sighdlr;
     while(sighdlr) {
@@ -448,6 +455,10 @@ static int catch_signal(struct task *t, int signo)
             nvic->pc = (uint32_t)h->hdlr;
             nvic->r0 = (uint32_t)signo;
             t->tb.sp -= (NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE);
+            /* XXX: In order to use per-sigaction sa_mask, we need to set 
+             * t->tb.sigmask here, and restore it in some way before the 
+             * handler returns to nvic->lr.
+             */
             task_resume(t->tb.pid);
         }
     } else {
@@ -473,6 +484,32 @@ int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     /* TODO: Populate sa_old */
     add_handler(_cur_task, arg1, sa->sa_handler, sa->sa_mask);
     return 0; 
+}
+
+int sys_sigprocmask_hdlr(int how, const sigset_t *set, sigset_t *oldset)
+{
+    if (set  && (
+                (how != SIG_SETMASK) && 
+                (how != SIG_BLOCK) && 
+                (how != SIG_UNBLOCK)
+                ))
+        return -EINVAL;
+
+    if (!set && !oldset)
+        return -EINVAL;
+
+    if (oldset)
+        *oldset = _cur_task->tb.sigmask;
+
+    if (set) {
+        if (how == SIG_SETMASK)
+            _cur_task->tb.sigmask = *set;
+        else if (how == SIG_BLOCK)
+            _cur_task->tb.sigmask |= *set;
+        else  
+            _cur_task->tb.sigmask &= ~(*set);
+    }
+    return 0;
 }
 
 /********************************/
@@ -508,7 +545,7 @@ static __inl void * msp_read(void)
 static __inl void task_switch(void)
 {
     int i, pid = _cur_task->tb.pid;
-    struct task *t = _cur_task;
+    volatile struct task *t = _cur_task;
 
     if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
         t = tasks_running;
@@ -899,14 +936,14 @@ static void sleepy_task_wakeup(uint32_t now, void *arg)
 
 int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    uint16_t pid = scheduler_get_cur_pid();
+    uint32_t pid = (uint32_t)scheduler_get_cur_pid();
     uint32_t timeout = jiffies + arg1;
 
     if (arg1 < 0)
         return -EINVAL;
 
     if (pid > 0) {
-        ktimer_add(arg1, sleepy_task_wakeup, (void *)_cur_task->tb.pid);
+        ktimer_add(arg1, sleepy_task_wakeup, (void *)pid);
         if (timeout < jiffies) 
             return 0;
 
@@ -920,6 +957,7 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     int to_arg = (int)arg2;
     uint32_t timeout;
     struct task *t = NULL; 
+    uint32_t pid;
 
     if (arg1 <= 1)
         return -EINVAL;
@@ -943,8 +981,9 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
         return -EINVAL;
 
     if (to_arg > 0)  {
+        pid = _cur_task->tb.pid;
         timeout = jiffies + to_arg;
-        ktimer_add(to_arg, sleepy_task_wakeup, (void *)_cur_task->tb.pid);
+        ktimer_add(to_arg, sleepy_task_wakeup, (void *)pid);
         if (timeout < jiffies)
             return -ETIMEDOUT;
     }
@@ -959,7 +998,7 @@ int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         t = tasklist_get(&tasks_running, arg1);
     if (!t)
         return -ESRCH;
-    return catch_signal(t, arg2);
+    return catch_signal(t, arg2, t->tb.sigmask);
 }
 
 int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)

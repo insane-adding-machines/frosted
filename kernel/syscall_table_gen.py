@@ -71,7 +71,8 @@ syscalls = [
     ["tcgetattr", 2, "sys_tcgetattr_hdlr"],
     ["tcsendbreak", 2, "sys_tcsendbreak_hdlr"],
     ["pipe2", 2, "sys_pipe2_hdlr"],
-    ["sigaction", 3, "sys_sigaction_hdlr"]
+    ["sigaction", 3, "sys_sigaction_hdlr"],
+    ["sigprocmask", 3, "sys_sigprocmask_hdlr"]
 ]
 
    #

@@ -80,6 +80,7 @@ OBJS-y+=						\
 		semaphore.o				\
 		sigaction.o				\
 		signal.o				\
+		sigprocmask.o			\
 		socket.o				\
 		sendto.o				\
 		setsockopt.o			\

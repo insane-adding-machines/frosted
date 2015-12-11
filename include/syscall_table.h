@@ -62,4 +62,5 @@
 #define SYS_TCSENDBREAK 			(58)
 #define SYS_PIPE2 			(59)
 #define SYS_SIGACTION 			(60)
-#define _SYSCALLS_NR (61) /* We have 61 syscalls! */
+#define SYS_SIGPROCMASK 			(61)
+#define _SYSCALLS_NR (62) /* We have 62 syscalls! */

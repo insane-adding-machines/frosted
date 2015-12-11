@@ -72,4 +72,10 @@ int sigisemptyset(const sigset_t *set);
 int sigorset(sigset_t *dest, const sigset_t *left, const sigset_t *right);
 int sigandset(sigset_t *dest, const sigset_t *left, const sigset_t *right);
 
+/* Process mask functions */
+#define SIG_SETMASK 0	/* set mask with sigprocmask() */
+#define SIG_BLOCK 1	/* set of signals to block */
+#define SIG_UNBLOCK 2	/* set of signals to, well, unblock */
+int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+
 #endif
