@@ -120,6 +120,7 @@ struct task_handler
 {
     int signo;
     void (*hdlr)(int);
+    uint32_t mask;
     struct task_handler *next;
 };
 
@@ -367,7 +368,7 @@ int sys_dup2_hdlr(int fd, int newfd)
 /**/
 /**/
 
-static int add_handler(struct task *t, int signo, void (*hdlr)(int))
+static int add_handler(struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
 {
     
     struct task_handler *sighdlr;
@@ -380,6 +381,7 @@ static int add_handler(struct task *t, int signo, void (*hdlr)(int))
 
     sighdlr->signo = signo;
     sighdlr->hdlr = hdlr;
+    sighdlr->mask = mask;
     sighdlr->next = t->tb.sighdlr;
     t->tb.sighdlr = sighdlr;
     return 0;
@@ -430,8 +432,11 @@ static int catch_signal(struct task *t, int signo)
         sighdlr = sighdlr->next;
     }
 
-    if (h) {
+    if ((h) && (signo != SIGKILL) && (signo != SIGSEGV)) {
         /* Handler is present */
+        if (h->hdlr == SIG_IGN)
+            return 0;
+
         if (_cur_task == t)
         {
             h->hdlr(signo); 
@@ -446,8 +451,8 @@ static int catch_signal(struct task *t, int signo)
             task_resume(t->tb.pid);
         }
     } else {
+        /* Handler not present: SIG_DFL */
         if (signo != SIGCHLD) {
-            /* Handler not present: SIG_DFL for now...*/
             task_terminate(t->tb.pid);
         }
     }
@@ -466,7 +471,7 @@ int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
         return -EINVAL;
 
     /* TODO: Populate sa_old */
-    add_handler(_cur_task, arg1, sa->sa_handler);
+    add_handler(_cur_task, arg1, sa->sa_handler, sa->sa_mask);
     return 0; 
 }
 

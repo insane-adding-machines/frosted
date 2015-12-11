@@ -79,6 +79,7 @@ OBJS-y+=						\
 		sem_init.o				\
 		semaphore.o				\
 		sigaction.o				\
+		signal.o				\
 		socket.o				\
 		sendto.o				\
 		setsockopt.o			\

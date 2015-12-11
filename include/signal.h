@@ -26,12 +26,15 @@
 
 #define SIGMAX      20
 
-typedef int sigset_t;
+typedef uint32_t sigset_t;
 #define SI_USER    1    /* Sent by a user. kill(), abort(), etc */
 #define SI_QUEUE   2    /* Sent by sigqueue() */
 #define SI_TIMER   3    /* Sent by expiration of a timer_settime() timer */
 #define SI_ASYNCIO 4    /* Indicates completion of asycnhronous IO */
 #define SI_MESGQ   5    /* Indicates arrival of a message at an empty queue */
+
+#define SIG_DFL ((void (*)(int)) 0)
+#define SIG_IGN ((void (*)(int)) 0xFFFFFFFF)
 
 union sigval {
   int    sival_int;    /* Integer signal value */
@@ -59,5 +62,14 @@ struct sigaction {
 };
 
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
+int sigemptyset(sigset_t *set);
+int sigfillset(sigset_t *set);
+int sigaddset(sigset_t *set, int signum);
+int sigdelset(sigset_t *set, int signum);
+int sigismember(const sigset_t *set, int signum);
+
+int sigisemptyset(const sigset_t *set);
+int sigorset(sigset_t *dest, const sigset_t *left, const sigset_t *right);
+int sigandset(sigset_t *dest, const sigset_t *left, const sigset_t *right);
 
 #endif
