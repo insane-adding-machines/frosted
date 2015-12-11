@@ -75,6 +75,7 @@ OBJS-y+=						\
 		read.o					\
 		readdir.o				\
 		recvfrom.o				\
+		resource.o				\
 		stat.o					\
 		sem_init.o				\
 		semaphore.o				\
