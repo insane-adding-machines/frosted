@@ -63,4 +63,5 @@
 #define SYS_PIPE2 			(59)
 #define SYS_SIGACTION 			(60)
 #define SYS_SIGPROCMASK 			(61)
-#define _SYSCALLS_NR (62) /* We have 62 syscalls! */
+#define SYS_SIGSUSPEND 			(62)
+#define _SYSCALLS_NR (63) /* We have 63 syscalls! */

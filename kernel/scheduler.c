@@ -137,6 +137,7 @@ struct __attribute__((packed)) task_block {
     struct fnode *cwd;
     struct task_handler *sighdlr;
     sigset_t sigmask;
+    sigset_t sigpend;
     struct filedesc *filedesc;
     void *sp;
     struct task *next;
@@ -153,7 +154,7 @@ static struct task *const kernel = (struct task *)(&struct_task_block_kernel);
 
 static int number_of_tasks = 0;
 
-static void tasklist_add(struct task **list, struct task *el)
+static void tasklist_add(struct task **list, volatile struct task *el)
 {
     el->tb.next = *list;
     *list = el;
@@ -368,6 +369,8 @@ int sys_dup2_hdlr(int fd, int newfd)
 /**/
 /**/
 /**/
+static void check_pending_signals(volatile struct task *t);
+
 
 static int add_handler(volatile struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
 {
@@ -385,6 +388,7 @@ static int add_handler(volatile struct task *t, int signo, void (*hdlr)(int), ui
     sighdlr->mask = mask;
     sighdlr->next = t->tb.sighdlr;
     t->tb.sighdlr = sighdlr;
+    check_pending_signals(t);
     return 0;
 }
 
@@ -404,6 +408,7 @@ static int del_handler(struct task *t, int signo)
                 prev->next = sighdlr->next;
             }
             kfree(sighdlr);
+            check_pending_signals(t);
             return 0;
         }
         prev = sighdlr;
@@ -426,11 +431,15 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
     if ((t->tb.state == TASK_ZOMBIE) || (t->tb.state == TASK_OVER))
         return -ESRCH;
 
-    if ((1 << signo) & t->tb.sigmask)
+    if (((1 << signo) & t->tb.sigmask) && (h->hdlr != SIG_IGN))
     {
         /* Signal is blocked via t->tb.sigmask */
+        t->tb.sigpend |= (1 << signo);
         return 0;
     }
+
+    /* Reset signal, if pending, as it's going to be handled. */
+    t->tb.sigpend &= ~(1 << signo);
 
     sighdlr = t->tb.sighdlr;
     while(sighdlr) {
@@ -468,6 +477,18 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         }
     }
     return 0;
+}
+
+static void check_pending_signals(volatile struct task *t)
+{
+    int i;
+    t->tb.sigpend &= ~(t->tb.sigmask);
+    while (t->tb.sigpend != 0u) {
+        for (i = 1; i < SIGMAX; i++) {
+            if ((1 << i) & t->tb.sigpend)
+                catch_signal(t, i, t->tb.sigmask);
+        }
+    }
 }
 
 int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
@@ -508,9 +529,25 @@ int sys_sigprocmask_hdlr(int how, const sigset_t *set, sigset_t *oldset)
             _cur_task->tb.sigmask |= *set;
         else  
             _cur_task->tb.sigmask &= ~(*set);
+        check_pending_signals(_cur_task);
     }
     return 0;
 }
+
+int sys_sigsuspend_hdlr(const sigset_t *mask)
+{
+    uint32_t orig_mask = _cur_task->tb.sigmask;
+    if (!mask)
+        return -EINVAL;
+
+    _cur_task->tb.sigmask = ~(*mask);
+    task_suspend();
+    _cur_task->tb.sigmask = orig_mask;
+
+    /* Success. */
+    return -EINTR;
+}
+
 
 /********************************/
 /*           Scheduler          */

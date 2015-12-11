@@ -81,6 +81,7 @@ OBJS-y+=						\
 		sigaction.o				\
 		signal.o				\
 		sigprocmask.o			\
+		sigsuspend.o			\
 		socket.o				\
 		sendto.o				\
 		setsockopt.o			\
