@@ -100,6 +100,7 @@ OBJS-y+=						\
 		umount.o				\
 		uid.o					\
 		umask.o					\
+		vfork.o					\
 		wait.o					\
 		waitpid.o				\
 		write.o					\

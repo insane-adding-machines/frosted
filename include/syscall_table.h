@@ -64,4 +64,5 @@
 #define SYS_SIGACTION 			(60)
 #define SYS_SIGPROCMASK 			(61)
 #define SYS_SIGSUSPEND 			(62)
-#define _SYSCALLS_NR (63) /* We have 63 syscalls! */
+#define SYS_VFORK 			(63)
+#define _SYSCALLS_NR (64) /* We have 64 syscalls! */

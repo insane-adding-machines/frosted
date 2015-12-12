@@ -769,7 +769,7 @@ int scheduler_exec(void (*init)(void *), void *arg)
     return 0;
 }
 
-int scheduler_vfork(void)
+int sys_vfork_hdlr(void)
 {
     struct task *new;
     int i;
@@ -792,6 +792,8 @@ int scheduler_vfork(void)
         for (i = 0; i < _cur_task->tb.n_files; i++) {
             task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
         }
+        /* Inherit signal mask */
+        new->tb.sigmask = _cur_task->tb.sigmask;
     } 
 
     new->tb.next = NULL;

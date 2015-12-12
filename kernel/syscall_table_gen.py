@@ -73,7 +73,8 @@ syscalls = [
     ["pipe2", 2, "sys_pipe2_hdlr"],
     ["sigaction", 3, "sys_sigaction_hdlr"],
     ["sigprocmask", 3, "sys_sigprocmask_hdlr"],
-    ["sigsuspend", 1, "sys_sigsuspend_hdlr"]
+    ["sigsuspend", 1, "sys_sigsuspend_hdlr"],
+    ["vfork", 0, "sys_vfork_hdlr"]
 ]
 
    #
