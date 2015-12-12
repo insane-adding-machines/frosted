@@ -61,6 +61,7 @@ OBJS-y+=						\
 		lseek.o					\
 		listen.o				\
 		malloc.o				\
+		malloc_trim.o			\
 		mkdir.o					\
 		mutex_init.o			\
 		mutex.o					\
