@@ -10,7 +10,6 @@ extern int errno;
 
 pid_t waitpid(pid_t pid, int *stat_loc, int options)
 {
-  errno = ENOSYS;
-  return -1;
+  return sys_waitpid(pid, stat_loc, options);
 }
 

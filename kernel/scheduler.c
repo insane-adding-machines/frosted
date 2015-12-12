@@ -21,6 +21,7 @@
 #include "syscall_table.h"
 #include "string.h" /* flibc string.h */
 #include "signal.h"
+#include "sys/wait.h"
 
 
 /* Full kernel space separation */
@@ -1028,10 +1029,8 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     if (!t)
         t = tasklist_get(&tasks_idling, arg1);
 
-
     if (!t || _cur_task->tb.pid == arg1 || t->tb.ppid != _cur_task->tb.pid)
         return -EINVAL;
-
 
     if (t->tb.state == TASK_ZOMBIE) {
         t->tb.state = TASK_OVER;
@@ -1052,6 +1051,59 @@ int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t a
     task_suspend();
     return SYS_CALL_AGAIN;
 }
+
+int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
+{
+    int *status = (int *)arg2;
+    struct task *t = NULL;
+    int pid = (int)arg1;
+    int options = (int) arg3;
+    if (pid == 0)
+        return -EINVAL;
+
+    if (pid < -1)
+        return -ENOSYS;
+
+    if (pid != -1) {
+        t = tasklist_get(&tasks_running, pid);
+        /* Check if pid is running, but it's not a child */
+        if (t) {
+            if (t->tb.ppid != _cur_task->tb.ppid)
+                return -ESRCH;
+            else {
+                if ((options & WNOHANG) != 0)
+                    return 0;
+                task_suspend();
+                return SYS_CALL_AGAIN;
+            }
+        }
+
+        t = tasklist_get(&tasks_idling, pid);
+        if (!t || (t->tb.ppid != _cur_task->tb.ppid))
+            return -ESRCH;
+        if (t->tb.state == TASK_ZOMBIE)
+            goto child_found;
+        task_suspend();
+        return SYS_CALL_AGAIN;
+    }
+    
+    /* wait for all (pid = -1) */
+    t = tasks_idling;
+    while (t) {
+        if ((t->tb.state == TASK_ZOMBIE) && (t->tb.ppid == _cur_task->tb.pid))
+            goto child_found;
+        t = t->tb.next;
+    }
+    task_suspend();
+    return SYS_CALL_AGAIN;
+
+child_found:
+    pid = t->tb.pid;
+    t->tb.state = TASK_OVER;
+    task_destroy(t);
+    return pid;
+}
+
 
 int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {

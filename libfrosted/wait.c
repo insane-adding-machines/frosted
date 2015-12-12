@@ -9,7 +9,7 @@ extern int errno;
 
 int wait(int  *status)
 {
-  errno = ENOSYS;
+  errno = sys_waitpid(-1, status, 0);
   return -1;
 }
 

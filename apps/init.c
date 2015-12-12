@@ -192,6 +192,7 @@ void init(void *arg)
 {
     volatile int i = (int)arg;
     volatile int pid;
+    int status;
     int fd, sd;
     uint32_t *temp;
     int testval = 42;
@@ -228,8 +229,7 @@ void init(void *arg)
         IDLE();
 
     while(1) {
-        sleep(500);
-        pid = getpid();
+        pid = wait(&status);
     }
     (void)i;
 }
