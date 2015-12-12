@@ -23,6 +23,8 @@
 #include "ioctl.h"
 #include <string.h>
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
@@ -158,6 +160,34 @@ void cons(void *arg)
     }
 }
 
+static int chpid = 0;
+
+void p_sighdlr(int signo)
+{
+    if (signo == SIGCHLD)
+        thread_join(chpid, -1);
+}
+
+void posix_test(void *arg)
+{
+    int ser = open("/dev/ttyS0", O_RDWR, 0);
+    struct sigaction sa = {.sa_handler = p_sighdlr };
+    //sigaction(SIGCHLD, &sa, NULL);
+    if (ser >= 0)
+        dup(ser);
+    printf("Hello from parent process \r\n");
+    chpid = vfork();
+    if (chpid > 0) {
+        //sigsuspend((1 << SIGCHLD));
+        thread_join(chpid, -1);
+    } else {
+        sleep(5000);
+        exit(0);
+    }
+    printf("Goodbye from parent process \r\n");
+    exit(0);
+}
+
 void init(void *arg)
 {
     volatile int i = (int)arg;
@@ -193,6 +223,9 @@ void init(void *arg)
     if (thread_create(cons, &testval, 1) < 0)
         IDLE();
 #endif
+
+    if (thread_create(posix_test, &testval, 1) < 0)
+        IDLE();
 
     while(1) {
         sleep(500);

@@ -7,9 +7,9 @@
 #include <errno.h>
 #undef errno
 extern int errno;
-extern int sys_unlink(char *name);
+extern int sys_unlink(const char *name);
 
-int unlink (char * name)
+int unlink (const char * name)
 {
     return sys_unlink(name);
 }

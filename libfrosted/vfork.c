@@ -2,7 +2,10 @@
 
 pid_t vfork(void)
 {
-    return sys_vfork();
+    pid_t newpid = sys_vfork();
+    if (newpid == getpid())
+        return 0;
+    return newpid;
 }
 
 

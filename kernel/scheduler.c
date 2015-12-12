@@ -458,12 +458,9 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
             h->hdlr(signo); 
         } else {
             /* Execute signal handler on top of the current task stack */
-            struct nvic_stack_frame *old_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
-            struct nvic_stack_frame *nvic = t->tb.sp - NVIC_FRAME_SIZE;
-            nvic->lr = old_nvic->pc;
+            volatile struct nvic_stack_frame *nvic = t->tb.sp + EXTRA_FRAME_SIZE;
             nvic->pc = (uint32_t)h->hdlr;
             nvic->r0 = (uint32_t)signo;
-            t->tb.sp -= (NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE);
             /* XXX: In order to use per-sigaction sa_mask, we need to set 
              * t->tb.sigmask here, and restore it in some way before the 
              * handler returns to nvic->lr.
@@ -474,6 +471,8 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         /* Handler not present: SIG_DFL */
         if (signo != SIGCHLD) {
             task_terminate(t->tb.pid);
+        } else {
+            task_resume(t->tb.pid);
         }
     }
     return 0;
@@ -681,6 +680,8 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     extra_frame = (struct extra_stack_frame *)sp;
     extra_frame->r9 = r9val;
     new->tb.sp = (uint32_t *)sp;
+    if ((new->tb.flags & TASK_FLAG_VFORK) != 0)
+        task_resume(new->tb.ppid);
 } 
 
 int task_create_GOT(void (*init)(void *), void *arg, unsigned int prio, uint32_t got_loc)
@@ -773,13 +774,16 @@ int sys_vfork_hdlr(void)
 {
     struct task *new;
     int i;
+    uint32_t sp_off = (uint8_t *)_cur_task->tb.sp - (uint8_t *)_cur_task->stack;
+    uint32_t vpid;
 
     irq_off();
-    new = task_space_alloc(sizeof(struct task_block));
+    new = task_space_alloc(sizeof(struct task));
     if (!new) {
         return -ENOMEM;
     }
-    new->tb.pid = next_pid();
+    vpid = next_pid();
+    new->tb.pid = vpid;
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.prio = _cur_task->tb.prio;
     new->tb.filedesc = NULL;
@@ -799,11 +803,22 @@ int sys_vfork_hdlr(void)
     new->tb.next = NULL;
     tasklist_add(&tasks_running, new);
     number_of_tasks++;
+
+    /* Set parent's vfork retval by writing on stacked r0 */
+    *((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE)) = vpid;
+
+    /* Copy parent's stack in own stack space, but don't use it:
+     * sp remains in the parent's pool.
+     * This will be restored upon exit/exec
+     */
+    memcpy(new->stack, _cur_task->stack, STACK_SIZE);
     new->tb.sp = _cur_task->tb.sp;
 
     new->tb.state = TASK_RUNNABLE;
     irq_on();
-    return new->tb.pid;
+    /* Vfork: Caller task suspends until child calls exec or exits */
+    task_suspend();
+    return vpid;
 }
 
 static __naked void save_kernel_context(void)
@@ -962,8 +977,16 @@ void task_terminate(int pid)
     if (t) {
         t->tb.state = TASK_ZOMBIE;
         t->tb.timeslice = 0;
-        if (t->tb.ppid > 0)
-            task_resume(t->tb.ppid);
+
+        if (t->tb.ppid > 0) {
+            if (t->tb.flags & TASK_FLAG_VFORK) {
+                struct task *pt = tasklist_get(&tasks_idling, t->tb.ppid);
+                /* Restore parent's stack */
+                if (pt)
+                    memcpy((void *)pt->stack, (void *)_cur_task->stack, STACK_SIZE);
+            }
+            sys_kill_hdlr(t->tb.ppid, SIGCHLD);
+        }
     }
 }
 
@@ -1075,7 +1098,7 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
             (*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
     irq_on();
 
-    if (_cur_task->tb.state == TASK_WAITING) {
+    if (_cur_task->tb.state != TASK_RUNNING) {
         task_switch();
     }
 

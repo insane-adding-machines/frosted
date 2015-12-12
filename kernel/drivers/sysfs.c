@@ -132,7 +132,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
         strcpy(task_txt, legend);
         off += strlen(legend);
 
-        for (i = 1; i < scheduler_ntasks(); i++) {
+        for (i = 1; i < MAX_SYSFS_BUFFER; i++) {
             p_state = scheduler_task_state(i);
             if ((p_state != TASK_IDLE) && (p_state != TASK_OVER)) {
                 off += ul_to_str(i, task_txt + off);
