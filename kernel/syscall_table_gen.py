@@ -65,6 +65,7 @@ syscalls = [
     ["kill", 2, "sys_kill_hdlr"],
     ["isatty", 1, "sys_isatty_hdlr"],
     ["exec", 2, "sys_exec_hdlr"],
+    ["execb", 2, "sys_execb_hdlr"],
     ["ttyname_r", 3, "sys_ttyname_hdlr"],  
     ["exit", 1, "sys_exit_hdlr"],
     ["tcsetattr", 3, "sys_tcsetattr_hdlr"],

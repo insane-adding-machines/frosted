@@ -211,11 +211,11 @@ void init(void *arg)
 
 
     /* Thread create test */
-    if (thread_create(idling, &testval, 1) < 0)
-        IDLE();
+    if (vfork() == 0)
+        execb(idling, &testval);
 #ifdef CONFIG_FRESH
-    if (thread_create(fresh, &testval, 1) < 0)
-        IDLE();
+    if (vfork() == 0)
+        execb(fresh, &testval);
 #endif
 
 #ifdef CONFIG_PRODCONS
@@ -225,8 +225,9 @@ void init(void *arg)
         IDLE();
 #endif
 
-    if (thread_create(posix_test, &testval, 1) < 0)
-        IDLE();
+    if (vfork() == 0) {
+        execb(posix_test, &testval);
+    }
 
     while(1) {
         pid = wait(&status);

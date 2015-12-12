@@ -666,6 +666,18 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.cwd = fno_search("/");
     new->tb.sighdlr = NULL;
 
+    if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
+        struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
+        if (!pt)
+            pt = tasklist_get(&tasks_running, new->tb.ppid);
+        if (pt) {
+            /* Restore parent's stack */
+            memcpy((void *)pt->stack, (void *)new->stack, STACK_SIZE);
+            task_resume(pt->tb.pid);
+        }
+        new->tb.flags &= (~TASK_FLAG_VFORK);
+    }
+
     
     /* stack memory */
     sp = (((uint8_t *)(&new->stack)) + STACK_SIZE - NVIC_FRAME_SIZE);
@@ -769,6 +781,11 @@ int scheduler_exec(void (*init)(void *), void *arg)
     volatile struct task *t = _cur_task;
     task_create_real(t, init, arg, t->tb.prio, 0);
     return 0;
+}
+
+int sys_execb_hdlr(uint32_t arg1, uint32_t arg2)
+{
+    return scheduler_exec((void (*)(void*))arg1, (void *)arg2);
 }
 
 int sys_vfork_hdlr(void)
