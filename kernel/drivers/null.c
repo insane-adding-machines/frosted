@@ -1,10 +1,14 @@
 #include "frosted.h"
 #include <string.h>
 
+static struct fnode *devnull;
+static struct fnode *devzero;
 
 
 static int devnull_read(struct fnode *fno, void *buf, unsigned int len)
 {
+    if (fno == devnull)
+        return -EPERM;
     if (len <= 0)
         return len;
     memset(buf, 0, sizeof(len));
@@ -14,6 +18,8 @@ static int devnull_read(struct fnode *fno, void *buf, unsigned int len)
 
 static int devnull_write(struct fnode *fno, const void *buf, unsigned int len)
 {
+    if (fno == devzero)
+        return -EPERM;
     if (len <= 0)
         return len;
     return len;
@@ -32,8 +38,6 @@ static int devnull_open(const char *path, int flags)
 }
 
 
-static struct fnode *devnull;
-static struct fnode *devzero;
 
 static struct module mod_devnull = {
 };

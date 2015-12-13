@@ -25,6 +25,7 @@ CFLAGS+=-DCORE_M3 -DKLOG_LEVEL=6 -D__frosted__
 CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common -msingle-pic-base -mpic-register=r9 -mno-pic-data-is-text-relative
 #debugging
 CFLAGS+=-ggdb
+CFLAGS+=-nostdinc
 
 # LINKER FLAGS
 LDFLAGS:=-L$(FROSTED_PATH)/build/lib -L$(FROSTED_PATH)/newlib/lib -gc-sections --specs=nano.specs

@@ -6,32 +6,24 @@ extern int errno;
 
 int setpgid(pid_t pid, pid_t pgid)
 {
-    errno = ENOSYS;
-    return -1;
-}
-
-int sigaction(int sig, const struct sigaction *restrict act, struct sigaction *restrict oact)
-{
-    errno = ENOSYS;
-    return -1;
+    if (pid!=pgid)
+        return -1;
+    return 0;
 }
 
 
 int tcgetpgrp(int fd)
 {
-    errno = ENOSYS;
-    return -1;
+    return getpid();
 }
 
 int tcsetpgrp(int fd, pid_t pgrp)
 {
-    errno = ENOSYS;
-    return -1;
+    return 0;
 }
 
 int getpgrp(void)
 {
-    errno = ENOSYS;
-    return -1;
+    return getpid();
 }
 

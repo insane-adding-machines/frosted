@@ -273,11 +273,7 @@ int task_fd_setmask(int fd, uint32_t mask)
     if (!fno)
         return -EINVAL;
 
-    if (mask & O_RDONLY) {
-        if ((fno->flags & FL_RDONLY)== 0)
-            return -EPERM;
-    }
-    if (mask & O_WRONLY) {
+    if ((mask & O_ACCMODE) != O_RDONLY) {
         if ((fno->flags & FL_WRONLY)== 0)
             return -EPERM;
     }
@@ -311,14 +307,12 @@ struct fnode *task_filedesc_get(int fd)
 
 int task_fd_readable(int fd)
 {
-    if (!task_filedesc_get(fd) || ((_cur_task->tb.filedesc[fd].mask & O_RDONLY) == 0))
-        return 0;
     return 1;
 }
 
 int task_fd_writable(int fd)
 {
-    if (!task_filedesc_get(fd) || ((_cur_task->tb.filedesc[fd].mask & O_WRONLY) == 0))
+    if (!task_filedesc_get(fd) || ((_cur_task->tb.filedesc[fd].mask & O_ACCMODE) == O_RDONLY))
         return 0;
     return 1;
 }

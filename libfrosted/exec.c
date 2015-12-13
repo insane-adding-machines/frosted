@@ -21,6 +21,16 @@ int execve(char *cmd, char *argv[], char *envp[])
     return sys_exec(cmd, (char **)argv);
 }
 
+int execvp(char *cmd, char *argv[])
+{
+    return sys_exec(cmd, (char **)argv);
+}
+
+int execv(char *cmd, char *argv[])
+{
+    return sys_exec(cmd, (char **)argv);
+}
+
 int execb(void (*init)(void*), void *arg)
 {
     return sys_execb(init, arg);

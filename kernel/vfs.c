@@ -21,6 +21,8 @@
 #include "string.h"
 #include "sys/stat.h"
 
+#define O_MODE(o) ((o & O_ACCMODE))
+
 struct mountpoint *MTAB = NULL;
 
 /* ROOT entity ("/")
@@ -404,9 +406,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     path_abs(rel_path, path, MAX_FILE);
     f = fno_search(path);
     if (f && f->owner && f->owner->ops.open) {
-        if ((flags & O_RDONLY) && ((f->flags & FL_RDONLY)== 0))
-            return -EPERM;
-        if ((flags & O_WRONLY) && ((f->flags & FL_WRONLY)== 0))
+        if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
             return -EPERM;
         ret = f->owner->ops.open(path, flags);
         if (ret >= 0) 
@@ -445,9 +445,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     } else {
         f->off = 0;
     }
-    if ((flags & O_RDONLY) && ((f->flags & FL_RDONLY)== 0))
-        return -EPERM;
-    if ((flags & O_WRONLY) && ((f->flags & FL_WRONLY)== 0))
+    if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
         return -EPERM;
     ret = task_filedesc_add(f);
     task_fd_setmask(ret, flags);

@@ -24,18 +24,34 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <frosted_api.h>
 #include <fcntl.h>
 #include <termios.h>
 #include "simple-c-shell.h"
 
 #define LIMIT 256 // max number of tokens for a command
 #define MAXLINE 1024 // max number of characters from user input
+#define SERIAL_DEV "/dev/ttyS0"
 
 /**
  * Function used to initialize our shell. We used the approach explained in
  * http://www.gnu.org/software/libc/manual/html_node/Initializing-the-Shell.html
  */
-void init(){
+void shell_init(void){
+    int stdin_fileno, stdout_fileno, stderr_fileno;
+
+    do {
+        stdin_fileno = open(SERIAL_DEV, O_RDONLY, 0);
+    } while (stdin_fileno < 0);
+
+    do {
+        stdout_fileno = open(SERIAL_DEV, O_WRONLY, 0);
+    } while (stdout_fileno < 0);
+    
+    do {
+        stderr_fileno = open(SERIAL_DEV, O_WRONLY, 0);
+    } while (stderr_fileno < 0);
+
 		// See if we are running interactively
         GBSH_PID = getpid();
         // The shell is interactive if STDIN is the terminal  
@@ -219,7 +235,7 @@ int manageEnviron(char * args[], int option){
 void launchProg(char **args, int background){	 
 	 int err = -1;
 	 
-	 if((pid=fork())==-1){
+	 if((pid=vfork())==-1){
 		 printf("Child process could not be created\n");
 		 return;
 	 }
@@ -264,7 +280,7 @@ void fileIO(char * args[], char* inputFile, char* outputFile, int option){
 	
 	int fileDescriptor; // between 0 and 19, describing the output or input file
 	
-	if((pid=fork())==-1){
+	if((pid=vfork())==-1){
 		printf("Child process could not be created\n");
 		return;
 	}
@@ -367,7 +383,7 @@ void pipeHandler(char * args[]){
 			pipe(filedes2); // for even i
 		}
 		
-		pid=fork();
+		pid=vfork();
 		
 		if(pid==-1){			
 			if (i != num_cmds - 1){
@@ -578,7 +594,7 @@ return 1;
 /**
 * Main method of our shell
 */ 
-int main(int argc, char *argv[], char ** envp) {
+int scsh(void *args) {
 	char line[MAXLINE]; // buffer for the user input
 	char * tokens[LIMIT]; // array for the different tokens in the command
 	int numTokens;
@@ -588,12 +604,12 @@ int main(int argc, char *argv[], char ** envp) {
 	pid = -10; // we initialize pid to an pid that is not possible
 	
 	// We call the method of initialization and the welcome screen
-	init();
+	shell_init();
 	welcomeScreen();
     
     // We set our extern char** environ to the environment, so that
     // we can treat it later in other methods
-	environ = envp;
+	environ = NULL;
 	
 	// We set shell=<pathname>/simple-c-shell as an environment variable for
 	// the child

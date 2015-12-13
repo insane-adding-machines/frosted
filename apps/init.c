@@ -188,6 +188,8 @@ void posix_test(void *arg)
     exit(0);
 }
 
+extern int scsh(void *arg);
+
 void init(void *arg)
 {
     volatile int i = (int)arg;
@@ -216,6 +218,11 @@ void init(void *arg)
 #ifdef CONFIG_FRESH
     if (vfork() == 0)
         execb(fresh, &testval);
+#endif
+
+#ifdef CONFIG_SCSH
+    if (vfork() == 0)
+        execb(scsh, &testval);
 #endif
 
 #ifdef CONFIG_PRODCONS

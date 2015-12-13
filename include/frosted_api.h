@@ -11,13 +11,18 @@
 
 
 /* open */
-#define O_RDONLY 0x01
-#define O_WRONLY 0x02
-#define O_RDWR   (O_RDONLY | O_WRONLY)
-#define O_CREAT  0x04
-#define O_EXCL   0x08
-#define O_TRUNC  0x10
-#define O_APPEND 0x20
+#define O_RDONLY 0x00
+#define O_WRONLY 0x01
+#define O_RDWR   0x03
+#define O_ACCMODE 0x03
+
+#define O_CREAT		00000100
+#define O_EXCL		00000200
+#define O_NOCTTY	00000400
+#define O_TRUNC		00001000
+#define O_APPEND	00002000
+#define O_NONBLOCK	00004000
+
 
 /* seek */
 #define SEEK_SET 0
