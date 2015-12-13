@@ -3,7 +3,7 @@
 #
 
 # PATH CONFIG
-FROSTED_PATH=/home/vinz/frosted
+FROSTED_PATH=..
 PREFIX:=$(PWD)/build
 
 # APPLICATION CONFIG
