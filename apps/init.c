@@ -170,12 +170,8 @@ void p_sighdlr(int signo)
 
 void posix_test(void *arg)
 {
-    int ser = open("/dev/ttyS0", O_RDWR, 0);
     struct sigaction sa = {.sa_handler = p_sighdlr };
     //sigaction(SIGCHLD, &sa, NULL);
-    if (ser >= 0)
-        dup(ser);
-    printf("Hello from parent process \r\n");
     chpid = vfork();
     if (chpid > 0) {
         //sigsuspend((1 << SIGCHLD));
@@ -184,7 +180,6 @@ void posix_test(void *arg)
         sleep(5000);
         exit(0);
     }
-    printf("Goodbye from parent process \r\n");
     exit(0);
 }
 

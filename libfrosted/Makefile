@@ -47,6 +47,7 @@ OBJS-y+=						\
 		errno.o					\
 		exec.o					\
 		exit.o					\
+		fgets.o					\
 		fork.o					\
 		free.o					\
 		fstat.o					\

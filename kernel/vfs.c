@@ -623,7 +623,9 @@ int sys_getcwd_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;
     int len = (int)arg2;
-    return fno_fullpath(task_getcwd(), path, len);
+    if (fno_fullpath(task_getcwd(), path, len) > 0)
+        return arg1;
+    return 0;
 }
 
 void __attribute__((weak)) devnull_init(struct fnode *dev)
