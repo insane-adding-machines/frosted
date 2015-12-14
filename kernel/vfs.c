@@ -193,9 +193,16 @@ int vfs_symlink(char *file, char *link)
 
 static struct fnode *fno_create_dir(char *path, uint32_t flags)
 {
+    char selfl[MAX_FILE], parentl[MAX_FILE];
     struct fnode *fno = fno_create_file(path);
+    strcpy( selfl, path );
+    strcpy( parentl, path );
+    strcat( selfl, "/." );
+    strcat( parentl, "/.." );
     if (fno) {
         fno->flags |= (FL_DIR | flags);
+        fno_link( path, selfl );
+        //once link to self is fixed add the parent link as well
     }
     return fno;
 }
