@@ -65,7 +65,7 @@ static const struct gpio_addr gpio_addrs[] = { {.port=GPIOG, .pin=GPIO13,.mode=G
 static const struct uart_addr uart_addrs[] = { 
 #ifdef CONFIG_USART_1
             { 
-                .devidx = 2,
+                .devidx = 1,
                 .base = USART1, 
                 .irq = NVIC_USART1_IRQ, 
                 .rcc = RCC_USART1, 
