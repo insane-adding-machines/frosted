@@ -8,7 +8,7 @@
 #undef errno
 extern int errno;
 extern int sys_exec(char *cmd, char **args);
-extern int sys_execb(void (*init)(void), void *arg);
+extern int sys_execb(void (*init)(void **), void **args);
 
 int exec(char *cmd, char **args)
 {
@@ -31,8 +31,8 @@ int execv(char *cmd, char *argv[])
     return sys_exec(cmd, (char **)argv);
 }
 
-int execb(void (*init)(void*), void *arg)
+int execb(void (*init)(void**), void **args)
 {
-    return sys_execb(init, arg);
+    return sys_execb(init, args);
 }
 
