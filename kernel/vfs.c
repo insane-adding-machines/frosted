@@ -424,7 +424,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if ((flags & O_CREAT) == 0) {
         f = fno_search(path);
     } else {
-        if ((flags & O_WRONLY) == 0)
+        if ((O_MODE(flags)) == O_RDONLY)
             return -EPERM;
         f = fno_search(path);
         if (flags & O_EXCL) {
@@ -440,6 +440,10 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         }
         if (!f)
             f = fno_create_file(path);
+
+        /* TODO: Parse arg3 & 0x1c0 for permissions */
+        if (f)
+            f->flags |= FL_RDWR;
     }
     if (f == NULL)
        return -ENOENT; 
@@ -452,8 +456,6 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     } else {
         f->off = 0;
     }
-    if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
-        return -EPERM;
     ret = task_filedesc_add(f);
     task_fd_setmask(ret, flags);
     return ret; 

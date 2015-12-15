@@ -18,6 +18,7 @@
   * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -54,31 +55,40 @@ const struct binutils bin_table[] = {
     {"", NULL}
 };
 
-static int try_binutils(void **args, int background)
+static void exec_binutils(const struct binutils *b, char **args)
 {
-    char *cmd = args[0];
-    int status;
+    int ret;
+    ret = b->exe((void **)args); 
+}
+
+static const struct binutils * find_binutils(char *name)
+{
     const struct binutils *b = bin_table;
     while(b->exe) {
-        if (strcmp(cmd, b->name) == 0) {
-            /* TODO: vfork/exec */
-            
-            if (getpid() == 0)
-                exit(1);
-            /*
-            if (vfork() == 0) {
-                int ret;
-                ret = b->exe(args); 
-            }
-            if (!background)
-                wait(&status);
-                */
-            b->exe(args);
-            return 0;
+        if (strcmp(name, b->name) == 0) {
+            return b;
         }
         b++;
     }
-    return -1;
+    return NULL;
+}
+
+static int try_binutils(char **args, int background)
+{
+    char *cmd = args[0];
+    int status;
+    const struct binutils *b = find_binutils(cmd);
+
+    if (!b)
+        return -1;
+    
+    if (vfork() == 0)
+        exec_binutils(b, args);
+
+    if (!background)
+        wait(&status);
+
+    return 0;
 }
 
 
@@ -330,11 +340,12 @@ void launchProg(char **args, int background){
 /**
 * Method used to manage I/O redirection
 */ 
-void fileIO(char * args[], char* inputFile, char* outputFile, int option){
+void fileIO(char * args[], char* inputFile, char* outputFile, int option)
+{
      
     int err = -1;
-    
     int fileDescriptor; // between 0 and 19, describing the output or input file
+    const struct binutils *b;
     
     if((pid=vfork())==-1){
         printf("Child process could not be created\r\n");
@@ -343,8 +354,11 @@ void fileIO(char * args[], char* inputFile, char* outputFile, int option){
     if(pid==0){
         // Option 0: output redirection
         if (option == 0){
+            uint32_t flags;
         	// We open (create) the file truncating it at 0, for write only
-        	fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600); 
+            flags = O_CREAT;
+            flags |= O_TRUNC | O_WRONLY;
+        	fileDescriptor = open(outputFile, flags, 0600); 
         	// We replace de standard output with the appropriate file
         	dup2(fileDescriptor, STDOUT_FILENO); 
         	close(fileDescriptor);
@@ -362,13 +376,17 @@ void fileIO(char * args[], char* inputFile, char* outputFile, int option){
         }
          
         setenv("parent",getcwd(currentDirectory, 128),1);
-        
-        if (execvp(args[0],args)==err){
+
+        b = find_binutils(args[0]);
+        if (b) {
+            exec_binutils(b, args);
+        }
+        else if (execvp(args[0],args)==err){
         	printf("err");
         	kill(getpid(),SIGTERM);
         }		 
     }
-    waitpid(pid,NULL,0);
+    wait(NULL);
 }
 
 /**
@@ -382,6 +400,8 @@ void pipeHandler(char * args[]){
     int num_cmds = 0;
     
     char *command[LIMIT];
+
+    const struct binutils *b;
     
     pid_t pid;
     
@@ -482,6 +502,10 @@ void pipeHandler(char * args[]){
         		} 
         	}
         	
+            b = find_binutils(command[0]);
+            if (b) {
+                exec_binutils(b, command);
+            }
         	if (execvp(command[0],command)==err){
         		kill(getpid(),SIGTERM);
         	}		
@@ -526,7 +550,8 @@ int commandHandler(char * args[]){
     int aux;
     int background = 0;
     
-    char *args_aux[8];
+    char *args_aux[8] = { NULL };
+
     
     // We look for the special characters and separate the command itself
     // in a new array for the arguments

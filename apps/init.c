@@ -207,17 +207,17 @@ void init(void *arg)
     close(sd);
 
 
-    thread_create(idling, &testval, 1);
 
     /* Thread create test */
-    //if (vfork() == 0)
-    //    execb(idling, &testval);
-    //
+    if (vfork() == 0)
+        execb(idling, &testval);
+    //thread_create(idling, &testval, 1);
  
 #ifdef CONFIG_FRESH
-//    if (vfork() == 0)
-//        execb(fresh, &testval);
-      thread_create(fresh, &testval, 1);
+    if (vfork() == 0)
+        execb(fresh, &testval);
+     // thread_create(fresh, &testval, 1);
+      
 #endif
 
 #ifdef CONFIG_PRODCONS
