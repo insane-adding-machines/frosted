@@ -292,7 +292,7 @@ void f_free(void * ptr)
     blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
     if (blk->magic == F_MALLOC_MAGIC)
     {
-        blk->flags = 0u;
+        blk->flags &= ~F_IN_USE;
         /* stats */
         f_malloc_stats[blk->flags & MEM_USER].free_calls++;
         f_malloc_stats[blk->flags & MEM_USER].objects_allocated--;

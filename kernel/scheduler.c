@@ -56,7 +56,7 @@ int sys_register_handler(uint32_t n, int(*_sys_c)(uint32_t arg1, uint32_t arg2, 
 #define MAX_TASKS 16
 #define BASE_TIMESLICE (20)
 #define TIMESLICE(x) ((BASE_TIMESLICE) + ((x)->tb.prio << 2))
-#define CONFIG_TASK_STACK_SIZE (2048)
+#define CONFIG_TASK_STACK_SIZE (3000)
 #define INIT_CONFIG_TASK_STACK_SIZE (256)
 
 struct __attribute__((packed)) nvic_stack_frame {
@@ -208,9 +208,15 @@ static void running_to_idling(volatile struct task *t)
         tasklist_add(&tasks_idling, t);
 }
 
+static int task_filedesc_del_from_task(struct task *t, int fd);
 static void task_destroy(struct task *t)
 {
+    int i;
+    for (i = 0; i < t->tb.n_files; i++) {
+        task_filedesc_del_from_task(t, i);
+    }
     tasklist_del(&tasks_idling, t->tb.pid);
+    kfree(t->tb.filedesc);
     task_space_free(t);
     number_of_tasks--;
 }
@@ -268,6 +274,21 @@ int task_filedesc_add(struct fnode *f)
     return task_filedesc_add_to_task(_cur_task, f);
 }
 
+static int task_filedesc_del_from_task(struct task *t, int fd)
+{
+    if (!t)
+        return -EINVAL;
+    if (!t->tb.filedesc[fd].fno)
+        return -ENOENT;
+    t->tb.filedesc[fd].fno->usage--;
+    t->tb.filedesc[fd].fno = NULL;
+}
+
+int task_filedesc_del(int fd)
+{
+    return task_filedesc_del_from_task(_cur_task, fd);
+}
+
 int task_fd_setmask(int fd, uint32_t mask)
 {
     struct fnode *fno = _cur_task->tb.filedesc[fd].fno;
@@ -318,16 +339,6 @@ int task_fd_writable(int fd)
     return 1;
 }
 
-int task_filedesc_del(int fd)
-{
-    volatile struct task *t = _cur_task;
-    if (!t)
-        return -EINVAL;
-    if (!t->tb.filedesc[fd].fno)
-        return -ENOENT;
-    t->tb.filedesc[fd].fno->usage--;
-    t->tb.filedesc[fd].fno = NULL;
-}
 
 int sys_dup_hdlr(int fd)
 {
