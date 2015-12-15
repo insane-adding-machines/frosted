@@ -234,6 +234,7 @@ int changeDirectory(char* args[]){
  * options
  */ 
 int manageEnviron(char * args[], int option){
+    /*
     char **env_aux;
     switch(option){
         // Case 'environ': we print the environment variables along with
@@ -281,6 +282,7 @@ int manageEnviron(char * args[], int option){
         	
         	
     }
+    */
     return 0;
 }
  
