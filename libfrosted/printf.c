@@ -169,10 +169,9 @@ static int print(char **out, const char *format, va_list args )
 				continue;
 			}
 			if( *format == 'c' ) {
-				/* char are converted to int then pushed on the stack */
 				scr[0] = (char)va_arg( args, int );
-				scr[1] = '\0';
-				pc += prints (out, scr, width, pad);
+                scr[1] = '\0';
+                pc += prints(out, scr, width, pad);
 				continue;
 			}
 		}
@@ -187,10 +186,10 @@ static int print(char **out, const char *format, va_list args )
 	return pc;
 }
 
+
 int printf(const char *format, ...)
 {
         va_list args;
-        
         va_start( args, format );
         return print( 0, format, args );
 }

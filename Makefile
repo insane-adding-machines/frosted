@@ -30,8 +30,7 @@ CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 APPS-y:= apps/init.o 
-APPS-$(FRESH)+=apps/fresh.o
-APPS-$(SCSH)+=apps/simple-c-shell.o apps/stubs.o
+APPS-$(FRESH)+=apps/fresh.o apps/binutils.o apps/stubs.o
 
 
 OBJS-y:=kernel/systick.o kernel/drivers/device.o

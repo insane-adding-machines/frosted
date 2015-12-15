@@ -191,12 +191,29 @@ int vfs_symlink(char *file, char *link)
     else return -EINVAL;
 }
 
+static void mkdir_links(struct fnode *fno)
+{
+    char path[MAX_FILE], selfl[MAX_FILE], parentl[MAX_FILE];
+    fno_fullpath(fno, path, MAX_FILE -4);
+    strcpy(selfl, path);
+    strcpy(parentl, path);
+    strcat( selfl, "/." );
+    strcat( parentl, "/.." );
+    if (fno) {
+        fno_link( path, selfl );
+        //once link to self is fixed add the parent link as well
+    }
+
+
+}
+
 static struct fnode *fno_create_dir(char *path, uint32_t flags)
 {
     struct fnode *fno = fno_create_file(path);
     if (fno) {
         fno->flags |= (FL_DIR | flags);
     }
+    mkdir_links(fno);
     return fno;
 }
 
@@ -342,6 +359,7 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
     fno->flags |= (FL_DIR | FL_RDWR);
     if (parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
+    mkdir_links(fno);
     return fno;
 }
 
@@ -417,7 +435,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if ((flags & O_CREAT) == 0) {
         f = fno_search(path);
     } else {
-        if ((flags & O_WRONLY) == 0)
+        if ((O_MODE(flags)) == O_RDONLY)
             return -EPERM;
         f = fno_search(path);
         if (flags & O_EXCL) {
@@ -433,6 +451,10 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         }
         if (!f)
             f = fno_create_file(path);
+
+        /* TODO: Parse arg3 & 0x1c0 for permissions */
+        if (f)
+            f->flags |= FL_RDWR;
     }
     if (f == NULL)
        return -ENOENT; 
@@ -445,8 +467,6 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     } else {
         f->off = 0;
     }
-    if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
-        return -EPERM;
     ret = task_filedesc_add(f);
     task_fd_setmask(ret, flags);
     return ret; 

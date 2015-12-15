@@ -56,8 +56,8 @@ int sys_register_handler(uint32_t n, int(*_sys_c)(uint32_t arg1, uint32_t arg2, 
 #define MAX_TASKS 16
 #define BASE_TIMESLICE (20)
 #define TIMESLICE(x) ((BASE_TIMESLICE) + ((x)->tb.prio << 2))
-#define STACK_SIZE (1024)
-#define INIT_STACK_SIZE (256)
+#define CONFIG_TASK_STACK_SIZE (3000)
+#define INIT_CONFIG_TASK_STACK_SIZE (256)
 
 struct __attribute__((packed)) nvic_stack_frame {
     uint32_t r0;
@@ -141,12 +141,13 @@ struct __attribute__((packed)) task_block {
     sigset_t sigpend;
     struct filedesc *filedesc;
     void *sp;
+    void *cur_stack;
     struct task *next;
 };
 
 struct __attribute__((packed)) task {
     struct task_block tb;
-    uint32_t stack[STACK_SIZE / 4];
+    uint32_t stack[CONFIG_TASK_STACK_SIZE / 4];
 };
 
 static struct task struct_task_init;
@@ -207,9 +208,15 @@ static void running_to_idling(volatile struct task *t)
         tasklist_add(&tasks_idling, t);
 }
 
+static int task_filedesc_del_from_task(struct task *t, int fd);
 static void task_destroy(struct task *t)
 {
+    int i;
+    for (i = 0; i < t->tb.n_files; i++) {
+        task_filedesc_del_from_task(t, i);
+    }
     tasklist_del(&tasks_idling, t->tb.pid);
+    kfree(t->tb.filedesc);
     task_space_free(t);
     number_of_tasks--;
 }
@@ -267,6 +274,21 @@ int task_filedesc_add(struct fnode *f)
     return task_filedesc_add_to_task(_cur_task, f);
 }
 
+static int task_filedesc_del_from_task(struct task *t, int fd)
+{
+    if (!t)
+        return -EINVAL;
+    if (!t->tb.filedesc[fd].fno)
+        return -ENOENT;
+    t->tb.filedesc[fd].fno->usage--;
+    t->tb.filedesc[fd].fno = NULL;
+}
+
+int task_filedesc_del(int fd)
+{
+    return task_filedesc_del_from_task(_cur_task, fd);
+}
+
 int task_fd_setmask(int fd, uint32_t mask)
 {
     struct fnode *fno = _cur_task->tb.filedesc[fd].fno;
@@ -317,16 +339,6 @@ int task_fd_writable(int fd)
     return 1;
 }
 
-int task_filedesc_del(int fd)
-{
-    volatile struct task *t = _cur_task;
-    if (!t)
-        return -EINVAL;
-    if (!t->tb.filedesc[fd].fno)
-        return -ENOENT;
-    t->tb.filedesc[fd].fno->usage--;
-    t->tb.filedesc[fd].fno = NULL;
-}
 
 int sys_dup_hdlr(int fd)
 {
@@ -351,7 +363,7 @@ int sys_dup2_hdlr(int fd, int newfd)
     if (newfd >= t->tb.n_files)
         return -1;
     if (t->tb.filedesc[newfd].fno != NULL)
-        return -1;
+        task_filedesc_del(newfd);
     t->tb.filedesc[newfd].fno = f;
     return newfd;
 }
@@ -573,6 +585,13 @@ static __inl void * msp_read(void)
     return ret;
 }
 
+static __inl void * psp_read(void)
+{
+    void * ret=NULL;
+    asm volatile ("mrs %0, psp" : "=r" (ret));
+    return ret;
+}
+
 static __inl void task_switch(void)
 {
     int i, pid = _cur_task->tb.pid;
@@ -608,7 +627,7 @@ unsigned scheduler_stack_used(int pid)
     if (!t) 
         t = tasklist_get(&tasks_idling, pid);
     if (t)
-        return STACK_SIZE - ((char *)t->tb.sp - (char *)t->stack);
+        return CONFIG_TASK_STACK_SIZE - ((char *)t->tb.sp - (char *)t->tb.cur_stack);
     else return 0;
 }
 
@@ -666,15 +685,16 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
             pt = tasklist_get(&tasks_running, new->tb.ppid);
         if (pt) {
             /* Restore parent's stack */
-            memcpy((void *)pt->stack, (void *)new->stack, STACK_SIZE);
-            task_resume(pt->tb.pid);
+            memcpy((void *)pt->tb.cur_stack, (void *)&new->stack, CONFIG_TASK_STACK_SIZE);
+            task_resume_vfork(pt->tb.pid);
         }
         new->tb.flags &= (~TASK_FLAG_VFORK);
     }
 
     
     /* stack memory */
-    sp = (((uint8_t *)(&new->stack)) + STACK_SIZE - NVIC_FRAME_SIZE);
+    sp = (((uint8_t *)(&new->stack)) + CONFIG_TASK_STACK_SIZE - NVIC_FRAME_SIZE);
+    new->tb.cur_stack = &new->stack;
 
     /* Stack frame is at the end of the stack space */
     nvic_frame = (struct nvic_stack_frame *) sp;
@@ -687,8 +707,6 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     extra_frame = (struct extra_stack_frame *)sp;
     extra_frame->r9 = r9val;
     new->tb.sp = (uint32_t *)sp;
-    if ((new->tb.flags & TASK_FLAG_VFORK) != 0)
-        task_resume(new->tb.ppid);
 } 
 
 int task_create_GOT(void (*init)(void *), void *arg, unsigned int prio, uint32_t got_loc)
@@ -717,6 +735,7 @@ int task_create_GOT(void (*init)(void *), void *arg, unsigned int prio, uint32_t
         new->tb.cwd = task_getcwd();
         for (i = 0; i < _cur_task->tb.n_files; i++) {
             task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
+            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
         }
     } 
 
@@ -757,6 +776,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
         new->tb.cwd = task_getcwd();
         for (i = 0; i < _cur_task->tb.n_files; i++) {
             task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
+            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
         }
     } 
 
@@ -770,10 +790,13 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     return new->tb.pid;
 }
 
-int scheduler_exec(void (*init)(void *), void *arg)
+int scheduler_exec(void (*init)(void *), void *args)
 {
     volatile struct task *t = _cur_task;
-    task_create_real(t, init, arg, t->tb.prio, 0);
+    task_create_real(t, init, (void *)args, t->tb.prio, 0);
+    //asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp + EXTRA_FRAME_SIZE));
+    asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
+    _cur_task->tb.state = TASK_RUNNING;
     return 0;
 }
 
@@ -782,11 +805,13 @@ int sys_execb_hdlr(uint32_t arg1, uint32_t arg2)
     return scheduler_exec((void (*)(void*))arg1, (void *)arg2);
 }
 
+static void task_suspend_to(int newstate);
+
 int sys_vfork_hdlr(void)
 {
     struct task *new;
     int i;
-    uint32_t sp_off = (uint8_t *)_cur_task->tb.sp - (uint8_t *)_cur_task->stack;
+    uint32_t sp_off = (uint8_t *)_cur_task->tb.sp - (uint8_t *)_cur_task->tb.cur_stack;
     uint32_t vpid;
 
     irq_off();
@@ -807,6 +832,7 @@ int sys_vfork_hdlr(void)
         new->tb.cwd = task_getcwd();
         for (i = 0; i < _cur_task->tb.n_files; i++) {
             task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
+            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
         }
         /* Inherit signal mask */
         new->tb.sigmask = _cur_task->tb.sigmask;
@@ -823,13 +849,17 @@ int sys_vfork_hdlr(void)
      * sp remains in the parent's pool.
      * This will be restored upon exit/exec
      */
-    memcpy(new->stack, _cur_task->stack, STACK_SIZE);
-    new->tb.sp = _cur_task->tb.sp;
-
-    new->tb.state = TASK_RUNNABLE;
+    memcpy(&new->stack, _cur_task->tb.cur_stack, CONFIG_TASK_STACK_SIZE);
+    if (new != _cur_task) {
+        new->tb.sp = _cur_task->tb.sp;
+        new->tb.cur_stack = _cur_task->tb.cur_stack;
+        new->tb.state = TASK_RUNNABLE;
+    }
     irq_on();
     /* Vfork: Caller task suspends until child calls exec or exits */
-    task_suspend();
+    asm volatile ("msr "PSP", %0" :: "r" (new->tb.sp));
+    task_suspend_to(TASK_FORKED);
+    
     return vpid;
 }
 
@@ -891,7 +921,6 @@ void __naked  pend_sv_handler(void)
 
 
     /* save current SP to TCB */
-    //_top_stack = msp_read();
 
     _cur_task->tb.sp = _top_stack;
     if (_cur_task->tb.state == TASK_RUNNING)
@@ -958,14 +987,19 @@ void kernel_task_init(void)
 }
 
 
-void task_suspend(void)
+
+static void task_suspend_to(int newstate)
 {
     running_to_idling(_cur_task);
     if (_cur_task->tb.state == TASK_RUNNABLE || _cur_task->tb.state == TASK_RUNNING) {
-        _cur_task->tb.state = TASK_WAITING;
         _cur_task->tb.timeslice = 0;
     }
+    _cur_task->tb.state = newstate;
     schedule();
+}
+
+void task_suspend(void) {
+    return task_suspend_to(TASK_WAITING);
 }
 
 
@@ -973,6 +1007,15 @@ void task_resume(int pid)
 {
     struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && t->tb.state == TASK_WAITING) {
+        idling_to_running(t);
+        t->tb.state = TASK_RUNNABLE;
+    }
+}
+
+void task_resume_vfork(int pid)
+{
+    struct task *t = tasklist_get(&tasks_idling, pid);
+    if ((t) && t->tb.state == TASK_FORKED) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
     }
@@ -993,9 +1036,14 @@ void task_terminate(int pid)
         if (t->tb.ppid > 0) {
             if (t->tb.flags & TASK_FLAG_VFORK) {
                 struct task *pt = tasklist_get(&tasks_idling, t->tb.ppid);
+                if (!pt)
+                    pt = tasklist_get(&tasks_running, t->tb.ppid);
                 /* Restore parent's stack */
-                if (pt)
-                    memcpy((void *)pt->stack, (void *)_cur_task->stack, STACK_SIZE);
+                if (pt) {
+                    memcpy((void *)pt->tb.cur_stack, (void *)&_cur_task->stack, CONFIG_TASK_STACK_SIZE);
+                    t->tb.flags &= ~TASK_FLAG_VFORK;
+                }
+                task_resume_vfork(t->tb.ppid);
             }
             sys_kill_hdlr(t->tb.ppid, SIGCHLD);
         }
@@ -1133,15 +1181,31 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
+struct extra_stack_frame *stored_extra = NULL;
+struct extra_stack_frame *copied_extra = NULL;
+
 int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    /* save current context on current stack */
+    if (n >= _SYSCALLS_NR)
+        return -1;
+    if (sys_syscall_handlers[n] == NULL)
+        return -1;
+    irq_off();
+
     save_task_context();
     asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
+
+    /* save current context on current stack */
+    /*
+    copied_extra = (struct extra_stack_frame *)_top_stack - EXTRA_FRAME_SIZE;
+    stored_extra = (struct extra_stack_frame *)_top_stack + NVIC_FRAME_SIZE;
+    memcpy(copied_extra, stored_extra, EXTRA_FRAME_SIZE);
+    */
 
 
     /* save current SP to TCB */
     _cur_task->tb.sp = _top_stack;
+
     a4 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
     a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 4));
 
@@ -1149,12 +1213,7 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
     volatile int retval;
     int (*call)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5) = NULL;
 
-    if (n >= _SYSCALLS_NR)
-        return -1;
-    if (sys_syscall_handlers[n] == NULL)
-        return -1;
 
-    irq_off();
     call = sys_syscall_handlers[n];
     retval = call(arg1, arg2, arg3, *a4, *a5);
     asm volatile ( "mov %0, r0" : "=r" 

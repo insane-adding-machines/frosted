@@ -207,17 +207,17 @@ void init(void *arg)
     close(sd);
 
 
+
     /* Thread create test */
     if (vfork() == 0)
         execb(idling, &testval);
+    //thread_create(idling, &testval, 1);
+ 
 #ifdef CONFIG_FRESH
     if (vfork() == 0)
         execb(fresh, &testval);
-#endif
-
-#ifdef CONFIG_SCSH
-    if (vfork() == 0)
-        execb(scsh, &testval);
+     // thread_create(fresh, &testval, 1);
+      
 #endif
 
 #ifdef CONFIG_PRODCONS
@@ -226,10 +226,11 @@ void init(void *arg)
     if (thread_create(cons, &testval, 1) < 0)
         IDLE();
 #endif
-
+/*
     if (vfork() == 0) {
         execb(posix_test, &testval);
     }
+*/
 
     while(1) {
         pid = wait(&status);
