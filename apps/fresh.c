@@ -164,9 +164,9 @@ void shell_init(void){
  */
 void welcomeScreen(){
         printf("\r\n\t============================================\r\n");
-        printf("\t               Simple C Shell\r\n");
+        printf("\t          Frosted shell - aka \"Fresh\"         \r\n");
         printf("\t--------------------------------------------\r\n");
-        printf("\t             Licensed under GPLv3:\r\n");
+        printf("\t             Licensed under GPL             \r\n");
         printf("\t============================================\r\n");
         printf("\r\n\r\n");
 }
@@ -206,7 +206,7 @@ void signalHandler_int(int p){
 void shellPrompt(){
     // We print the prompt in the form "<user>@<host> <cwd> >"
     char hostn[] = "frosted";
-    printf("%s@%s %s > ", "root", hostn, getcwd(currentDirectory, 20));
+    printf("%s@%s %s # ", "root", hostn, getcwd(currentDirectory, 20));
 }
 
 /**
@@ -690,7 +690,7 @@ char *readline(char *input, int size)
                     write(STDOUT_FILENO, &del, 1);
                     len--;
                 }
-                printf( lastcmd);
+                printf( "%s", lastcmd);
                 len = strlen(lastcmd);
                 strcpy(input, lastcmd);
                 continue;
@@ -710,6 +710,7 @@ char *readline(char *input, int size)
             if ((input[len] == 0x0D)) {
                 input[len + 1] = '\0';
                 printf( "\r\n");
+                strncpy(lastcmd, input, 128);
                 return input; /* CR (\r\n) */
             }
 
@@ -721,11 +722,19 @@ char *readline(char *input, int size)
 
             /* tab */
             if ((input[len] == 0x09)) {
-                len--;
+                struct binutils *b = bin_table;
+                input[len] = 0;
                 printf("\r\n");
-                printf("Built-in commands: cd pwd.\r\n");
+                printf("Built-in commands: \r\n");
+                printf("\t pwd cd ");
+                while (b->exe) {
+                    printf("%s ", b->name);
+                    b++;
+                }
                 printf("\r\n");
-                return NULL;
+                shellPrompt();
+                printf("%s", input);
+                continue;
             }
 
             /* backspace */
@@ -786,7 +795,7 @@ int fresh(void *args) {
 
         // We wait for user input
         /* fgets(line, MAXLINE, stdin); */
-        readline(line, MAXLINE);
+        while (readline(line, MAXLINE) == NULL);
     
         // If nothing is written, the loop is executed again
         if((tokens[0] = strtok(line," \r\n\t")) == NULL) continue;
