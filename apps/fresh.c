@@ -381,7 +381,7 @@ void pipeHandler(char * args[]){
     
     int num_cmds = 0;
     
-    char *command[256];
+    char *command[LIMIT];
     
     pid_t pid;
     
@@ -526,7 +526,7 @@ int commandHandler(char * args[]){
     int aux;
     int background = 0;
     
-    char *args_aux[256];
+    char *args_aux[8];
     
     // We look for the special characters and separate the command itself
     // in a new array for the arguments
