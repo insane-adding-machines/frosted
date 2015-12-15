@@ -213,7 +213,7 @@ static struct fnode *fno_create_dir(char *path, uint32_t flags)
     if (fno) {
         fno->flags |= (FL_DIR | flags);
     }
-    mkdir_links(fno);
+    //mkdir_links(fno);
     return fno;
 }
 
@@ -359,7 +359,7 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
     fno->flags |= (FL_DIR | FL_RDWR);
     if (parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
-    mkdir_links(fno);
+    //mkdir_links(fno);
     return fno;
 }
 
