@@ -87,7 +87,7 @@ int bin_ls(void **args)
     closedir(d);
     free(ep);
     free(fname_start);
-    exit(0);
+    return(0);
 }
 
 
@@ -98,9 +98,9 @@ int bin_ln(void **args)
 
     if (link(file, symlink) < 0) {
         printf("File not found.\r\n");
-        exit(-1);
+        return(-1);
     }
-    exit(0);
+    return(0);
 }
 
 int bin_rm(void **args)
@@ -109,9 +109,9 @@ int bin_rm(void **args)
 
     if (unlink(file) < 0) {
         printf("File not found.\r\n");
-        exit(-1);
+        return(-1);
     }
-    exit(0);
+    return(0);
 }
 
 int bin_mkdir(void **args)
@@ -120,9 +120,9 @@ int bin_mkdir(void **args)
 
     if (mkdir(file, O_RDWR) < 0) {
         printf("Cannot create directory.\r\n");
-        exit(-1);
+        return(-1);
     }
-    exit(0);
+    return(0);
 }
 
 int bin_touch(void **args)
@@ -132,9 +132,9 @@ int bin_touch(void **args)
     fd = open(file, O_CREAT|O_TRUNC|O_EXCL);
     if (fd < 0) {
         printf("Cannot create file.\r\n");
-        exit(-1);
+        return(-1);
     } else close(fd);
-    exit(0);
+    return(0);
 }
 
 int bin_echo(void **args)
@@ -145,7 +145,7 @@ int bin_echo(void **args)
        write(STDOUT_FILENO, "\r\n", 2);
        i++;
     }
-    exit(0);
+    return(0);
 }
 
 int bin_cat(void **args)
@@ -156,7 +156,7 @@ int bin_cat(void **args)
         fd = open(args[1], O_RDONLY);
         if (fd < 0) {
             printf("File not found.\r\n");
-            exit(-1);
+            return(-1);
         } else {
             int r;
             char buf[10];
@@ -170,6 +170,6 @@ int bin_cat(void **args)
         }
        i++;
     }
-    exit(0);
+    return(0);
 }
 

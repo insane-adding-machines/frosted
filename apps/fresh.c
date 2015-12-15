@@ -61,15 +61,19 @@ static int try_binutils(void **args, int background)
     const struct binutils *b = bin_table;
     while(b->exe) {
         if (strcmp(cmd, b->name) == 0) {
+            /* TODO: vfork/exec */
+            
+            if (getpid() == 0)
+                exit(1);
+            /*
             if (vfork() == 0) {
                 int ret;
                 ret = b->exe(args); 
             }
             if (!background)
                 wait(&status);
-            /*
+                */
             b->exe(args);
-            */
             return 0;
         }
         b++;

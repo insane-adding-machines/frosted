@@ -574,6 +574,13 @@ static __inl void * msp_read(void)
     return ret;
 }
 
+static __inl void * psp_read(void)
+{
+    void * ret=NULL;
+    asm volatile ("mrs %0, psp" : "=r" (ret));
+    return ret;
+}
+
 static __inl void task_switch(void)
 {
     int i, pid = _cur_task->tb.pid;
@@ -668,7 +675,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
         if (pt) {
             /* Restore parent's stack */
             memcpy((void *)pt->tb.cur_stack, (void *)&new->stack, STACK_SIZE);
-            task_resume(pt->tb.pid);
+            task_resume_vfork(pt->tb.pid);
         }
         new->tb.flags &= (~TASK_FLAG_VFORK);
     }
@@ -689,10 +696,6 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     extra_frame = (struct extra_stack_frame *)sp;
     extra_frame->r9 = r9val;
     new->tb.sp = (uint32_t *)sp;
-
-
-    if ((new->tb.flags & TASK_FLAG_VFORK) != 0)
-        task_resume(new->tb.ppid);
 } 
 
 int task_create_GOT(void (*init)(void *), void *arg, unsigned int prio, uint32_t got_loc)
@@ -780,9 +783,8 @@ int scheduler_exec(void (*init)(void *), void *args)
 {
     volatile struct task *t = _cur_task;
     task_create_real(t, init, (void *)args, t->tb.prio, 0);
+    //asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp + EXTRA_FRAME_SIZE));
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
-    asm volatile ("mov sp, %0" :: "r" (_cur_task->tb.sp));
-    _top_stack = _cur_task->tb.sp;
     _cur_task->tb.state = TASK_RUNNING;
     return 0;
 }
@@ -791,6 +793,8 @@ int sys_execb_hdlr(uint32_t arg1, uint32_t arg2)
 {
     return scheduler_exec((void (*)(void*))arg1, (void *)arg2);
 }
+
+static void task_suspend_to(int newstate);
 
 int sys_vfork_hdlr(void)
 {
@@ -835,15 +839,16 @@ int sys_vfork_hdlr(void)
      * This will be restored upon exit/exec
      */
     memcpy(&new->stack, _cur_task->tb.cur_stack, STACK_SIZE);
-    new->tb.sp = _cur_task->tb.sp;
-    new->tb.cur_stack = _cur_task->tb.cur_stack;
-
-    new->tb.state = TASK_RUNNABLE;
+    if (new != _cur_task) {
+        new->tb.sp = _cur_task->tb.sp;
+        new->tb.cur_stack = _cur_task->tb.cur_stack;
+        new->tb.state = TASK_RUNNABLE;
+    }
     irq_on();
     /* Vfork: Caller task suspends until child calls exec or exits */
-    task_suspend();
-    
     asm volatile ("msr "PSP", %0" :: "r" (new->tb.sp));
+    task_suspend_to(TASK_FORKED);
+    
     return vpid;
 }
 
@@ -905,7 +910,6 @@ void __naked  pend_sv_handler(void)
 
 
     /* save current SP to TCB */
-    //_top_stack = msp_read();
 
     _cur_task->tb.sp = _top_stack;
     if (_cur_task->tb.state == TASK_RUNNING)
@@ -972,14 +976,19 @@ void kernel_task_init(void)
 }
 
 
-void task_suspend(void)
+
+static void task_suspend_to(int newstate)
 {
     running_to_idling(_cur_task);
     if (_cur_task->tb.state == TASK_RUNNABLE || _cur_task->tb.state == TASK_RUNNING) {
-        _cur_task->tb.state = TASK_WAITING;
         _cur_task->tb.timeslice = 0;
     }
+    _cur_task->tb.state = newstate;
     schedule();
+}
+
+void task_suspend(void) {
+    return task_suspend_to(TASK_WAITING);
 }
 
 
@@ -987,6 +996,15 @@ void task_resume(int pid)
 {
     struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && t->tb.state == TASK_WAITING) {
+        idling_to_running(t);
+        t->tb.state = TASK_RUNNABLE;
+    }
+}
+
+void task_resume_vfork(int pid)
+{
+    struct task *t = tasklist_get(&tasks_idling, pid);
+    if ((t) && t->tb.state == TASK_FORKED) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
     }
@@ -1012,9 +1030,11 @@ void task_terminate(int pid)
                 /* Restore parent's stack */
                 if (pt) {
                     memcpy((void *)pt->tb.cur_stack, (void *)&_cur_task->stack, STACK_SIZE);
-                    sys_kill_hdlr(t->tb.ppid, SIGCHLD);
+                    t->tb.flags &= ~TASK_FLAG_VFORK;
                 }
+                task_resume_vfork(t->tb.ppid);
             }
+            sys_kill_hdlr(t->tb.ppid, SIGCHLD);
         }
     }
 }
@@ -1150,6 +1170,9 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
+struct extra_stack_frame *stored_extra = NULL;
+struct extra_stack_frame *copied_extra = NULL;
+
 int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     if (n >= _SYSCALLS_NR)
@@ -1157,13 +1180,21 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
     if (sys_syscall_handlers[n] == NULL)
         return -1;
     irq_off();
-    /* save current context on current stack */
+
     save_task_context();
     asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
+
+    /* save current context on current stack */
+    /*
+    copied_extra = (struct extra_stack_frame *)_top_stack - EXTRA_FRAME_SIZE;
+    stored_extra = (struct extra_stack_frame *)_top_stack + NVIC_FRAME_SIZE;
+    memcpy(copied_extra, stored_extra, EXTRA_FRAME_SIZE);
+    */
 
 
     /* save current SP to TCB */
     _cur_task->tb.sp = _top_stack;
+
     a4 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
     a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 4));
 
