@@ -143,6 +143,8 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
                     task_txt[off++] = 'R';
                 if (p_state == TASK_WAITING)
                     task_txt[off++] = 'W';
+                if (p_state == TASK_FORKED)
+                    task_txt[off++] = 'F';
                 if (p_state == TASK_ZOMBIE)
                     task_txt[off++] = 'Z';
                 

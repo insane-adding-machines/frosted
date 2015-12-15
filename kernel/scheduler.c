@@ -627,7 +627,7 @@ unsigned scheduler_stack_used(int pid)
     if (!t) 
         t = tasklist_get(&tasks_idling, pid);
     if (t)
-        return CONFIG_TASK_STACK_SIZE - ((char *)t->tb.sp - (char *)t->stack);
+        return CONFIG_TASK_STACK_SIZE - ((char *)t->tb.sp - (char *)t->tb.cur_stack);
     else return 0;
 }
 
