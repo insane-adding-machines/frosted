@@ -34,6 +34,9 @@
 
 #define STACK_THRESHOLD 64
 
+/* TEMP HACK */
+void * got_ptr = NULL;
+
 
 /* Array of syscalls */
 static void *sys_syscall_handlers[_SYSCALLS_NR] = {
@@ -743,6 +746,7 @@ int task_create_GOT(void (*init)(void *), void *arg, unsigned int prio, uint32_t
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
+    got_ptr = got_loc;
     task_create_real(new, init, arg, prio, got_loc);
     new->tb.state = TASK_RUNNABLE;
     irq_on();
@@ -793,7 +797,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
 int scheduler_exec(void (*init)(void *), void *args)
 {
     volatile struct task *t = _cur_task;
-    task_create_real(t, init, (void *)args, t->tb.prio, 0);
+    task_create_real(t, init, (void *)args, t->tb.prio, got_ptr);
     //asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp + EXTRA_FRAME_SIZE));
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
     _cur_task->tb.state = TASK_RUNNING;

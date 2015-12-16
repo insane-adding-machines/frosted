@@ -29,7 +29,7 @@ CFLAGS+=-I. -I../include -I../newlib/include
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
 # GOTPIC CFLAGS
-#CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common -msingle-pic-base -mpic-register=r9 -mno-pic-data-is-text-relative
+CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common -msingle-pic-base -mpic-register=r9 -mno-pic-data-is-text-relative
 #Debugging
 CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb

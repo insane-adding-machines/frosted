@@ -7,9 +7,7 @@ FROSTED_PATH=..
 PREFIX:=$(PWD)/build
 
 # APPLICATION CONFIG
-APPS-y += init_bflt.o fresh.o
-#APPS-y += tsh.o stubs.o
-#APPS-y += simple-c-shell.o stubs.o
+APPS-y += init_bflt.o fresh.o binutils.o stubs.o
 
 # TOOLCHAIN CONFIG
 CROSS_COMPILE?=arm-none-eabi-
@@ -23,9 +21,8 @@ CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -fno-builtin -ffunction-sectio
 CFLAGS+=-DCORE_M3 -DKLOG_LEVEL=6 -D__frosted__
 # GOTPIC CFLAGS
 CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common -msingle-pic-base -mpic-register=r9 -mno-pic-data-is-text-relative
-#debugging
+# Debugging
 CFLAGS+=-ggdb
-CFLAGS+=-nostdinc
 
 # LINKER FLAGS
 LDFLAGS:=-L$(FROSTED_PATH)/build/lib -L$(FROSTED_PATH)/newlib/lib -gc-sections --specs=nano.specs
