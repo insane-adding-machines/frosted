@@ -128,13 +128,18 @@ struct task_handler
 struct __attribute__((packed)) task_block {
     void (*start)(void *);
     void *arg;
+
     uint8_t state;
     uint8_t flags;
     uint16_t prio;
+
     uint16_t timeslice;
     uint16_t pid;
+
     uint16_t ppid;
     uint16_t n_files;
+
+    int exitval;
     struct fnode *cwd;
     struct task_handler *sighdlr;
     sigset_t sigmask;
@@ -659,6 +664,7 @@ void task_end(void)
 {
     running_to_idling(_cur_task);
     _cur_task->tb.state = TASK_ZOMBIE;
+    asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
     while(1) {
         if (_cur_task->tb.ppid > 0)
             task_resume(_cur_task->tb.ppid);
@@ -1116,6 +1122,9 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     return SYS_CALL_AGAIN;
 
 child_found:
+    if (arg2){
+        *((int *)arg2) = t->tb.exitval;
+    }
     pid = t->tb.pid;
     t->tb.state = TASK_OVER;
     task_destroy(t);
@@ -1135,6 +1144,7 @@ int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
 {
+    _cur_task->tb.exitval = (int)arg1;
     task_terminate(_cur_task->tb.pid);
 }
 
