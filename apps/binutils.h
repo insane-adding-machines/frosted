@@ -10,5 +10,6 @@ int bin_mkdir(void **args);
 int bin_touch(void **args);
 int bin_echo(void **args);
 int bin_cat(void **args);
-int dice(void);
+int bin_dice(void);
+int bin_random(void);
 #endif

@@ -173,6 +173,16 @@ int bin_cat(void **args)
     exit(0);
 }
 
+uint32_t rand(void)
+{
+	int rngfd;
+	rngfd = open("/dev/random", O_RDONLY);
+	char buf[10];
+	int ret = read(rngfd, buf, 1);
+	close(rngfd);
+	return *((uint32_t *) buf);
+}
+
 /*
  * Rolls a dice for each of two players.
  *
@@ -182,16 +192,8 @@ int bin_cat(void **args)
  */
 int roll(void)
 {
-	int rngfd;
-	rngfd = open("/dev/random", O_RDONLY);
-	char buf[10];
-	int ret = read(rngfd, buf, 1);//rand() % 6; // we'll replace this with a read to /dev/random, and later with the frosted rand() function.
-	//int player2 = //rand() %6;
-	int player1 = *((uint32_t *) buf);
-	player1 = player1 % 6;
-	ret = read(rngfd, buf, 1);//rand() % 6; // we'll replace this with a read to /dev/random, and later with the frosted rand() function.
-	int player2 = *((uint32_t *) buf);
-	player2 = player2 % 6;
+	uint8_t player1 = rand() % 6;
+	uint8_t player2 = rand() % 6;
 	if (player1 > player2) {
 		return 1;
 	} else if (player1 < player2) {
@@ -200,7 +202,7 @@ int roll(void)
 	return 0;
 }
 
-int dice(void)
+int bin_dice(void)
 {
  	char c;
  	int noes = 2;
@@ -242,9 +244,9 @@ int dice(void)
 				break;
 			}
 		}
-		if ( c != '\n') {
-			read(0, &c, 1);
-		}
+		//if ( c != '\n') {
+		//	read(0, &c, 1);
+		//}
  	}
 
  	printf("\r\n\r\nRoll the dice is finished! Final score:\r\n\r\n User: \t%d\r\n Mcu: \t%d\r\n\r\nVICTORY FOR ", user, mcu);
@@ -258,4 +260,10 @@ int dice(void)
 
  	printf("\r\nThank you, come again!\r\n\r\n");
  	exit(0);
+}
+
+int bin_random(void)
+{
+	printf("\r\nHere's a random number for ya: \t%u\r\n\r\n", rand());
+	exit(0);
 }

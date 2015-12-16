@@ -52,7 +52,8 @@ const struct binutils bin_table[] = {
     {"touch", bin_touch},
     {"echo", bin_echo},
     {"cat", bin_cat},
-    {"dice", dice},
+    {"dice", bin_dice},
+    {"random", bin_random},
     {"", NULL}
 };
 
