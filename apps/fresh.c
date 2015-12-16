@@ -59,8 +59,9 @@ const struct binutils bin_table[] = {
 
 static void exec_binutils(const struct binutils *b, char **args)
 {
-    int ret;
-    ret = b->exe((void **)args); 
+    //int ret;
+    //ret = b->exe((void **)args); 
+    execb(b->exe, args);
 }
 
 static const struct binutils * find_binutils(char *name)
