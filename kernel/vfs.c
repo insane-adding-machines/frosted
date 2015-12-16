@@ -62,9 +62,14 @@ static char *filename(char *path)
     return path;
 }
 
+static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow);
+
 static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
 {
     int nlen;
+    if ((f->flags & FL_LINK) == FL_LINK) {
+        f =  _fno_search(f->linkname, &FNO_ROOT, 1);
+    }
     if (f == &FNO_ROOT) {
         *p = dst + 1;
         dst[0] = '/';
@@ -213,7 +218,7 @@ static struct fnode *fno_create_dir(char *path, uint32_t flags)
     if (fno) {
         fno->flags |= (FL_DIR | flags);
     }
-    //mkdir_links(fno);
+    mkdir_links(fno);
     return fno;
 }
 
@@ -359,7 +364,6 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
     fno->flags |= (FL_DIR | FL_RDWR);
     if (parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
-    //mkdir_links(fno);
     return fno;
 }
 
@@ -696,6 +700,7 @@ int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *ar
         struct mountpoint *mp = kalloc(sizeof(struct mountpoint));
         if (mp) {
             mp->target = fno_search(target);
+            mkdir_links(mp->target);
             mp->next = MTAB;
             MTAB = mp;
         }
@@ -765,6 +770,7 @@ void vfs_init(void)
 
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
+    mkdir_links(dev);
     
     /* Init "/sys" dir */
     dev = fno_mkdir(NULL, "sys", NULL);
