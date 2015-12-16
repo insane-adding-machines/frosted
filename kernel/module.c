@@ -86,7 +86,7 @@ int sys_read_hdlr(int fd, void *buf, int len)
     struct fnode *fno = task_filedesc_get(fd);
     if (!task_fd_readable(fd))
         return -EPERM;
-    if (fno) {
+    if (fno && fno->owner->ops.read) {
         return fno->owner->ops.read(fno, buf, len);
     }
     return -ENOENT;

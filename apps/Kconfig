@@ -3,6 +3,10 @@ menu "Applications"
         bool "FreSH shell application"
         default y
 
+#        config SCSH
+#        bool "Simple C-Shell"
+#        default y
+
         config TASK2
         bool "Generic syscall test 'task2'"
         default y

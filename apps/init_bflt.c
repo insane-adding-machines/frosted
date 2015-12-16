@@ -21,6 +21,7 @@
 #include "fresh.h"
 #include "syscalls.h"
 #include "ioctl.h"
+#include "sys/socket.h"
 #include <string.h>
 #include <stdio.h>
 #define IDLE() while(1){do{}while(0);}

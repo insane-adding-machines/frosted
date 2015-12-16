@@ -47,3 +47,4 @@ kconfig/.config.old
 apps/apps.ld
 .gdbinit
 *.ld
+libfrosted/syscall_table.c

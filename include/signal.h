@@ -23,8 +23,9 @@
 #define SIGCHLD     17
 #define SIGCONT     18
 #define SIGSTOP     19
+#define SIGTTIN     20
 
-#define SIGMAX      20
+#define SIGMAX      21
 
 typedef uint32_t sigset_t;
 #define SI_USER    1    /* Sent by a user. kill(), abort(), etc */

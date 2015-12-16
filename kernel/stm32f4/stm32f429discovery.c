@@ -33,16 +33,16 @@
 #endif
 
 #ifdef CONFIG_DEVGPIO
-static const struct gpio_addr gpio_addrs[] = { {.port=GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
-                                                                            {.port=GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
+static const struct gpio_addr gpio_addrs[] = { {.base=GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
+                                                                            {.base=GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
-                                                                            {.port=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.port=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+                                                                            {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                                                                            {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_2
-                                                                            {.port=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.port=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+                                                                            {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                                                                            {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_3
 #endif
@@ -65,7 +65,7 @@ static const struct gpio_addr gpio_addrs[] = { {.port=GPIOG, .pin=GPIO13,.mode=G
 static const struct uart_addr uart_addrs[] = { 
 #ifdef CONFIG_USART_1
             { 
-                .devidx = 2,
+                .devidx = 1,
                 .base = USART1, 
                 .irq = NVIC_USART1_IRQ, 
                 .rcc = RCC_USART1, 

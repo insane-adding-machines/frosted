@@ -2,11 +2,15 @@
 -include config.mk
 
 ifeq ($(FRESH),y)
-	CFLAGS+=-DCONFIG_FRESH=1
+  CFLAGS+=-DCONFIG_FRESH=1
+endif
+
+ifeq ($(SCSH),y)
+  CFLAGS+=-DCONFIG_SCSH=1
 endif
 
 ifeq ($(PRODCONS),y)
-	CFLAGS+=-DCONFIG_PRODCONS=1
+  CFLAGS+=-DCONFIG_PRODCONS=1
 endif
 
 CROSS_COMPILE?=arm-none-eabi-
@@ -26,7 +30,7 @@ CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 APPS-y:= apps/init.o 
-APPS-$(FRESH)+=apps/fresh.o
+APPS-$(FRESH)+=apps/fresh.o apps/binutils.o apps/stubs.o
 
 
 OBJS-y:=kernel/systick.o kernel/drivers/device.o

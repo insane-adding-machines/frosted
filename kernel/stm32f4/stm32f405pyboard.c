@@ -34,27 +34,27 @@
      
 #ifdef CONFIG_DEVGPIO
      static const struct gpio_addr gpio_addrs[] = { 
-                 {.port=GPIOA, .pin=GPIO4,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_4"},
-                 {.port=GPIOA, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_13"},
-                 {.port=GPIOA, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_14"},
-                 {.port=GPIOA, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_15"},
-                 {.port=GPIOB, .pin=GPIO3,.mode=GPIO_MODE_INPUT, .optype=GPIO_OTYPE_PP, .pullupdown=GPIO_PUPD_NONE, .name="gpio_2_3"},
+                 {.base=GPIOA, .pin=GPIO4,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_4"},
+                 {.base=GPIOA, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_13"},
+                 {.base=GPIOA, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_14"},
+                 {.base=GPIOA, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_1_15"},
+                 {.base=GPIOB, .pin=GPIO3,.mode=GPIO_MODE_INPUT, .optype=GPIO_OTYPE_PP, .pullupdown=GPIO_PUPD_NONE, .name="gpio_2_3"},
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
-                 {.port=GPIOB, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                 {.port=GPIOB, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+                 {.base=GPIOB, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                 {.base=GPIOB, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_2
-                 {.port=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                 {.port=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+                 {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                 {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_3
-                 {.port=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                 {.port=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+                 {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                 {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_6
-                 {.port=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                 {.port=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+                 {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                 {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #endif
      };

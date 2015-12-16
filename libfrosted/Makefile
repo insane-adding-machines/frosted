@@ -20,7 +20,7 @@ AR:=$(CROSS_COMPILE)ar
 LIBNAME:=libfrosted.a
 PREFIX:=$(PWD)/build
 #Target flags
-CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork
+CFLAGS+=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -fno-common
 CFLAGS+=-DCORE_M3 -DARCH_$(ARCH)
 CFLAGS+=-DKLOG_LEVEL=6
 #Include paths
@@ -28,6 +28,8 @@ CFLAGS+=-I. -I../include -I../newlib/include
 #Freestanding options
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
+# GOTPIC CFLAGS
+#CFLAGS+=-fPIC -mword-relocations -mlong-calls -fno-common -msingle-pic-base -mpic-register=r9 -mno-pic-data-is-text-relative
 #Debugging
 CFLAGS+=-ggdb
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
@@ -45,10 +47,12 @@ OBJS-y+=						\
 		errno.o					\
 		exec.o					\
 		exit.o					\
+		fgets.o					\
 		fork.o					\
 		free.o					\
 		fstat.o					\
 		getcwd.o				\
+		gethostname.o			\
 		getlogin.o				\
 		getpid.o				\
 		getppid.o				\
@@ -96,6 +100,8 @@ OBJS-y+=						\
 		thread_create.o			\
 		thread_join.o			\
 		tcsetattr.o				\
+		tcgetattr.o				\
+		tcsendbreak.o			\
 		unlink.o				\
 		umount.o				\
 		uid.o					\

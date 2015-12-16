@@ -78,13 +78,30 @@ static unsigned long * calc_reloc(uint8_t * base, uint32_t offset)
     return (unsigned long *)(base + (offset & 0x00FFFFFFu));
 }
 
-int process_GOT_relocs(uint8_t * base, unsigned long * got_start)
+int process_GOT_relocs(struct flat_hdr * hdr, uint8_t * base, unsigned long * got_start)
 {
+    /*
+     * Addresses in header are relative to start of FILE (so including flat_hdr)
+     * Addresses in the relocs are relative to start of .text (so excluding flat_hdr)
+     */
     unsigned long * rp = got_start;
+    unsigned long data_start = long_be(hdr->data_start) - sizeof(struct flat_hdr);
+    unsigned long bss_end = long_be(hdr->bss_end) - sizeof(struct flat_hdr);
+    unsigned long text_start_dest = base + sizeof(struct flat_hdr);
+    unsigned long data_start_dest = (unsigned long)got_start;
+
     for (rp; *rp != 0xffffffff; rp++) {
         if (*rp) {
+            unsigned long addr = RELOC_FAILED;
+            if (*rp < data_start) {
+                /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
+                addr = (unsigned long)calc_reloc(text_start_dest, *rp);
+            } else if (*rp < bss_end) {
+                /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
+                addr = (unsigned long)calc_reloc(data_start_dest, *rp - data_start);
+            }
+
             /* this will remap pointers starting from address 0x0, to wherever they are actually loaded in the memory map (.text reloc) */
-            unsigned long addr = (unsigned long)calc_reloc(base + sizeof(struct flat_hdr), *rp);
             if (addr == RELOC_FAILED) {
                 //errno = -ENOEXEC;
                 return -1;
@@ -97,15 +114,21 @@ int process_GOT_relocs(uint8_t * base, unsigned long * got_start)
 
 /* works only for FLAT v4 */
 /* reloc starts just after data_end */
-int process_relocs(struct flat_hdr * hdr, unsigned long * base,  unsigned long *reloc, int relocs)
+int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long data_start_dest,  unsigned long *reloc, int relocs)
 {
     int i;
     /* Relocations in the table point to an address,
      * at that address(1), there is an adress(2) that needs fixup,
      * and needs to be written at it's original address(1), after it's been fixed
      */
-    unsigned long data_start = long_be(hdr->data_start);
-    unsigned long data_end = long_be(hdr->data_end);
+    /*
+     * Addresses in header are relative to start of FILE (so including flat_hdr)
+     * Addresses in the relocs are relative to start of .text (so excluding flat_hdr)
+     */
+    unsigned long data_start = long_be(hdr->data_start) - sizeof(struct flat_hdr);
+    unsigned long data_end = long_be(hdr->data_end) - sizeof(struct flat_hdr); /* relocs must be located in .data segment for GOTPIC */
+    unsigned long bss_end = long_be(hdr->bss_end) - sizeof(struct flat_hdr);
+    unsigned long text_start_dest = ((unsigned long)base) + sizeof(struct flat_hdr); /* original RELOC is relative to text_start (.bss in ROM/Flash/source) */
 	/*
 	 * Now run through the relocation entries.
 	 * We've got to be careful here as C++ produces relocatable zero
@@ -120,7 +143,7 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base,  unsigned long *
     for (i=0; i < relocs; i++) {
         unsigned long addr, *fixup_addr;
         unsigned long *relocd_addr = (unsigned long *)RELOC_FAILED;
-
+        
         /* Get the address of the pointer to be
            relocated (of course, the address has to be
            relocated first).  */
@@ -128,16 +151,31 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base,  unsigned long *
         /* two cases: reloc_addr < text_end: For now we only support GOTPIC, which cannot have relocations in .text segment!
          *        or  reloc_addr > data_start
          */
+        /* TODO: Make common between GOT and regular relocs ? */
+
+
+
         if ((unsigned long)fixup_addr < data_start)
         {
-            /* FAIL -- non GOTPIC */
-            //relocd_addr = calc_reloc(text_base, fixme);
+            /* FAIL -- non GOTPIC, cannot write to ROM/.text */
             return -1;
         } else if ((unsigned long)fixup_addr < data_end) {
-            /* Reloc is in .data section, now make this point to the .data source (from the binary), and dereference */
-            fixup_addr = ((unsigned long)base + (unsigned long)fixup_addr); // relocate the location of the address
-            relocd_addr = calc_reloc(base, *fixup_addr);    // read the value at that adress, and add an offset
-            *fixup_addr = relocd_addr;                      // write the relocated/offsetted value back were it was read
+            /* Reloc is in .data section (must be for GOTPIC), now make this point to the .bss source (from the ROM/Flash/source), and dereference */
+            fixup_addr = (unsigned long)calc_reloc(text_start_dest, fixup_addr);
+
+            /* Again 2 cases: reloc points to .text -- or to .data/.bss */
+            if (*fixup_addr < data_start) {
+                /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
+                relocd_addr = (unsigned long)calc_reloc(text_start_dest, *fixup_addr);
+            } else if (*fixup_addr < bss_end) {
+                /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
+                relocd_addr = (unsigned long)calc_reloc(data_start_dest, *fixup_addr - data_start);
+            } else {
+                relocd_addr = (unsigned long *)RELOC_FAILED;
+                return -1;
+            }
+            /* write the relocated/offsetted value back were it was read */
+            *fixup_addr = relocd_addr;
         }
 
         if (relocd_addr == (unsigned long *)RELOC_FAILED) {
@@ -265,14 +303,14 @@ int bflt_load(uint8_t* from, void **mem_ptr, size_t *mem_size, int (**entry_poin
     /* init relocations */
 	if (flags & FLAT_FLAG_GOTPIC) {
         //printf("GOT-PIC!\n");
-        process_GOT_relocs(address_zero, data_dest_start); // .data section is beginning of GOT
+        process_GOT_relocs(&hdr, address_zero, data_dest_start); // .data section is beginning of GOT
         *got_loc = data_dest_start;
 	}
 
 	/*
 	 * Now run through the relocation entries.
      */
-    process_relocs(&hdr, address_zero,  relocs_src_start, relocs);
+    process_relocs(&hdr, address_zero, data_dest_start, relocs_src_start, relocs);
 
     klog(LOG_INFO, "Successfully loaded bFLT executable to memory");
     return 0;

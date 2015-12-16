@@ -170,12 +170,8 @@ void p_sighdlr(int signo)
 
 void posix_test(void *arg)
 {
-    int ser = open("/dev/ttyS0", O_RDWR, 0);
     struct sigaction sa = {.sa_handler = p_sighdlr };
     //sigaction(SIGCHLD, &sa, NULL);
-    if (ser >= 0)
-        dup(ser);
-    printf("Hello from parent process \r\n");
     chpid = vfork();
     if (chpid > 0) {
         //sigsuspend((1 << SIGCHLD));
@@ -184,9 +180,10 @@ void posix_test(void *arg)
         sleep(5000);
         exit(0);
     }
-    printf("Goodbye from parent process \r\n");
     exit(0);
 }
+
+extern int scsh(void *arg);
 
 void init(void *arg)
 {
@@ -210,12 +207,17 @@ void init(void *arg)
     close(sd);
 
 
+
     /* Thread create test */
     if (vfork() == 0)
         execb(idling, &testval);
+    //thread_create(idling, &testval, 1);
+ 
 #ifdef CONFIG_FRESH
     if (vfork() == 0)
         execb(fresh, &testval);
+     // thread_create(fresh, &testval, 1);
+      
 #endif
 
 #ifdef CONFIG_PRODCONS
@@ -224,10 +226,11 @@ void init(void *arg)
     if (thread_create(cons, &testval, 1) < 0)
         IDLE();
 #endif
-
+/*
     if (vfork() == 0) {
         execb(posix_test, &testval);
     }
+*/
 
     while(1) {
         pid = wait(&status);
