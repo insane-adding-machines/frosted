@@ -9,3 +9,5 @@ nconf.o: nconf.c lkc.h expr.h list.h lkc_proto.h nconf.h
 nconf.gui.o: nconf.gui.c nconf.h
 symbol.o: symbol.c lkc.h expr.h list.h lkc_proto.h
 util.o: util.c lkc.h expr.h list.h lkc_proto.h
+zconf.hash.o: zconf.hash.c
+zconf.lex.o: zconf.lex.c lkc.h expr.h list.h lkc_proto.h

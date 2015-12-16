@@ -3,6 +3,7 @@
 #ifndef SIGNAL_H_INCLUDED
 #define SIGNAL_H_INCLUDED
 #include <sys/types.h>
+#include <stdint.h>
 
 #define SIGHUP       1
 #define SIGINT       2
