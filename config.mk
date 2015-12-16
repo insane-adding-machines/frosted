@@ -28,6 +28,10 @@ ifeq ($(MACH_STM32F405Pyboard),y)
 	CFLAGS+=-DPYBOARD
 endif
 
+ifeq ($(MACH_STM32F429Discovery),y)
+	CFLAGS+=-DF429DISCO
+endif
+
 ifeq ($(FLASH_SIZE_2MB),y)
 	FLASH_SIZE=2048
 endif
