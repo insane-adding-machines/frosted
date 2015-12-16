@@ -160,10 +160,8 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long da
             /* FAIL -- non GOTPIC, cannot write to ROM/.text */
             return -1;
         } else if ((unsigned long)fixup_addr < data_end) {
-            /* Reloc is in .data section (must be for GOTPIC), now make this point to the .data source (in the DEST ram!), and dereference */
-            fixup_addr = (unsigned long)calc_reloc(data_start_dest - data_start, fixup_addr);
-            if (fixup_addr == (unsigned long *)RELOC_FAILED)
-                return -1;
+            /* Reloc is in .data section (must be for GOTPIC), now make this point to the .bss source (from the ROM/Flash/source), and dereference */
+            fixup_addr = (unsigned long)calc_reloc(text_start_dest, fixup_addr);
 
             /* Again 2 cases: reloc points to .text -- or to .data/.bss */
             if (*fixup_addr < data_start) {
