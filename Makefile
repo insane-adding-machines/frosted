@@ -83,6 +83,11 @@ PADTO = $$(($(FLASH_ORIGIN)+$(APPS_START)))
 
 all: image.bin
 
+image.bin: image_bflt
+	cp $< $@
+#image.bin: image_bin
+#	cp $< $@
+
 kernel/syscall_table.c: kernel/syscall_table_gen.py
 	python2 $^
 
@@ -97,12 +102,19 @@ $(PREFIX)/lib/libkernel.a: FORCE
 $(PREFIX)/lib/libfrosted.a: FORCE
 	make -C libfrosted
 
-image.bin: kernel.elf apps.elf
+apps/apps.bflt: $(PREFIX)/lib/libfrosted.a
+	make -C apps
+
+image_bin: kernel.elf apps.elf
 	export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=0x40000 apps.elf apps.bin
 	cat apps.bin >> $@
-	#cat apps/apps.bflt >> $@
+
+image_bflt: kernel.elf apps/apps.bflt
+	export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
+	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
+	cat apps/apps.bflt >> $@
 
 apps/apps.ld: apps/apps.ld.in
 	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
@@ -161,6 +173,7 @@ clean:
 	rm -f  kernel/$(BOARD)/$(BOARD).ld
 	@make -C kernel clean
 	@make -C libfrosted clean
+	@make -C apps clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf
 	@rm -f apps/apps.ld
