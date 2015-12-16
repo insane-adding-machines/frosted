@@ -173,3 +173,89 @@ int bin_cat(void **args)
     exit(0);
 }
 
+/*
+ * Rolls a dice for each of two players.
+ *
+ * Returns:		1 if player 1 wins.
+ *			-1 if player 2 wins.
+ *			0 if it is a tie.
+ */
+int roll(void)
+{
+	int rngfd;
+	rngfd = open("/dev/random", O_RDONLY);
+	char buf[10];
+	int ret = read(rngfd, buf, 1);//rand() % 6; // we'll replace this with a read to /dev/random, and later with the frosted rand() function.
+	//int player2 = //rand() %6;
+	int player1 = *((uint32_t *) buf);
+	player1 = player1 % 6;
+	ret = read(rngfd, buf, 1);//rand() % 6; // we'll replace this with a read to /dev/random, and later with the frosted rand() function.
+	int player2 = *((uint32_t *) buf);
+	player2 = player2 % 6;
+	if (player1 > player2) {
+		return 1;
+	} else if (player1 < player2) {
+		return -1;
+	}
+	return 0;
+}
+
+int dice(void)
+{
+ 	char c;
+ 	int noes = 2;
+ 	int yes = 0;
+ 	int user = 0, mcu = 0;
+
+ 	printf("\r\nRoll the dice - try out your luck!\r\n\r\n\r\n");
+ 	while (1) {
+ 		if (!yes) {
+ 			printf("Roll?  (Y/n) ");
+ 			//c = getchar();
+ 			read(0, &c, 1);
+ 		} else {
+ 			yes = 0;
+ 			c = '\n';
+ 		}
+ 		printf("\r");
+		if (tolower(c) != 'n') {
+			int ret = roll();
+
+			if (ret > 0) {
+				user++;
+				printf("User won!");
+			} else if (ret < 0) {
+				mcu++;
+				printf("Mcu won!");
+			} else {
+				printf("It's a tie!");
+			}
+
+			printf(" \tstats:  user: \t%d  -  mcu: \t%d\r\n\r\n", user, mcu);
+
+		} else {
+			if (noes > 0) {
+				printf("Naw, that's really a yes ain't it??\r\n");
+				noes--;
+				yes++;
+			} else {
+				break;
+			}
+		}
+		if ( c != '\n') {
+			read(0, &c, 1);
+		}
+ 	}
+
+ 	printf("\r\n\r\nRoll the dice is finished! Final score:\r\n\r\n User: \t%d\r\n Mcu: \t%d\r\n\r\nVICTORY FOR ", user, mcu);
+ 	if (user > mcu) {
+ 		printf("USER!!!!\r\n");
+ 	} else if (user < mcu) {
+ 		printf("MCU!!!!\r\n");
+ 	} else {
+ 		printf("NO ONE - it's a TIE!!!!\r\n");
+ 	}
+
+ 	printf("\r\nThank you, come again!\r\n\r\n");
+ 	exit(0);
+}
