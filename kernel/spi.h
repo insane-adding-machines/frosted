@@ -20,7 +20,12 @@ struct spi_addr {
     const char * name;
 };
 
+typedef void (* spi_completion)(void * arg);
+
 
 void spi_init(struct fnode *dev, const struct spi_addr spi_addrs[], int num_spi);
+
+int devspi_write_noblock(struct fnode *fno, spi_completion completion_fn, void * arg, const void *buf, unsigned int len);
+
 
 #endif

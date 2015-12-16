@@ -32,6 +32,18 @@ static struct module mod_devl3gd20 = {
     .ops.write = devl3gd20_write,
 };
 
+
+
+static void spi_completion(void * arg)
+{
+    const struct dev_l3gd20 *l3gd20;
+    l3gd20 = (struct dev_l3gd20 *) arg;
+    l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
+    
+    if (l3gd20->dev->pid > 0) 
+        task_resume(l3gd20->dev->pid);
+}
+
 static int devl3gd20_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     int i;
@@ -70,12 +82,20 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
         return -1;
 
     l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
-    l3gd20->spi_fnode->owner->ops.write(l3gd20->spi_fnode, p, 2);
+    devspi_write_noblock(l3gd20->spi_fnode, spi_completion, l3gd20,  p, 2);
+
+    l3gd20->dev->pid = scheduler_get_cur_pid();
+    task_suspend();
+    frosted_mutex_unlock(l3gd20->dev->mutex);
+    return SYS_CALL_AGAIN;
+
+    
     l3gd20->spi_fnode->owner->ops.read(l3gd20->spi_fnode, i, 2);
     l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
 
     l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
-    l3gd20->spi_fnode->owner->ops.write(l3gd20->spi_fnode, o, 2);
+    devspi_write_noblock(l3gd20->spi_fnode, spi_completion, l3gd20,  o, 2);
+
     l3gd20->spi_fnode->owner->ops.read(l3gd20->spi_fnode, i, 2);
     l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
 
