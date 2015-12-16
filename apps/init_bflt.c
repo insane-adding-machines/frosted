@@ -24,8 +24,6 @@
 #include "sys/socket.h"
 #include <string.h>
 #include <stdio.h>
-#include <signal.h>
-#include <unistd.h>
 #define IDLE() while(1){do{}while(0);}
 #define GREETING "Welcome to frosted!\n"
 
@@ -136,11 +134,35 @@ void idling(void *arg)
     }
 }
 
+static sem_t *sem = NULL;
+static frosted_mutex_t *mut = NULL;
+void prod(void *arg)
+{
+    sem = sem_init(0);
+    mut = mutex_init();
+    while(1) {
+        sem_post(sem);
+        sleep(1000);
+    }
+}
+
+void cons(void *arg)
+{
+    volatile int counter = 0;
+    while(!sem)
+        sleep(200);
+    while(1) {
+        sem_wait(sem);
+        //mutex_lock(mut);
+        counter++;
+        //mutex_unlock(mut);
+    }
+}
+
 void main(void *arg)
 {
     volatile int i = (int)arg;
     volatile int pid;
-    int status;
     int fd, sd;
     uint32_t *temp;
     int testval = 42;
@@ -157,19 +179,15 @@ void main(void *arg)
     sd = socket(AF_UNIX, SOCK_DGRAM, 0);
     close(sd);
 
-
-
     /* Thread create test */
-    if (vfork() == 0)
-        execb(idling, &testval);
-    //thread_create(idling, &testval, 1);
- 
-    if (vfork() == 0)
-        execb(fresh, &testval);
-     // thread_create(fresh, &testval, 1);
-      
+    if (thread_create(idling, &testval, 1) < 0)
+        IDLE();
+    if (thread_create(fresh, &testval, 1) < 0)
+        IDLE();
+
     while(1) {
-        pid = wait(&status);
+        sleep(500);
+        pid = getpid();
     }
     (void)i;
 }

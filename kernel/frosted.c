@@ -126,7 +126,7 @@ static void ktimer_test(uint32_t time, void *arg)
 
 void frosted_kernel(void)
 {
-    if (1)
+    if (0)
     {
         /* Load init from BFLT */
         void * memptr;
