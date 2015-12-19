@@ -54,9 +54,21 @@ static void _del_listener(sem_t *s)
     }
 }
 
+static int sem_spinwait(sem_t *s)
+{
+    if (!s)
+        return -EINVAL;
+    while (_sem_wait(s) != 0) {
+        /* spin ... */
+    }
+    return 0;
+}
+
 /* Semaphore: API */
 int sem_wait(sem_t *s)
 {
+    if (scheduler_get_cur_pid() == 0)
+        return sem_spinwait(s);
     if (!s)
         return -EINVAL;
     if(_sem_wait(s) != 0) {
@@ -67,6 +79,7 @@ int sem_wait(sem_t *s)
     _del_listener(s);
     return 0;
 }
+
 
 int sem_post(sem_t *s)
 {
@@ -136,8 +149,20 @@ frosted_mutex_t *frosted_mutex_init()
     return s;
 }
 
+static int frosted_mutex_spinlock(frosted_mutex_t *s)
+{
+    if (!s)
+        return -EINVAL;
+    while (_mutex_lock(s) != 0) {
+        /* spin... */
+    }
+    return 0;
+}
+
 int frosted_mutex_lock(frosted_mutex_t *s)
 {
+    if (scheduler_get_cur_pid() == 0)
+        return frosted_mutex_spinlock(s);
     if (!s)
         return -EINVAL;
     if(_mutex_lock(s) != 0) {
@@ -165,6 +190,7 @@ int frosted_mutex_unlock(frosted_mutex_t *s)
     }
     return -EAGAIN;
 }
+
 
 /* Mutex: Syscalls */
 int sys_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
