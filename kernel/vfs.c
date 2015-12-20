@@ -115,12 +115,7 @@ static int path_abs(char *src, char *dst, int len)
     struct fnode *f = task_getcwd();
     if (src[0] == '/')
         strncpy(dst, src, len);
-    else if ((src[0] == '.') && (src[1] == '.')) {
-        if (f->parent) {
-            if (fno_fullpath(f->parent, dst, len) > 0)
-                return 0;
-        }
-    } else {
+    else {
         if (fno_fullpath(f, dst, len) > 0) {
             while (dst[strlen(dst) - 1] == '/')
                 dst[strlen(dst) - 1] = '\0';
@@ -206,7 +201,8 @@ static void mkdir_links(struct fnode *fno)
     strcat( parentl, "/.." );
     if (fno) {
         fno_link( path, selfl );
-        //once link to self is fixed add the parent link as well
+        basename_r(path, path);
+        fno_link( path, parentl);
     }
 
 
@@ -271,6 +267,7 @@ static int path_check(const char *path, const char *dirname)
 static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow)
 {
     struct fnode *cur;
+    char link[MAX_FILE];
     int check = 0;
     if (dir == NULL) 
         return NULL;
@@ -291,6 +288,13 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
     }
 
     /* path is correct, need to walk more */
+    if( (dir->flags & FL_LINK ) == FL_LINK ){
+    /* passing through a symlink */
+        strcpy( link, dir->linkname );
+        strcat( link, "/" );
+        strcat( link, path_walk(path));
+        return _fno_search( link, &FNO_ROOT, follow );
+    }
     return _fno_search(path_walk(path), dir->children, follow);
 }
 
@@ -608,7 +612,6 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     }
     return 0;
 }
-
 
 
 int sys_chdir_hdlr(uint32_t arg1)
