@@ -22,7 +22,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <poll.h>
+#include <locale.h>
+#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <getopt.h>
 
 #ifndef STDIN_FILENO
 #   define STDIN_FILENO 0
@@ -35,6 +42,15 @@
 #ifndef STDERR_FILENO
 #   define STDERR_FILENO 2
 #endif
+
+#define BUFSIZE 256
+#define MAXFILES 13
+
+inline int nargs( void** argv ){
+    int argc = 0;
+    while( argv[argc] ) argc++;
+    return argc;
+}
 
 
 int bin_ls(void **args)
@@ -266,4 +282,143 @@ int bin_random(void)
 {
 	printf("\r\nHere's a random number for ya: \t%u\r\n\r\n", rand());
 	exit(0);
+}
+
+
+int bin_dirname( void** args ){
+    int argc = 0, i, c;
+    extern int optind;
+    char delim = '\n';
+    char *head, *tail;
+    char **flags;
+    argc = nargs( args);
+
+    setlocale (LC_ALL, "");
+    
+    if ( argc < 2 || args[1] == NULL){
+        fprintf(stderr, "usage: dirname [OPTION] NAME...\n");
+        exit(1);
+    }
+
+    while( (c=getopt(argc,(char**) args, "r") ) != -1 ){
+        switch (c){
+            case 'r':   /*use NUL char as delimiter instead of \n*/
+                delim = (char) 0;
+                break;
+            default:
+                fprintf( stderr, "dirname: invalid option -- '%c'\n", (char)c);
+                exit(1);
+        }
+    }
+    
+    i = optind;
+    while( args[i] != NULL ){
+        head = tail = args[i];
+        while (*tail)
+            tail++;
+
+    /* removing the last part of the path*/
+        while (tail > head && tail[-1] == '/')
+            tail--;
+        while (tail > head && tail[-1] != '/')
+            tail--;
+        while (tail > head && tail[-1] == '/')
+            tail--;
+
+        if (head == tail)
+            printf(*head == '/' ? "/%c" : ".%c", delim);
+        else{
+            *tail = '\0';
+       // printf("%.*s\n", (tail - head), head);
+            printf("%s%c", head, delim);   
+        }
+        i++;
+    }
+    /*resetting getopt*/
+    optind = 0;
+    exit(0);
+}
+
+
+int bin_tee(void** args)
+{
+    extern int opterr, optind;
+    int c, i, argc = 0, written, b = 0;
+    char line[BUFSIZE];
+    int slot, fdfn[MAXFILES + 1][2] ;
+    ssize_t n, count;
+    int mode = O_WRONLY | O_CREAT | O_TRUNC;
+    argc = nargs( args );
+    setlocale(LC_ALL, "");
+    opterr = 0;
+    while ((c = getopt(argc,(char**) args, "ai")) != -1)
+        switch (c)
+        {
+        case 'a':   /* append to rather than overwrite file(s) */
+            mode = O_WRONLY | O_CREAT | O_APPEND;
+            break;
+
+        case 'i':   /* ignore the SIGINT signal */
+            signal(SIGINT, SIG_IGN);
+            break;
+
+        default:
+            fprintf(stderr, "tee: invalid option -- '%c'\n", (char)c);
+            exit(1);
+        }
+
+    i = optind;
+    fdfn[0][0] = STDOUT_FILENO;
+
+    for (slot = 1; i < argc ; i++)
+    {
+        if (slot > MAXFILES)
+            fprintf(stderr, "tee: Maximum of %d output files exceeded\n", MAXFILES);
+        else
+        {
+            if ((fdfn[slot][0] = open(args[i], mode, 0666)) == -1)
+                printf("error\n");
+            else
+                fdfn[slot++][1] = i;
+        }
+    }
+    i = 0;
+    while ((n = read(STDIN_FILENO, line + i, 3) > 0 ))
+    {
+        if( line[i] == '\r' ){
+            /*interrupt command by writing 2 empty lines*/
+            if ( i == 0 && b == 1 ) break;
+            else if( i == 0 ) b = 1;
+            else b = 0;
+            line[i+1]= '\n';
+            line[i+2] = '\0';
+            write(STDOUT_FILENO, "\r\n", 2);
+            for (i = 0; i < slot; i++){
+                count = strlen( line );
+                while(count > 0){
+                    written = write(fdfn[i][0], line, count) ;
+                    count -= written;
+                }
+            }
+            i = 0;
+        }
+        else{
+            count = n;
+            while( count > 0 ) {
+            //echoing input
+                written = write( STDOUT_FILENO, &line[i], count ) ;
+                count -= written;
+            }
+            i += n; 
+        }
+    }
+
+    if (n < 0)
+        printf("error\n");
+
+    for (i = 1; i < slot; i++)
+        if (close(fdfn[i][0]) == -1)
+            printf("error\n");
+
+    exit(0);
 }

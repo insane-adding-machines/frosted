@@ -54,6 +54,8 @@ const struct binutils bin_table[] = {
     {"cat", bin_cat},
     {"dice", bin_dice},
     {"random", bin_random},
+    {"dirname", bin_dirname},
+    {"tee", bin_tee},
     {"", NULL}
 };
 

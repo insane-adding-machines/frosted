@@ -12,4 +12,6 @@ int bin_echo(void **args);
 int bin_cat(void **args);
 int bin_dice(void);
 int bin_random(void);
+int bin_dirname(void **args);
+int bin_tee(void **args);
 #endif
