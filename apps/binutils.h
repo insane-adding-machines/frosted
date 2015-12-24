@@ -14,4 +14,6 @@ int bin_dice(void);
 int bin_random(void);
 int bin_dirname(void **args);
 int bin_tee(void **args);
+int bin_true(void);
+int bin_false(void);
 #endif

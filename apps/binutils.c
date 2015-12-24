@@ -422,3 +422,13 @@ int bin_tee(void** args)
 
     exit(0);
 }
+
+int bin_true(void)
+{
+	exit(0);
+}
+
+int bin_false(void)
+{
+	exit(1);
+}
