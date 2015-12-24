@@ -53,6 +53,58 @@ inline int nargs( void** argv ){
 }
 
 
+char *readln(char *input, int size){
+    while(1<2){
+        int len = 0;
+        int out = STDOUT_FILENO;
+        int i;
+        memset( input, 0, size);
+        while( len < size ){
+            const char del = 0x08;
+            int ret = read( STDIN_FILENO, input + len , 3);
+            if ( ret > 3 )
+                continue;
+            if ((ret > 0) && (input[len] >= 0x20 && input[len] <= 0x7e)) {
+                for (i = 0; i < ret; i++) {
+                /* Echo to terminal */
+                    if (input[len + i] >= 0x20 && input[len + i] <= 0x7e)
+                        write(STDOUT_FILENO, &input[len + i], 1);
+                    len++;
+                }
+            }
+            if( input[len] == 0x0D ){
+                input[len + 1] = '\n';
+                input[len + 2] = '\0';
+                printf("\r\n");
+                if( len == 0 ) return NULL;  
+                return input;
+            }
+            if( input[len] == 0x4 ){
+                printf("\r\n");
+                len = 0;
+                break;
+            }
+            /* backspace */
+            if ((input[len] == 127)) {
+                if (len > 1) {
+                    write(out, &del, 1);
+                    printf( " ");
+                    write(out, &del, 1);
+                    len -= 2;
+                }else {
+                    len -=1;
+                }
+            }
+        }
+        printf("\r\n");
+        if (len < 0)
+            return NULL;
+
+        input[len + 1] = '\0';
+    }
+    return input;       
+}
+
 int bin_ls(void **args)
 {
     char *fname;
@@ -343,7 +395,7 @@ int bin_dirname( void** args ){
 int bin_tee(void** args)
 {
     extern int opterr, optind;
-    int c, i, argc = 0, written, b = 0;
+    int c, i, argc = 0, written, j = 0,  b = 0;
     char line[BUFSIZE];
     int slot, fdfn[MAXFILES + 1][2] ;
     ssize_t n, count;
@@ -351,26 +403,30 @@ int bin_tee(void** args)
     argc = nargs( args );
     setlocale(LC_ALL, "");
     opterr = 0;
+    fdfn[j][0] = STDOUT_FILENO;
     while ((c = getopt(argc,(char**) args, "ai")) != -1)
         switch (c)
         {
         case 'a':   /* append to rather than overwrite file(s) */
             mode = O_WRONLY | O_CREAT | O_APPEND;
             break;
-
         case 'i':   /* ignore the SIGINT signal */
             signal(SIGINT, SIG_IGN);
             break;
-
+        case 0:
+            opterr = 0;
+            break;
         default:
             fprintf(stderr, "tee: invalid option -- '%c'\n", (char)c);
             exit(1);
         }
+    /*setting extra stdout redirections, getopt does not count them*/
+    for( i = 0; i < optind ; i++ ){
+        if( strcmp( args[i] , "-" ) == 0 )
+            fdfn[++j][0] = STDOUT_FILENO;
+    }
 
-    i = optind;
-    fdfn[0][0] = STDOUT_FILENO;
-
-    for (slot = 1; i < argc ; i++)
+    for (slot = j+1; i < argc ; i++)
     {
         if (slot > MAXFILES)
             fprintf(stderr, "tee: Maximum of %d output files exceeded\n", MAXFILES);
@@ -383,35 +439,19 @@ int bin_tee(void** args)
         }
     }
     i = 0;
-    while ((n = read(STDIN_FILENO, line + i, 3) > 0 ))
-    {
-        if( line[i] == '\r' ){
-            /*interrupt command by writing 2 empty lines*/
-            if ( i == 0 && b == 1 ) break;
-            else if( i == 0 ) b = 1;
-            else b = 0;
-            line[i+1]= '\n';
-            line[i+2] = '\0';
-            write(STDOUT_FILENO, "\r\n", 2);
-            for (i = 0; i < slot; i++){
-                count = strlen( line );
-                while(count > 0){
-                    written = write(fdfn[i][0], line, count) ;
-                    count -= written;
-                }
-            }
-            i = 0;
+    while( 1 ){
+        if (readln( line, BUFSIZE) == NULL ){
+            if(b) break;
+            b = 1;
         }
-        else{
-            count = n;
-            while( count > 0 ) {
-            //echoing input
-                written = write( STDOUT_FILENO, &line[i], count ) ;
+        for( i = 0; i < slot; i++ ){
+            count = strlen( line );
+            while( count > 0 ){
+                written = write( fdfn[i][0], line, count);
                 count -= written;
             }
-            i += n; 
         }
-    }
+    } 
 
     if (n < 0)
         printf("error\n");
