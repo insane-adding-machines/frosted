@@ -10,7 +10,12 @@ struct adc_addr {
     const char * name;
     uint8_t channel_array[NUM_ADC_CHANNELS];
     uint8_t num_channels;
-    /* TBD, speed, spi mode */
+
+    uint32_t dma_base;
+    uint32_t dma_rcc;
+    uint32_t dma_channel;
+    uint32_t dma_stream;
+    uint32_t dma_irq;
 };
 
 void adc_init(struct fnode *dev, const struct adc_addr adc_addrs[], int num_adc);
