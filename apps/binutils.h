@@ -17,4 +17,5 @@ int bin_tee(void **args);
 int bin_true(void **args);
 int bin_false(void **args);
 int bin_arch(void **args);
+int bin_wc(void **args);
 #endif
