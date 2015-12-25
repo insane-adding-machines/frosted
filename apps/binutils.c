@@ -46,6 +46,14 @@
 #define BUFSIZE 256
 #define MAXFILES 13
 
+#ifdef LM3S
+#  define ARCH	"LM3S"
+#elif defined LPC17XX
+#  define ARCH	"LPC17XX"
+#elif defined STM32F4
+#  define ARCH	"STM32F4"
+#endif
+
 inline int nargs( void** argv ){
     int argc = 0;
     while( argv[argc] ) argc++;
@@ -270,7 +278,7 @@ int roll(void)
 	return 0;
 }
 
-int bin_dice(void)
+int bin_dice(void **args)
 {
  	char c;
  	int noes = 2;
@@ -330,7 +338,7 @@ int bin_dice(void)
  	exit(0);
 }
 
-int bin_random(void)
+int bin_random(void **args)
 {
 	printf("\r\nHere's a random number for ya: \t%u\r\n\r\n", rand());
 	exit(0);
@@ -460,5 +468,63 @@ int bin_tee(void** args)
         if (close(fdfn[i][0]) == -1)
             printf("error\n");
 
+    exit(0);
+}
+
+int bin_true(void **args)
+{
+	exit(0);
+}
+
+int bin_false(void **args)
+{
+	exit(1);
+}
+
+int bin_arch(void **args)
+{
+	printf("%s\r\n", ARCH);
+	exit(0);
+}
+
+int bin_wc(void **args)
+{
+    int fd;
+    int i = 1;
+    while (args[i]) {
+    	int last_white = 0;
+    	int bytes = 0, words = 0, newlines = 0;
+        fd = open(args[i], O_RDONLY);
+        if (fd < 0) {
+            printf("File not found.\r\n");
+            exit(-1);
+        } else {
+            int r;
+            char buf[1];
+            do {
+                r = read(fd, buf, 1);
+                if (r > 0) {
+                    bytes += r;
+                    if (buf[0] == '\n') {
+                        newlines++;
+                	words++;
+                	last_white = 1;
+                    } else if ((buf[0] == ' ') || (buf[0] == '\t')) {
+                	words++;
+                	last_white = 1;
+                    } else {
+                    	last_white = 0;
+                    }
+                }
+            } while (r > 0);
+            close(fd);
+        }
+        if (!last_white) {
+        	words++;
+        	newlines++;
+        }
+    	printf("%d %d %d %s\r\n", newlines, words, bytes, args[i]);
+    	i++;
+    }
     exit(0);
 }

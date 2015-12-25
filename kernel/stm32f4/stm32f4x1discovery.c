@@ -20,12 +20,11 @@
 #include "frosted.h"
 #include "libopencm3/cm3/systick.h"
 #include <libopencm3/stm32/rcc.h>
-#include "libopencm3/stm32/usart.h"
 #include "libopencm3/cm3/nvic.h"
 #include <libopencm3/stm32/exti.h>
-#include <libopencm3/stm32/adc.h>
 
 #ifdef CONFIG_DEVUART
+#include "libopencm3/stm32/usart.h"
 #include "uart.h"
 #endif
 
@@ -44,6 +43,8 @@
 #endif
 
 #ifdef CONFIG_DEVADC
+#include <libopencm3/stm32/adc.h>
+#include <libopencm3/stm32/dma.h>
 #include "adc.h"
 #endif
 
@@ -86,6 +87,8 @@ static const struct gpio_addr gpio_addrs[] = {
 #endif
 #ifdef CONFIG_DEVADC
             {.base=GPIOA, .pin=GPIO1,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+            {.base=GPIOB, .pin=GPIO0,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+            {.base=GPIOB, .pin=GPIO1,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
 #endif
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
@@ -178,8 +181,14 @@ static const struct adc_addr adc_addrs[] = {
             .irq = NVIC_ADC_IRQ, 
             .rcc = RCC_ADC1,
             .name = "adc",
-            .channel_array = {1},     /*ADC_IN1 on PA1 */
-            .num_channels = 1,
+            .channel_array = {1, 8, 9},     /*ADC_IN1,8,9 on PA1, PB0, PB1 */
+            .num_channels = 3,
+            /* Use DMA to fetch sample data */
+            .dma_base = DMA2,
+            .dma_rcc = RCC_DMA2,
+            .dma_channel = DMA_SxCR_CHSEL_0,
+            .dma_stream = DMA_STREAM0,
+            .dma_irq = NVIC_DMA2_STREAM0_IRQ,
         }
 };
 #define NUM_ADC (sizeof(adc_addrs)/sizeof(struct adc_addr))

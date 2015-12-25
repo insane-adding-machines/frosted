@@ -24,6 +24,8 @@ struct dev_spi {
     struct cirbuf *outbuf;
     uint8_t *w_start;
     uint8_t *w_end;
+    spi_completion completion_fn;
+    void * completion_arg;
 };
 
 #define MAX_SPIS 6
@@ -55,6 +57,7 @@ void spi_isr(struct dev_spi *spi)
             usart_send(spi->base, (uint16_t)(outbyte));
         } else {
             spi_disable_tx_buffer_empty_interrupt(spi->base);
+            tasklet_add(spi->completion_fn, spi->completion_arg);
         }
         frosted_mutex_unlock(spi->dev->mutex);
     }
@@ -65,9 +68,6 @@ void spi_isr(struct dev_spi *spi)
         cirbuf_writebyte(spi->inbuf, spi_read(spi->base));
     }
 
-    /* If a process is attached, resume the process */
-    if (spi->dev->pid > 0) 
-        task_resume(spi->dev->pid);
 }
 
 #ifdef CONFIG_SPI_1
@@ -130,6 +130,44 @@ static int devspi_write(struct fnode *fno, const void *buf, unsigned int len)
     spi->w_start = NULL;
     spi->w_end = NULL;
 
+    return len;
+}
+
+
+int devspi_write_noblock(struct fnode *fno, spi_completion completion_fn, void * completion_arg, const void *buf, unsigned int len)
+{
+    struct dev_spi *spi;
+
+    spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
+    if (!spi)
+        return -1;
+    if (len <= 0)
+        return len;
+    if(completion_fn == NULL)
+        return -1;
+
+    if (spi->w_start == NULL) {
+        spi->w_start = (uint8_t *)buf;
+        spi->w_end = ((uint8_t *)buf) + len;
+
+    } else {
+        /* previous transmit not finished, do not update w_start */
+    }
+
+    spi->completion_fn = completion_fn;
+    spi->completion_arg = completion_arg;
+
+    spi_enable_tx_buffer_empty_interrupt(spi->base);
+
+    /* write to circular output buffer */
+    spi->w_start += cirbuf_writebytes(spi->outbuf, spi->w_start, spi->w_end - spi->w_start);
+
+    if ((SPI_SR(spi->base) & SPI_SR_TXE)) {
+        uint8_t c;
+        /* Doesn't block because of test above */
+        cirbuf_readbyte(spi->outbuf, &c);
+        spi_send(spi->base, c);
+    }
     return len;
 }
 
