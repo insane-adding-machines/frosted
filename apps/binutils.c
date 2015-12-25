@@ -46,6 +46,14 @@
 #define BUFSIZE 256
 #define MAXFILES 13
 
+#ifdef LM3S
+#  define ARCH	"LM3S"
+#elif defined LPC17XX
+#  define ARCH	"LPC17XX"
+#elif defined STM32F4
+#  define ARCH	"STM32F4"
+#endif
+
 inline int nargs( void** argv ){
     int argc = 0;
     while( argv[argc] ) argc++;
@@ -218,7 +226,7 @@ int roll(void)
 	return 0;
 }
 
-int bin_dice(void)
+int bin_dice(void **args)
 {
  	char c;
  	int noes = 2;
@@ -278,7 +286,7 @@ int bin_dice(void)
  	exit(0);
 }
 
-int bin_random(void)
+int bin_random(void **args)
 {
 	printf("\r\nHere's a random number for ya: \t%u\r\n\r\n", rand());
 	exit(0);
@@ -423,12 +431,18 @@ int bin_tee(void** args)
     exit(0);
 }
 
-int bin_true(void)
+int bin_true(void **args)
 {
 	exit(0);
 }
 
-int bin_false(void)
+int bin_false(void **args)
 {
 	exit(1);
+}
+
+int bin_arch(void **args)
+{
+	printf("%s\r\n", ARCH);
+	exit(0);
 }
