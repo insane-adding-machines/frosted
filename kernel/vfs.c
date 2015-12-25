@@ -62,9 +62,14 @@ static char *filename(char *path)
     return path;
 }
 
+static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow);
+
 static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
 {
     int nlen;
+    if ((f->flags & FL_LINK) == FL_LINK) {
+        f =  _fno_search(f->linkname, &FNO_ROOT, 1);
+    }
     if (f == &FNO_ROOT) {
         *p = dst + 1;
         dst[0] = '/';
@@ -110,12 +115,7 @@ static int path_abs(char *src, char *dst, int len)
     struct fnode *f = task_getcwd();
     if (src[0] == '/')
         strncpy(dst, src, len);
-    else if ((src[0] == '.') && (src[1] == '.')) {
-        if (f->parent) {
-            if (fno_fullpath(f->parent, dst, len) > 0)
-                return 0;
-        }
-    } else {
+    else {
         if (fno_fullpath(f, dst, len) > 0) {
             while (dst[strlen(dst) - 1] == '/')
                 dst[strlen(dst) - 1] = '\0';
@@ -201,7 +201,8 @@ static void mkdir_links(struct fnode *fno)
     strcat( parentl, "/.." );
     if (fno) {
         fno_link( path, selfl );
-        //once link to self is fixed add the parent link as well
+        basename_r(path, path);
+        fno_link( path, parentl);
     }
 
 
@@ -213,7 +214,7 @@ static struct fnode *fno_create_dir(char *path, uint32_t flags)
     if (fno) {
         fno->flags |= (FL_DIR | flags);
     }
-    //mkdir_links(fno);
+    mkdir_links(fno);
     return fno;
 }
 
@@ -266,6 +267,7 @@ static int path_check(const char *path, const char *dirname)
 static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow)
 {
     struct fnode *cur;
+    char link[MAX_FILE];
     int check = 0;
     if (dir == NULL) 
         return NULL;
@@ -286,6 +288,13 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
     }
 
     /* path is correct, need to walk more */
+    if( (dir->flags & FL_LINK ) == FL_LINK ){
+    /* passing through a symlink */
+        strcpy( link, dir->linkname );
+        strcat( link, "/" );
+        strcat( link, path_walk(path));
+        return _fno_search( link, &FNO_ROOT, follow );
+    }
     return _fno_search(path_walk(path), dir->children, follow);
 }
 
@@ -359,7 +368,6 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
     fno->flags |= (FL_DIR | FL_RDWR);
     if (parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
-    //mkdir_links(fno);
     return fno;
 }
 
@@ -606,7 +614,6 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
 }
 
 
-
 int sys_chdir_hdlr(uint32_t arg1)
 {
     char *path = (char *)arg1;
@@ -696,6 +703,7 @@ int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *ar
         struct mountpoint *mp = kalloc(sizeof(struct mountpoint));
         if (mp) {
             mp->target = fno_search(target);
+            mkdir_links(mp->target);
             mp->next = MTAB;
             MTAB = mp;
         }
@@ -765,6 +773,7 @@ void vfs_init(void)
 
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
+    mkdir_links(dev);
     
     /* Init "/sys" dir */
     dev = fno_mkdir(NULL, "sys", NULL);

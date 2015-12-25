@@ -28,6 +28,10 @@ ifeq ($(MACH_STM32F405Pyboard),y)
 	CFLAGS+=-DPYBOARD
 endif
 
+ifeq ($(MACH_STM32F429Discovery),y)
+	CFLAGS+=-DF429DISCO
+endif
+
 ifeq ($(FLASH_SIZE_2MB),y)
 	FLASH_SIZE=2048
 endif
@@ -133,6 +137,11 @@ ifeq ($(SPI_5),y)
 endif
 ifeq ($(SPI_6),y)
     CFLAGS+=-DCONFIG_SPI_6
+endif
+
+#RNG
+ifeq ($(DEVRNG),y)
+    CFLAGS+=-DCONFIG_RNG
 endif
 
 APPS_ORIGIN=$$(( $(KFLASHMEM_SIZE) * 1024))

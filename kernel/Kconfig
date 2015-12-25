@@ -229,6 +229,11 @@ menu "Subsystems"
        bool "Generic GPIO driver"
        default y
 
+       config DEVRNG
+       depends on ARCH_STM32F4
+       bool "Generic RNG driver"
+       default y
+
    endmenu
 endmenu
 

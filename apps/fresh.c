@@ -52,13 +52,22 @@ const struct binutils bin_table[] = {
     {"touch", bin_touch},
     {"echo", bin_echo},
     {"cat", bin_cat},
+    {"dice", bin_dice},
+    {"random", bin_random},
+    {"dirname", bin_dirname},
+    {"tee", bin_tee},
+    {"true", bin_true},
+    {"false", bin_false},
+    {"arch", bin_arch},
+    {"wc", bin_wc},
     {"", NULL}
 };
 
 static void exec_binutils(const struct binutils *b, char **args)
 {
-    int ret;
-    ret = b->exe((void **)args); 
+    //int ret;
+    //ret = b->exe((void **)args); 
+    execb(b->exe, args);
 }
 
 static const struct binutils * find_binutils(char *name)

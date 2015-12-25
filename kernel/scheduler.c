@@ -128,13 +128,18 @@ struct task_handler
 struct __attribute__((packed)) task_block {
     void (*start)(void *);
     void *arg;
+
     uint8_t state;
     uint8_t flags;
     uint16_t prio;
+
     uint16_t timeslice;
     uint16_t pid;
+
     uint16_t ppid;
     uint16_t n_files;
+
+    int exitval;
     struct fnode *cwd;
     struct task_handler *sighdlr;
     sigset_t sigmask;
@@ -659,6 +664,7 @@ void task_end(void)
 {
     running_to_idling(_cur_task);
     _cur_task->tb.state = TASK_ZOMBIE;
+    asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
     while(1) {
         if (_cur_task->tb.ppid > 0)
             task_resume(_cur_task->tb.ppid);
@@ -676,7 +682,6 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.arg = arg;
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
-    new->tb.cwd = fno_search("/");
     new->tb.sighdlr = NULL;
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
@@ -709,47 +714,6 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.sp = (uint32_t *)sp;
 } 
 
-int task_create_GOT(void (*init)(void *), void *arg, unsigned int prio, uint32_t got_loc)
-{
-    struct task *new;
-    int i;
-
-    irq_off();
-    if (number_of_tasks == 0) {
-        new = &struct_task_init;
-    } else {
-        new = task_space_alloc(sizeof(struct task));
-    }
-    if (!new) {
-        return -ENOMEM;
-    }
-    new->tb.pid = next_pid();
-    new->tb.ppid = scheduler_get_cur_pid();
-    new->tb.prio = prio;
-    new->tb.filedesc = NULL;
-    new->tb.n_files = 0;
-    new->tb.flags = 0;
-
-    /* Inherit cwd, file descriptors from parent */
-    if (new->tb.ppid > 1) { /* Start from parent #2 */
-        new->tb.cwd = task_getcwd();
-        for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
-            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
-        }
-    } 
-
-    new->tb.next = NULL;
-    tasklist_add(&tasks_running, new);
-
-    number_of_tasks++;
-    task_create_real(new, init, arg, prio, got_loc);
-    new->tb.state = TASK_RUNNABLE;
-    irq_on();
-    return new->tb.pid;
-}
-
-
 int task_create(void (*init)(void *), void *arg, unsigned int prio)
 {
     struct task *new;
@@ -770,6 +734,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     new->tb.filedesc = NULL;
     new->tb.n_files = 0;
     new->tb.flags = 0;
+    new->tb.cwd = fno_search("/");
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -826,10 +791,10 @@ int sys_vfork_hdlr(void)
     new->tb.filedesc = NULL;
     new->tb.n_files = 0;
     new->tb.flags = TASK_FLAG_VFORK;
+    new->tb.cwd = task_getcwd();
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
-        new->tb.cwd = task_getcwd();
         for (i = 0; i < _cur_task->tb.n_files; i++) {
             task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
             new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
@@ -1157,6 +1122,9 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     return SYS_CALL_AGAIN;
 
 child_found:
+    if (arg2){
+        *((int *)arg2) = t->tb.exitval;
+    }
     pid = t->tb.pid;
     t->tb.state = TASK_OVER;
     task_destroy(t);
@@ -1176,6 +1144,7 @@ int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
 {
+    _cur_task->tb.exitval = (int)arg1;
     task_terminate(_cur_task->tb.pid);
 }
 
@@ -1216,7 +1185,12 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
 
     call = sys_syscall_handlers[n];
     retval = call(arg1, arg2, arg3, *a4, *a5);
-    asm volatile ( "mov %0, r0" : "=r" 
+
+    /* Exec does not have a return value, and will use r0 as args for main()*/
+    if ((call != sys_syscall_handlers[SYS_EXECB])
+            && (call != sys_syscall_handlers[SYS_EXEC])
+       )
+        asm volatile ( "mov %0, r0" : "=r" 
             (*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
     irq_on();
 

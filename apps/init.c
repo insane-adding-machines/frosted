@@ -87,8 +87,13 @@ void idling(void *arg)
 # define LED2 "/dev/gpio_1_15"
 # define LED3 "/dev/gpio_1_4"
 #elif defined (STM32F4)
-# define LED0 "/dev/gpio_3_12"
-# define LED1 "/dev/gpio_3_13"
+# if defined (F429DISCO)
+#  define LED0 "/dev/gpio_6_13"
+#  define LED1 "/dev/gpio_6_14"
+# else
+#  define LED0 "/dev/gpio_3_12"
+#  define LED1 "/dev/gpio_3_13"
+#endif
 # define LED2 "/dev/gpio_3_14"
 # define LED3 "/dev/gpio_3_15"
 #elif defined (LPC17XX)
