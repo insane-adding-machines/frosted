@@ -60,6 +60,7 @@ const struct binutils bin_table[] = {
     {"false", bin_false},
     {"arch", bin_arch},
     {"wc", bin_wc},
+    {"cut", bin_cut},
     {"", NULL}
 };
 
@@ -353,7 +354,7 @@ void launchProg(char **args, int background){
 */ 
 void fileIO(char * args[], char* inputFile, char* outputFile, int option)
 {
-     
+    atoi("22"); 
     int err = -1;
     int fileDescriptor; // between 0 and 19, describing the output or input file
     const struct binutils *b;

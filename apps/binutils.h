@@ -18,4 +18,5 @@ int bin_true(void **args);
 int bin_false(void **args);
 int bin_arch(void **args);
 int bin_wc(void **args);
+int bin_cut(void **args);
 #endif

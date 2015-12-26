@@ -61,7 +61,7 @@ inline int nargs( void** argv ){
 }
 
 
-char *readln(char *input, int size){
+char *inputline(char *input, int size){
     while(1<2){
         int len = 0;
         int out = STDOUT_FILENO;
@@ -112,6 +112,33 @@ char *readln(char *input, int size){
     }
     return input;       
 }
+
+
+int parse_interval(char* arg, int* start, int* end){
+    char *endptr;
+    if( *arg == '-' || *arg == ',' ){
+        *start = 0;
+        endptr = arg;
+    }
+    else{
+        *start = strtol(arg, &endptr, 10);
+        if( *start <= 0 && arg != endptr )
+            return 1; 
+        if( *endptr != '-' && *endptr !=',' && *endptr != '\0')
+            return 1; 
+    }
+    if( *endptr != '\0' )
+        endptr++;
+    if( *endptr == '\0' )
+        *end = 0;
+    else{
+        *end = strtol( endptr, &endptr, 10 );
+        if( *end == 0 )
+            return 1;
+    }
+    return 0;
+}
+
 
 int bin_ls(void **args)
 {
@@ -205,7 +232,7 @@ int bin_touch(void **args)
 {
     char *file = args[1];
     int fd; 
-    fd = open(file, O_CREAT|O_TRUNC|O_EXCL);
+    fd = open(file, O_CREAT|O_TRUNC|O_EXCL|O_WRONLY);
     if (fd < 0) {
         printf("Cannot create file.\r\n");
         exit(-1);
@@ -441,14 +468,14 @@ int bin_tee(void** args)
         else
         {
             if ((fdfn[slot][0] = open(args[i], mode, 0666)) == -1)
-                printf("error\n");
+                fprintf(stderr,"error opening %s\n", args[i]);
             else
                 fdfn[slot++][1] = i;
         }
     }
     i = 0;
     while( 1 ){
-        if (readln( line, BUFSIZE) == NULL ){
+        if (inputline( line, BUFSIZE) == NULL ){
             if(b) break;
             b = 1;
         }
@@ -467,7 +494,7 @@ int bin_tee(void** args)
     for (i = 1; i < slot; i++)
         if (close(fdfn[i][0]) == -1)
             printf("error\n");
-
+    optind = 0;
     exit(0);
 }
 
@@ -526,5 +553,111 @@ int bin_wc(void **args)
     	printf("%d %d %d %s\r\n", newlines, words, bytes, args[i]);
     	i++;
     }
+    exit(0);
+}
+
+
+int bin_cut( void** args){
+    extern int opterr, optind, optopt;
+    extern char* optarg;
+    char *endptr, *line;
+    char buf[2];
+    int c, start, end, i, j, len, flag, slot, argc;
+    int b = 0;
+    int mode = O_RDONLY;
+    line = NULL;
+    opterr=0;
+    j = 0;
+    argc = nargs(args);
+    int fdfn[MAXFILES];
+    while( (c = getopt( argc, (char**)args, "c:" )) != -1){
+        switch (c){
+            case 'c':
+                if( b == 1 ){
+                    fprintf(stderr,"cut: only one type of list may be specified\n");
+                    exit(1);
+                }
+                b = 1;
+                flag = c;
+                if( parse_interval(optarg, &start, &end)!=0){
+                    fprintf(stderr,"cut: invalid interval\n")M
+                    exit(1);
+                }
+                break;
+            default:
+                fprintf(stderr,"cut: invalid option -- '%c'\n", optopt );
+                exit(1);
+        }
+    }
+    if( b == 0 ){
+        printf("cut: you must specify at list of characters\n");
+        exit(1);
+    }
+    if(--start < 0 )
+        start = 0;
+    end--;
+    if( args[optind] ){
+        slot = 0;
+        for( i = optind; i < argc; i++ ){
+            if( i > MAXFILES )
+                fprintf(stderr, "cut: Maximum of %d output files exceeded\n", MAXFILES);
+            if(( fdfn[slot] = open( args[i], mode, 0666)) == -1 )
+                fprintf(stderr, "error opening %s\n", args[i] );
+            else
+                slot++;
+        }
+        len = (end >= 0) ? end - start : BUFSIZE - start;
+        line = (char*) malloc( sizeof(char)*(len+1) );
+        for( i = 0; i < slot; i++ ){
+            while( b > 0 ){
+                for( j = 0; j < start; j++ ){
+                    b = read(fdfn[i], buf, 1 );
+                    if( b <= 0 || buf[0] == '\n')
+                        break;
+                }
+                if( b <= 0 || j != start ){
+                    printf("\n");
+                    continue;
+                }
+                for( j = 0; j < len; j++ ){
+                    b = read( fdfn[i], line + j, 1 );
+                    if( b <= 0 || line[j] == '\n' ){
+                        j++;
+                        break;
+                    }
+                }
+                if( b <= 0 )
+                    break;
+                line[j] = '\0';
+                if( line[j-1] != '\n' )
+                    printf( "%s\n", line);
+                else
+                    printf( "%s", line );
+                buf[0] = line[j-1];
+                while( buf[0] != '\n' )
+                    if( read( fdfn[i], buf, 1 ) <= 0 )
+                        break;
+            }
+            if( b <= 0 )
+            /*EOF*/
+                break;
+        }
+    }
+    else{
+        /*stdin*/
+        line = (char*)malloc( sizeof(char)*BUFSIZE );
+        while( 1 ){
+            if (inputline( line, BUFSIZE) == NULL ){
+                if(b) break;
+                b = 1;
+            }
+            len = strlen(line)-1;
+            len = (end < len && end >= 0) ? end : len - 1;
+            for( i = start; i <= len; i++ )
+                write( STDOUT_FILENO, &line[i], 1 );
+            write( STDOUT_FILENO, "\r\n", 2 );
+        }
+    }
+    optind = 0;
     exit(0);
 }
