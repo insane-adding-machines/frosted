@@ -580,7 +580,7 @@ int bin_cut( void** args){
                 b = 1;
                 flag = c;
                 if( parse_interval(optarg, &start, &end)!=0){
-                    fprintf(stderr,"cut: invalid interval\n")M
+                    fprintf(stderr,"cut: invalid interval\n");
                     exit(1);
                 }
                 break;
