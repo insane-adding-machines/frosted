@@ -1,5 +1,6 @@
 #include "frosted.h"
 #include <string.h>
+#include "xipfs.h"
 
 static struct fnode *xipfs;
 static struct module mod_xipfs;
@@ -55,7 +56,7 @@ static int xipfs_unlink(struct fnode *fno)
     return -1; /* Cannot unlink */
 }
 
-int xip_add(const char *name, void (*init))
+static int xip_add(const char *name, void (*init))
 {
     struct xipfs_fnode *xip = kalloc(sizeof(struct xipfs_fnode));
     if (!xip)
@@ -72,11 +73,31 @@ int xip_add(const char *name, void (*init))
     return 0;
 }
 
-static int xipfs_mount(char *source, char *tgt, uint32_t flags, char *arg)
+static int xipfs_parse_blob(uint8_t *blob)
+{
+    struct xipfs_fat *fat = (struct xipfs_fat *)blob;
+    struct xipfs_fhdr *f;
+    int i, offset;
+    if (fat->fs_magic != XIPFS_MAGIC)
+        return -1;
+
+    offset = sizeof(struct xipfs_fhdr);
+    for (i = 0; i < fat->fs_files; i++) {
+        f = (struct xipfs_fhdr *) (blob + offset);
+        if (f->magic != XIPFS_MAGIC)
+            return -1;
+        f->name[55] = (char) 0;
+        xip_add(f->name, f->payload);
+        offset += f->len + sizeof(struct xipfs_fhdr);
+    }
+    return 0;
+}
+
+static int xipfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 {
     struct fnode *tgt_dir = NULL;
-    /* Source must be NULL */
-    if (source)
+    /* Source must NOT be NULL */
+    if (!source)
         return -1;
 
     /* Target must be a valid dir */
@@ -94,7 +115,11 @@ static int xipfs_mount(char *source, char *tgt, uint32_t flags, char *arg)
         /* Only allowed to mount on empty directory */
         return -1;
     }
+
     tgt_dir->owner = &mod_xipfs;
+    if (xipfs_parse_blob((uint8_t *)source) < 0)
+        return -1;
+
     return 0;
 }
 
