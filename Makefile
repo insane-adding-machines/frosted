@@ -171,5 +171,6 @@ clean:
 	@rm -f *.map *.bin *.elf
 	@rm -f apps/apps.ld
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
+	@rm -f tools/xipfstool
 	@find . |grep "\.o" | xargs -x rm -f
 
