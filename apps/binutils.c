@@ -661,3 +661,124 @@ int bin_cut( void** args){
     optind = 0;
     exit(0);
 }
+
+
+int dits(int led)
+{
+    write(led, "1", 1);
+    sleep(100);
+    write(led, "0", 1);
+    sleep(100);
+    return 0;
+}
+
+int dahs(int led)
+{
+    write(led, "1", 1);
+    sleep(300);
+    write(led, "0", 1);
+    sleep(100);
+    return 0;
+}
+
+int bin_morse(void **args)
+{
+#ifdef PYBOARD
+# define LED0 "/dev/gpio_1_13"
+#elif defined (STM32F4)
+# if defined (F429DISCO)
+#  define LED0 "/dev/gpio_6_13"
+# else
+#  define LED0 "/dev/gpio_3_12"
+#endif
+#elif defined (LPC17XX)
+#if 0
+/*LPCXpresso 1769 */
+# define LED0 "/dev/gpio_0_22"
+#else
+/* mbed 1768 */
+# define LED0 "/dev/gpio_1_18"
+#endif
+#else
+# define LED0 "/dev/null"
+#endif
+
+	int led = open(LED0, O_RDWR, 0);
+
+	char name[128] = "anti ANTI anti ANTI 0123456789";
+	if (!args[1]) {
+		memcpy(args[1], name, 128);
+	}
+	uint8_t morse[26][6] = 	{{1, 2, 0},		// a
+				{2, 1, 1, 1, 0},	// b
+				{2, 1, 2, 1, 0},	// c
+				{2, 1, 1, 0},		// d
+				{1, 0},			// e
+				{1, 1, 2, 1, 0},	// f
+				{2, 2, 1, 0},		// g
+				{1, 1, 1, 1, 0},	// h
+				{1, 1, 0},		// i
+				{1, 2, 2, 2, 0},	// j
+				{2, 1, 2, 0},		// k
+				{1, 2, 1, 1, 0},	// l
+				{2, 2, 0},		// m
+				{2, 1, 0},		// n
+				{2, 2, 2, 0},		// o
+				{1, 2, 2, 1, 0},	// p
+				{2, 2, 1, 2, 0},	// q
+				{1, 2, 1, 0},		// r
+				{1, 1, 1, 0},		// s
+				{2, 0},			// t
+				{1, 1, 2, 0},		// u
+				{1, 1, 1, 2, 0},	// v
+				{1, 2, 2, 0},		// w
+				{2, 1, 1, 2, 0},	// x
+				{2, 1, 2, 2, 0},	// y
+				{2, 2, 1, 1, 0},	// z
+				{2, 2, 2, 2, 2, 0},	// 0
+				{1, 2, 2, 2, 2, 0},	// 1
+				{1, 1, 2, 2, 2, 0},	// 2
+				{1, 1, 1, 2, 2, 0},	// 3
+				{1, 1, 1, 1, 2, 0},	// 4
+				{1, 1, 1, 1, 1, 0},	// 5
+				{2, 1, 1, 1, 1, 0},	// 6
+				{2, 2, 1, 1, 1, 0},	// 7
+				{2, 2, 2, 1, 1, 0},	// 8
+				{2, 2, 2, 2, 1, 0},	// 9
+			};
+	int i = 0, j = 0, dec = 0x42, k = 1;
+	do {
+		if (args[k]) {
+			memcpy(name, args[k], 128);
+		}
+		for (i = 0; i < strlen(name); i++) {
+			while (1) {
+				if (name[i] == ' ') {
+					sleep(200);
+					break;
+				} else if (name[i] >= 'a' && name[i] <= 'z') {
+					dec = 'a';
+				} else if (name[i] >= 'A' && name[i] <= 'Z') {
+					dec = 'A';
+				} else if (name[i] >= '0' && name[i] <= '9') {
+					dec = 0x30;
+				}
+				if (morse[(name[i] - dec)][j] == 1) {
+					dits(led);
+					j++;
+				} else if (morse[(name[i] - dec)][j] == 2) {
+					dahs(led);
+					j++;
+				} else if (morse[(name[i] - dec)][j] == 0) {
+					sleep(200);
+					j = 0;
+					break;
+				}
+			}
+		}
+		sleep(200);
+		k++;
+	} while (args[k]);
+	close(led);
+	exit(0);
+}
