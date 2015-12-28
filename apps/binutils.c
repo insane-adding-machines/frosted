@@ -518,10 +518,13 @@ int bin_false(void **args)
 
 int bin_arch(void **args)
 {
-    uint32_t *faulty = (uint32_t *)0x20000100;
-    printf("%d\r\n", *faulty);
 	printf("%s\r\n", ARCH);
 	exit(0);
+}
+
+int bin_mem_fault(void **args) {
+    uint32_t *faulty = (uint32_t *)0x40000100;
+    printf("%d\r\n", *faulty);
 }
 
 int bin_wc(void **args)
@@ -998,7 +1001,6 @@ void cm_disco(int led)
 
 int bin_catch_me(void **args)
 {
-#  define LED0 "/dev/gpio_6_13"
 	int led = open(LED0, O_RDWR, 0);
 	struct cm_board *b = malloc(sizeof(struct cm_board));
 

@@ -67,7 +67,8 @@ void mem_manage_handler(void)
     volatile uint32_t mmfar = SCB_MMFAR;
     //volatile uint32_t ufsr = SCB_UFSR;
     */
-    while(1);
+    if (task_segfault() < 0)
+        while(1);
 }
 
 void bus_fault_handler(void)
