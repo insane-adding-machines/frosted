@@ -48,17 +48,25 @@ int klog_write(int file, char *ptr, int len)
 
 void hard_fault_handler(void)
 {
-    /*
-    volatile uint32_t hfsr = GET_REG(SYSREG_HFSR);
-    volatile uint32_t bfsr = GET_REG(SYSREG_BFSR);
-    volatile uint32_t bfar = GET_REG(SYSREG_BFAR);
-    volatile uint32_t afsr = GET_REG(SYSREG_AFSR);
-    */
+    volatile uint32_t hfsr = SCB_HFSR;
+    //volatile uint32_t bfsr = SCB_BFSR;
+    volatile uint32_t afsr = SCB_AFSR;
+    volatile uint32_t bfar = SCB_BFAR;
+    //volatile uint32_t ufsr = SCB_UFSR;
+    volatile uint32_t mmfar = SCB_MMFAR;
     while(1);
 }
 
 void mem_manage_handler(void)
 {
+    /*
+    volatile uint32_t hfsr = SCB_HFSR;
+    //volatile uint32_t bfsr = SCB_BFSR;
+    volatile uint32_t afsr = SCB_AFSR;
+    volatile uint32_t bfar = SCB_BFAR;
+    volatile uint32_t mmfar = SCB_MMFAR;
+    //volatile uint32_t ufsr = SCB_UFSR;
+    */
     while(1);
 }
 
@@ -93,6 +101,7 @@ void frosted_init(void)
     ktimer_init();
 
     hw_init();
+    mpu_init();
             
     syscalls_init();
 

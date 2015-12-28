@@ -51,6 +51,7 @@ ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 OBJS-y+= \
 	frosted.o			\
+	mpu.o				\
 	string.o			\
 	sys.o				\
 	locks.o				\

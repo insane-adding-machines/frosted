@@ -518,6 +518,8 @@ int bin_false(void **args)
 
 int bin_arch(void **args)
 {
+    uint32_t *faulty = (uint32_t *)0x20000100;
+    printf("%d\r\n", *faulty);
 	printf("%s\r\n", ARCH);
 	exit(0);
 }

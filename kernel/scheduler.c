@@ -672,6 +672,8 @@ void task_end(void)
     }
 }
 
+static void task_resume_vfork(int pid);
+
 static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio, uint32_t r9val)
 {
     struct nvic_stack_frame *nvic_frame;
@@ -977,7 +979,7 @@ void task_resume(int pid)
     }
 }
 
-void task_resume_vfork(int pid)
+static void task_resume_vfork(int pid)
 {
     struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && t->tb.state == TASK_FORKED) {
