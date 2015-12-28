@@ -792,6 +792,7 @@ int cm_init_board(struct cm_board *b)
 {
 	b->wolf = rand() % 256;
 	b->sheep = rand() % 256;
+	//printf("Wolf is at :  %02X  -  sheep is at :  %02X\r\n", b->wolf, b->sheep);
 	return 0;
 }
 
@@ -803,23 +804,21 @@ uint8_t cm_move(struct cm_board *b)
 
 	ret = read(STDIN_FILENO, input, 3);
 	if ((ret == 3) && (input[0] == 0x1b)) {
-		if (input[2] == 'A') {		// UP
-			steps = (((b->wolf & 0xF) + input[1]) & 0xF);
+		//printf("GOT: %02X %02X %c\r\n", input[0], input[1], input[2]);
+		if (input[2] == 'A') {					// UP
+			steps = (((b->wolf & 0xF) + 1) & 0xF);
 			b->wolf = (b->wolf & 0xF0) + steps;
-			//return steos;
-		} else if (input[2] == 'B') {	// DOWN
-			steps = (((b->wolf & 0xF) - input[1]) & 0xF);
+		} else if (input[2] == 'B') {				// DOWN
+			steps = (((b->wolf & 0xF) - 1) & 0xF);
 			b->wolf = (b->wolf & 0xF0) + steps;
-			//dir = input[1];
-		} else if (input[2] == 'C') {	// RIGHT
-			steps = (((b->wolf & 0xF0) + input[1]) & 0xF0);
+		} else if (input[2] == 'C') {				// RIGHT
+			steps = (((b->wolf & 0xF0) + 0x1F) & 0xF0);
 			b->wolf = (b->wolf & 0x0F) + steps;
-			//dir = ((input[1] + 0x08) << 8);
-		} else if (input[2] == 'D') {	// LEFT
-			steps = (((b->wolf & 0xF0) - input[1]) & 0xF0);
+		} else if (input[2] == 'D') {				// LEFT
+			steps = (((b->wolf & 0xF0) - 1) & 0xF0);
 			b->wolf = (b->wolf & 0x0F) + steps;
-			//dir = ((input[1] + 0x08) << 8);
 		}
+		//printf("Wolf is at :  %02X  -  sheep is at :  %02X\r\n", b->wolf, b->sheep);
 	} else if ((ret == 1) && (input[0] == 'q')) {
 		return 0;
 	}
@@ -831,14 +830,25 @@ void cm_indicator(struct cm_board *b, int led)
 	int delay, i;
 
 	uint8_t diff = (b->wolf & 0xF) - (b->sheep & 0xF);
-	diff += (((b->wolf & 0xF0) - (b->sheep & 0xF0)) >> 8) & 0xF;
-	delay = diff;
 
-	for (i = 0; i < (diff / 2); i++) {
+	if (diff > 0xF) {
+		diff = 0xFF - diff;
+	}
+
+	uint8_t diff2 = ((((b->wolf >> 4) & 0xF) - ((b->sheep >> 4) & 0xF)));
+	if (diff2 > 0xF) {
+		diff2 = 0xFF - diff2;
+	}
+
+	diff += diff2;
+	diff == diff / 2;
+	delay = diff * 50;
+
+	for (i = 0; i < 5; i++) {
 		write(led, "1", 1);
-		sleep(50);
+		sleep(delay);
 		write(led, "0", 1);
-		sleep(50);
+		sleep(delay);
 	}
 }
 
@@ -859,10 +869,14 @@ void cm_disco(int led)
 
 int bin_catch_me(void **args)
 {
+#  define LED0 "/dev/gpio_6_13"
 	int led = open(LED0, O_RDWR, 0);
-	struct cm_board *b;
+	struct cm_board *b = malloc(sizeof(struct cm_board));
 
 	cm_init_board(b);
+
+	printf("You're a hungry wolf. A sheep is hiding on this 16*16 board..\r\n");
+	printf("Use the arrows and let the blinky led guide you...\r\n");
 
 	while (1) {
 		int dir = cm_move(b);
