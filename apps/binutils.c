@@ -782,3 +782,102 @@ int bin_morse(void **args)
 	close(led);
 	exit(0);
 }
+
+struct cm_board {
+	uint8_t wolf;
+	uint8_t sheep;
+};
+
+int cm_init_board(struct cm_board *b)
+{
+	b->wolf = rand() % 256;
+	b->sheep = rand() % 256;
+	return 0;
+}
+
+uint8_t cm_move(struct cm_board *b)
+{
+	char input[8];
+	int ret;
+	uint8_t steps =1;
+
+	ret = read(STDIN_FILENO, input, 3);
+	if ((ret == 3) && (input[0] == 0x1b)) {
+		if (input[2] == 'A') {		// UP
+			steps = (((b->wolf & 0xF) + input[1]) & 0xF);
+			b->wolf = (b->wolf & 0xF0) + steps;
+			//return steos;
+		} else if (input[2] == 'B') {	// DOWN
+			steps = (((b->wolf & 0xF) - input[1]) & 0xF);
+			b->wolf = (b->wolf & 0xF0) + steps;
+			//dir = input[1];
+		} else if (input[2] == 'C') {	// RIGHT
+			steps = (((b->wolf & 0xF0) + input[1]) & 0xF0);
+			b->wolf = (b->wolf & 0x0F) + steps;
+			//dir = ((input[1] + 0x08) << 8);
+		} else if (input[2] == 'D') {	// LEFT
+			steps = (((b->wolf & 0xF0) - input[1]) & 0xF0);
+			b->wolf = (b->wolf & 0x0F) + steps;
+			//dir = ((input[1] + 0x08) << 8);
+		}
+	} else if ((ret == 1) && (input[0] == 'q')) {
+		return 0;
+	}
+	return steps;
+}
+
+void cm_indicator(struct cm_board *b, int led)
+{
+	int delay, i;
+
+	uint8_t diff = (b->wolf & 0xF) - (b->sheep & 0xF);
+	diff += (((b->wolf & 0xF0) - (b->sheep & 0xF0)) >> 8) & 0xF;
+	delay = diff;
+
+	for (i = 0; i < (diff / 2); i++) {
+		write(led, "1", 1);
+		sleep(50);
+		write(led, "0", 1);
+		sleep(50);
+	}
+}
+
+void cm_disco(int led)
+{
+	int i;
+	for (i = 0; i < 10; i++) {
+		write(led, "1", 1);
+		sleep(50);
+		write(led, "0", 1);
+		sleep(30);
+		write(led, "1", 1);
+		sleep(100);
+		write(led, "0", 1);
+		sleep(30);
+	}
+}
+
+int bin_catch_me(void **args)
+{
+	int led = open(LED0, O_RDWR, 0);
+	struct cm_board *b;
+
+	cm_init_board(b);
+
+	while (1) {
+		int dir = cm_move(b);
+		if (dir) {
+			if (b->wolf == b->sheep) {
+				printf("You won!\r\n");
+				cm_disco(led);
+				break;
+			}
+			cm_indicator(b, led);
+		} else {
+			printf("Thought so.\r\n");
+			break;
+		}
+	}
+	close(led);
+	exit(0);
+}
