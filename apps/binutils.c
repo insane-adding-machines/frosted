@@ -63,6 +63,85 @@ inline int nargs( void** argv ){
 }
 
 
+char *inputline(char *input, int size){
+    while(1<2){
+        int len = 0;
+        int out = STDOUT_FILENO;
+        int i;
+        memset( input, 0, size);
+        while( len < size ){
+            const char del = 0x08;
+            int ret = read( STDIN_FILENO, input + len , 3);
+            if ( ret > 3 )
+                continue;
+            if ((ret > 0) && (input[len] >= 0x20 && input[len] <= 0x7e)) {
+                for (i = 0; i < ret; i++) {
+                /* Echo to terminal */
+                    if (input[len + i] >= 0x20 && input[len + i] <= 0x7e)
+                        write(STDOUT_FILENO, &input[len + i], 1);
+                    len++;
+                }
+            }
+            if( input[len] == 0x0D ){
+                input[len + 1] = '\n';
+                input[len + 2] = '\0';
+                printf("\r\n");
+                if( len == 0 ) return NULL;  
+                return input;
+            }
+            if( input[len] == 0x4 ){
+                printf("\r\n");
+                len = 0;
+                break;
+            }
+            /* backspace */
+            if ((input[len] == 127)) {
+                if (len > 1) {
+                    write(out, &del, 1);
+                    printf( " ");
+                    write(out, &del, 1);
+                    len -= 2;
+                }else {
+                    len -=1;
+                }
+            }
+        }
+        printf("\r\n");
+        if (len < 0)
+            return NULL;
+
+        input[len + 1] = '\0';
+    }
+    return input;       
+}
+
+
+int parse_interval(char* arg, int* start, int* end){
+    char *endptr;
+    if( *arg == '-' || *arg == ',' ){
+        *start = 0;
+        endptr = arg;
+    }
+    else{
+        *start = strtol(arg, &endptr, 10);
+        if( *start <= 0 && arg != endptr )
+            return 1; 
+        if( *endptr != '-' && *endptr !=',' && *endptr != '\0')
+            return 1; 
+    }
+    if( *endptr != '\0' )
+        endptr++;
+    if( *endptr == '\0' )
+        *end = 0;
+    else{
+        *end = strtol( endptr, &endptr, 10 );
+        if( *end == 0 )
+            return 1;
+    }
+    return 0;
+}
+
+
 int bin_ls(void **args)
 {
     char *fname;
@@ -155,7 +234,7 @@ int bin_touch(void **args)
 {
     char *file = args[1];
     int fd; 
-    fd = open(file, O_CREAT|O_TRUNC|O_EXCL);
+    fd = open(file, O_CREAT|O_TRUNC|O_EXCL|O_WRONLY);
     if (fd < 0) {
         printf("Cannot create file.\r\n");
         exit(-1);
@@ -353,7 +432,7 @@ int bin_dirname( void** args ){
 int bin_tee(void** args)
 {
     extern int opterr, optind;
-    int c, i, argc = 0, written, b = 0;
+    int c, i, argc = 0, written, j = 0,  b = 0;
     char line[BUFSIZE];
     int slot, fdfn[MAXFILES + 1][2] ;
     ssize_t n, count;
@@ -361,67 +440,55 @@ int bin_tee(void** args)
     argc = nargs( args );
     setlocale(LC_ALL, "");
     opterr = 0;
+    fdfn[j][0] = STDOUT_FILENO;
     while ((c = getopt(argc,(char**) args, "ai")) != -1)
         switch (c)
         {
         case 'a':   /* append to rather than overwrite file(s) */
             mode = O_WRONLY | O_CREAT | O_APPEND;
             break;
-
         case 'i':   /* ignore the SIGINT signal */
             signal(SIGINT, SIG_IGN);
             break;
-
+        case 0:
+            opterr = 0;
+            break;
         default:
             fprintf(stderr, "tee: invalid option -- '%c'\n", (char)c);
             exit(1);
         }
+    /*setting extra stdout redirections, getopt does not count them*/
+    for( i = 0; i < optind ; i++ ){
+        if( strcmp( args[i] , "-" ) == 0 )
+            fdfn[++j][0] = STDOUT_FILENO;
+    }
 
-    i = optind;
-    fdfn[0][0] = STDOUT_FILENO;
-
-    for (slot = 1; i < argc ; i++)
+    for (slot = j+1; i < argc ; i++)
     {
         if (slot > MAXFILES)
             fprintf(stderr, "tee: Maximum of %d output files exceeded\n", MAXFILES);
         else
         {
             if ((fdfn[slot][0] = open(args[i], mode, 0666)) == -1)
-                printf("error\n");
+                fprintf(stderr,"error opening %s\n", args[i]);
             else
                 fdfn[slot++][1] = i;
         }
     }
     i = 0;
-    while ((n = read(STDIN_FILENO, line + i, 3) > 0 ))
-    {
-        if( line[i] == '\r' ){
-            /*interrupt command by writing 2 empty lines*/
-            if ( i == 0 && b == 1 ) break;
-            else if( i == 0 ) b = 1;
-            else b = 0;
-            line[i+1]= '\n';
-            line[i+2] = '\0';
-            write(STDOUT_FILENO, "\r\n", 2);
-            for (i = 0; i < slot; i++){
-                count = strlen( line );
-                while(count > 0){
-                    written = write(fdfn[i][0], line, count) ;
-                    count -= written;
-                }
-            }
-            i = 0;
+    while( 1 ){
+        if (inputline( line, BUFSIZE) == NULL ){
+            if(b) break;
+            b = 1;
         }
-        else{
-            count = n;
-            while( count > 0 ) {
-            //echoing input
-                written = write( STDOUT_FILENO, &line[i], count ) ;
+        for( i = 0; i < slot; i++ ){
+            count = strlen( line );
+            while( count > 0 ){
+                written = write( fdfn[i][0], line, count);
                 count -= written;
             }
-            i += n; 
         }
-    }
+    } 
 
     if (n < 0)
         printf("error\n");
@@ -429,7 +496,7 @@ int bin_tee(void** args)
     for (i = 1; i < slot; i++)
         if (close(fdfn[i][0]) == -1)
             printf("error\n");
-
+    optind = 0;
     exit(0);
 }
 
@@ -509,3 +576,327 @@ int bin_gyro(void **args)
     exit(0);
 }
 
+int bin_cut( void** args){
+    extern int opterr, optind, optopt;
+    extern char* optarg;
+    char *endptr, *line;
+    char buf[2];
+    int c, start, end, i, j, len, flag, slot, argc;
+    int b = 0;
+    int mode = O_RDONLY;
+    line = NULL;
+    opterr=0;
+    j = 0;
+    argc = nargs(args);
+    int fdfn[MAXFILES];
+    while( (c = getopt( argc, (char**)args, "c:" )) != -1){
+        switch (c){
+            case 'c':
+                if( b == 1 ){
+                    fprintf(stderr,"cut: only one type of list may be specified\n");
+                    exit(1);
+                }
+                b = 1;
+                flag = c;
+                if( parse_interval(optarg, &start, &end)!=0){
+                    fprintf(stderr,"cut: invalid interval\n");
+                    exit(1);
+                }
+                break;
+            default:
+                fprintf(stderr,"cut: invalid option -- '%c'\n", optopt );
+                exit(1);
+        }
+    }
+    if( b == 0 ){
+        printf("cut: you must specify at list of characters\n");
+        exit(1);
+    }
+    if(--start < 0 )
+        start = 0;
+    end--;
+    if( args[optind] ){
+        slot = 0;
+        for( i = optind; i < argc; i++ ){
+            if( i > MAXFILES )
+                fprintf(stderr, "cut: Maximum of %d output files exceeded\n", MAXFILES);
+            if(( fdfn[slot] = open( args[i], mode, 0666)) == -1 )
+                fprintf(stderr, "error opening %s\n", args[i] );
+            else
+                slot++;
+        }
+        len = (end >= 0) ? end - start : BUFSIZE - start;
+        line = (char*) malloc( sizeof(char)*(len+1) );
+        for( i = 0; i < slot; i++ ){
+            while( b > 0 ){
+                for( j = 0; j < start; j++ ){
+                    b = read(fdfn[i], buf, 1 );
+                    if( b <= 0 || buf[0] == '\n')
+                        break;
+                }
+                if( b <= 0 || j != start ){
+                    printf("\n");
+                    continue;
+                }
+                for( j = 0; j < len; j++ ){
+                    b = read( fdfn[i], line + j, 1 );
+                    if( b <= 0 || line[j] == '\n' ){
+                        j++;
+                        break;
+                    }
+                }
+                if( b <= 0 )
+                    break;
+                line[j] = '\0';
+                if( line[j-1] != '\n' )
+                    printf( "%s\n", line);
+                else
+                    printf( "%s", line );
+                buf[0] = line[j-1];
+                while( buf[0] != '\n' )
+                    if( read( fdfn[i], buf, 1 ) <= 0 )
+                        break;
+            }
+            if( b <= 0 )
+            /*EOF*/
+                break;
+        }
+    }
+    else{
+        /*stdin*/
+        line = (char*)malloc( sizeof(char)*BUFSIZE );
+        while( 1 ){
+            if (inputline( line, BUFSIZE) == NULL ){
+                if(b) break;
+                b = 1;
+            }
+            len = strlen(line)-1;
+            len = (end < len && end >= 0) ? end : len - 1;
+            for( i = start; i <= len; i++ )
+                write( STDOUT_FILENO, &line[i], 1 );
+            write( STDOUT_FILENO, "\r\n", 2 );
+        }
+    }
+    optind = 0;
+    exit(0);
+}
+
+
+int dits(int led)
+{
+    write(led, "1", 1);
+    sleep(100);
+    write(led, "0", 1);
+    sleep(100);
+    return 0;
+}
+
+int dahs(int led)
+{
+    write(led, "1", 1);
+    sleep(300);
+    write(led, "0", 1);
+    sleep(100);
+    return 0;
+}
+
+int bin_morse(void **args)
+{
+#ifdef PYBOARD
+# define LED0 "/dev/gpio_1_13"
+#elif defined (STM32F4)
+# if defined (F429DISCO)
+#  define LED0 "/dev/gpio_6_13"
+# else
+#  define LED0 "/dev/gpio_3_12"
+#endif
+#elif defined (LPC17XX)
+#if 0
+/*LPCXpresso 1769 */
+# define LED0 "/dev/gpio_0_22"
+#else
+/* mbed 1768 */
+# define LED0 "/dev/gpio_1_18"
+#endif
+#else
+# define LED0 "/dev/null"
+#endif
+
+	int led = open(LED0, O_RDWR, 0);
+
+	char name[128] = "anti ANTI anti ANTI 0123456789";
+	if (!args[1]) {
+		memcpy(args[1], name, 128);
+	}
+	uint8_t morse[26][6] = 	{{1, 2, 0},		// a
+				{2, 1, 1, 1, 0},	// b
+				{2, 1, 2, 1, 0},	// c
+				{2, 1, 1, 0},		// d
+				{1, 0},			// e
+				{1, 1, 2, 1, 0},	// f
+				{2, 2, 1, 0},		// g
+				{1, 1, 1, 1, 0},	// h
+				{1, 1, 0},		// i
+				{1, 2, 2, 2, 0},	// j
+				{2, 1, 2, 0},		// k
+				{1, 2, 1, 1, 0},	// l
+				{2, 2, 0},		// m
+				{2, 1, 0},		// n
+				{2, 2, 2, 0},		// o
+				{1, 2, 2, 1, 0},	// p
+				{2, 2, 1, 2, 0},	// q
+				{1, 2, 1, 0},		// r
+				{1, 1, 1, 0},		// s
+				{2, 0},			// t
+				{1, 1, 2, 0},		// u
+				{1, 1, 1, 2, 0},	// v
+				{1, 2, 2, 0},		// w
+				{2, 1, 1, 2, 0},	// x
+				{2, 1, 2, 2, 0},	// y
+				{2, 2, 1, 1, 0},	// z
+				{2, 2, 2, 2, 2, 0},	// 0
+				{1, 2, 2, 2, 2, 0},	// 1
+				{1, 1, 2, 2, 2, 0},	// 2
+				{1, 1, 1, 2, 2, 0},	// 3
+				{1, 1, 1, 1, 2, 0},	// 4
+				{1, 1, 1, 1, 1, 0},	// 5
+				{2, 1, 1, 1, 1, 0},	// 6
+				{2, 2, 1, 1, 1, 0},	// 7
+				{2, 2, 2, 1, 1, 0},	// 8
+				{2, 2, 2, 2, 1, 0},	// 9
+			};
+	int i = 0, j = 0, dec = 0x42, k = 1;
+	do {
+		if (args[k]) {
+			memcpy(name, args[k], 128);
+		}
+		for (i = 0; i < strlen(name); i++) {
+			while (1) {
+				if (name[i] == ' ') {
+					sleep(200);
+					break;
+				} else if (name[i] >= 'a' && name[i] <= 'z') {
+					dec = 'a';
+				} else if (name[i] >= 'A' && name[i] <= 'Z') {
+					dec = 'A';
+				} else if (name[i] >= '0' && name[i] <= '9') {
+					dec = 0x30;
+				}
+				if (morse[(name[i] - dec)][j] == 1) {
+					dits(led);
+					j++;
+				} else if (morse[(name[i] - dec)][j] == 2) {
+					dahs(led);
+					j++;
+				} else if (morse[(name[i] - dec)][j] == 0) {
+					sleep(200);
+					j = 0;
+					break;
+				}
+			}
+		}
+		sleep(200);
+		k++;
+	} while (args[k]);
+	close(led);
+	exit(0);
+}
+
+struct cm_board {
+	uint8_t wolf;
+	uint8_t sheep;
+};
+
+int cm_init_board(struct cm_board *b)
+{
+	b->wolf = rand() % 256;
+	b->sheep = rand() % 256;
+	return 0;
+}
+
+uint8_t cm_move(struct cm_board *b)
+{
+	char input[8];
+	int ret;
+	uint8_t steps =1;
+
+	ret = read(STDIN_FILENO, input, 3);
+	if ((ret == 3) && (input[0] == 0x1b)) {
+		if (input[2] == 'A') {		// UP
+			steps = (((b->wolf & 0xF) + input[1]) & 0xF);
+			b->wolf = (b->wolf & 0xF0) + steps;
+			//return steos;
+		} else if (input[2] == 'B') {	// DOWN
+			steps = (((b->wolf & 0xF) - input[1]) & 0xF);
+			b->wolf = (b->wolf & 0xF0) + steps;
+			//dir = input[1];
+		} else if (input[2] == 'C') {	// RIGHT
+			steps = (((b->wolf & 0xF0) + input[1]) & 0xF0);
+			b->wolf = (b->wolf & 0x0F) + steps;
+			//dir = ((input[1] + 0x08) << 8);
+		} else if (input[2] == 'D') {	// LEFT
+			steps = (((b->wolf & 0xF0) - input[1]) & 0xF0);
+			b->wolf = (b->wolf & 0x0F) + steps;
+			//dir = ((input[1] + 0x08) << 8);
+		}
+	} else if ((ret == 1) && (input[0] == 'q')) {
+		return 0;
+	}
+	return steps;
+}
+
+void cm_indicator(struct cm_board *b, int led)
+{
+	int delay, i;
+
+	uint8_t diff = (b->wolf & 0xF) - (b->sheep & 0xF);
+	diff += (((b->wolf & 0xF0) - (b->sheep & 0xF0)) >> 8) & 0xF;
+	delay = diff;
+
+	for (i = 0; i < (diff / 2); i++) {
+		write(led, "1", 1);
+		sleep(50);
+		write(led, "0", 1);
+		sleep(50);
+	}
+}
+
+void cm_disco(int led)
+{
+	int i;
+	for (i = 0; i < 10; i++) {
+		write(led, "1", 1);
+		sleep(50);
+		write(led, "0", 1);
+		sleep(30);
+		write(led, "1", 1);
+		sleep(100);
+		write(led, "0", 1);
+		sleep(30);
+	}
+}
+
+int bin_catch_me(void **args)
+{
+	int led = open(LED0, O_RDWR, 0);
+	struct cm_board *b;
+
+	cm_init_board(b);
+
+	while (1) {
+		int dir = cm_move(b);
+		if (dir) {
+			if (b->wolf == b->sheep) {
+				printf("You won!\r\n");
+				cm_disco(led);
+				break;
+			}
+			cm_indicator(b, led);
+		} else {
+			printf("Thought so.\r\n");
+			break;
+		}
+	}
+	close(led);
+	exit(0);
+}
