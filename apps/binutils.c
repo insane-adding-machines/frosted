@@ -19,6 +19,8 @@
  */  
 #include "frosted_api.h"
 #include "syscalls.h"
+#include "ioctl.h"
+#include "l3gd20_ioctl.h"
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -488,3 +490,22 @@ int bin_wc(void **args)
     }
     exit(0);
 }
+
+int bin_gyro(void **args)
+{
+    int fd;
+    struct l3gd20_ctrl_reg l3gd20;
+    fd = open("/dev/l3gd20", O_RDONLY);
+    if (fd < 0) {
+        printf("File not found.\r\n");
+        exit(-1);
+    }
+    l3gd20.reg = 0x0F;
+    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
+
+    printf("WHOAMI=%02X\n\r",l3gd20.data);
+
+    close(fd);
+    exit(0);
+}
+
