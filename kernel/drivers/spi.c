@@ -9,6 +9,7 @@
 #   define CLOCK_ENABLE(C) 
 #endif
 #ifdef STM32F4
+#   include <libopencm3/stm32/dma.h>
 #   include "libopencm3/stm32/spi.h"
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #endif
@@ -20,205 +21,131 @@
 struct dev_spi {
     struct device * dev;
     uint32_t base;
-    struct cirbuf *inbuf;
-    struct cirbuf *outbuf;
-    uint8_t *w_start;
-    uint8_t *w_end;
     spi_completion completion_fn;
     void * completion_arg;
+    uint32_t dma_base;
+    uint32_t tx_dma_stream;
+    uint32_t rx_dma_stream;
+    uint32_t rx_dma_irq;
 };
 
 #define MAX_SPIS 6
 
 static struct dev_spi DEV_SPI[MAX_SPIS];
 
-static int devspi_write(struct fnode *fno, const void *buf, unsigned int len);
-static int devspi_read(struct fnode *fno, void *buf, unsigned int len);
-
 static struct module mod_devspi = {
     .family = FAMILY_FILE,
     .name = "spi",
     .ops.open = device_open,
-    .ops.read = devspi_read,
-    .ops.write = devspi_write,
 };
 
-void spi_isr(struct dev_spi *spi)
+static void spi1_rx_dma_complete(struct dev_spi *spi)
 {
-    /* TX interrupt */
-    if (SPI_SR(spi->base) & SPI_SR_TXE) {
-        spi_disable_tx_buffer_empty_interrupt(spi->base);
-        frosted_mutex_lock(spi->dev->mutex);
-        /* Are there bytes left to be written? */
-        if (cirbuf_bytesinuse(spi->outbuf))
-        {
-            uint8_t outbyte;
-            cirbuf_readbyte(spi->outbuf, &outbyte);
-            usart_send(spi->base, (uint16_t)(outbyte));
-        } else {
-            spi_disable_tx_buffer_empty_interrupt(spi->base);
-            tasklet_add(spi->completion_fn, spi->completion_arg);
-        }
-        frosted_mutex_unlock(spi->dev->mutex);
-    }
-
-    /* RX interrupt, data available */
-    if (SPI_SR(spi->base) & SPI_SR_RXNE) {
-        /* read data into circular buffer */
-        cirbuf_writebyte(spi->inbuf, spi_read(spi->base));
-    }
-
+    dma_disable_transfer_complete_interrupt(spi->dma_base, spi->rx_dma_stream);
+    spi_disable(spi->base);
+    tasklet_add(spi->completion_fn, spi->completion_arg);
+    frosted_mutex_unlock(spi->dev->mutex);
 }
 
+
 #ifdef CONFIG_SPI_1
-void spi1_isr(void)
+void dma2_stream2_isr()
 {
-    spi_isr(&DEV_SPI[0]);  /* NOTE the -1, spi numbering starts at 1*/
+    dma_clear_interrupt_flags(DMA2, DMA_STREAM2, DMA_LISR_TCIF0);
+    spi1_rx_dma_complete(&DEV_SPI[0]);  
 }
 #endif
 
-static int devspi_write(struct fnode *fno, const void *buf, unsigned int len)
+static void spi_init_tx_dma(const  struct dev_spi *spi)
 {
-    int i;
-    char *ch = (char *)buf;
-    struct dev_spi *spi;
+    dma_stream_reset(spi->dma_base, spi->tx_dma_stream);
 
-    spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
-    if (!spi)
-        return -1;
-    if (len <= 0)
-        return len;
+    dma_set_transfer_mode(spi->dma_base, spi->tx_dma_stream, DMA_SxCR_DIR_MEM_TO_PERIPHERAL);
+    dma_set_priority(spi->dma_base, spi->tx_dma_stream, DMA_SxCR_PL_MEDIUM);
+    
+    dma_set_peripheral_address(spi->dma_base, spi->tx_dma_stream, (uint32_t) &SPI_DR(spi->base));
+    dma_disable_peripheral_increment_mode(spi->dma_base, spi->tx_dma_stream);
+    dma_set_peripheral_size(spi->dma_base, spi->tx_dma_stream, DMA_SxCR_PSIZE_8BIT);
+    
+    dma_enable_memory_increment_mode(spi->dma_base, spi->tx_dma_stream);
+    dma_set_memory_size(spi->dma_base, spi->tx_dma_stream, DMA_SxCR_MSIZE_8BIT);
+    
+    dma_enable_direct_mode(spi->dma_base, spi->tx_dma_stream);
+    dma_set_dma_flow_control(spi->dma_base, spi->tx_dma_stream);
 
-    if (spi->w_start == NULL) {
-        spi->w_start = (uint8_t *)buf;
-        spi->w_end = ((uint8_t *)buf) + len;
+    dma_channel_select(spi->dma_base,spi->tx_dma_stream,DMA_SxCR_CHSEL_3);
+}
 
-    } else {
-        /* previous transmit not finished, do not update w_start */
-    }
+static void spi_init_rx_dma(const  struct dev_spi *spi)
+{
+    dma_stream_reset(spi->dma_base, spi->rx_dma_stream);
 
-    frosted_mutex_lock(spi->dev->mutex);
-    spi_enable_tx_buffer_empty_interrupt(spi->base);
-    spi_enable_rx_buffer_not_empty_interrupt(spi->base);
+    dma_set_transfer_mode(spi->dma_base, spi->rx_dma_stream, DMA_SxCR_DIR_PERIPHERAL_TO_MEM);
+    dma_set_priority(spi->dma_base, spi->rx_dma_stream, DMA_SxCR_PL_VERY_HIGH);
+    
+    dma_set_peripheral_address(spi->dma_base, spi->rx_dma_stream, (uint32_t) &SPI_DR(spi->base));
+    dma_disable_peripheral_increment_mode(spi->dma_base, spi->rx_dma_stream);
+    dma_set_peripheral_size(spi->dma_base, spi->rx_dma_stream, DMA_SxCR_PSIZE_8BIT);
+    
+    dma_enable_memory_increment_mode(spi->dma_base, spi->rx_dma_stream);
+    dma_set_memory_size(spi->dma_base, spi->rx_dma_stream, DMA_SxCR_MSIZE_8BIT);
+    
+    dma_enable_direct_mode(spi->dma_base, spi->rx_dma_stream);
+    dma_set_dma_flow_control(spi->dma_base, spi->rx_dma_stream);
 
-    /* write to circular output buffer */
-    spi->w_start += cirbuf_writebytes(spi->outbuf, spi->w_start, spi->w_end - spi->w_start);
-    if ((SPI_SR(spi->base) & SPI_SR_TXE)) {
-        uint8_t c;
-        /* Doesn't block because of test above */
-        cirbuf_readbyte(spi->outbuf, &c);
-        spi_send(spi->base, c);
-    }
+    dma_channel_select(spi->dma_base,spi->rx_dma_stream,DMA_SxCR_CHSEL_3); 
 
-    if (cirbuf_bytesinuse(spi->outbuf) == 0) {
-        frosted_mutex_unlock(spi->dev->mutex);
-        spi_disable_tx_buffer_empty_interrupt(spi->base);
-        spi->w_start = NULL;
-        spi->w_end = NULL;
-        return len;
-    }
-
-    if (spi->w_start < spi->w_end)
-    {
-        spi->dev->pid = scheduler_get_cur_pid();
-        task_suspend();
-        frosted_mutex_unlock(spi->dev->mutex);
-        return SYS_CALL_AGAIN;
-    }
-
-    frosted_mutex_unlock(spi->dev->mutex);
-    spi->w_start = NULL;
-    spi->w_end = NULL;
-
-    return len;
+    dma_enable_transfer_complete_interrupt(spi->dma_base, spi->rx_dma_stream);
+    
+    nvic_set_priority(spi->rx_dma_irq, 1);
+    nvic_enable_irq(spi->rx_dma_irq);
 }
 
 
-int devspi_write_noblock(struct fnode *fno, spi_completion completion_fn, void * completion_arg, const void *buf, unsigned int len)
+int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completion_arg, const char *obuf, char *ibuf, unsigned int len)
 {
     struct dev_spi *spi;
-
-    spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
-    if (!spi)
-        return -1;
+    
     if (len <= 0)
         return len;
-    if(completion_fn == NULL)
+    
+    spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
+    if (spi == NULL)
         return -1;
-
-    if (spi->w_start == NULL) {
-        spi->w_start = (uint8_t *)buf;
-        spi->w_end = ((uint8_t *)buf) + len;
-
-    } else {
-        /* previous transmit not finished, do not update w_start */
-    }
+    
+    frosted_mutex_lock(spi->dev->mutex);
 
     spi->completion_fn = completion_fn;
     spi->completion_arg = completion_arg;
 
-    spi_enable_tx_buffer_empty_interrupt(spi->base);
+    spi_init_tx_dma(spi);
+    dma_set_memory_address(spi->dma_base, spi->tx_dma_stream, (uint32_t)obuf);
+    dma_set_number_of_data(spi->dma_base, spi->tx_dma_stream, len);
+    dma_enable_stream(spi->dma_base, spi->tx_dma_stream);
 
-    /* write to circular output buffer */
-    spi->w_start += cirbuf_writebytes(spi->outbuf, spi->w_start, spi->w_end - spi->w_start);
+    spi_init_rx_dma(spi);
+    dma_set_memory_address(spi->dma_base, spi->rx_dma_stream, (uint32_t)ibuf);
+    dma_set_number_of_data(spi->dma_base, spi->rx_dma_stream, len);
+    dma_enable_stream(spi->dma_base, spi->rx_dma_stream);
 
-    if ((SPI_SR(spi->base) & SPI_SR_TXE)) {
-        uint8_t c;
-        /* Doesn't block because of test above */
-        cirbuf_readbyte(spi->outbuf, &c);
-        spi_send(spi->base, c);
-    }
-    return len;
+    spi_enable(spi->base);
+
+    spi_enable_rx_dma(spi->base);
+    spi_enable_tx_dma(spi->base);
+
+    return len;    
 }
 
-
-static int devspi_read(struct fnode *fno, void *buf, unsigned int len)
-{
-    int out;
-    volatile int len_available;
-    char *ptr = (char *)buf;
-    struct dev_spi *spi;
-
-    if (len <= 0)
-        return len;
-
-    spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
-    if (!spi)
-        return -1;
-
-    frosted_mutex_lock(spi->dev->mutex);
-    spi_disable_rx_buffer_not_empty_interrupt(spi->base);
-    len_available =  cirbuf_bytesinuse(spi->inbuf);
-    if (len_available <= 0) {
-        spi->dev->pid = scheduler_get_cur_pid();
-        task_suspend();
-        frosted_mutex_unlock(spi->dev->mutex);
-        out = SYS_CALL_AGAIN;
-        goto again;
-    }
-
-    if (len_available < len)
-        len = len_available;
-
-    for(out = 0; out < len; out++) {
-        /* read data */
-        if (cirbuf_readbyte(spi->inbuf, ptr) != 0)
-            break;
-        ptr++;
-    }
-again:
-//    usart_enable_rx_interrupt(uart->base);
-    frosted_mutex_unlock(spi->dev->mutex);
-    return out;
-}
 
 static void spi_fno_init(struct fnode *dev, uint32_t n, const struct spi_addr * addr)
 {
     struct dev_spi *s = &DEV_SPI[n];
     s->dev = device_fno_init(&mod_devspi, addr->name, dev, FL_RDWR, s);
     s->base = addr->base;
-    s->inbuf = cirbuf_create(128);
-    s->outbuf = cirbuf_create(128);
+    s->dma_base = addr->dma_base;
+    s->tx_dma_stream = addr->tx_dma_stream;
+    s->rx_dma_stream = addr->rx_dma_stream;
+    s->rx_dma_irq = addr->rx_dma_irq;
 }
 
 void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spis)
@@ -232,6 +159,10 @@ void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spi
 
         spi_fno_init(dev, i, &spi_addrs[i]);
         CLOCK_ENABLE(spi_addrs[i].rcc);
+        CLOCK_ENABLE(spi_addrs[i].dma_rcc);
+        
+        spi_disable(spi_addrs[i].base);
+        
         spi_set_master_mode(spi_addrs[i].base);
         spi_set_baudrate_prescaler(spi_addrs[i].base, spi_addrs[i].baudrate_prescaler);
         if(spi_addrs[i].clock_pol == 0) spi_set_clock_polarity_0(spi_addrs[i].base);
@@ -251,9 +182,6 @@ void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spi
         spi_set_nss_high(spi_addrs[i].base);
 
         SPI_I2SCFGR(spi_addrs[i].base) &= ~SPI_I2SCFGR_I2SMOD;
-
-        nvic_enable_irq(spi_addrs[i].irq);
-        spi_enable(spi_addrs[i].base);
     }
     register_module(&mod_devspi);
 }
