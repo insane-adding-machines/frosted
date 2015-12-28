@@ -17,6 +17,8 @@
 #define IOCTL_I2C_SET_ADDR7_2 4
 #define IOCTL_I2C_SET_SPEED 5
 
-
+/* L3GD20 */
+#define IOCTL_L3GD20_WRITE_CTRL_REG     0
+#define IOCTL_L3GD20_READ_CTRL_REG      1
 
 #endif

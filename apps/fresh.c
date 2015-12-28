@@ -60,8 +60,10 @@ const struct binutils bin_table[] = {
     {"false", bin_false},
     {"arch", bin_arch},
     {"wc", bin_wc},
+    {"gyro", bin_gyro},
     {"cut", bin_cut},
     {"morse", bin_morse},
+    {"catch", bin_catch_me},
     {"", NULL}
 };
 

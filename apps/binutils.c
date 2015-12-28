@@ -19,6 +19,8 @@
  */  
 #include "frosted_api.h"
 #include "syscalls.h"
+#include "ioctl.h"
+#include "l3gd20_ioctl.h"
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -562,6 +564,23 @@ int bin_wc(void **args)
     exit(0);
 }
 
+int bin_gyro(void **args)
+{
+    int fd;
+    struct l3gd20_ctrl_reg l3gd20;
+    fd = open("/dev/l3gd20", O_RDONLY);
+    if (fd < 0) {
+        printf("File not found.\r\n");
+        exit(-1);
+    }
+    l3gd20.reg = 0x0F;
+    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
+
+    printf("WHOAMI=%02X\n\r",l3gd20.data);
+
+    close(fd);
+    exit(0);
+}
 
 /*returns   1 if it reaches a newline,
             0 if a delimiter is found,
@@ -887,6 +906,119 @@ int bin_morse(void **args)
 		sleep(200);
 		k++;
 	} while (args[k]);
+	close(led);
+	exit(0);
+}
+
+struct cm_board {
+	uint8_t wolf;
+	uint8_t sheep;
+};
+
+int cm_init_board(struct cm_board *b)
+{
+	b->wolf = rand() % 256;
+	b->sheep = rand() % 256;
+	//printf("Wolf is at :  %02X  -  sheep is at :  %02X\r\n", b->wolf, b->sheep);
+	return 0;
+}
+
+uint8_t cm_move(struct cm_board *b)
+{
+	char input[8];
+	int ret;
+	uint8_t steps =1;
+
+	ret = read(STDIN_FILENO, input, 3);
+	if ((ret == 3) && (input[0] == 0x1b)) {
+		//printf("GOT: %02X %02X %c\r\n", input[0], input[1], input[2]);
+		if (input[2] == 'A') {					// UP
+			steps = (((b->wolf & 0xF) + 1) & 0xF);
+			b->wolf = (b->wolf & 0xF0) + steps;
+		} else if (input[2] == 'B') {				// DOWN
+			steps = (((b->wolf & 0xF) - 1) & 0xF);
+			b->wolf = (b->wolf & 0xF0) + steps;
+		} else if (input[2] == 'C') {				// RIGHT
+			steps = (((b->wolf & 0xF0) + 0x1F) & 0xF0);
+			b->wolf = (b->wolf & 0x0F) + steps;
+		} else if (input[2] == 'D') {				// LEFT
+			steps = (((b->wolf & 0xF0) - 1) & 0xF0);
+			b->wolf = (b->wolf & 0x0F) + steps;
+		}
+		//printf("Wolf is at :  %02X  -  sheep is at :  %02X\r\n", b->wolf, b->sheep);
+	} else if ((ret == 1) && (input[0] == 'q')) {
+		return 0;
+	}
+	return steps;
+}
+
+void cm_indicator(struct cm_board *b, int led)
+{
+	int delay, i;
+
+	uint8_t diff = (b->wolf & 0xF) - (b->sheep & 0xF);
+
+	if (diff > 0xF) {
+		diff = 0xFF - diff;
+	}
+
+	uint8_t diff2 = ((((b->wolf >> 4) & 0xF) - ((b->sheep >> 4) & 0xF)));
+	if (diff2 > 0xF) {
+		diff2 = 0xFF - diff2;
+	}
+
+	diff += diff2;
+	diff == diff / 2;
+	delay = diff * 50;
+
+	for (i = 0; i < 5; i++) {
+		write(led, "1", 1);
+		sleep(delay);
+		write(led, "0", 1);
+		sleep(delay);
+	}
+}
+
+void cm_disco(int led)
+{
+	int i;
+	for (i = 0; i < 10; i++) {
+		write(led, "1", 1);
+		sleep(50);
+		write(led, "0", 1);
+		sleep(30);
+		write(led, "1", 1);
+		sleep(100);
+		write(led, "0", 1);
+		sleep(30);
+	}
+}
+
+int bin_catch_me(void **args)
+{
+#  define LED0 "/dev/gpio_6_13"
+	int led = open(LED0, O_RDWR, 0);
+	struct cm_board *b = malloc(sizeof(struct cm_board));
+
+	cm_init_board(b);
+
+	printf("You're a hungry wolf. A sheep is hiding on this 16*16 board..\r\n");
+	printf("Use the arrows and let the blinky led guide you...\r\n");
+
+	while (1) {
+		int dir = cm_move(b);
+		if (dir) {
+			if (b->wolf == b->sheep) {
+				printf("You won!\r\n");
+				cm_disco(led);
+				break;
+			}
+			cm_indicator(b, led);
+		} else {
+			printf("Thought so.\r\n");
+			break;
+		}
+	}
 	close(led);
 	exit(0);
 }

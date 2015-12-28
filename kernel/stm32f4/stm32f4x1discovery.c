@@ -22,6 +22,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include "libopencm3/cm3/nvic.h"
 #include <libopencm3/stm32/exti.h>
+#include <libopencm3/stm32/dma.h>
 
 #ifdef CONFIG_DEVUART
 #include "libopencm3/stm32/usart.h"
@@ -44,7 +45,6 @@
 
 #ifdef CONFIG_DEVADC
 #include <libopencm3/stm32/adc.h>
-#include <libopencm3/stm32/dma.h>
 #include "adc.h"
 #endif
 
@@ -75,6 +75,9 @@ static const struct gpio_addr gpio_addrs[] = {
             /* SCK - PA5 MISO - PA6 MOSI - */
             {.base=GPIOA, .pin=GPIO5,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
             {.base=GPIOA, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+
+//            {.base=GPIOA, .pin=GPIO6,.mode=GPIO_MODE_INPUT,.pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+
             {.base=GPIOA, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
 
 #endif
@@ -146,15 +149,28 @@ static const struct spi_addr spi_addrs[] = {
             .base = SPI1, 
             .irq = NVIC_SPI1_IRQ, 
             .rcc = RCC_SPI1,
+
+            /* Move this to the upper driver */
             .baudrate_prescaler = SPI_CR1_BR_FPCLK_DIV_256,
-            .clock_pol = 0,
-            .clock_phase = 0,
+            .clock_pol = 1,
+            .clock_phase = 1,
             .rx_only = 0,
             .bidir_mode = 0,
             .dff_16 = 0,
             .enable_software_slave_management = 1,
             .send_msb_first = 1,
+            /* End move */
+            
             .name = "spi1",
+            .dma_base = DMA2,
+            .dma_rcc = RCC_DMA2,
+
+            .tx_dma_stream = DMA_STREAM3,
+            .tx_dma_irq = NVIC_DMA2_STREAM3_IRQ,
+            /* Avoid ADC DMA */
+            .rx_dma_stream = DMA_STREAM2,
+            .rx_dma_irq = NVIC_DMA2_STREAM2_IRQ,
+            
         },
 #endif
 };
@@ -186,7 +202,6 @@ static const struct adc_addr adc_addrs[] = {
             /* Use DMA to fetch sample data */
             .dma_base = DMA2,
             .dma_rcc = RCC_DMA2,
-            .dma_channel = DMA_SxCR_CHSEL_0,
             .dma_stream = DMA_STREAM0,
             .dma_irq = NVIC_DMA2_STREAM0_IRQ,
         }
