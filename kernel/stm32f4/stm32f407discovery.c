@@ -118,6 +118,18 @@
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
 #endif
 
+#ifdef CONFIG_RNG
+#include "random.h"
+static const struct rng_addr rng_addrs[] = {
+            {
+                .devidx = 1,
+                .base = 1,
+                .rcc = RCC_RNG,
+            },
+};
+#define NUM_RNGS (sizeof(rng_addrs) / sizeof(struct rng_addr))
+#endif
+
 void machine_init(struct fnode * dev)
 {
 #       if CONFIG_SYS_CLOCK == 48000000
@@ -137,6 +149,9 @@ void machine_init(struct fnode * dev)
 #endif
 #ifdef CONFIG_DEVUART
     uart_init(dev, uart_addrs, NUM_UARTS);
+#endif
+#ifdef CONFIG_RNG
+    rng_init(dev, rng_addrs, NUM_RNGS);
 #endif
 }
 
