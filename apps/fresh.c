@@ -101,7 +101,7 @@ static int try_binutils(char **args, int background)
         exec_binutils(b, args);
 
     if (!background)
-        wait(&status);
+        while (wait(&status) < 0);
 
     return 0;
 }

@@ -9,7 +9,11 @@ extern int errno;
 
 int wait(int  *status)
 {
-  errno = sys_waitpid(-1, status, 0);
-  return -1;
+    int ret = sys_waitpid(-1, status, 0);
+    if (ret < 0) { 
+        errno = 0 - ret;
+        return -1;
+    }
+    return ret;
 }
 
