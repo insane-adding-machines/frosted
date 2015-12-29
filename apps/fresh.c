@@ -682,7 +682,7 @@ char *readline(char *input, int size)
 
     while (2>1)
     {
-        int len = 0;
+        int len = 0, pos = 0;
         int out = STDOUT_FILENO;
         int i;
         
@@ -711,9 +711,12 @@ char *readline(char *input, int size)
 	                continue;
 	        } else if (dir == 'B') {
 	        } else if (dir == 'C') {
-	        	printf("%c", input[len]);
+	        	if (pos < len) {
+	        		printf("%c", input[pos++]);
+	        	}
 	        } else if (dir == 'D') {
 	        	write(STDOUT_FILENO, &del, 1);
+	        	pos--;
 	        	continue;
 	        //} else if (dir == 'K') {
         	//            write(STDOUT_FILENO, &del, 1);
@@ -730,6 +733,7 @@ char *readline(char *input, int size)
                     if (input[len + i] >= 0x20 && input[len + i] <= 0x7e)
                         write(STDOUT_FILENO, &input[len + i], 1);
                     len++;
+                    pos++;
                 }
             }
 
@@ -770,7 +774,8 @@ char *readline(char *input, int size)
                     printf( " ");
                     write(STDOUT_FILENO, &del, 1);
                     input[len] = 0x00;
-                    len -= 1;
+                    len--;
+                    pos--;
                     continue;
                 }
             }
