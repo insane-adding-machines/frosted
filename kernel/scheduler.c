@@ -34,6 +34,48 @@
 
 #define STACK_THRESHOLD 64
 
+static char _my_x_str[11] = "";
+static char *x_str(uint32_t x)
+{
+    int i;
+    uint8_t val;
+    _my_x_str[0] = '0';
+    _my_x_str[1] = 'x';
+    for (i = 0; i < 8; i++) {
+        val = (((x >> ((7 - i) << 2)) & 0x0000000F));
+        if (val < 10)
+            _my_x_str[i + 2] = val + '0';
+        else
+            _my_x_str[i + 2] = (val - 10) + 'A';
+    }
+    _my_x_str[10] = 0;
+    return _my_x_str;
+}
+
+static char _my_pid_str[6];
+static char *pid_str(uint16_t p)
+{
+    int i = 0;
+    if (p >= 10000) {
+        _my_pid_str[i++] = (p/10000) + '0';
+        p = p % 10000;
+    }
+    if (i > 0 || p >= 1000) {
+        _my_pid_str[i++] = (p/1000) + '0';
+        p = p % 1000;
+    }
+    if (i > 0 || p >= 100) {
+        _my_pid_str[i++] = (p/100) + '0';
+        p = p % 100;
+    }
+    if (i > 0 || p >= 10) {
+        _my_pid_str[i++] = (p/10) + '0';
+        p = p % 10;
+    }
+    _my_pid_str[i++] = p + '0';
+    _my_pid_str[i] = 0;
+    return _my_pid_str;
+}
 
 /* Array of syscalls */
 static void *sys_syscall_handlers[_SYSCALLS_NR] = {
@@ -1150,15 +1192,20 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     task_terminate(_cur_task->tb.pid);
 }
 
-int task_segfault(void)
+int task_segfault(uint32_t address, uint32_t instruction)
 {
-    const char segv_msg[] = "Segmentation fault\r\n";
+    char segv_msg[128] = "Memory fault: process (pid=";
     if (in_kernel())
         return -1;
     if (_cur_task->tb.state == TASK_ZOMBIE)
         return 0;
-    if ((_cur_task->tb.n_files > 2) &&  _cur_task->tb.filedesc[2].fno->owner->ops.write)
+    if ((_cur_task->tb.n_files > 2) &&  _cur_task->tb.filedesc[2].fno->owner->ops.write) {
+        strcat(segv_msg, pid_str(_cur_task->tb.pid));
+        strcat(segv_msg, ") attempted access to memory at ");
+        strcat(segv_msg, x_str(address));
+        strcat(segv_msg, ". Killed.\r\n");
         _cur_task->tb.filedesc[2].fno->owner->ops.write(_cur_task->tb.filedesc[2].fno, segv_msg, strlen(segv_msg));
+    }
     task_terminate(_cur_task->tb.pid);
     return 0;
 }
