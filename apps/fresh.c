@@ -764,7 +764,7 @@ char *readline(char *input, int size)
             }
 
             /* backspace */
-            if ((input[len] == 0x08)) {
+            if ((input[len] == 0x7F)) {
                 if (len > 0) {
                     write(STDOUT_FILENO, &del, 1);
                     printf( " ");
