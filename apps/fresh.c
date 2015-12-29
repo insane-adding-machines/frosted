@@ -676,6 +676,12 @@ int commandHandler(char * args[]){
 return 1;
 }
 
+void pointer_shift(int *a, int s, int n) {
+   int i;
+   for (i = n; i > s - 1; i--) {
+      *(a+i+1) = *(a+i);
+   }
+}
 
 char *readline(char *input, int size)
 {
@@ -684,16 +690,17 @@ char *readline(char *input, int size)
     {
         int len = 0, pos = 0;
         int out = STDOUT_FILENO;
-        int i;
+        char got[5];
+        int i, j;
         
         while(len < size)
         {
             const char del = 0x08;
-            int ret = read(STDIN_FILENO, input + len, 3);
+            int ret = read(STDIN_FILENO, got, 3);
             
             /* arrows */
-            if ((ret == 3) && (input[len] == 0x1b)) {
-                char dir = input[len + 2];
+            if ((ret == 3) && (got[0] == 0x1b)) {
+                char dir = got[2];
                 if (dir == 'A') {
 	                if (strlen(lastcmd) == 0) {
         	            continue;
@@ -705,7 +712,6 @@ char *readline(char *input, int size)
 	                    write(STDOUT_FILENO, &del, 1);
         	            len--;
                 	}
-	                //printf( "%s", lastcmd);
         	        len = strlen(lastcmd);
         	        lastcmd[len] = 0x00;
         	        len--;
@@ -723,40 +729,56 @@ char *readline(char *input, int size)
 	        	write(STDOUT_FILENO, &del, 1);
 	        	pos--;
 	        	continue;
-	        //} else if (dir == 'K') {
-        	//            write(STDOUT_FILENO, &del, 1);
-                //	    printf( " ");
-	        //            write(STDOUT_FILENO, &del, 1);
 	        }
             }
 
             if (ret > 3)
                 continue;
-            if ((ret > 0) && (input[len] >= 0x20 && input[len] <= 0x7e)) {
+            if ((ret > 0) && (got[0] >= 0x20 && got[0] <= 0x7e)) {
                 for (i = 0; i < ret; i++) {
                     /* Echo to terminal */
-                    if (input[len + i] >= 0x20 && input[len + i] <= 0x7e)
-                        write(STDOUT_FILENO, &input[len + i], 1);
+                    if (got[i] >= 0x20 && got[i] <= 0x7e)
+                        write(STDOUT_FILENO, &got[i], 1);
+                	if (pos < len) {
+                		for (j = len + 1; j > pos; j--) {
+                			input[j] = input[j-1];
+                		}
+                		input[pos] = got[i];
+                    	for ( j = pos + 1; j < len +1; j++) {
+                    		printf("%c", input[j]);
+                    	}
+                    	printf(" ");
+                    	j = len - pos + 1;
+                    	while (j > 0) {
+                    		write(STDOUT_FILENO, &del, 1);
+                    		j--;
+                    	}
+                	} else {
+                		input[pos] = got[i];
+                	}
+
                     len++;
                     pos++;
                 }
             }
 
-            if ((input[len] == 0x0D)) {
+            if ((got[0] == 0x0D)) {
+            	input[len] = 0x0D;
                 input[len + 1] = '\0';
                 printf( "\r\n");
                 strncpy(lastcmd, input, 128);
                 return input; /* CR (\r\n) */
             }
 
-            if ((input[len] == 0x4)) {
+            if ((got[0] == 0x4)) {
                 printf( "\r\n");
                 len = 0;
+                pos = 0;
                 break;
             }
 
             /* tab */
-            if ((input[len] == 0x09)) {
+            if ((got[0] == 0x09)) {
                 struct binutils *b = bin_table;
                 input[len] = 0;
                 printf("\r\n");
@@ -773,14 +795,29 @@ char *readline(char *input, int size)
             }
 
             /* backspace */
-            if ((input[len] == 0x7F)) {
-                if (len > 0) {
+            if ((got[0] == 0x7F)) {
+                if (pos > 0) {
                     write(STDOUT_FILENO, &del, 1);
                     printf( " ");
                     write(STDOUT_FILENO, &del, 1);
-                    input[len] = 0x00;
-                    len--;
                     pos--;
+                    len--;
+                    if (pos < len) {
+                    	for ( i = pos; i < len; i++) {
+                    		input[i] = input[i+1];
+                    		printf("%c", input[i]);
+                    	}
+                    	printf(" ");
+                    	i = len - pos + 1;
+                    	while (i > 0) {
+                    		write(STDOUT_FILENO, &del, 1);
+                    		i--;
+                    	}
+
+                    } else {
+	                    input[pos] = 0x00;
+	            }
+
                     continue;
                 }
             }
