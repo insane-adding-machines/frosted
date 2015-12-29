@@ -65,6 +65,7 @@ const struct binutils bin_table[] = {
     {"morse", bin_morse},
     {"catch", bin_catch_me},
     {"fault", bin_mem_fault},
+    {"kill", bin_kill },
     {"", NULL}
 };
 
