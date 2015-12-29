@@ -329,7 +329,7 @@ void launchProg(char **args, int background){
         
         // We set parent=<pathname>/simple-c-shell as an environment variable
         // for the child
-        setenv("parent",getcwd(currentDirectory, 128),1);	
+        //setenv("parent",getcwd(currentDirectory, 128),1);	
         
         // If we launch non-existing commands we end the process
         if (execvp(args[0],args)==err){
@@ -391,7 +391,7 @@ void fileIO(char * args[], char* inputFile, char* outputFile, int option)
         	close(fileDescriptor);		 
         }
          
-        setenv("parent",getcwd(currentDirectory, 128),1);
+        //setenv("parent",getcwd(currentDirectory, 128),1);
 
         b = find_binutils(args[0]);
         if (b) {
@@ -883,7 +883,7 @@ int fresh(void *args) {
     
     // We set shell=<pathname>/simple-c-shell as an environment variable for
     // the child
-    setenv("shell",getcwd(currentDirectory, 128),1);
+    //setenv("shell",getcwd(currentDirectory, 128),1);
     
     // Main loop, where the user input will be read and the prompt
     // will be printed
