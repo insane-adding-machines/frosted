@@ -696,7 +696,7 @@ char *readline(char *input, int size)
         while(len < size)
         {
             const char del = 0x08;
-            int ret = read(STDIN_FILENO, got, 3);
+            int ret = read(STDIN_FILENO, got, 4);
             
             /* arrows */
             if ((ret == 3) && (got[0] == 0x1b)) {
@@ -732,8 +732,37 @@ char *readline(char *input, int size)
 	        }
             }
 
-            if (ret > 3)
+            if (ret > 3) {
+            	if ((got[0] == 0x1B) && (got[2] == 0x33) && (got[3] == 0x7E)) {
+                	if (pos < len) {
+	                    //write(STDOUT_FILENO, &del, 1);
+        	            //printf( " ");
+                	    //write(STDOUT_FILENO, &del, 1);
+                	    pos--;
+        	            len--;
+                	    if (pos < len) {
+                    	for ( i = pos+1; i < len; i++) {
+	                	input[i] = input[i+1];
+        	        	printf("%c", input[i]);
+                	}
+                    	printf(" ");
+	                i = len - pos;
+        	        while (i > 0) {
+                		write(STDOUT_FILENO, &del, 1);
+                    		i--;
+                    	}
+
+	                    } else {
+	                    input[pos] = 0x00;
+	                    pos--;
+	                    len--;
+	            }
+
+                    continue;
+                }
+            	}
                 continue;
+            }
             if ((ret > 0) && (got[0] >= 0x20 && got[0] <= 0x7e)) {
                 for (i = 0; i < ret; i++) {
                     /* Echo to terminal */
