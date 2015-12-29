@@ -672,6 +672,8 @@ void task_end(void)
     }
 }
 
+static void task_resume_vfork(int pid);
+
 static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio, uint32_t r9val)
 {
     struct nvic_stack_frame *nvic_frame;
@@ -977,7 +979,7 @@ void task_resume(int pid)
     }
 }
 
-void task_resume_vfork(int pid)
+static void task_resume_vfork(int pid)
 {
     struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && t->tb.state == TASK_FORKED) {
@@ -1146,6 +1148,19 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 {
     _cur_task->tb.exitval = (int)arg1;
     task_terminate(_cur_task->tb.pid);
+}
+
+int task_segfault(void)
+{
+    const char segv_msg[] = "Segmentation fault\r\n";
+    if (in_kernel())
+        return -1;
+    if (_cur_task->tb.state == TASK_ZOMBIE)
+        return 0;
+    if ((_cur_task->tb.n_files > 2) &&  _cur_task->tb.filedesc[2].fno->owner->ops.write)
+        _cur_task->tb.filedesc[2].fno->owner->ops.write(_cur_task->tb.filedesc[2].fno, segv_msg, strlen(segv_msg));
+    task_terminate(_cur_task->tb.pid);
+    return 0;
 }
 
 static uint32_t *a4 = NULL;

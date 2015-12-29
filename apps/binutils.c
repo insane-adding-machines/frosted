@@ -129,7 +129,11 @@ int parse_interval(char* arg, int* start, int* end){
         if( *endptr != '-' && *endptr !=',' && *endptr != '\0')
             return 1; 
     }
-    if( *endptr != '\0' )
+    if( *endptr == '\0' ){
+        *end = *start;
+        return 0;
+    }
+    else
         endptr++;
     if( *endptr == '\0' )
         *end = 0;
@@ -481,6 +485,8 @@ int bin_tee(void** args)
             if(b) break;
             b = 1;
         }
+        else
+            b = 0;
         for( i = 0; i < slot; i++ ){
             count = strlen( line );
             while( count > 0 ){
@@ -514,6 +520,11 @@ int bin_arch(void **args)
 {
 	printf("%s\r\n", ARCH);
 	exit(0);
+}
+
+int bin_mem_fault(void **args) {
+    uint32_t *faulty = (uint32_t *)0x40000100;
+    printf("%d\r\n", *faulty);
 }
 
 int bin_wc(void **args)
@@ -576,45 +587,88 @@ int bin_gyro(void **args)
     exit(0);
 }
 
+/*returns   1 if it reaches a newline,
+            0 if a delimiter is found,
+            -1 if the file is finished*/
+int readuntil( int fd, char** line, char delim){
+    int b, len;
+    len = -1;
+    do{
+        len++;
+        b = read( fd, (*line) + len, 1 );
+    }while( (*line)[len] != delim && (*line)[len] != '\n' && b > 0 );
+    (*line)[len+1] = '\0';
+    if( b <= 0 )
+        return -1;
+    if( (*line)[len] == '\n')
+        return 1;
+    if( (*line)[len] == delim )
+        return 0;
+}
+
+
+
 int bin_cut( void** args){
-    extern int opterr, optind, optopt;
+    extern int opterr, optind;
     extern char* optarg;
     char *endptr, *line;
-    char buf[2];
-    int c, start, end, i, j, len, flag, slot, argc;
+    int c, start, end, i, j, len, flags, slot, argc;
     int b = 0;
     int mode = O_RDONLY;
-    line = NULL;
     opterr=0;
     j = 0;
+    char delim = '\t';
     argc = nargs(args);
     int fdfn[MAXFILES];
-    while( (c = getopt( argc, (char**)args, "c:" )) != -1){
+    while( (c = getopt( argc, (char**)args, "d:c:f:" )) != -1){
         switch (c){
+            case 'f':
             case 'c':
                 if( b == 1 ){
                     fprintf(stderr,"cut: only one type of list may be specified\n");
+                    optind = 0;
                     exit(1);
                 }
                 b = 1;
-                flag = c;
+                flags = c;
                 if( parse_interval(optarg, &start, &end)!=0){
                     fprintf(stderr,"cut: invalid interval\n");
+                    optind = 0;
                     exit(1);
                 }
                 break;
+            case 'd':
+                len = strlen( optarg );
+                if( len <= 0 ){
+                    fprintf(stderr, "cut: please specify a valid delimiter\n");
+                    optind = 0;
+                    exit(1);
+                }
+                if( ( optarg[0] == '"' && optarg[2] == '"' ) || ( optarg[0] == '\'' && optarg[2] == '\'' ) )
+                    delim = optarg[1];
+                else
+                    delim = optarg[0];
+                break;
             default:
                 fprintf(stderr,"cut: invalid option -- '%c'\n", optopt );
+                optind = 0;
                 exit(1);
         }
     }
     if( b == 0 ){
-        printf("cut: you must specify at list of characters\n");
+        fprintf(stderr,"cut: you must specify at list of characters\n");
+        optind = 0;
+        exit(1);
+    }
+    if( delim != '\t' && flags != 'f' ){
+        fprintf(stderr, "cut: an input delimiter may be specified only when operating on fields\n");
+        optind = 0;
         exit(1);
     }
     if(--start < 0 )
         start = 0;
     end--;
+    line = (char*) malloc( sizeof(char)*BUFSIZE );
     if( args[optind] ){
         slot = 0;
         for( i = optind; i < argc; i++ ){
@@ -625,56 +679,115 @@ int bin_cut( void** args){
             else
                 slot++;
         }
-        len = (end >= 0) ? end - start : BUFSIZE - start;
-        line = (char*) malloc( sizeof(char)*(len+1) );
-        for( i = 0; i < slot; i++ ){
-            while( b > 0 ){
-                for( j = 0; j < start; j++ ){
-                    b = read(fdfn[i], buf, 1 );
-                    if( b <= 0 || buf[0] == '\n')
+        if( flags == 'c' ){
+            len = (end > 0) ? end - start : BUFSIZE - start;
+            for( i = 0; i < slot; i++ ){
+                do{
+                    for( j = 0; j < start; j++ ){
+                        b = read(fdfn[i], line + j, 1 );
+                        if( b <= 0 || line[j] == '\n')
+                            break;
+                    }
+                    if( b <= 0 || j != start ){
+                        printf("\n");
+                        continue;
+                    }
+                    for( j = 0; j <= len; j++ ){
+                        b = read( fdfn[i], line + j, 1 );
+                        if( b <= 0 || line[j] == '\n' ){
+                            j++;
+                            break;
+                        }
+                    }
+                    if( b <= 0 )
                         break;
-                }
-                if( b <= 0 || j != start ){
-                    printf("\n");
-                    continue;
-                }
-                for( j = 0; j < len; j++ ){
-                    b = read( fdfn[i], line + j, 1 );
-                    if( b <= 0 || line[j] == '\n' ){
-                        j++;
+                    line[j] = '\0';
+                    if( line[j-1] != '\n' )
+                        printf( "%s\n", line);
+                    else
+                        printf( "%s", line );
+                    line[0] = line[j-1];
+                    while( line[0] != '\n' )
+                        if( read( fdfn[i], line, 1 ) <= 0 )
+                            break;
+                }while( b > 0 );
+            }
+        }
+        else if( flags == 'f' ){
+            for( i = 0; i < slot; i++ ){
+                while( b >= 0 ){
+                    if( start == 0 )
+                        b = 0;
+                    for( j = 0; j < start ; j++ ){
+                        if ((b = readuntil( fdfn[i], &line, delim ) ) != 0)
+                            break;
+                    }
+                    if( b < 0 )
                         break;
+                    else if( b == 1 ){
+                        printf("%s", line);
+                        continue;
+                    }
+                    /*eventually the for will break if end < 0*/
+                    for( ;  end < 0  || j <= end ; j++){
+                        b = readuntil( fdfn[i], &line, delim );
+                        if( b != 0 ){
+                            if( b == 1 )
+                                printf("%s", line);
+                            break;
+                        }
+                        if( j == end && end > 0 )
+                            line[ strlen(line) - 1 ] = '\0';
+                        printf( "%s", line );
+                    }
+                    if( b < 0 )
+                        break;
+                    else if( b == 0 ){
+                        write( STDOUT_FILENO, "\r\n", 2 );
+                        readuntil( fdfn[i], &line, '\n' );
                     }
                 }
-                if( b <= 0 )
-                    break;
-                line[j] = '\0';
-                if( line[j-1] != '\n' )
-                    printf( "%s\n", line);
-                else
-                    printf( "%s", line );
-                buf[0] = line[j-1];
-                while( buf[0] != '\n' )
-                    if( read( fdfn[i], buf, 1 ) <= 0 )
-                        break;
             }
-            if( b <= 0 )
-            /*EOF*/
-                break;
         }
     }
     else{
         /*stdin*/
-        line = (char*)malloc( sizeof(char)*BUFSIZE );
         while( 1 ){
             if (inputline( line, BUFSIZE) == NULL ){
                 if(b) break;
                 b = 1;
             }
-            len = strlen(line)-1;
-            len = (end < len && end >= 0) ? end : len - 1;
-            for( i = start; i <= len; i++ )
-                write( STDOUT_FILENO, &line[i], 1 );
-            write( STDOUT_FILENO, "\r\n", 2 );
+            else
+                b = 0;
+            if( flags == 'c' ){
+                len = strlen(line)-1;
+                len = (end < len && end >= 0) ? end : len - 1;
+                for( i = start; i <= len; i++ )
+                    write( STDOUT_FILENO, &line[i], 1 );
+                write( STDOUT_FILENO, "\r\n", 2 );
+            }
+            else if( flags == 'f' ){
+                len = strlen(line);
+                j = 0;
+                for( i = 0; i < start ; i++){
+                    while( line[j] != delim && j < len ) j++;
+                    if( j < len ) j++;
+                }
+                if( j == len ){
+                    printf("%s", line );
+                    continue;
+                }
+                for( i = start; end < 0 || i <= end; i++){
+                    while( line[j] != delim && j < len )
+                        write( STDOUT_FILENO, &line[j++], 1 );
+                    if( line[j] == delim && (i < end || end < 0) )
+                        write( STDOUT_FILENO, &line[j++], 1 );
+                    if( j == len )
+                        break;
+                }
+                if( line[j-1] != '\n')
+                    write( STDOUT_FILENO, "\r\n", 2 );
+            }
         }
     }
     optind = 0;
@@ -888,7 +1001,6 @@ void cm_disco(int led)
 
 int bin_catch_me(void **args)
 {
-#  define LED0 "/dev/gpio_6_13"
 	int led = open(LED0, O_RDWR, 0);
 	struct cm_board *b = malloc(sizeof(struct cm_board));
 

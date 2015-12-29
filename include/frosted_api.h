@@ -8,6 +8,7 @@
 
 /* move to limits.h ? */
 #define MAXPATHLEN 256
+#define ARG_MAX    32
 
 
 /* open */
@@ -54,8 +55,10 @@ struct dirent {
     char d_name[MAX_FILE];
 };
 
+/*
 #define S_IFMT     0170000   // bit mask for the file type bit fields
 #define P_IFMT     0000007   // bit mask for file permissions
+*/
 
 #define P_EXEC     0000001   // exec
 
