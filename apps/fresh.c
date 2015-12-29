@@ -693,21 +693,33 @@ char *readline(char *input, int size)
             
             /* arrows */
             if ((ret == 3) && (input[len] == 0x1b)) {
-                char dir = input[len + 1];
-                if (strlen(lastcmd) == 0) {
-                    continue;
-                }
+                char dir = input[len + 2];
+                if (dir == 'A') {
+	                if (strlen(lastcmd) == 0) {
+        	            continue;
+                	}
 
-                while (len > 0) {
-                    write(STDOUT_FILENO, &del, 1);
-                    printf( " ");
-                    write(STDOUT_FILENO, &del, 1);
-                    len--;
-                }
-                printf( "%s", lastcmd);
-                len = strlen(lastcmd);
-                strcpy(input, lastcmd);
-                continue;
+	                while (len > 0) {
+        	            write(STDOUT_FILENO, &del, 1);
+                	    printf( " ");
+	                    write(STDOUT_FILENO, &del, 1);
+        	            len--;
+                	}
+	                printf( "%s", lastcmd);
+        	        len = strlen(lastcmd);
+                	strcpy(input, lastcmd);
+	                continue;
+	        } else if (dir == 'B') {
+	        } else if (dir == 'C') {
+	        	printf("%c", input[len]);
+	        } else if (dir == 'D') {
+	        	write(STDOUT_FILENO, &del, 1);
+	        	continue;
+	        //} else if (dir == 'K') {
+        	//            write(STDOUT_FILENO, &del, 1);
+                //	    printf( " ");
+	        //            write(STDOUT_FILENO, &del, 1);
+	        }
             }
 
             if (ret > 3)
@@ -752,14 +764,14 @@ char *readline(char *input, int size)
             }
 
             /* backspace */
-            if ((input[len] == 127)) {
-                if (len > 1) {
-                    write(out, &del, 1);
+            if ((input[len] == 0x08)) {
+                if (len > 0) {
+                    write(STDOUT_FILENO, &del, 1);
                     printf( " ");
-                    write(out, &del, 1);
-                    len -= 2;
-                }else {
-                    len -=1;
+                    write(STDOUT_FILENO, &del, 1);
+                    input[len] = 0x00;
+                    len -= 1;
+                    continue;
                 }
             }
         }
