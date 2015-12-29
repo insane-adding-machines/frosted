@@ -824,7 +824,7 @@ char *readline(char *input, int size)
             }
 
             /* backspace */
-            if ((got[0] == 0x7F)) {
+            if ((got[0] == 0x7F) || (got[0] == 0x08)) {
                 if (pos > 0) {
                     write(STDOUT_FILENO, &del, 1);
                     printf( " ");
