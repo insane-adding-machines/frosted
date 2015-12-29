@@ -841,7 +841,7 @@ int bin_morse(void **args)
 	if (!args[1]) {
 		memcpy(args[1], name, 128);
 	}
-	uint8_t morse[26][6] = 	{{1, 2, 0},		// a
+    const uint8_t morse[][6] = 	{{1, 2, 0},		// a
 				{2, 1, 1, 1, 0},	// b
 				{2, 1, 2, 1, 0},	// c
 				{2, 1, 1, 0},		// d
