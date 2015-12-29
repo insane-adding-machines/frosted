@@ -705,8 +705,13 @@ char *readline(char *input, int size)
 	                    write(STDOUT_FILENO, &del, 1);
         	            len--;
                 	}
-	                printf( "%s", lastcmd);
+	                //printf( "%s", lastcmd);
         	        len = strlen(lastcmd);
+        	        lastcmd[len] = 0x00;
+        	        len--;
+       	        	lastcmd[len] = 0x00;
+        	        pos = len;
+        	        printf( "%s", lastcmd);
                 	strcpy(input, lastcmd);
 	                continue;
 	        } else if (dir == 'B') {
