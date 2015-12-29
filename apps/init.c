@@ -117,28 +117,33 @@ void idling(void *arg)
 # define LED3 "/dev/null"
 #endif
 
- 
-    //led[0] = open(LED0, O_RDWR, 0);
+#ifdef CONFIG_IDDLELEDS
+    led[0] = open(LED0, O_RDWR, 0);
     led[1] = open(LED1, O_RDWR, 0);
     led[2] = open(LED2, O_RDWR, 0);
     led[3] = open(LED3, O_RDWR, 0);
 
-    //if (led[0] >= 0) {
+    if (led[0] >= 0) {
+#endif
         while(1) {
             for (i = 0; i < 9; i++) {
+#ifdef CONFIG_IDDLELEDS
                 if (i < 4) {
-       //             write(led[i], "0", 1);
+                    write(led[i], "0", 1);
                 } else {
                     char val = (1 - (i % 2)) + '0';
-                    //for(j = 0; j < 4; j++)
-         //               write(led[j], &val, 1);
+                    for(j = 0; j < 4; j++)
+                        write(led[j], &val, 1);
                 }
+#endif
                 sleep(200);
             }
         }
-    //} else {
-     //   while(1) { sleep(1000); } */ /* GPIO unavailable, just sleep. */
-/*    } */
+#ifdef CONFIG_IDDLELEDS
+    } else {
+        while(1) { sleep(1000); } /* GPIO unavailable, just sleep. */
+    }
+#endif
 }
 
 static sem_t *sem = NULL;

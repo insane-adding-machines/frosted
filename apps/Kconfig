@@ -14,7 +14,10 @@ menu "Applications"
         config PRODCONS
         bool "IPC testing (prod/cons)"
         default y
-        
+
+        config IDDLELEDS
+        bool "Iddling LED indicator"
+        default y
 
 endmenu
 

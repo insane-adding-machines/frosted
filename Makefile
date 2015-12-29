@@ -13,6 +13,10 @@ ifeq ($(PRODCONS),y)
   CFLAGS+=-DCONFIG_PRODCONS=1
 endif
 
+ifeq ($(IDDLELEDS),y)
+    CFLAGS += -DCONFIG_IDDLELEDS=1
+endif
+
 CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
