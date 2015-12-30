@@ -65,6 +65,7 @@ const struct binutils bin_table[] = {
     {"morse", bin_morse},
     {"catch", bin_catch_me},
     {"fault", bin_mem_fault},
+    {"kill", bin_kill },
     {"", NULL}
 };
 
@@ -100,7 +101,7 @@ static int try_binutils(char **args, int background)
         exec_binutils(b, args);
 
     if (!background)
-        wait(&status);
+        while (wait(&status) < 0);
 
     return 0;
 }
@@ -329,7 +330,7 @@ void launchProg(char **args, int background){
         
         // We set parent=<pathname>/simple-c-shell as an environment variable
         // for the child
-        setenv("parent",getcwd(currentDirectory, 128),1);	
+        //setenv("parent",getcwd(currentDirectory, 128),1);	
         
         // If we launch non-existing commands we end the process
         if (execvp(args[0],args)==err){
@@ -391,7 +392,7 @@ void fileIO(char * args[], char* inputFile, char* outputFile, int option)
         	close(fileDescriptor);		 
         }
          
-        setenv("parent",getcwd(currentDirectory, 128),1);
+        //setenv("parent",getcwd(currentDirectory, 128),1);
 
         b = find_binutils(args[0]);
         if (b) {
@@ -676,66 +677,138 @@ int commandHandler(char * args[]){
 return 1;
 }
 
+void pointer_shift(int *a, int s, int n) {
+   int i;
+   for (i = n; i > s - 1; i--) {
+      *(a+i+1) = *(a+i);
+   }
+}
 
 char *readline(char *input, int size)
 {
 
     while (2>1)
     {
-        int len = 0;
+        int len = 0, pos = 0;
         int out = STDOUT_FILENO;
-        int i;
+        char got[5];
+        int i, j;
         
         while(len < size)
         {
             const char del = 0x08;
-            int ret = read(STDIN_FILENO, input + len, 3);
+            int ret = read(STDIN_FILENO, got, 4);
             
             /* arrows */
-            if ((ret == 3) && (input[len] == 0x1b)) {
-                char dir = input[len + 1];
-                if (strlen(lastcmd) == 0) {
+            if ((ret == 3) && (got[0] == 0x1b)) {
+                char dir = got[2];
+                if (dir == 'A') {
+	                if (strlen(lastcmd) == 0) {
+        	            continue;
+                	}
+
+	                while (len > 0) {
+        	            write(STDOUT_FILENO, &del, 1);
+                	    printf( " ");
+	                    write(STDOUT_FILENO, &del, 1);
+        	            len--;
+                	}
+        	        len = strlen(lastcmd);
+        	        lastcmd[len] = 0x00;
+        	        len--;
+       	        	lastcmd[len] = 0x00;
+        	        pos = len;
+        	        printf( "%s", lastcmd);
+                	strcpy(input, lastcmd);
+	                continue;
+	        } else if (dir == 'B') {
+	        } else if (dir == 'C') {
+	        	if (pos < len) {
+	        		printf("%c", input[pos++]);
+	        	}
+	        } else if (dir == 'D') {
+	        	write(STDOUT_FILENO, &del, 1);
+	        	pos--;
+	        	continue;
+	        }
+            }
+
+            if (ret > 3) {
+            	if ((got[0] == 0x1B) && (got[2] == 0x33) && (got[3] == 0x7E)) {
+                	if (pos < len) {
+	                    //write(STDOUT_FILENO, &del, 1);
+        	            //printf( " ");
+                	    //write(STDOUT_FILENO, &del, 1);
+                	    pos--;
+        	            len--;
+                	    if (pos < len) {
+                    	for ( i = pos+1; i < len; i++) {
+	                	input[i] = input[i+1];
+        	        	printf("%c", input[i]);
+                	}
+                    	printf(" ");
+	                i = len - pos;
+        	        while (i > 0) {
+                		write(STDOUT_FILENO, &del, 1);
+                    		i--;
+                    	}
+
+	                    } else {
+	                    input[pos] = 0x00;
+	                    pos--;
+	                    len--;
+	            }
+
                     continue;
                 }
-
-                while (len > 0) {
-                    write(STDOUT_FILENO, &del, 1);
-                    printf( " ");
-                    write(STDOUT_FILENO, &del, 1);
-                    len--;
-                }
-                printf( "%s", lastcmd);
-                len = strlen(lastcmd);
-                strcpy(input, lastcmd);
+            	}
                 continue;
             }
-
-            if (ret > 3)
-                continue;
-            if ((ret > 0) && (input[len] >= 0x20 && input[len] <= 0x7e)) {
+            if ((ret > 0) && (got[0] >= 0x20 && got[0] <= 0x7e)) {
                 for (i = 0; i < ret; i++) {
                     /* Echo to terminal */
-                    if (input[len + i] >= 0x20 && input[len + i] <= 0x7e)
-                        write(STDOUT_FILENO, &input[len + i], 1);
+                    if (got[i] >= 0x20 && got[i] <= 0x7e)
+                        write(STDOUT_FILENO, &got[i], 1);
+                	if (pos < len) {
+                		for (j = len + 1; j > pos; j--) {
+                			input[j] = input[j-1];
+                		}
+                		input[pos] = got[i];
+                    	for ( j = pos + 1; j < len +1; j++) {
+                    		printf("%c", input[j]);
+                    	}
+                    	printf(" ");
+                    	j = len - pos + 1;
+                    	while (j > 0) {
+                    		write(STDOUT_FILENO, &del, 1);
+                    		j--;
+                    	}
+                	} else {
+                		input[pos] = got[i];
+                	}
+
                     len++;
+                    pos++;
                 }
             }
 
-            if ((input[len] == 0x0D)) {
+            if ((got[0] == 0x0D)) {
+            	input[len] = 0x0D;
                 input[len + 1] = '\0';
                 printf( "\r\n");
                 strncpy(lastcmd, input, 128);
                 return input; /* CR (\r\n) */
             }
 
-            if ((input[len] == 0x4)) {
+            if ((got[0] == 0x4)) {
                 printf( "\r\n");
                 len = 0;
+                pos = 0;
                 break;
             }
 
             /* tab */
-            if ((input[len] == 0x09)) {
+            if ((got[0] == 0x09)) {
                 struct binutils *b = bin_table;
                 input[len] = 0;
                 printf("\r\n");
@@ -752,14 +825,30 @@ char *readline(char *input, int size)
             }
 
             /* backspace */
-            if ((input[len] == 127)) {
-                if (len > 1) {
-                    write(out, &del, 1);
+            if ((got[0] == 0x7F) || (got[0] == 0x08)) {
+                if (pos > 0) {
+                    write(STDOUT_FILENO, &del, 1);
                     printf( " ");
-                    write(out, &del, 1);
-                    len -= 2;
-                }else {
-                    len -=1;
+                    write(STDOUT_FILENO, &del, 1);
+                    pos--;
+                    len--;
+                    if (pos < len) {
+                    	for ( i = pos; i < len; i++) {
+                    		input[i] = input[i+1];
+                    		printf("%c", input[i]);
+                    	}
+                    	printf(" ");
+                    	i = len - pos + 1;
+                    	while (i > 0) {
+                    		write(STDOUT_FILENO, &del, 1);
+                    		i--;
+                    	}
+
+                    } else {
+	                    input[pos] = 0x00;
+	            }
+
+                    continue;
                 }
             }
         }
@@ -795,7 +884,7 @@ int fresh(void *args) {
     
     // We set shell=<pathname>/simple-c-shell as an environment variable for
     // the child
-    setenv("shell",getcwd(currentDirectory, 128),1);
+    //setenv("shell",getcwd(currentDirectory, 128),1);
     
     // Main loop, where the user input will be read and the prompt
     // will be printed

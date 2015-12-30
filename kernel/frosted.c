@@ -59,15 +59,19 @@ void hard_fault_handler(void)
 
 void mem_manage_handler(void)
 {
-    /*
-    volatile uint32_t hfsr = SCB_HFSR;
-    //volatile uint32_t bfsr = SCB_BFSR;
-    volatile uint32_t afsr = SCB_AFSR;
-    volatile uint32_t bfar = SCB_BFAR;
-    volatile uint32_t mmfar = SCB_MMFAR;
-    //volatile uint32_t ufsr = SCB_UFSR;
-    */
-    if (task_segfault() < 0)
+#   define ARM_CFSR (*(volatile uint32_t *)(0xE000ED28))
+#   define ARM_MMFAR (*(volatile uint32_t *)(0xE000ED34))
+    volatile uint32_t address = 0xFFFFFFFF;
+    volatile uint32_t instruction = 0xFFFFFFFF;
+    uint32_t *top_stack;
+
+    if ((ARM_CFSR & 0x80)!= 0) {
+        address = ARM_MMFAR;
+        asm volatile ("mrs %0, psp" : "=r" (top_stack));
+        instruction = *(top_stack - 1);
+    }
+
+    if (task_segfault(address, instruction) < 0)
         while(1);
 }
 

@@ -80,7 +80,7 @@ int task_filedesc_add(struct fnode *f);
 int task_fd_setmask(int fd, uint32_t mask);
 uint32_t task_fd_getmask(int fd);
 struct fnode *task_filedesc_get(int fd);
-int task_segfault(void);
+int task_segfault(uint32_t addr, uint32_t instr);
 
 int task_fd_readable(int fd);
 int task_fd_writable(int fd);

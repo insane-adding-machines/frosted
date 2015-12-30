@@ -118,7 +118,7 @@ void mpu_init(void)
     mpu_setattr(0, MPUSIZE_8M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
 
     /* Allow read-only internal flash access */
-    mpu_setattr(1, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW); // TODO: PRO_URO
+    mpu_setattr(1, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
 
     /* Protect kernel memory */
     mpu_setattr(2, mpu_size(CONFIG_KRAM_SIZE << 10) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW); // TODO: PRW_UNO

@@ -860,7 +860,7 @@ int bin_morse(void **args)
 	if (!args[1]) {
 		memcpy(args[1], name, 128);
 	}
-	uint8_t morse[26][6] = 	{{1, 2, 0},		// a
+    const uint8_t morse[][6] = 	{{1, 2, 0},		// a
 				{2, 1, 1, 1, 0},	// b
 				{2, 1, 2, 1, 0},	// c
 				{2, 1, 1, 0},		// d
@@ -1044,4 +1044,25 @@ int bin_catch_me(void **args)
 	}
 	close(led);
 	exit(0);
+}
+
+int bin_kill(void **args)
+{
+    int pid;
+    if ((args[1] == NULL) || (args[2] != NULL)) {
+        printf("Usage: %s pid\r\n", args[0]);
+        exit(1);
+    }
+    pid = atoi(args[1]);
+    if (pid < 1) {
+        printf("Usage: %s pid\r\n", args[0]);
+        exit(2);
+    }
+    if (pid == 1) {
+        printf("Error: Can't kill init!\r\n");
+        exit(3);
+    }
+
+    kill(pid, SIGTERM);
+    exit(0);
 }
