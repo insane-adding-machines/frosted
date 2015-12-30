@@ -14,6 +14,8 @@ struct gpio_addr {
     const char* name;
 };
 
-void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num_gpios);
+typedef void (* exti_callback)(void * arg);
 
+void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num_gpios);
+void gpio_register_exti_callback(struct fnode *fno, exti_callback callback_fn, void * callback_arg);
 #endif

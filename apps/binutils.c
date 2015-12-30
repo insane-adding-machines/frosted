@@ -569,6 +569,9 @@ int bin_wc(void **args)
     exit(0);
 }
 
+#define WHOAMI  0x0F
+#define CTRL_REG_1  0x20
+
 int bin_gyro(void **args)
 {
     int fd;
@@ -578,10 +581,26 @@ int bin_gyro(void **args)
         printf("File not found.\r\n");
         exit(-1);
     }
-    l3gd20.reg = 0x0F;
+    l3gd20.reg = WHOAMI;
     ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
-
     printf("WHOAMI=%02X\n\r",l3gd20.data);
+
+    l3gd20.reg = CTRL_REG_1;
+    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
+    printf("CTRL_REG 1=%02X\n\r",l3gd20.data);
+
+    l3gd20.reg = CTRL_REG_1;
+    l3gd20.data = 0x0F;                 /*PD | Zen | Yen | Zen  */
+    ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
+
+    l3gd20.reg = CTRL_REG_1;
+    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
+    printf("CTRL_REG 1=%02X\n\r",l3gd20.data);
+
+    l3gd20.reg = WHOAMI;
+    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
+    printf("WHOAMI=%02X\n\r",l3gd20.data);
+
 
     close(fd);
     exit(0);

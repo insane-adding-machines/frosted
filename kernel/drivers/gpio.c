@@ -20,11 +20,29 @@ struct dev_gpio {
     struct device * dev;
     uint32_t base;
     uint16_t pin;
+    exti_callback exti_callback_fn;
+    void * exti_callback_arg;
 };
 
 #define MAX_GPIOS   32      /* FIX THIS! */
 
 static struct dev_gpio DEV_GPIO[MAX_GPIOS];
+
+static int devgpio_write(struct fnode *fno, const void *buf, unsigned int len);
+static int devgpio_ioctl(struct fnode *fno, const uint32_t cmd, void *arg);
+static int devgpio_read (struct fnode *fno, void *buf, unsigned int len);
+static int devgpio_poll (struct fnode *fno, uint16_t events, uint16_t *revents);
+
+
+static struct module mod_devgpio = {
+    .family = FAMILY_FILE,
+    .name = "gpio",
+    .ops.open = device_open,
+    .ops.read = devgpio_read, 
+    .ops.poll = devgpio_poll,
+    .ops.write = devgpio_write,
+    .ops.ioctl = devgpio_ioctl,
+};
 
 #ifdef LM3S
 #endif
@@ -52,37 +70,62 @@ static struct dev_gpio DEV_GPIO[MAX_GPIOS];
                                                          gpio_set_af(P, A, I);
 
 
-void exti_isr(uint32_t exti_base)
+struct dev_gpio * exti_fno[16];
+
+void gpio_register_exti_callback(struct fnode *fno, exti_callback callback_fn, void * callback_arg)
+{
+    struct dev_gpio *gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
+    if(!gpio)
+        return;
+
+    gpio->exti_callback_fn = callback_fn;
+    gpio->exti_callback_arg = callback_arg;
+}
+
+void exti_isr(uint32_t exti_base, uint32_t exti_idx)
 {
     exti_reset_request(exti_base);
-    /* What next? */
+    if(exti_fno[exti_idx]->exti_callback_fn)
+    {
+        tasklet_add(exti_fno[exti_idx]->exti_callback_fn, exti_fno[exti_idx]->exti_callback_arg);
+    }
 }
 void exti0_isr(void)
 {
-    exti_isr(EXTI0);
+    exti_isr(EXTI0, 0);
 }
 void exti1_isr(void)
 {
-    exti_isr(EXTI1);
+    exti_isr(EXTI1, 1);
 }
 void exti2_isr(void)
 {
-    exti_isr(EXTI2);
+    exti_isr(EXTI2, 2);
 }
 void exti3_isr(void)
 {
-    exti_isr(EXTI3);
+    exti_isr(EXTI3, 3);
 }
 void exti4_isr(void)
 {
-    exti_isr(EXTI4);
+    exti_isr(EXTI4, 4);
 }
 void exti9_5_isr(void)
 {
-
+    if(exti_get_flag_status(EXTI5))exti_isr(EXTI5, 5);
+    if(exti_get_flag_status(EXTI6))exti_isr(EXTI6, 6);
+    if(exti_get_flag_status(EXTI7))exti_isr(EXTI7, 7);
+    if(exti_get_flag_status(EXTI8))exti_isr(EXTI8, 8);
+    if(exti_get_flag_status(EXTI9))exti_isr(EXTI9, 9);
 }
 void exti15_10_isr(void)
 {
+    if(exti_get_flag_status(EXTI10))exti_isr(EXTI10, 10);
+    if(exti_get_flag_status(EXTI11))exti_isr(EXTI11, 11);
+    if(exti_get_flag_status(EXTI12))exti_isr(EXTI12, 12);
+    if(exti_get_flag_status(EXTI13))exti_isr(EXTI13, 13);
+    if(exti_get_flag_status(EXTI14))exti_isr(EXTI14, 14);
+    if(exti_get_flag_status(EXTI15))exti_isr(EXTI15, 15);
 }
 #endif
 
@@ -121,33 +164,6 @@ void eint3_isr(void)
 }
 
 #endif
-
-static int devgpio_write(struct fnode *fno, const void *buf, unsigned int len);
-static int devgpio_ioctl(struct fnode *fno, const uint32_t cmd, void *arg);
-static int devgpio_read (struct fnode *fno, void *buf, unsigned int len);
-static int devgpio_poll (struct fnode *fno, uint16_t events, uint16_t *revents);
-
-
-static struct module mod_devgpio = {
-    .family = FAMILY_FILE,
-    .name = "gpio",
-    .ops.open = device_open,
-    .ops.read = devgpio_read, 
-    .ops.poll = devgpio_poll,
-    .ops.write = devgpio_write,
-    .ops.ioctl = devgpio_ioctl,
-};
-
-/* Use static state for now. Future drivers can have multiple structs for this. */
-static int gpio_pid = 0;
-static frosted_mutex_t *gpio_mutex;
-
-void GPIO_Handler(void)
-{
-    /* If a process is attached, resume the process */
-    if (gpio_pid > 0) 
-        task_resume(gpio_pid);
-}
 
 static int devgpio_write(struct fnode * fno, const void *buf, unsigned int len)
 {
@@ -204,23 +220,15 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
 {
     int out;
     struct dev_gpio *gpio;
-    volatile int len_available = 1;
     char *ptr = (char *)buf;
 
     gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
     if(!gpio)
         return -1;
 
-    if (len_available < len) {
-        gpio_pid = scheduler_get_cur_pid();
-        task_suspend();
-        out = SYS_CALL_AGAIN;
-        frosted_mutex_unlock(gpio_mutex);
-    } else {
-        /* GPIO: get current value */
-        *((uint8_t*)buf) = gpio_get(gpio->base, gpio->pin) ? '1':'0';
-        return 1;
-    }
+    /* GPIO: get current value */
+    *((uint8_t*)buf) = gpio_get(gpio->base, gpio->pin) ? '1':'0';
+    return 1;
 }
 
 
@@ -239,12 +247,15 @@ static int devgpio_poll(struct fnode * fno, uint16_t events, uint16_t *revents)
     return ret;
 }
 
+
 static void gpio_fno_init(struct fnode *dev, uint32_t n, const struct gpio_addr * addr)
 {
     struct dev_gpio *g = &DEV_GPIO[n];
     g->dev = device_fno_init(&mod_devgpio, addr->name, dev, FL_RDWR, g);
     g->base = addr->base;
     g->pin = addr->pin;
+    g->exti_callback_fn = NULL;
+    g->exti_callback_arg = 0;
 }
 
 void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num_gpios)
@@ -323,14 +334,26 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
 #ifdef STM32F4
             switch(gpio_addrs[i].pin)
             {
-                case GPIO0:     exti = EXTI0;       exti_irq = NVIC_EXTI0_IRQ;  break;
-                case GPIO1:     exti = EXTI1;       exti_irq = NVIC_EXTI1_IRQ;  break;
-                case GPIO2:     exti = EXTI2;       exti_irq = NVIC_EXTI2_IRQ;  break;
-                case GPIO3:     exti = EXTI3;       exti_irq = NVIC_EXTI3_IRQ;  break;
-                case GPIO4:     exti = EXTI4;       exti_irq = NVIC_EXTI4_IRQ;  break;
+                case GPIO0:     exti = EXTI0;       exti_irq = NVIC_EXTI0_IRQ;  exti_fno[0] = &DEV_GPIO[i];  break;
+                case GPIO1:     exti = EXTI1;       exti_irq = NVIC_EXTI1_IRQ;  exti_fno[1] = &DEV_GPIO[i];  break;
+                case GPIO2:     exti = EXTI2;       exti_irq = NVIC_EXTI2_IRQ;  exti_fno[2] = &DEV_GPIO[i];  break;
+                case GPIO3:     exti = EXTI3;       exti_irq = NVIC_EXTI3_IRQ;  exti_fno[3] = &DEV_GPIO[i];  break;
+                case GPIO4:     exti = EXTI4;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[4] = &DEV_GPIO[i];  break;
+                case GPIO5:     exti = EXTI5;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[5] = &DEV_GPIO[i];  break;
+                case GPIO6:     exti = EXTI6;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[6] = &DEV_GPIO[i];  break;
+                case GPIO7:     exti = EXTI7;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[7] = &DEV_GPIO[i];  break;
+                case GPIO8:     exti = EXTI8;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[8] = &DEV_GPIO[i];  break;
+                case GPIO9:     exti = EXTI9;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[9] = &DEV_GPIO[i];  break;
+                case GPIO10:    exti = EXTI10;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[10] = &DEV_GPIO[i];  break;
+                case GPIO11:    exti = EXTI11;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[11] = &DEV_GPIO[i];  break;
+                case GPIO12:    exti = EXTI12;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[12] = &DEV_GPIO[i];  break;
+                case GPIO13:    exti = EXTI13;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[13] = &DEV_GPIO[i];  break;
+                case GPIO14:    exti = EXTI14;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[14] = &DEV_GPIO[i];  break;
+                case GPIO15:    exti = EXTI15;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[15] = &DEV_GPIO[i];  break;
                 /* More to add here 5_9 10_15 */
                 default: break;
             }
+            
             nvic_enable_irq(exti_irq);
             exti_select_source(exti, gpio_addrs[i].base);
             exti_set_trigger(exti, gpio_addrs[i].trigger);

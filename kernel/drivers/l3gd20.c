@@ -19,10 +19,6 @@ struct dev_l3gd20 {
     struct fnode *cs_fnode;
     struct fnode *int_1_fnode;
     struct fnode *int_2_fnode;
-    struct cirbuf *inbuf;
-    struct cirbuf *outbuf;
-    uint8_t *w_start;
-    uint8_t *w_end;
     L3GD20_MODE mode;
 };
 
@@ -51,6 +47,18 @@ static void spi_completion(void * arg)
     
     if (l3gd20->dev->pid > 0) 
         task_resume(l3gd20->dev->pid);
+}
+
+static void int1_callback(void * arg)
+{
+    const struct dev_l3gd20 *l3gd20 = (struct dev_l3gd20 *) arg;
+
+}
+
+static void int2_callback(void * arg)
+{
+    const struct dev_l3gd20 *l3gd20 = (struct dev_l3gd20 *) arg;
+
 }
 
 static uint8_t ioctl_ibuffer[2];

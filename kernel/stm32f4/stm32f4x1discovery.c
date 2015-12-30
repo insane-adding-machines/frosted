@@ -54,7 +54,13 @@ static const struct gpio_addr gpio_addrs[] = {
             {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
             {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
             {.base=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
+#ifdef CONFIG_DEVL3GD20
+            /* Grrr - for some reason this PB is on PA0 and one of the gyro INT lines is on PE0
+                We dont support >1 EXTI on the same pin (even if they are in diff banks) */
+            {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name="gpio_0_0"},
+#else
             {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="gpio_0_0"},
+#endif
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
             {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
@@ -75,9 +81,6 @@ static const struct gpio_addr gpio_addrs[] = {
             /* SCK - PA5 MISO - PA6 MOSI - */
             {.base=GPIOA, .pin=GPIO5,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
             {.base=GPIOA, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-
-//            {.base=GPIOA, .pin=GPIO6,.mode=GPIO_MODE_INPUT,.pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-
             {.base=GPIOA, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
 
 #endif
