@@ -144,10 +144,11 @@ static int memfs_mount(char *source, char *tgt, uint32_t flags, char *arg)
         return -1;
     }
 
+    /* TODO: Check empty dir 
     if (tgt_dir->children) {
-        /* Only allowed to mount on empty directory */
         return -1;
     }
+    */
     tgt_dir->owner = &mod_memfs;
     return 0;
 }

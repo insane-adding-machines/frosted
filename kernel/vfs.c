@@ -260,7 +260,13 @@ static int path_check(const char *path, const char *dirname)
     if (path[i] == '\0')
         return 2;
 
-    return 1;
+    if (path[i] == '/')
+        return 1;
+
+    if (i > 0 && (path[i - 1] == '/' && dirname[i - 1] == '/'))
+        return 1;
+
+    return 0;
 }
 
 
@@ -368,6 +374,7 @@ struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *pa
     fno->flags |= (FL_DIR | FL_RDWR);
     if (parent && parent->owner && parent->owner->ops.creat)
         parent->owner->ops.creat(fno);
+    mkdir_links(fno);
     return fno;
 }
 
@@ -703,7 +710,6 @@ int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *ar
         struct mountpoint *mp = kalloc(sizeof(struct mountpoint));
         if (mp) {
             mp->target = fno_search(target);
-            mkdir_links(mp->target);
             mp->next = MTAB;
             MTAB = mp;
         }
@@ -773,7 +779,6 @@ void vfs_init(void)
 
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
-    mkdir_links(dev);
     
     /* Init "/sys" dir */
     dev = fno_mkdir(NULL, "sys", NULL);

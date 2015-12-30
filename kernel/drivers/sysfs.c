@@ -401,10 +401,11 @@ static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
         return -1;
     }
 
+    /* TODO: check empty dir 
     if (tgt_dir->children) {
-        /* Only allowed to mount on empty directory */
         return -1;
     }
+    */
     tgt_dir->owner = &mod_sysfs;
     sysfs_register("time", sysfs_time_read, sysfs_no_write);
     sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
