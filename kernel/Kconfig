@@ -221,7 +221,7 @@ menu "Subsystems"
 
        config DEVL3GD20
        tristate "L3GD20 driver"
-       depends on ( MACH_STM32F4x1Discovery && SPI_1)
+       depends on ( SPI_1)
        default n
 
        config DEVGPIO
