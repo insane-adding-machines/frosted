@@ -63,17 +63,18 @@ inline int nargs( void** argv ){
 }
 
 
-char *inputline(char *input, int size){
+int inputline(char *input, int size){
+    int len;
     while(1<2){
-        int len = 0;
+        len = 0;
         int out = STDOUT_FILENO;
         int i;
         memset( input, 0, size);
         while( len < size ){
             const char del = 0x08;
-            int ret = read( STDIN_FILENO, input + len , 3);
-            if ( ret > 3 )
-                continue;
+            int ret = read( STDIN_FILENO, input + len , 4);
+            /*if ( ret > 3 )
+                continue;*/
             if ((ret > 0) && (input[len] >= 0x20 && input[len] <= 0x7e)) {
                 for (i = 0; i < ret; i++) {
                 /* Echo to terminal */
@@ -82,37 +83,34 @@ char *inputline(char *input, int size){
                     len++;
                 }
             }
-            if( input[len] == 0x0D ){
+            else if( input[len] == 0x0D ){
                 input[len + 1] = '\n';
                 input[len + 2] = '\0';
                 printf("\r\n");
-                if( len == 0 ) return NULL;  
-                return input;
+                return len + 2;
             }
-            if( input[len] == 0x4 ){
-                printf("\r\n");
-                len = 0;
-                break;
+            else if( input[len] == 0x4 ){
+                if( len != 0 )
+                    input[len] = '\0';
+                return len;
             }
             /* backspace */
-            if ((input[len] == 127)) {
-                if (len > 1) {
+            else if (input[len] == 0x7F || input[len] == 0x08 ) {
+                if (len > 0) {
                     write(out, &del, 1);
                     printf( " ");
                     write(out, &del, 1);
-                    len -= 2;
-                }else {
-                    len -=1;
+                    len--;
                 }
             }
         }
         printf("\r\n");
         if (len < 0)
-            return NULL;
+            return -1;
 
         input[len + 1] = '\0';
     }
-    return input;       
+    return len;
 }
 
 
@@ -435,7 +433,7 @@ int bin_dirname( void** args ){
 
 int bin_tee(void** args)
 {
-    extern int opterr, optind;
+    extern int opterr, optind, optopt;
     int c, i, argc = 0, written, j = 0,  b = 0;
     char line[BUFSIZE];
     int slot, fdfn[MAXFILES + 1][2] ;
@@ -444,6 +442,7 @@ int bin_tee(void** args)
     argc = nargs( args );
     setlocale(LC_ALL, "");
     opterr = 0;
+    optind = 0;
     fdfn[j][0] = STDOUT_FILENO;
     while ((c = getopt(argc,(char**) args, "ai")) != -1)
         switch (c)
@@ -458,7 +457,7 @@ int bin_tee(void** args)
             opterr = 0;
             break;
         default:
-            fprintf(stderr, "tee: invalid option -- '%c'\n", (char)c);
+            fprintf(stderr, "tee: invalid option -- '%c'\n", c,optopt);
             exit(1);
         }
     /*setting extra stdout redirections, getopt does not count them*/
@@ -480,13 +479,7 @@ int bin_tee(void** args)
         }
     }
     i = 0;
-    while( 1 ){
-        if (inputline( line, BUFSIZE) == NULL ){
-            if(b) break;
-            b = 1;
-        }
-        else
-            b = 0;
+    while( inputline(line, BUFSIZE) != 0 ){
         for( i = 0; i < slot; i++ ){
             count = strlen( line );
             while( count > 0 ){
@@ -505,6 +498,7 @@ int bin_tee(void** args)
     optind = 0;
     exit(0);
 }
+
 
 int bin_true(void **args)
 {
@@ -634,7 +628,8 @@ int bin_cut( void** args){
     int c, start, end, i, j, len, flags, slot, argc;
     int b = 0;
     int mode = O_RDONLY;
-    opterr=0;
+    opterr = 0;
+    optind = 0;
     j = 0;
     char delim = '\t';
     argc = nargs(args);
@@ -645,14 +640,12 @@ int bin_cut( void** args){
             case 'c':
                 if( b == 1 ){
                     fprintf(stderr,"cut: only one type of list may be specified\n");
-                    optind = 0;
                     exit(1);
                 }
                 b = 1;
                 flags = c;
                 if( parse_interval(optarg, &start, &end)!=0){
                     fprintf(stderr,"cut: invalid interval\n");
-                    optind = 0;
                     exit(1);
                 }
                 break;
@@ -660,7 +653,6 @@ int bin_cut( void** args){
                 len = strlen( optarg );
                 if( len <= 0 ){
                     fprintf(stderr, "cut: please specify a valid delimiter\n");
-                    optind = 0;
                     exit(1);
                 }
                 if( ( optarg[0] == '"' && optarg[2] == '"' ) || ( optarg[0] == '\'' && optarg[2] == '\'' ) )
@@ -670,18 +662,15 @@ int bin_cut( void** args){
                 break;
             default:
                 fprintf(stderr,"cut: invalid option -- '%c'\n", optopt );
-                optind = 0;
                 exit(1);
         }
     }
     if( b == 0 ){
         fprintf(stderr,"cut: you must specify at list of characters\n");
-        optind = 0;
         exit(1);
     }
     if( delim != '\t' && flags != 'f' ){
         fprintf(stderr, "cut: an input delimiter may be specified only when operating on fields\n");
-        optind = 0;
         exit(1);
     }
     if(--start < 0 )
@@ -771,13 +760,7 @@ int bin_cut( void** args){
     }
     else{
         /*stdin*/
-        while( 1 ){
-            if (inputline( line, BUFSIZE) == NULL ){
-                if(b) break;
-                b = 1;
-            }
-            else
-                b = 0;
+        while( inputline(line, BUFSIZE) != 0 ){
             if( flags == 'c' ){
                 len = strlen(line)-1;
                 len = (end < len && end >= 0) ? end : len - 1;
@@ -809,7 +792,6 @@ int bin_cut( void** args){
             }
         }
     }
-    optind = 0;
     exit(0);
 }
 
