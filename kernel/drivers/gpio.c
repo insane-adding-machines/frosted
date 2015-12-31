@@ -350,7 +350,6 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 case GPIO13:    exti = EXTI13;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[13] = &DEV_GPIO[i];  break;
                 case GPIO14:    exti = EXTI14;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[14] = &DEV_GPIO[i];  break;
                 case GPIO15:    exti = EXTI15;       exti_irq = NVIC_EXTI4_IRQ;  exti_fno[15] = &DEV_GPIO[i];  break;
-                /* More to add here 5_9 10_15 */
                 default: break;
             }
             

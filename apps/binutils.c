@@ -563,8 +563,32 @@ int bin_wc(void **args)
     exit(0);
 }
 
-#define WHOAMI  0x0F
-#define CTRL_REG_1  0x20
+#define WHOAMI              0x0F
+#define CTRL_REG1      0x20
+#define CTRL_REG2       0x21
+#define CTRL_REG3       0x22
+#define CTRL_REG4       0x23
+#define CTRL_REG5       0x24
+#define REFERENCE       0x25
+#define OUT_TEMP        0x26 
+#define STATUS_REG      0x27 
+#define OUT_X_L         0x28 
+#define OUT_X_H         0x29 
+#define OUT_Y_L         0x2A 
+#define OUT_Y_H         0x2B 
+#define OUT_Z_L         0x2C 
+#define OUT_Z_H         0x2D 
+#define FIFO_CTRL_REG 0x2E
+#define FIFO_SRC_REG    0x2F 
+#define INT1_CFG        0x30
+#define INT1_SRC        0x31 
+#define INT1_TSH_XH 0x32
+#define INT1_TSH_XL 0x33
+#define INT1_TSH_YH 0x34
+#define INT1_TSH_YL 0x35
+#define INT1_TSH_ZH 0x36
+#define INT1_TSH_ZL 0x37
+#define INT1_DURATION 0x38
 
 int bin_gyro(void **args)
 {
@@ -579,21 +603,28 @@ int bin_gyro(void **args)
     ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
     printf("WHOAMI=%02X\n\r",l3gd20.data);
 
-    l3gd20.reg = CTRL_REG_1;
+    l3gd20.reg = CTRL_REG1;
     ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
     printf("CTRL_REG 1=%02X\n\r",l3gd20.data);
 
-    l3gd20.reg = CTRL_REG_1;
+    l3gd20.reg = CTRL_REG1;
     l3gd20.data = 0x0F;                 /*PD | Zen | Yen | Zen  */
     ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
 
-    l3gd20.reg = CTRL_REG_1;
+    l3gd20.reg = CTRL_REG1;
     ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
     printf("CTRL_REG 1=%02X\n\r",l3gd20.data);
 
     l3gd20.reg = WHOAMI;
     ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
     printf("WHOAMI=%02X\n\r",l3gd20.data);
+
+    /* Enable IRQ1 */
+    l3gd20.reg = CTRL_REG3;
+    l3gd20.data = 0x80 | 0x20 | 0x08;      /* Enable INT1 | Interrupt active low | Data-ready on DRDY/INT2*/
+    ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
+
+    
 
 
     close(fd);

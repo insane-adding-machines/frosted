@@ -4,6 +4,7 @@
 #include "ioctl.h"
 #include "l3gd20.h"
 #include "l3gd20_ioctl.h"
+#include "gpio.h"
 
 typedef enum
 {
@@ -164,11 +165,14 @@ void l3gd20_init(struct fnode * dev, const struct l3gd20_addr l3gd20_addrs[], in
     int i, f;
     for (i = 0; i < num_l3gd20s; i++) 
     {
+        l3gd20_fno_init(dev, i, &l3gd20_addrs[i]);
         DEV_L3GD20S[i].spi_fnode = device_find(dev, l3gd20_addrs[i].spi_name);
         DEV_L3GD20S[i].cs_fnode = device_find(dev, l3gd20_addrs[i].spi_cs_name);
         DEV_L3GD20S[i].int_1_fnode = device_find(dev, l3gd20_addrs[i].int_1_name);
         DEV_L3GD20S[i].int_2_fnode = device_find(dev, l3gd20_addrs[i].int_2_name);
-        l3gd20_fno_init(dev, i, &l3gd20_addrs[i]);
+
+        if(DEV_L3GD20S[i].int_1_fnode)gpio_register_exti_callback(DEV_L3GD20S[i].int_1_fnode, int1_callback, &DEV_L3GD20S[i]);
+        if(DEV_L3GD20S[i].int_2_fnode)gpio_register_exti_callback(DEV_L3GD20S[i].int_2_fnode, int2_callback, &DEV_L3GD20S[i]);
 
         DEV_L3GD20S[i].cs_fnode->owner->ops.write(DEV_L3GD20S[i].cs_fnode, "1", 1);
         DEV_L3GD20S[i].mode = L3GD20_IDLE;
