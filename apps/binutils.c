@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted_api.h"
 #include "syscalls.h"
 #include "ioctl.h"
@@ -123,9 +123,9 @@ int parse_interval(char* arg, int* start, int* end){
     else{
         *start = strtol(arg, &endptr, 10);
         if( *start <= 0 && arg != endptr )
-            return 1; 
+            return 1;
         if( *endptr != '-' && *endptr !=',' && *endptr != '\0')
-            return 1; 
+            return 1;
     }
     if( *endptr == '\0' ){
         *end = *start;
@@ -235,7 +235,7 @@ int bin_mkdir(void **args)
 int bin_touch(void **args)
 {
     char *file = args[1];
-    int fd; 
+    int fd;
     fd = open(file, O_CREAT|O_TRUNC|O_EXCL|O_WRONLY);
     if (fd < 0) {
         printf("Cannot create file.\r\n");
@@ -385,7 +385,7 @@ int bin_dirname( void** args ){
     argc = nargs( args);
 
     setlocale (LC_ALL, "");
-    
+
     if ( argc < 2 || args[1] == NULL){
         fprintf(stderr, "usage: dirname [OPTION] NAME...\n");
         exit(1);
@@ -401,7 +401,7 @@ int bin_dirname( void** args ){
                 exit(1);
         }
     }
-    
+
     i = optind;
     while( args[i] != NULL ){
         head = tail = args[i];
@@ -421,7 +421,7 @@ int bin_dirname( void** args ){
         else{
             *tail = '\0';
        // printf("%.*s\n", (tail - head), head);
-            printf("%s%c", head, delim);   
+            printf("%s%c", head, delim);
         }
         i++;
     }
@@ -487,7 +487,7 @@ int bin_tee(void** args)
                 count -= written;
             }
         }
-    } 
+    }
 
     if (n < 0)
         printf("error\n");
@@ -570,18 +570,18 @@ int bin_wc(void **args)
 #define CTRL_REG4       0x23
 #define CTRL_REG5       0x24
 #define REFERENCE       0x25
-#define OUT_TEMP        0x26 
-#define STATUS_REG      0x27 
-#define OUT_X_L         0x28 
-#define OUT_X_H         0x29 
-#define OUT_Y_L         0x2A 
-#define OUT_Y_H         0x2B 
-#define OUT_Z_L         0x2C 
-#define OUT_Z_H         0x2D 
+#define OUT_TEMP        0x26
+#define STATUS_REG      0x27
+#define OUT_X_L         0x28
+#define OUT_X_H         0x29
+#define OUT_Y_L         0x2A
+#define OUT_Y_H         0x2B
+#define OUT_Z_L         0x2C
+#define OUT_Z_H         0x2D
 #define FIFO_CTRL_REG 0x2E
-#define FIFO_SRC_REG    0x2F 
+#define FIFO_SRC_REG    0x2F
 #define INT1_CFG        0x30
-#define INT1_SRC        0x31 
+#define INT1_SRC        0x31
 #define INT1_TSH_XH 0x32
 #define INT1_TSH_XL 0x33
 #define INT1_TSH_YH 0x34
@@ -624,7 +624,7 @@ int bin_gyro(void **args)
     l3gd20.data = 0x80 | 0x20 | 0x08;      /* Enable INT1 | Interrupt active low | Data-ready on DRDY/INT2*/
     ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
 
-    
+
 
 
     close(fd);
@@ -1078,4 +1078,16 @@ int bin_kill(void **args)
 
     kill(pid, SIGTERM);
     exit(0);
+}
+
+int bin_test_realloc(void **args)
+{
+    char **ptr;
+    ptr=malloc(sizeof(char*));
+    printf("PTR: %08X\r\n", ptr);
+    ptr=realloc( ptr, (2 * sizeof(char*)));
+    printf("PTR: %08X\r\n", ptr);
+    free(ptr);
+    exit(0);
+
 }

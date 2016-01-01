@@ -24,4 +24,5 @@ int bin_morse(void **args);
 int bin_catch_me(void **args);
 int bin_mem_fault(void **args);
 int bin_kill(void **args);
+int bin_test_realloc(void **args);
 #endif
