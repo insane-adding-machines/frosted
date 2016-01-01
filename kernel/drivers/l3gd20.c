@@ -5,6 +5,7 @@
 #include "l3gd20.h"
 #include "l3gd20_ioctl.h"
 #include "gpio.h"
+#include "stm32f4_exti.h"
 
 typedef enum
 {
@@ -56,9 +57,19 @@ static void int1_callback(void * arg)
 
 }
 
+
+static uint8_t rd_ibuffer[3];
+static uint8_t rd_obuffer[3];
+
+
 static void int2_callback(void * arg)
 {
     const struct dev_l3gd20 *l3gd20 = (struct dev_l3gd20 *) arg;
+
+    //rd_obuffer[0] = 0xE8;
+    
+    //l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
+    //devspi_xfer(l3gd20->spi_fnode, spi_completion, l3gd20,  rd_obuffer, rd_ibuffer, 3);
 
 }
 
@@ -171,8 +182,8 @@ void l3gd20_init(struct fnode * dev, const struct l3gd20_addr l3gd20_addrs[], in
         DEV_L3GD20S[i].int_1_fnode = device_find(dev, l3gd20_addrs[i].int_1_name);
         DEV_L3GD20S[i].int_2_fnode = device_find(dev, l3gd20_addrs[i].int_2_name);
 
-        if(DEV_L3GD20S[i].int_1_fnode)gpio_register_exti_callback(DEV_L3GD20S[i].int_1_fnode, int1_callback, &DEV_L3GD20S[i]);
-        if(DEV_L3GD20S[i].int_2_fnode)gpio_register_exti_callback(DEV_L3GD20S[i].int_2_fnode, int2_callback, &DEV_L3GD20S[i]);
+        if(DEV_L3GD20S[i].int_1_fnode)exti_register_callback(DEV_L3GD20S[i].int_1_fnode, int1_callback, &DEV_L3GD20S[i]);
+        if(DEV_L3GD20S[i].int_2_fnode)exti_register_callback(DEV_L3GD20S[i].int_2_fnode, int2_callback, &DEV_L3GD20S[i]);
 
         DEV_L3GD20S[i].cs_fnode->owner->ops.write(DEV_L3GD20S[i].cs_fnode, "1", 1);
         DEV_L3GD20S[i].mode = L3GD20_IDLE;
