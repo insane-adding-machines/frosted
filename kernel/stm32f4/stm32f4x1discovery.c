@@ -21,7 +21,6 @@
 #include "libopencm3/cm3/systick.h"
 #include <libopencm3/stm32/rcc.h>
 #include "libopencm3/cm3/nvic.h"
-#include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/dma.h>
 
 #ifdef CONFIG_DEVUART
@@ -32,6 +31,11 @@
 #ifdef CONFIG_DEVGPIO
 #include <libopencm3/stm32/gpio.h>
 #include "gpio.h"
+#endif
+
+#ifdef CONFIG_DEVF4EXTI
+#include <libopencm3/stm32/exti.h>
+#include "stm32f4_exti.h"
 #endif
 
 #ifdef CONFIG_DEVSPI
@@ -54,13 +58,7 @@ static const struct gpio_addr gpio_addrs[] = {
             {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
             {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
             {.base=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
-#ifdef CONFIG_DEVL3GD20
-            /* Grrr - for some reason this PB is on PA0 and one of the gyro INT lines is on PE0
-                We dont support >1 EXTI on the same pin (even if they are in diff banks) */
-            {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name="gpio_0_0"},
-#else
-            {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="gpio_0_0"},
-#endif
+            {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
             {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
@@ -87,8 +85,8 @@ static const struct gpio_addr gpio_addrs[] = {
 #ifdef CONFIG_DEVL3GD20
             /* CS - PE3 INT1 - PE0 INT2 - PE1 */
             {.base=GPIOE, .pin=GPIO3,.mode=GPIO_MODE_OUTPUT, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name="l3gd20_cs"},
-            {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i1"},
-            {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .exti=1, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i2"},
+            {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+            {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
 #endif
 #endif
 #ifdef CONFIG_DEVADC
@@ -141,8 +139,20 @@ static const struct uart_addr uart_addrs[] = {
         },
 #endif
 };
-
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
+#endif
+
+#ifdef CONFIG_DEVF4EXTI
+static const struct exti_addr exti_addrs[] = { 
+#ifdef CONFIG_DEVL3GD20
+            /* INT1 - PE0 INT2 - PE1 */
+            {.base=GPIOE, .pin=GPIO0, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i1"},
+            {.base=GPIOE, .pin=GPIO1, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i2"},
+#else
+            {.base=GPIOA, .pin=GPIO0, .trigger=EXTI_TRIGGER_FALLING, .name="gpio_0_0_i"},
+#endif
+};
+#define NUM_EXTIS (sizeof(exti_addrs) / sizeof(struct exti_addr))
 #endif
 
 #ifdef CONFIG_DEVSPI
@@ -226,6 +236,9 @@ void machine_init(struct fnode * dev)
 
 #ifdef CONFIG_DEVGPIO
     gpio_init(dev, gpio_addrs, NUM_GPIOS);
+#endif
+#ifdef CONFIG_DEVF4EXTI
+    exti_init(dev, exti_addrs, NUM_EXTIS);
 #endif
 #ifdef CONFIG_DEVUART
     uart_init(dev, uart_addrs, NUM_UARTS);
