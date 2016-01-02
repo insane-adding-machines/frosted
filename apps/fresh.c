@@ -1,19 +1,19 @@
 /*
   * Fresh v. 0.2
-  * Based on Simple C shell: 
+  * Based on Simple C shell:
   * Copyright (c) 2013 Juan Manuel Reyes
   * Copyright (c) 2015 Daniele Lacamera
-  * 
+  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
   * (at your option) any later version.
-  * 
+  *
   * This program is distributed in the hope that it will be useful,
   * but WITHOUT ANY WARRANTY; without even the implied warranty of
   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   * GNU General Public License for more details.
-  * 
+  *
   * You should have received a copy of the GNU General Public License
   * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -39,7 +39,7 @@
 static char currentDirectory[128];
 static char lastcmd[128] = "";
 
-struct binutils { 
+struct binutils {
     char name[32];
     int (*exe)(void **args);
 };
@@ -66,14 +66,14 @@ const struct binutils bin_table[] = {
     {"catch", bin_catch_me},
     {"fault", bin_mem_fault},
     {"kill", bin_kill },
-    {"realloc",bin_realloc},
+    {"realloc",bin_test_realloc},
     {"", NULL}
 };
 
 static void exec_binutils(const struct binutils *b, char **args)
 {
     //int ret;
-    //ret = b->exe((void **)args); 
+    //ret = b->exe((void **)args);
     execb(b->exe, args);
 }
 
@@ -97,7 +97,7 @@ static int try_binutils(char **args, int background)
 
     if (!b)
         return -1;
-    
+
     if (vfork() == 0)
         exec_binutils(b, args);
 
@@ -122,40 +122,40 @@ void shell_init(void){
     do {
         stdout_fileno = open(SERIAL_DEV, O_WRONLY, 0);
     } while (stdout_fileno < 0);
-    
+
     do {
         stderr_fileno = open(SERIAL_DEV, O_WRONLY, 0);
     } while (stderr_fileno < 0);
 
         // See if we are running interactively
         GBSH_PID = getpid();
-        // The shell is interactive if STDIN is the terminal  
-        GBSH_IS_INTERACTIVE = isatty(STDIN_FILENO);  
+        // The shell is interactive if STDIN is the terminal
+        GBSH_IS_INTERACTIVE = isatty(STDIN_FILENO);
 
         if (GBSH_IS_INTERACTIVE) {
         	// Loop until we are in the foreground
         	while (tcgetpgrp(STDIN_FILENO) != (GBSH_PGID = getpgrp()))
-        			kill(GBSH_PID, SIGTTIN);             
-                  
-                  
+        			kill(GBSH_PID, SIGTTIN);
+
+
             // Set the signal handlers for SIGCHILD and SIGINT
         	act_child.sa_handler = signalHandler_child;
-        	act_int.sa_handler = signalHandler_int;			
-        	
+        	act_int.sa_handler = signalHandler_int;
+
         	/**The sigaction structure is defined as something like
-        	
+
         	struct sigaction {
         		void (*sa_handler)(int);
         		void (*sa_sigaction)(int, siginfo_t *, void *);
         		sigset_t sa_mask;
         		int sa_flags;
         		void (*sa_restorer)(void);
-        		
+
         	}*/
-        	
+
         	//sigaction(SIGCHLD, &act_child, 0);
         	//sigaction(SIGINT, &act_int, 0);
-        	
+
         	// Put ourselves in our own process group
         	setpgid(GBSH_PID, GBSH_PID); // we make the shell process the new process group leader
         	GBSH_PGID = getpgrp();
@@ -164,8 +164,8 @@ void shell_init(void){
         			exit(EXIT_FAILURE);
         	}
         	// Grab control of the terminal
-        	tcsetpgrp(STDIN_FILENO, GBSH_PGID);  
-        	
+        	tcsetpgrp(STDIN_FILENO, GBSH_PGID);
+
         	// Save default terminal attributes for shell
         	tcgetattr(STDIN_FILENO, &GBSH_TMODES);
 
@@ -210,7 +210,7 @@ void signalHandler_int(int p){
     // We send a SIGTERM signal to the child process
     if (kill(pid,SIGTERM) == 0){
         printf("\r\nProcess %d received a SIGINT signal\r\n",pid);
-        no_reprint_prmpt = 1;			
+        no_reprint_prmpt = 1;
     }else{
         printf("\r\n");
     }
@@ -231,12 +231,12 @@ void shellPrompt(){
 int changeDirectory(char* args[]){
     // If we write no path (only 'cd'), then go to the home directory
     if (args[1] == NULL) {
-        chdir(getenv("HOME")); 
+        chdir(getenv("HOME"));
         return 1;
     }
-    // Else we change the directory to the one specified by the 
+    // Else we change the directory to the one specified by the
     // argument, if possible
-    else{ 
+    else{
         if (chdir(args[1]) == -1) {
         	printf(" %s: no such directory\r\n", args[1]);
             return -1;
@@ -248,32 +248,32 @@ int changeDirectory(char* args[]){
 /**
  * Method used to manage the environment variables with different
  * options
- */ 
+ */
 int manageEnviron(char * args[], int option){
     /*
     char **env_aux;
     switch(option){
         // Case 'environ': we print the environment variables along with
         // their values
-        case 0: 
+        case 0:
         	for(env_aux = environ; *env_aux != 0; env_aux ++){
         		printf("%s\r\n", *env_aux);
         	}
         	break;
         // Case 'setenv': we set an environment variable to a value
-        case 1: 
+        case 1:
         	if((args[1] == NULL) && args[2] == NULL){
         		printf("%s","Not enought input arguments\r\n");
         		return -1;
         	}
-        	
+
         	// We use different output for new and overwritten variables
         	if(getenv(args[1]) != NULL){
         		printf("%s", "The variable has been overwritten\r\n");
         	}else{
         		printf("%s", "The variable has been created\r\n");
         	}
-        	
+
         	// If we specify no value for the variable, we set it to ""
         	if (args[2] == NULL){
         		setenv(args[1], "", 1);
@@ -295,18 +295,18 @@ int manageEnviron(char * args[], int option){
         		printf("%s", "The variable does not exist\r\n");
         	}
         break;
-        	
-        	
+
+
     }
     */
     return 0;
 }
- 
+
 /**
 * Method for launching a program. It can be run in the background
 * or in the foreground
-*/ 
-void launchProg(char **args, int background){	 
+*/
+void launchProg(char **args, int background){
      int err = -1;
      struct stat st;
 
@@ -318,7 +318,7 @@ void launchProg(char **args, int background){
          printf("Command not found.\r\n");
          return;
      }
-     
+
      if((pid=vfork())==-1){
          printf("Child process could not be created\r\n");
          return;
@@ -326,22 +326,22 @@ void launchProg(char **args, int background){
      // pid == 0 implies the following code is related to the child process
     if(pid==0){
         // We set the child to ignore SIGINT signals (we want the parent
-        // process to handle them with signalHandler_int)	
+        // process to handle them with signalHandler_int)
         signal(SIGINT, SIG_IGN);
-        
+
         // We set parent=<pathname>/simple-c-shell as an environment variable
         // for the child
-        //setenv("parent",getcwd(currentDirectory, 128),1);	
-        
+        //setenv("parent",getcwd(currentDirectory, 128),1);
+
         // If we launch non-existing commands we end the process
         if (execvp(args[0],args)==err){
         	printf("Command not found");
         	kill(getpid(),SIGTERM);
         }
      }
-     
+
      // The following will be executed by the parent
-     
+
      // If the process is not requested to be in background, we wait for
      // the child to finish.
      if (background == 0){
@@ -352,19 +352,19 @@ void launchProg(char **args, int background){
          // signalHandler_child will take care of the returning values
          // of the childs.
          printf("Process created with PID: %d\r\n",pid);
-     }	 
+     }
 }
- 
+
 /**
 * Method used to manage I/O redirection
-*/ 
+*/
 void fileIO(char * args[], char* inputFile, char* outputFile, int option)
 {
-    atoi("22"); 
+    atoi("22");
     int err = -1;
     int fileDescriptor; // between 0 and 19, describing the output or input file
     const struct binutils *b;
-    
+
     if((pid=vfork())==-1){
         printf("Child process could not be created\r\n");
         return;
@@ -376,23 +376,23 @@ void fileIO(char * args[], char* inputFile, char* outputFile, int option)
         	// We open (create) the file truncating it at 0, for write only
             flags = O_CREAT;
             flags |= O_TRUNC | O_WRONLY;
-        	fileDescriptor = open(outputFile, flags, 0600); 
+        	fileDescriptor = open(outputFile, flags, 0600);
         	// We replace de standard output with the appropriate file
-        	dup2(fileDescriptor, STDOUT_FILENO); 
+        	dup2(fileDescriptor, STDOUT_FILENO);
         	close(fileDescriptor);
         // Option 1: input and output redirection
         }else if (option == 1){
         	// We open file for read only (it's STDIN)
-        	fileDescriptor = open(inputFile, O_RDONLY, 0600);  
+        	fileDescriptor = open(inputFile, O_RDONLY, 0600);
         	// We replace de standard input with the appropriate file
         	dup2(fileDescriptor, STDIN_FILENO);
         	close(fileDescriptor);
         	// Same as before for the output file
         	fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
         	dup2(fileDescriptor, STDOUT_FILENO);
-        	close(fileDescriptor);		 
+        	close(fileDescriptor);
         }
-         
+
         //setenv("parent",getcwd(currentDirectory, 128),1);
 
         b = find_binutils(args[0]);
@@ -402,36 +402,36 @@ void fileIO(char * args[], char* inputFile, char* outputFile, int option)
         else if (execvp(args[0],args)==err){
         	printf("err");
         	kill(getpid(),SIGTERM);
-        }		 
+        }
     }
     wait(NULL);
 }
 
 /**
 * Method used to manage pipes.
-*/ 
+*/
 void pipeHandler(char * args[]){
     // File descriptors
     int filedes[2]; // pos. 0 output, pos. 1 input of the pipe
     int filedes2[2];
-    
+
     int num_cmds = 0;
-    
+
     char *command[LIMIT];
 
     const struct binutils *b;
-    
+
     pid_t pid;
-    
+
     int err = -1;
     int end = 0;
-    
+
     // Variables used for the different loops
     int i = 0;
     int j = 0;
     int k = 0;
     int l = 0;
-    
+
     // First we calculate the number of commands (they are separated
     // by '|')
     while (args[l] != NULL){
@@ -441,7 +441,7 @@ void pipeHandler(char * args[]){
         l++;
     }
     num_cmds++;
-    
+
     // Main loop of this method. For each command between '|', the
     // pipes will be configured and standard input and/or output will
     // be replaced. Then it will be executed
@@ -451,7 +451,7 @@ void pipeHandler(char * args[]){
         // that will be executed on each iteration
         while (strcmp(args[j],"|") != 0){
         	command[k] = args[j];
-        	j++;	
+        	j++;
         	if (args[j] == NULL){
         		// 'end' variable used to keep the program from entering
         		// again in the loop when no more arguments are found
@@ -464,8 +464,8 @@ void pipeHandler(char * args[]){
         // Last position of the command will be NULL to indicate that
         // it is its end when we pass it to the exec function
         command[k] = NULL;
-        j++;		
-        
+        j++;
+
         // Depending on whether we are in an iteration or another, we
         // will set different descriptors for the pipes inputs and
         // output. This way, a pipe will be shared between each two
@@ -476,17 +476,17 @@ void pipeHandler(char * args[]){
         }else{
         	pipe(filedes2); // for even i
         }
-        
+
         pid=vfork();
-        
-        if(pid==-1){			
+
+        if(pid==-1){
         	if (i != num_cmds - 1){
         		if (i % 2 != 0){
         			close(filedes[1]); // for odd i
         		}else{
         			close(filedes2[1]); // for even i
-        		} 
-        	}			
+        		}
+        	}
         	printf("Child process could not be created\r\n");
         	return;
         }
@@ -498,7 +498,7 @@ void pipeHandler(char * args[]){
         	// If we are in the last command, depending on whether it
         	// is placed in an odd or even position, we will replace
         	// the standard input for one pipe or another. The standard
-        	// output will be untouched because we want to see the 
+        	// output will be untouched because we want to see the
         	// output in the terminal
         	else if (i == num_cmds - 1){
         		if (num_cmds % 2 != 0){ // for odd number of commands
@@ -512,65 +512,65 @@ void pipeHandler(char * args[]){
         	// which file descriptor corresponds to each input/output
         	}else{ // for odd i
         		if (i % 2 != 0){
-        			dup2(filedes2[0],STDIN_FILENO); 
+        			dup2(filedes2[0],STDIN_FILENO);
         			dup2(filedes[1],STDOUT_FILENO);
         		}else{ // for even i
-        			dup2(filedes[0],STDIN_FILENO); 
-        			dup2(filedes2[1],STDOUT_FILENO);					
-        		} 
+        			dup2(filedes[0],STDIN_FILENO);
+        			dup2(filedes2[1],STDOUT_FILENO);
+        		}
         	}
-        	
+
             b = find_binutils(command[0]);
             if (b) {
                 exec_binutils(b, command);
             }
         	if (execvp(command[0],command)==err){
         		kill(getpid(),SIGTERM);
-        	}		
+        	}
         }
-        		
+
         // CLOSING DESCRIPTORS ON PARENT
         if (i == 0){
         	close(filedes2[1]);
         }
         else if (i == num_cmds - 1){
-        	if (num_cmds % 2 != 0){					
+        	if (num_cmds % 2 != 0){
         		close(filedes[0]);
-        	}else{					
+        	}else{
         		close(filedes2[0]);
         	}
         }else{
-        	if (i % 2 != 0){					
+        	if (i % 2 != 0){
         		close(filedes2[0]);
         		close(filedes[1]);
-        	}else{					
+        	}else{
         		close(filedes[0]);
         		close(filedes2[1]);
         	}
         }
-        		
+
         waitpid(pid,NULL,0);
-        		
-        i++;	
+
+        i++;
     }
 }
-        	
+
 /**
 * Method used to handle the commands entered via the standard input
-*/ 
+*/
 int commandHandler(char * args[]){
     int i = 0;
     int j = 0;
-    
+
     int fileDescriptor;
     int standardOut;
-    
+
     int aux;
     int background = 0;
-    
+
     char *args_aux[8] = { NULL };
 
-    
+
     // We look for the special characters and separate the command itself
     // in a new array for the arguments
     while ( args[j] != NULL){
@@ -580,7 +580,7 @@ int commandHandler(char * args[]){
         args_aux[j] = args[j];
         j++;
     }
-    
+
     // 'exit' command quits the shell
     if(strcmp(args[0],"exit") == 0) exit(0);
     // 'pwd' command prints the current directory
@@ -588,11 +588,11 @@ int commandHandler(char * args[]){
         if (args[j] != NULL){
         	// If we want file output
         	if ( (strcmp(args[j],">") == 0) && (args[j+1] != NULL) ){
-        		fileDescriptor = open(args[j+1], O_CREAT | O_TRUNC | O_WRONLY, 0600); 
+        		fileDescriptor = open(args[j+1], O_CREAT | O_TRUNC | O_WRONLY, 0600);
         		// We replace de standard output with the appropriate file
         		standardOut = dup(STDOUT_FILENO); 	// first we make a copy of stdout
         											// because we'll want it back
-        		dup2(fileDescriptor, STDOUT_FILENO); 
+        		dup2(fileDescriptor, STDOUT_FILENO);
         		close(fileDescriptor);
         		printf("%s\r\n", getcwd(currentDirectory, 128));
         		dup2(standardOut, STDOUT_FILENO);
@@ -600,7 +600,7 @@ int commandHandler(char * args[]){
         }else{
         	printf("%s\r\n", getcwd(currentDirectory, 128));
         }
-    } 
+    }
     // 'cd' command to change directory
     else if (strcmp(args[0],"cd") == 0) changeDirectory(args);
     // 'environ' command to list the environment variables
@@ -608,11 +608,11 @@ int commandHandler(char * args[]){
         if (args[j] != NULL){
         	// If we want file output
         	if ( (strcmp(args[j],">") == 0) && (args[j+1] != NULL) ){
-        		fileDescriptor = open(args[j+1], O_CREAT | O_TRUNC | O_WRONLY, 0600); 
+        		fileDescriptor = open(args[j+1], O_CREAT | O_TRUNC | O_WRONLY, 0600);
         		// We replace de standard output with the appropriate file
         		standardOut = dup(STDOUT_FILENO); 	// first we make a copy of stdout
         											// because we'll want it back
-        		dup2(fileDescriptor, STDOUT_FILENO); 
+        		dup2(fileDescriptor, STDOUT_FILENO);
         		close(fileDescriptor);
         		manageEnviron(args,0);
         		dup2(standardOut, STDOUT_FILENO);
@@ -673,7 +673,7 @@ int commandHandler(char * args[]){
         // We launch the program with our method, indicating if we
         // want background execution or not
         launchProg(args_aux,background);
-        
+
     }
 return 1;
 }
@@ -694,12 +694,12 @@ char *readline(char *input, int size)
         int out = STDOUT_FILENO;
         char got[5];
         int i, j;
-        
+
         while(len < size)
         {
             const char del = 0x08;
             int ret = read(STDIN_FILENO, got, 4);
-            
+
             /* arrows */
             if ((ret == 3) && (got[0] == 0x1b)) {
                 char dir = got[2];
@@ -865,53 +865,53 @@ char *readline(char *input, int size)
 
 /**
 * Main method of our shell
-*/ 
+*/
 int fresh(void *args) {
     char line[MAXLINE]; // buffer for the user input
     char * tokens[LIMIT]; // array for the different tokens in the command
     int numTokens;
-        
+
     no_reprint_prmpt = 0; 	// to prevent the printing of the shell
         					// after certain methods
     pid = -10; // we initialize pid to an pid that is not possible
-    
+
     // We call the method of initialization and the welcome screen
     shell_init();
     welcomeScreen();
-    
+
     // We set our extern char** environ to the environment, so that
     // we can treat it later in other methods
     environ = NULL;
-    
+
     // We set shell=<pathname>/simple-c-shell as an environment variable for
     // the child
     //setenv("shell",getcwd(currentDirectory, 128),1);
-    
+
     // Main loop, where the user input will be read and the prompt
     // will be printed
     while(TRUE){
         // We print the shell prompt if necessary
         if (no_reprint_prmpt == 0) shellPrompt();
         no_reprint_prmpt = 0;
-        
+
         // We empty the line buffer
         memset ( line, '\0', MAXLINE );
 
         // We wait for user input
         /* fgets(line, MAXLINE, stdin); */
         while (readline(line, MAXLINE) == NULL);
-    
+
         // If nothing is written, the loop is executed again
         if((tokens[0] = strtok(line," \r\n\t")) == NULL) continue;
-        
+
         // We read all the tokens of the input and pass it to our
         // commandHandler as the argument
         numTokens = 1;
         while((tokens[numTokens] = strtok(NULL, " \r\n\t")) != NULL) numTokens++;
-        
+
         commandHandler(tokens);
-        
-    }          
+
+    }
 
     exit(0);
 }
