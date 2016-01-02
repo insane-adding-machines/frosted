@@ -1,8 +1,6 @@
 #ifndef INC_SPI
 #define INC_SPI
 
-#define MAX_SPI_PINS 3
-
 struct spi_addr {
     uint32_t base;
     uint32_t irq;
@@ -23,7 +21,6 @@ struct spi_addr {
     uint32_t dma_base;
     uint32_t dma_rcc;
     uint32_t tx_dma_stream;
-    uint32_t tx_dma_irq;
     uint32_t rx_dma_stream;
     uint32_t rx_dma_irq;
 };

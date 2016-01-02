@@ -47,6 +47,15 @@
 #include "l3gd20.h"
 #endif
 
+#ifdef CONFIG_DEVI2C
+#include <libopencm3/stm32/i2c.h>
+#include "i2c.h"
+#endif
+
+#ifdef CONFIG_DEVLSM303DLHC
+#include "lsm303dlhc.h"
+#endif
+
 #ifdef CONFIG_DEVADC
 #include <libopencm3/stm32/adc.h>
 #include "adc.h"
@@ -74,21 +83,35 @@ static const struct gpio_addr gpio_addrs[] = {
             {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #endif
+
+#ifdef CONFIG_DEVI2C
+#ifdef CONFIG_I2C_1
+            {.base=GPIOB, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF4, .speed=GPIO_OSPEED_50MHZ, .optype=GPIO_OTYPE_OD, .pullupdown=GPIO_PUPD_PULLUP, .name=NULL,},
+            {.base=GPIOB, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF4, .speed=GPIO_OSPEED_50MHZ, .optype=GPIO_OTYPE_OD, .pullupdown=GPIO_PUPD_PULLUP, .name=NULL,},
+#ifdef CONFIG_DEVLSM303DLHC
+            /* Depends on I2C_1 : DRDY - PE2 Int1 - E4 Int2 - E5 */
+            {.base=GPIOE, .pin=GPIO2,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+            {.base=GPIOE, .pin=GPIO4,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+            {.base=GPIOE, .pin=GPIO5,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+#endif
+#endif
+#endif
+
 #ifdef CONFIG_DEVSPI
 #ifdef CONFIG_SPI_1
             /* SCK - PA5 MISO - PA6 MOSI - */
             {.base=GPIOA, .pin=GPIO5,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
             {.base=GPIOA, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
             {.base=GPIOA, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF5, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-
-#endif
 #ifdef CONFIG_DEVL3GD20
-            /* CS - PE3 INT1 - PE0 INT2 - PE1 */
+            /* Depends on SPI_1 :  CS - PE3 INT1 - PE0 INT2 - PE1 */
             {.base=GPIOE, .pin=GPIO3,.mode=GPIO_MODE_OUTPUT, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name="l3gd20_cs"},
             {.base=GPIOE, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
             {.base=GPIOE, .pin=GPIO1,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
 #endif
 #endif
+#endif
+
 #ifdef CONFIG_DEVADC
             {.base=GPIOA, .pin=GPIO1,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
             {.base=GPIOB, .pin=GPIO0,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
@@ -149,7 +172,12 @@ static const struct exti_addr exti_addrs[] = {
             {.base=GPIOE, .pin=GPIO0, .trigger=EXTI_TRIGGER_RISING, .name="l3gd20_i1"},
             {.base=GPIOE, .pin=GPIO1, .trigger=EXTI_TRIGGER_RISING, .name="l3gd20_i2"},
 #else
-            {.base=GPIOA, .pin=GPIO0, .trigger=EXTI_TRIGGER_FALLING, .name="gpio_0_0_i"},
+            {.base=GPIOA, .pin=GPIO0, .trigger=EXTI_TRIGGER_FALLING, .name="user_pb"},
+#endif
+#ifdef CONFIG_DEVLSM303DLHC
+            {.base=GPIOE, .pin=GPIO2, .trigger=EXTI_TRIGGER_RISING, .name="lsm303_drdy"},
+            {.base=GPIOE, .pin=GPIO4, .trigger=EXTI_TRIGGER_RISING, .name="lsm303_i1"},
+            {.base=GPIOE, .pin=GPIO5, .trigger=EXTI_TRIGGER_RISING, .name="lsm303_i2"},
 #endif
 };
 #define NUM_EXTIS (sizeof(exti_addrs) / sizeof(struct exti_addr))
@@ -179,8 +207,6 @@ static const struct spi_addr spi_addrs[] = {
             .dma_rcc = RCC_DMA2,
 
             .tx_dma_stream = DMA_STREAM3,
-            .tx_dma_irq = NVIC_DMA2_STREAM3_IRQ,
-            /* Avoid ADC DMA */
             .rx_dma_stream = DMA_STREAM2,
             .rx_dma_irq = NVIC_DMA2_STREAM2_IRQ,
             
@@ -192,16 +218,67 @@ static const struct spi_addr spi_addrs[] = {
 #ifdef CONFIG_DEVL3GD20
 static const struct l3gd20_addr l3gd20_addrs[] = { 
         {
-            .spi_name = "spi1",
-            .spi_cs_name = "l3gd20_cs",
-            .int_1_name = "l3gd20_i1",
-            .int_2_name = "l3gd20_i2",
             .name = "l3gd20",
+            .spi_name = "/dev/spi1",
+            .spi_cs_name = "/dev/l3gd20_cs",
+            .int_1_name = "/dev/l3gd20_i1",
+            .int_2_name = "/dev/l3gd20_i2",
         }
 };
 #define NUM_L3GD20 (sizeof(l3gd20_addrs)/sizeof(struct l3gd20_addr))
 #endif
 #endif
+
+
+#ifdef CONFIG_DEVI2C
+static const struct i2c_addr i2c_addrs[] = { 
+#ifdef CONFIG_I2C_1
+        {
+            .base = I2C1,
+            .ev_irq = NVIC_I2C1_EV_IRQ,
+            .er_irq = NVIC_I2C1_ER_IRQ,
+            .rcc = RCC_I2C1,
+            .name = "i2c1",
+            .clock_f = I2C_CR2_FREQ_36MHZ,
+            .fast_mode = 1,
+            .rise_time = 11,
+            .bus_clk_frequency = 10,
+
+            .dma_base = DMA1,
+            .dma_rcc = RCC_DMA1,
+
+            .tx_dma_stream = DMA_STREAM6,
+            .tx_dma_irq = NVIC_DMA1_STREAM6_IRQ,
+            .rx_dma_stream = DMA_STREAM0,
+            .rx_dma_irq = NVIC_DMA1_STREAM0_IRQ,
+        },
+#endif
+};
+#define NUM_I2CS (sizeof(i2c_addrs) / sizeof(struct i2c_addr))
+
+#ifdef CONFIG_DEVLSM303DLHC
+static const struct lsm303dlhc_addr lsm303dlhc_addrs[] = {
+        {
+            .name = "lsm303acc",
+            .i2c_name = "/dev/i2c1",
+            .int_1_name = "/dev/lsm303_i1",
+            .int_2_name = "/dev/lsm303_i2",
+            .drdy_name = NULL,
+            .address = 0x32,
+        },
+        {
+            .name = "lsm303mag",
+            .i2c_name = "/dev/i2c1",
+            .int_1_name = NULL,
+            .int_2_name = NULL,
+            .drdy_name = "/dev/lsm303_drdy",
+            .address = 0x3C,
+        },
+};
+#define NUM_LSM303DLHC (sizeof(lsm303dlhc_addrs)/sizeof(struct lsm303dlhc_addr))
+#endif
+#endif
+
 
 #ifdef CONFIG_DEVADC
 static const struct adc_addr adc_addrs[] = { 
@@ -247,6 +324,12 @@ void machine_init(struct fnode * dev)
     spi_init(dev, spi_addrs, NUM_SPIS);
 #ifdef CONFIG_DEVL3GD20
     l3gd20_init(dev, l3gd20_addrs, NUM_L3GD20);
+#endif
+#endif
+#ifdef CONFIG_DEVI2C
+    i2c_init(dev, i2c_addrs, NUM_I2CS);
+#ifdef CONFIG_DEVLSM303DLHC
+    lsm303dlhc_init(dev, lsm303dlhc_addrs, NUM_LSM303DLHC);
 #endif
 #endif
 #ifdef CONFIG_DEVADC

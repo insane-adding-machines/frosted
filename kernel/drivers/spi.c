@@ -43,7 +43,7 @@ static void spi1_rx_dma_complete(struct dev_spi *spi)
 {
     dma_disable_transfer_complete_interrupt(spi->dma_base, spi->rx_dma_stream);
     spi_disable(spi->base);
-    tasklet_add(spi->completion_fn, spi->completion_arg);
+    tasklet_add(spi->completion_fn, spi->completion_arg);           //Do we really need a tasklet????
     frosted_mutex_unlock(spi->dev->mutex);
 }
 
@@ -58,7 +58,7 @@ void dma2_stream2_isr()
 
 
 
-static void spi_init_dma(uint32_t base, uint32_t dma, uint32_t stream, uint32_t dirn, uint32_t prio)
+static void spi_init_dma(uint32_t base, uint32_t dma, uint32_t stream, uint32_t dirn, uint32_t prio, uint32_t channel)
 {
     dma_stream_reset(dma, stream);
 
@@ -75,7 +75,7 @@ static void spi_init_dma(uint32_t base, uint32_t dma, uint32_t stream, uint32_t 
     dma_enable_direct_mode(dma, stream);
     dma_set_dma_flow_control(dma, stream);
 
-    dma_channel_select(dma,stream,DMA_SxCR_CHSEL_3);
+    dma_channel_select(dma,stream,channel);
 }
 
 int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completion_arg, const char *obuf, char *ibuf, unsigned int len)
@@ -94,12 +94,12 @@ int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completi
     spi->completion_fn = completion_fn;
     spi->completion_arg = completion_arg;
 
-    spi_init_dma(spi->base, spi->dma_base, spi->tx_dma_stream, DMA_SxCR_DIR_MEM_TO_PERIPHERAL, DMA_SxCR_PL_MEDIUM);
+    spi_init_dma(spi->base, spi->dma_base, spi->tx_dma_stream, DMA_SxCR_DIR_MEM_TO_PERIPHERAL, DMA_SxCR_PL_MEDIUM, DMA_SxCR_CHSEL_3);
     dma_set_memory_address(spi->dma_base, spi->tx_dma_stream, (uint32_t)obuf);
     dma_set_number_of_data(spi->dma_base, spi->tx_dma_stream, len);
     dma_enable_stream(spi->dma_base, spi->tx_dma_stream);
 
-    spi_init_dma(spi->base,spi->dma_base,spi->rx_dma_stream,DMA_SxCR_DIR_PERIPHERAL_TO_MEM, DMA_SxCR_PL_VERY_HIGH);
+    spi_init_dma(spi->base,spi->dma_base,spi->rx_dma_stream,DMA_SxCR_DIR_PERIPHERAL_TO_MEM, DMA_SxCR_PL_VERY_HIGH, DMA_SxCR_CHSEL_3);
     dma_enable_transfer_complete_interrupt(spi->dma_base, spi->rx_dma_stream);
     nvic_set_priority(spi->rx_dma_irq, 1);
     nvic_enable_irq(spi->rx_dma_irq);

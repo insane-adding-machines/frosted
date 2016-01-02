@@ -18,7 +18,6 @@ typedef enum
 
 struct dev_l3gd20 {
     struct device * dev;
-    uint32_t irq;
     struct fnode *spi_fnode;
     struct fnode *cs_fnode;
     struct fnode *int_1_fnode;
@@ -31,7 +30,6 @@ struct dev_l3gd20 {
 static struct dev_l3gd20 DEV_L3GD20S[MAX_L3GD20S];
 
 static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len);
-static int devl3gd20_write(struct fnode *fno, const void *buf, unsigned int len);
 static int devl3gd20_ioctl(struct fnode * fno, const uint32_t cmd, void *arg);
 static int devl3gd20_close(struct fnode *fno);
 
@@ -40,7 +38,6 @@ static struct module mod_devl3gd20 = {
     .name = "l3gd20",
     .ops.open = device_open,
     .ops.read = devl3gd20_read, 
-    .ops.write = devl3gd20_write,
     .ops.ioctl = devl3gd20_ioctl,
     .ops.close = devl3gd20_close,
 };
@@ -70,13 +67,13 @@ static void int2_callback(void * arg)
         task_resume(l3gd20->dev->pid);
 }
 
-static uint8_t ioctl_ibuffer[2];
-static uint8_t ioctl_obuffer[2];
 
 static int devl3gd20_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 {
     struct dev_l3gd20 *l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
     struct l3gd20_ctrl_reg * ctrl = (struct l3gd20_ctrl_reg *) arg;
+    static uint8_t ioctl_ibuffer[2];
+    static uint8_t ioctl_obuffer[2];
 
     if (!l3gd20)
         return -1;
@@ -113,22 +110,6 @@ static int devl3gd20_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
     l3gd20->mode = L3GD20_IDLE;
     
     return 0;
-}
-
-static int devl3gd20_write(struct fnode *fno, const void *buf, unsigned int len)
-{
-    int i;
-    char *ch = (char *)buf;
-    const struct dev_l3gd20 *l3gd20;
-
-    if (len <= 0)
-        return len;
-
-    l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
-    if (!l3gd20)
-        return -1;
-
-    return len;
 }
 
 static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
@@ -195,40 +176,29 @@ static int devl3gd20_close(struct fnode *fno)
     return 0;
 }
 
-struct fnode * device_find(const struct fnode *dev, const char * name)
-{
-    char path[256];
-    memset(path, 0, 256);
-    path[0] = '/';
-    strcat(&path[1], dev->fname);
-    path[4] =  '/';
-    strcat(&path[5], name);
-    return fno_search(path);
-}
-
 static void l3gd20_fno_init(struct fnode *dev, uint32_t n, const struct l3gd20_addr * addr)
 {
     struct dev_l3gd20 *l = &DEV_L3GD20S[n];
     l->dev = device_fno_init(&mod_devl3gd20, addr->name, dev, FL_RDWR, l);
+    l->spi_fnode = fno_search(addr->spi_name);
+    l->cs_fnode = fno_search(addr->spi_cs_name);
+    l->int_1_fnode = fno_search(addr->int_1_name);
+    l->int_2_fnode = fno_search(addr->int_2_name);
+    
+    if(l->int_1_fnode)exti_register_callback(l->int_1_fnode, int1_callback, l);
+    if(l->int_2_fnode)exti_register_callback(l->int_2_fnode, int2_callback, l);
+    
+    l->cs_fnode->owner->ops.write(l->cs_fnode, "1", 1);
+    l->mode = L3GD20_IDLE;
 }
 
 
 void l3gd20_init(struct fnode * dev, const struct l3gd20_addr l3gd20_addrs[], int num_l3gd20s)
 {
-    int i, f;
+    int i;
     for (i = 0; i < num_l3gd20s; i++) 
     {
         l3gd20_fno_init(dev, i, &l3gd20_addrs[i]);
-        DEV_L3GD20S[i].spi_fnode = device_find(dev, l3gd20_addrs[i].spi_name);
-        DEV_L3GD20S[i].cs_fnode = device_find(dev, l3gd20_addrs[i].spi_cs_name);
-        DEV_L3GD20S[i].int_1_fnode = device_find(dev, l3gd20_addrs[i].int_1_name);
-        DEV_L3GD20S[i].int_2_fnode = device_find(dev, l3gd20_addrs[i].int_2_name);
-
-        if(DEV_L3GD20S[i].int_1_fnode)exti_register_callback(DEV_L3GD20S[i].int_1_fnode, int1_callback, &DEV_L3GD20S[i]);
-        if(DEV_L3GD20S[i].int_2_fnode)exti_register_callback(DEV_L3GD20S[i].int_2_fnode, int2_callback, &DEV_L3GD20S[i]);
-
-        DEV_L3GD20S[i].cs_fnode->owner->ops.write(DEV_L3GD20S[i].cs_fnode, "1", 1);
-        DEV_L3GD20S[i].mode = L3GD20_IDLE;
     }
     register_module(&mod_devl3gd20);
 }

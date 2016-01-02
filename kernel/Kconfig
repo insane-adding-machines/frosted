@@ -213,6 +213,28 @@ menu "Subsystems"
        bool "Generic ADC driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
        default n
+
+       menuconfig DEVF4I2C
+       bool "STM32F4 I2C driver"
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       default n
+
+       if DEVF4I2C
+            config I2C_1
+            bool "I2C 1"
+       endif
+
+       config DEVCS43L22
+       tristate "CS43L22 driver (Stereo DAC)"
+       depends on ( I2C_1)
+       default n
+
+       config DEVLSM303DLHC
+       tristate "LSM303DLHC driver (Accelerometer & Magnetometer)"
+       depends on ( I2C_1)
+       default n
+
+
        
        menuconfig DEVSPI
        bool "Generic SPI driver"
@@ -225,7 +247,7 @@ menu "Subsystems"
        endif
 
        config DEVL3GD20
-       tristate "L3GD20 driver"
+       tristate "L3GD20 driver (Gyro)"
        depends on ( SPI_1)
        default n
 

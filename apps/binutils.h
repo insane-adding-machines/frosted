@@ -19,6 +19,8 @@ int bin_false(void **args);
 int bin_arch(void **args);
 int bin_wc(void **args);
 int bin_gyro(void **args);
+int bin_acc(void **args);
+int bin_mag(void **args);
 int bin_cut(void **args);
 int bin_morse(void **args);
 int bin_catch_me(void **args);

@@ -21,6 +21,7 @@
 #include "syscalls.h"
 #include "ioctl.h"
 #include "l3gd20_ioctl.h"
+#include "lsm303dlhc_ioctl.h"
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -563,32 +564,32 @@ int bin_wc(void **args)
     exit(0);
 }
 
-#define WHOAMI              0x0F
-#define CTRL_REG1      0x20
-#define CTRL_REG2       0x21
-#define CTRL_REG3       0x22
-#define CTRL_REG4       0x23
-#define CTRL_REG5       0x24
-#define REFERENCE       0x25
-#define OUT_TEMP        0x26
-#define STATUS_REG      0x27
-#define OUT_X_L         0x28
-#define OUT_X_H         0x29
-#define OUT_Y_L         0x2A
-#define OUT_Y_H         0x2B
-#define OUT_Z_L         0x2C
-#define OUT_Z_H         0x2D
-#define FIFO_CTRL_REG 0x2E
-#define FIFO_SRC_REG    0x2F
-#define INT1_CFG        0x30
-#define INT1_SRC        0x31
-#define INT1_TSH_XH 0x32
-#define INT1_TSH_XL 0x33
-#define INT1_TSH_YH 0x34
-#define INT1_TSH_YL 0x35
-#define INT1_TSH_ZH 0x36
-#define INT1_TSH_ZL 0x37
-#define INT1_DURATION 0x38
+#define L3GD20_WHOAMI              0x0F
+#define L3GD20_CTRL_REG1      0x20
+#define L3GD20_CTRL_REG2       0x21
+#define L3GD20_CTRL_REG3       0x22
+#define L3GD20_CTRL_REG4       0x23
+#define L3GD20_CTRL_REG5       0x24
+#define L3GD20_REFERENCE       0x25
+#define L3GD20_OUT_TEMP        0x26
+#define L3GD20_STATUS_REG      0x27
+#define L3GD20_OUT_X_L         0x28
+#define L3GD20_OUT_X_H         0x29
+#define L3GD20_OUT_Y_L         0x2A
+#define L3GD20_OUT_Y_H         0x2B
+#define L3GD20_OUT_Z_L         0x2C
+#define L3GD20_OUT_Z_H         0x2D
+#define L3GD20_FIFO_CTRL_REG 0x2E
+#define L3GD20_FIFO_SRC_REG    0x2F
+#define L3GD20_INT1_CFG        0x30
+#define L3GD20_INT1_SRC        0x31
+#define L3GD20_INT1_TSH_XH 0x32
+#define L3GD20_INT1_TSH_XL 0x33
+#define L3GD20_INT1_TSH_YH 0x34
+#define L3GD20_INT1_TSH_YL 0x35
+#define L3GD20_INT1_TSH_ZH 0x36
+#define L3GD20_INT1_TSH_ZL 0x37
+#define L3GD20_INT1_DURATION 0x38
 
 int bin_gyro(void **args)
 {
@@ -610,21 +611,21 @@ int bin_gyro(void **args)
 
     if(strcasecmp(args[1], "off") == 0)
     {
-        l3gd20.reg = CTRL_REG1;
+        l3gd20.reg = L3GD20_CTRL_REG1;
         l3gd20.data = 0x00;
         ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
     }
     else
     {
-        l3gd20.reg = WHOAMI;
+        l3gd20.reg = L3GD20_WHOAMI;
         ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
         printf("WHOAMI=%02X\n\r",l3gd20.data);
 
-        l3gd20.reg = CTRL_REG1;
+        l3gd20.reg = L3GD20_CTRL_REG1;
         l3gd20.data = 0x0F;                 /*PD | Zen | Yen | Zen  */
         ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
 
-        l3gd20.reg = CTRL_REG3;
+        l3gd20.reg = L3GD20_CTRL_REG3;
         l3gd20.data = 0x08;
         ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
 
@@ -638,6 +639,92 @@ int bin_gyro(void **args)
 exit:
     exit(0);
 }
+
+#define LSM303ACC_CTRL_REG1      0x20
+
+int bin_acc(void **args)
+{
+    int fd;
+    struct lsm303dlhc_ctrl_reg lsm303dlhc;
+
+    if(nargs(args) != 2 || args[1] == NULL)
+    {
+        printf("Usage : acc on|off\n\r");
+        goto exit;
+    }
+
+    fd = open("/dev/lsm303acc", O_RDONLY);
+    if (fd < 0) {
+        printf("File not found.\r\n");
+        exit(-1);
+    }
+
+    if(strcasecmp(args[1], "off") == 0)
+    {
+        lsm303dlhc.reg = LSM303ACC_CTRL_REG1;
+        lsm303dlhc.data = 0x00;
+        ioctl(fd, IOCTL_LSM303DLHC_WRITE_CTRL_REG, &lsm303dlhc);
+    }
+    else
+    {
+        lsm303dlhc.reg = LSM303ACC_CTRL_REG1;
+        lsm303dlhc.data = 0x0F;                 /*PD | Zen | Yen | Zen  */
+        ioctl(fd, IOCTL_LSM303DLHC_WRITE_CTRL_REG, &lsm303dlhc);
+
+        lsm303dlhc.reg = LSM303ACC_CTRL_REG1;
+        lsm303dlhc.data = 0x00;                 
+        ioctl(fd, IOCTL_LSM303DLHC_READ_CTRL_REG, &lsm303dlhc);
+
+    }
+    close(fd);
+
+exit:
+    exit(0);
+}
+
+#define CRA_REG_M   0x00
+
+int bin_mag(void **args)
+{
+    int fd;
+    struct lsm303dlhc_ctrl_reg lsm303dlhc;
+
+    if(nargs(args) != 2 || args[1] == NULL)
+    {
+        printf("Usage : mag on|off\n\r");
+        goto exit;
+    }
+
+    fd = open("/dev/lsm303mag", O_RDONLY);
+    if (fd < 0) {
+        printf("File not found.\r\n");
+        exit(-1);
+    }
+
+    if(strcasecmp(args[1], "off") == 0)
+    {
+        lsm303dlhc.reg = CRA_REG_M;
+        lsm303dlhc.data = 0x00;
+        ioctl(fd, IOCTL_LSM303DLHC_WRITE_CTRL_REG, &lsm303dlhc);
+    }
+    else
+    {
+        lsm303dlhc.reg = CRA_REG_M;
+        lsm303dlhc.data = 0x10;
+        ioctl(fd, IOCTL_LSM303DLHC_WRITE_CTRL_REG, &lsm303dlhc);
+
+        lsm303dlhc.reg = CRA_REG_M;
+        lsm303dlhc.data = 0x00;                 
+        ioctl(fd, IOCTL_LSM303DLHC_READ_CTRL_REG, &lsm303dlhc);
+
+    }
+    close(fd);
+
+exit:
+    exit(0);
+}
+
+
 
 int bin_realloc(void **args)
 {
