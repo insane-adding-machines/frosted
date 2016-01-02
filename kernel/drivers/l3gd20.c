@@ -185,10 +185,11 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
 
 static int devl3gd20_close(struct fnode *fno)
 {
-    const struct dev_l3gd20 *l3gd20;
+    struct dev_l3gd20 *l3gd20;
     l3gd20 = FNO_MOD_PRIV(fno, &mod_devl3gd20);
     if (!l3gd20)
         return -1;
+    l3gd20->mode = L3GD20_IDLE;
 
     exti_enable(l3gd20->int_2_fnode , 0);
     return 0;
