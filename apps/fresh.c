@@ -66,6 +66,7 @@ const struct binutils bin_table[] = {
     {"catch", bin_catch_me},
     {"fault", bin_mem_fault},
     {"kill", bin_kill },
+    {"realloc",bin_realloc},
     {"", NULL}
 };
 

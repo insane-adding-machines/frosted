@@ -146,8 +146,8 @@ static const struct uart_addr uart_addrs[] = {
 static const struct exti_addr exti_addrs[] = { 
 #ifdef CONFIG_DEVL3GD20
             /* INT1 - PE0 INT2 - PE1 */
-            {.base=GPIOE, .pin=GPIO0, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i1"},
-            {.base=GPIOE, .pin=GPIO1, .trigger=EXTI_TRIGGER_FALLING, .name="l3gd20_i2"},
+            {.base=GPIOE, .pin=GPIO0, .trigger=EXTI_TRIGGER_RISING, .name="l3gd20_i1"},
+            {.base=GPIOE, .pin=GPIO1, .trigger=EXTI_TRIGGER_RISING, .name="l3gd20_i2"},
 #else
             {.base=GPIOA, .pin=GPIO0, .trigger=EXTI_TRIGGER_FALLING, .name="gpio_0_0_i"},
 #endif

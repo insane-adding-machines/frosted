@@ -12,4 +12,7 @@ typedef void (* exti_callback)(void * arg);
 
 void exti_init(struct fnode * dev,  const struct exti_addr exti_addrs[], int num_extis);
 void exti_register_callback(struct fnode *fno, exti_callback callback_fn, void * callback_arg);
+
+int exti_enable(struct fnode * fno, int enable);
+
 #endif

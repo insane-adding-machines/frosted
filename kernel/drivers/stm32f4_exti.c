@@ -91,22 +91,37 @@ void exti15_10_isr(void)
     if(exti_get_flag_status(EXTI15))exti_isr(EXTI15, 15);
 }
 
+int exti_enable(struct fnode * fno, int enable)
+{
+    struct dev_exti *exti;
+    exti = (struct dev_exti *)FNO_MOD_PRIV(fno, &mod_devexti);
+    if(exti)
+    {
+        if(enable)
+        {
+            exti_enable_request(exti->exti);
+        }
+        else
+        {
+            exti_disable_request(exti->exti);
+        }
+        return 0;
+    }
+    return -1;
+}
+
 static int devexti_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 {
-     struct dev_exti *exti;
-
-    exti = (struct dev_exti *)FNO_MOD_PRIV(fno, &mod_devexti);
-    if(!exti)
-        return -1;
-
+    (void)arg;
     if (cmd == IOCTL_EXTI_DISABLE) {
-        exti_disable_request(exti->exti);
+        return exti_enable(fno, 0);
     }
     if (cmd == IOCTL_EXTI_ENABLE) {
-        exti_enable_request(exti->exti);
+        return exti_enable(fno, 1);
     }
-    return 0;
+    return -1;
 }
+
 
 static void exti_fno_init(struct fnode *dev, uint32_t n, const struct exti_addr * addr)
 {
@@ -155,9 +170,7 @@ void exti_init(struct fnode * dev,  const struct exti_addr exti_addrs[], int num
         nvic_enable_irq(exti_irq);
         exti_select_source(DEV_EXTI[i].exti, exti_addrs[i].base);
         exti_set_trigger(DEV_EXTI[i].exti, exti_addrs[i].trigger);
-
-        exti_enable_request(DEV_EXTI[i].exti);
-        
+        /* Be sure to enable the exti via IOCTL! */
     }
     register_module(&mod_devexti);
 }

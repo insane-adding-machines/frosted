@@ -592,44 +592,61 @@ int bin_wc(void **args)
 
 int bin_gyro(void **args)
 {
-    int fd;
+    int fd, i=100;
+    unsigned char buffer[6];
     struct l3gd20_ctrl_reg l3gd20;
+
+    if(nargs(args) != 2 || args[1] == NULL)
+    {
+        printf("Usage : gyro on|off\n\r");
+        goto exit;
+    }
+
     fd = open("/dev/l3gd20", O_RDONLY);
     if (fd < 0) {
         printf("File not found.\r\n");
         exit(-1);
     }
-    l3gd20.reg = WHOAMI;
-    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
-    printf("WHOAMI=%02X\n\r",l3gd20.data);
 
-    l3gd20.reg = CTRL_REG1;
-    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
-    printf("CTRL_REG 1=%02X\n\r",l3gd20.data);
+    if(strcasecmp(args[1], "off") == 0)
+    {
+        l3gd20.reg = CTRL_REG1;
+        l3gd20.data = 0x00;
+        ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
+    }
+    else
+    {
+        l3gd20.reg = WHOAMI;
+        ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
+        printf("WHOAMI=%02X\n\r",l3gd20.data);
 
-    l3gd20.reg = CTRL_REG1;
-    l3gd20.data = 0x0F;                 /*PD | Zen | Yen | Zen  */
-    ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
+        l3gd20.reg = CTRL_REG1;
+        l3gd20.data = 0x0F;                 /*PD | Zen | Yen | Zen  */
+        ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
 
-    l3gd20.reg = CTRL_REG1;
-    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
-    printf("CTRL_REG 1=%02X\n\r",l3gd20.data);
+        l3gd20.reg = CTRL_REG3;
+        l3gd20.data = 0x08;
+        ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
 
-    l3gd20.reg = WHOAMI;
-    ioctl(fd, IOCTL_L3GD20_READ_CTRL_REG, &l3gd20);
-    printf("WHOAMI=%02X\n\r",l3gd20.data);
-
-    /* Enable IRQ1 */
-    l3gd20.reg = CTRL_REG3;
-    l3gd20.data = 0x80 | 0x20 | 0x08;      /* Enable INT1 | Interrupt active low | Data-ready on DRDY/INT2*/
-    ioctl(fd, IOCTL_L3GD20_WRITE_CTRL_REG, &l3gd20);
-
-    
-
-
+        while(i--) {
+            read(fd, buffer ,6);
+            printf("%04X %04X %04X\n\r", *((uint16_t*)buffer), *((uint16_t*)&buffer[2]), *((uint16_t*)&buffer[4]) ); 
+        }
+    }
     close(fd);
+
+exit:
     exit(0);
 }
+
+int bin_realloc(void **args)
+{
+    char * ptr;
+    ptr = malloc(2);
+    ptr = realloc(ptr, 4);
+    free(ptr);
+}
+
 
 /*returns   1 if it reaches a newline,
             0 if a delimiter is found,
