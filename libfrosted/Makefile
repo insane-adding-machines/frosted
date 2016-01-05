@@ -119,6 +119,10 @@ OBJS-y+=						\
 		posix/execve.o			\
 		posix/execvp.o			\
 		posix/glob.o			\
+		posix/regcomp.o  		\
+		posix/regerror.o  		\
+		posix/regexec.o  		\
+		posix/regfree.o			\
 
 
 CFLAGS+=$(CFLAGS-y)
