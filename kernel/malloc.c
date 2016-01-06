@@ -149,7 +149,7 @@ static void * f_sbrk(int user, int incr)
 
     if (user) {
         if (!heap_end_user)
-            return NULL;
+            return (void *)(0 - 1);
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
     } else {
