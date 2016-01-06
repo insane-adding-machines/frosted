@@ -167,10 +167,15 @@ qemu2: image.bin
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
 
+
+malloc_test:
+	gcc -o malloc.test kernel/malloc.c -Iinclude -Inewlib/include -DCONFIG_KRAM_SIZE=4
+
 libclean:
 	@make -C kernel/libopencm3 clean
 
 clean:
+	rm -f malloc.test
 	rm -f  kernel/$(BOARD)/$(BOARD).ld
 	@make -C kernel clean
 	@make -C libfrosted clean

@@ -16,6 +16,9 @@
 #define TASK_ZOMBIE     0x66
 #define TASK_OVER       0xFF
 
+#define MEMFAULT_ACCESS 0x00
+#define MEMFAULT_DOUBLEFREE 0x01
+
 //#define DEBUG
 
 #include <stdlib.h>
@@ -80,7 +83,7 @@ int task_filedesc_add(struct fnode *f);
 int task_fd_setmask(int fd, uint32_t mask);
 uint32_t task_fd_getmask(int fd);
 struct fnode *task_filedesc_get(int fd);
-int task_segfault(uint32_t addr, uint32_t instr);
+int task_segfault(uint32_t addr, uint32_t instr, int flags);
 
 int task_fd_readable(int fd);
 int task_fd_writable(int fd);

@@ -71,7 +71,7 @@ void mem_manage_handler(void)
         instruction = *(top_stack - 1);
     }
 
-    if (task_segfault(address, instruction) < 0)
+    if (task_segfault(address, instruction, MEMFAULT_ACCESS) < 0)
         while(1);
 }
 

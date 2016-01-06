@@ -292,6 +292,10 @@ void f_free(void * ptr)
     blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
     if (blk->magic == F_MALLOC_MAGIC)
     {
+        if ((blk->flags & F_IN_USE) == 0) {
+            task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
+        }
+
         blk->flags &= ~F_IN_USE;
         /* stats */
         f_malloc_stats[blk->flags & MEM_USER].free_calls++;
@@ -342,6 +346,11 @@ int sys_realloc_hdlr(int addr, int size)
 
 
 #if defined __linux__ || defined _WIN32 /* test application */
+    int task_segfault(uint32_t mem, uint32_t inst, int flags) {
+        dbg_malloc("Memory violation\n");
+        exit(1);
+    }
+
     void print_malloc_stats(void)
     {
         dbg_malloc("\n=== FROSTED MALLOC STATS ===\n");
@@ -375,8 +384,8 @@ int sys_realloc_hdlr(int addr, int size)
 
     int main(int argc, char ** argv)
     {
-        void * test10 = f_malloc(10);
-        void * test200 = f_malloc(200);
+        void * test10 = f_malloc(0, 10);
+        void * test200 = f_malloc(0, 200);
         void * test100 = NULL;
         dbg_malloc("test10: %p\n", test10);
         dbg_malloc("test200: %p\n", test200);
@@ -385,8 +394,8 @@ int sys_realloc_hdlr(int addr, int size)
         print_malloc_entries();
     
         dbg_malloc("\nTrying to re-use freed memory + allocate more\n");
-        test10 = f_malloc(10); // this should re-use exisiting entry
-        test100 = f_malloc(100); // this should alloc more memory through sbrk
+        test10 = f_malloc(0, 10); // this should re-use exisiting entry
+        test100 = f_malloc(0, 100); // this should alloc more memory through sbrk
         print_malloc_stats();
         print_malloc_entries();
     
@@ -398,13 +407,43 @@ int sys_realloc_hdlr(int addr, int size)
         print_malloc_entries();
 
         dbg_malloc("Trying to re-use freed memory\n");
-        test100 = f_malloc(100); // this should re-use memory in the freed pool
+        test100 = f_malloc(0, 100); // this should re-use memory in the freed pool
+        print_malloc_stats();
+        print_malloc_entries();
+        f_free(test100);
+
+        dbg_malloc("Allocating more memory\n");
+        test10 = f_malloc(0, 10);
+        test200 = f_malloc(0, 200);
+        print_malloc_stats();
+        print_malloc_entries();
+        f_free(test10);
+        f_free(test200);
+
+        dbg_malloc("Test Realloc \n");
+        test10 = f_malloc(0,10);
+        test100 = f_malloc(0,110);
+        test200 = f_malloc(0,1);
+        if (!test10 || !test100 || !test200) {
+            dbg_malloc("malloc failed!\n");
+            exit(1);
+        }
+        print_malloc_stats();
+        print_malloc_entries();
+        test10 = f_realloc(0, test10, 210);
+        test100 = f_realloc(0, test100, 2010);
+        test200 = f_realloc(0, test200, 2);
+        if (!test10 || !test100 || !test200) {
+            dbg_malloc("realloc failed!\n");
+            exit(1);
+        }
         print_malloc_stats();
         print_malloc_entries();
 
-        dbg_malloc("Allocating more memory\n");
-        test10 = f_malloc(10);
-        test200 = f_malloc(200);
+        dbg_malloc("\nFreeing all of the memory\n");
+        f_free(test10);
+        f_free(test200);
+        f_free(test100);
         print_malloc_stats();
         print_malloc_entries();
     

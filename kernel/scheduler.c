@@ -1192,7 +1192,7 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     task_terminate(_cur_task->tb.pid);
 }
 
-int task_segfault(uint32_t address, uint32_t instruction)
+int task_segfault(uint32_t address, uint32_t instruction, int flags)
 {
     char segv_msg[128] = "Memory fault: process (pid=";
     if (in_kernel())
@@ -1201,8 +1201,13 @@ int task_segfault(uint32_t address, uint32_t instruction)
         return 0;
     if ((_cur_task->tb.n_files > 2) &&  _cur_task->tb.filedesc[2].fno->owner->ops.write) {
         strcat(segv_msg, pid_str(_cur_task->tb.pid));
-        strcat(segv_msg, ") attempted access to memory at ");
-        strcat(segv_msg, x_str(address));
+        if (flags == MEMFAULT_ACCESS) {
+            strcat(segv_msg, ") attempted access to memory at ");
+            strcat(segv_msg, x_str(address));
+        }
+        if (flags == MEMFAULT_DOUBLEFREE) {
+            strcat(segv_msg, ") attempted double free");
+        }
         strcat(segv_msg, ". Killed.\r\n");
         _cur_task->tb.filedesc[2].fno->owner->ops.write(_cur_task->tb.filedesc[2].fno, segv_msg, strlen(segv_msg));
     }
