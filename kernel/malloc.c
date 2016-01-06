@@ -174,7 +174,7 @@ void * f_calloc(int flags, size_t num, size_t size)
 
 void* f_realloc(int flags, void* ptr, size_t size)
 {
-    void * out;
+    void * out = NULL;
     struct f_malloc_block * blk;
 
     /* size zero and valid ptr -> act as regular free() */
@@ -192,6 +192,9 @@ void* f_realloc(int flags, void* ptr, size_t size)
     {
         /* copy over old block, if valid pointer */
         size_t new_size, copy_size;
+        if ((blk->flags & F_IN_USE) == 0) {
+            task_segfault(ptr, 0, MEMFAULT_ACCESS);
+        }
         if (size > blk->size)
         {
             new_size = size;
@@ -201,13 +204,15 @@ void* f_realloc(int flags, void* ptr, size_t size)
             copy_size = size;
         }
         out = f_malloc(flags, size);
-
-        copy_size = (size > blk->size) ? blk->size : size; // copy smallest of two
+        if (!out)  {
+            return NULL;
+        }
         memcpy(out, ptr, copy_size);
     }
 
 realloc_free:
-    f_free(ptr);
+    if (ptr)
+        f_free(ptr);
     return out;
 }
 

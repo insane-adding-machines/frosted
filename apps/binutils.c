@@ -1108,3 +1108,13 @@ int bin_test_realloc(void **args)
     exit(0);
 
 }
+
+int bin_test_doublefree(void **args)
+{
+    char **ptr;
+    ptr=malloc(sizeof(char*));
+    printf("PTR: %08X\r\n", ptr);
+    free(ptr);
+    free(ptr);
+    exit(0);
+}
