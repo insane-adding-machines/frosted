@@ -522,6 +522,11 @@ int bin_mem_fault(void **args) {
     printf("%d\r\n", *faulty);
 }
 
+int bin_kmem_fault(void **args) {
+    uint32_t *faulty = (uint32_t *)0x20000100;
+    printf("%d\r\n", *faulty);
+}
+
 int bin_wc(void **args)
 {
     int fd;

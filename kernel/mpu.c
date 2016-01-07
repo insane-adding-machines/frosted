@@ -125,7 +125,7 @@ void mpu_init(void)
 
     /* System (No user access) */
     mpu_setaddr(4, RAM_START);      /* Kernel memory            0x20000000 (CONFIG_KRAM_SIZE KB) */
-    mpu_setattr(4, mpu_size(CONFIG_KRAM_SIZE << 10) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW); // TODO: PRW_UNO
+    mpu_setattr(4, mpu_size(CONFIG_KRAM_SIZE << 10) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_UNO);
     mpu_setaddr(5, DEV_START);      /* Peripherals              0x40000000 (512MB)*/
     mpu_setattr(5, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
     mpu_setaddr(6, EXTDEV_START);   /* External Peripherals     0xA0000000 (1GB)   */

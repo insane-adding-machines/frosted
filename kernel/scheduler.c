@@ -197,9 +197,9 @@ struct __attribute__((packed)) task {
     uint32_t stack[CONFIG_TASK_STACK_SIZE / 4];
 };
 
-static struct task struct_task_init;
-static struct task_block struct_task_block_kernel;
-static struct task *const kernel = (struct task *)(&struct_task_block_kernel);
+static struct task struct_task_kernel;
+static struct task *const kernel = (struct task *)(&struct_task_kernel);
+
 
 static int number_of_tasks = 0;
 
@@ -764,11 +764,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     int i;
 
     irq_off();
-    if (number_of_tasks == 0) {
-        new = &struct_task_init;
-    } else {
-        new = task_space_alloc(sizeof(struct task));
-    }
+    new = task_space_alloc(sizeof(struct task));
     if (!new) {
         return -ENOMEM;
     }
