@@ -27,10 +27,13 @@
 #define MPUSIZE_ERR     (0xFFFFFFFFu)
 
 
-#define RAM_START   (0x20000000)
-#define DEV_START   (0x40000000)
-#define FLASH_START (0x00000000)
-#define REG_START   (0xe0000000)
+#define FLASH_START       (0x00000000)
+#define RAM_START         (0x20000000)
+#define DEV_START         (0x40000000)
+#define EXTRAM_START      (0x60000000) 
+#define EXTFLASH_START    (0x80000000)
+#define EXTDEV_START      (0xA0000000)
+#define REG_START         (0xE0000000)
 
 uint32_t mpu_size(uint32_t size)
 {
@@ -108,27 +111,27 @@ void mpu_init(void)
     irq_off();
 
     /* User area: prio 0, from start */
-    mpu_setaddr(0, RAM_START);   /* Userspace memory */
-    mpu_setaddr(1, FLASH_START); /* Internal Flash */
-    mpu_setaddr(2, RAM_START);   /* Kernel memory (exception of the above, so same base) */
-    mpu_setaddr(3, DEV_START); 
-    mpu_setaddr(4, REG_START); 
+    mpu_setaddr(0, RAM_START);      /* Userspace memory block   0x20000000 (512M) */
+    mpu_setattr(0, MPUSIZE_512M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
 
-    /* Allow User memory */
-    mpu_setattr(0, MPUSIZE_8M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
+    mpu_setaddr(1, EXTRAM_START);   /* External RAM bank        0x60000000 (512M) */
+    mpu_setattr(1, MPUSIZE_512M   | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
 
-    /* Allow read-only internal flash access */
-    mpu_setattr(1, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
+    /* Read-only sectors */
+    mpu_setaddr(2, FLASH_START);    /* Internal Flash           0x00000000 (512M) */
+    mpu_setattr(2, MPUSIZE_512M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
+    mpu_setaddr(3, EXTFLASH_START); /* External Flash           0x80000000 (512M) */
+    mpu_setattr(3, MPUSIZE_512M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
 
-    /* Protect kernel memory */
-    mpu_setattr(2, mpu_size(CONFIG_KRAM_SIZE << 10) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW); // TODO: PRW_UNO
-
-    /* Protect direct device access */
-    mpu_setattr(3, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
-    
-    /* Protect direct registry access */
-    mpu_setattr(4, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
-
+    /* System (No user access) */
+    mpu_setaddr(4, RAM_START);      /* Kernel memory            0x20000000 (CONFIG_KRAM_SIZE KB) */
+    mpu_setattr(4, mpu_size(CONFIG_KRAM_SIZE << 10) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW); // TODO: PRW_UNO
+    mpu_setaddr(5, DEV_START);      /* Peripherals              0x40000000 (512MB)*/
+    mpu_setattr(5, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
+    mpu_setaddr(6, EXTDEV_START);   /* External Peripherals     0xA0000000 (1GB)   */
+    mpu_setattr(6, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
+    mpu_setaddr(7, REG_START);      /* System Level             0xE0000000 (256MB) */
+    mpu_setattr(7, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
 
     SCB_SHCSR |= SCB_SHCSR_MEMFAULTENA;
     mpu_enable();
