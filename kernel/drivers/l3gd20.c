@@ -6,6 +6,7 @@
 #include "l3gd20_ioctl.h"
 #include "gpio.h"
 #include "stm32f4_exti.h"
+#include "spi.h"
 
 typedef enum
 {
@@ -42,7 +43,7 @@ static struct module mod_devl3gd20 = {
     .ops.close = devl3gd20_close,
 };
 
-static void spi_completion(void * arg)
+static void completion(void * arg)
 {
     const struct dev_l3gd20 *l3gd20 = (struct dev_l3gd20 *) arg;
     l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
@@ -98,7 +99,7 @@ static int devl3gd20_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         task_suspend();
 
         l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
-        devspi_xfer(l3gd20->spi_fnode, spi_completion, l3gd20,  ioctl_obuffer, ioctl_ibuffer, 2);
+        devspi_xfer(l3gd20->spi_fnode, completion, l3gd20,  ioctl_obuffer, ioctl_ibuffer, 2);
 
         return SYS_CALL_AGAIN;
     }
@@ -138,7 +139,7 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
         task_suspend();
 
         l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
-        devspi_xfer(l3gd20->spi_fnode, spi_completion, l3gd20,  rd_obuffer, rd_ibuffer, 7);
+        devspi_xfer(l3gd20->spi_fnode, completion, l3gd20,  rd_obuffer, rd_ibuffer, 7);
         return SYS_CALL_AGAIN;
     }
     else if(l3gd20->mode == L3GD20_PENDING)
@@ -150,7 +151,7 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
         task_suspend();
 
         l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
-        devspi_xfer(l3gd20->spi_fnode, spi_completion, l3gd20,  rd_obuffer, rd_ibuffer, 7);
+        devspi_xfer(l3gd20->spi_fnode, completion, l3gd20,  rd_obuffer, rd_ibuffer, 7);
         return SYS_CALL_AGAIN;
     }
     else if(l3gd20->mode == L3GD20_READING) 

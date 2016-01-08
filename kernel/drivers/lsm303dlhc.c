@@ -6,6 +6,7 @@
 #include "lsm303dlhc_ioctl.h"
 #include "gpio.h"
 #include "stm32f4_exti.h"
+#include "i2c.h"
 
 typedef enum
 {
@@ -41,7 +42,7 @@ static struct module mod_devlsm303dlhc = {
     .ops.close = devlsm303dlhc_close,
 };
 
-static void i2c_completion(void * arg, uint32_t result)
+static void completion(void * arg, uint32_t result)
 {
     const struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
     
@@ -86,13 +87,13 @@ static int devlsm303dlhc_ioctl(struct fnode * fno, const uint32_t cmd, void *arg
         if(cmd == IOCTL_LSM303DLHC_READ_CTRL_REG)
         {
             lsm303dlhc->mode = LSM303DLHC_READ;
-            i2c_read(lsm303dlhc->i2c_fnode, i2c_completion, lsm303dlhc, lsm303dlhc->address, ctrl->reg, &buffer, 1);
+            i2c_read(lsm303dlhc->i2c_fnode, completion, lsm303dlhc, lsm303dlhc->address, ctrl->reg, &buffer, 1);
         }
         else
         {
             buffer = ctrl->data;
             lsm303dlhc->mode = LSM303DLHC_WRITE;
-            i2c_write(lsm303dlhc->i2c_fnode, i2c_completion, lsm303dlhc, lsm303dlhc->address, ctrl->reg, &buffer, 1);
+            i2c_write(lsm303dlhc->i2c_fnode, completion, lsm303dlhc, lsm303dlhc->address, ctrl->reg, &buffer, 1);
         }
 
         return SYS_CALL_AGAIN;
@@ -121,7 +122,7 @@ static int devlsm303dlhc_read(struct fnode *fno, void *buf, unsigned int len)
         return -1;
 
 
-    i2c_read(lsm303dlhc->i2c_fnode, i2c_completion, lsm303dlhc, lsm303dlhc->address, buf, len);
+    i2c_read(lsm303dlhc->i2c_fnode, completion, (void*)lsm303dlhc, lsm303dlhc->address, 0, buf, len);
 
     return SYS_CALL_AGAIN;
 
