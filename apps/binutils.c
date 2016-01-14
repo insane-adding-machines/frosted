@@ -673,7 +673,7 @@ int bin_acc(void **args)
     else
     {
         lsm303dlhc.reg = LSM303ACC_CTRL_REG1;
-        lsm303dlhc.data = 0x0F;                 /*PD | Zen | Yen | Zen  */
+        lsm303dlhc.data = 0x20 | 0x07;;                 /*ODR | (LP | Zen | Yen | Zen)  */
         ioctl(fd, IOCTL_LSM303DLHC_WRITE_CTRL_REG, &lsm303dlhc);
 
         lsm303dlhc.reg = LSM303ACC_CTRL_REG1;
