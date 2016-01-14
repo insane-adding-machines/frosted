@@ -23,7 +23,7 @@ struct i2c_addr {
     uint32_t rx_dma_irq;
 };
 
-typedef void (* i2c_completion)(void * arg, uint32_t result);
+typedef void (* i2c_completion)(void * arg);
 
 void i2c_init(struct fnode *dev, const struct i2c_addr i2c_addrs[], int num_i2cs);
 int i2c_read(struct fnode *fno, i2c_completion completion_fn, void * completion_arg, uint8_t addr, uint8_t  register, uint8_t *buf, uint32_t len);

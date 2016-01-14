@@ -245,7 +245,8 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     i2c_send_stop(i2c->base);
                     i2c_peripheral_disable(i2c->base);
                     i2c->state = I2C_STATE_READY;
-                    i2c->completion_fn(i2c->completion_arg, 0);
+                    tasklet_add(i2c->completion_fn, i2c->completion_arg);
+//                    i2c->completion_fn(i2c->completion_arg, 0);
                     break;
                 case I2C_STIM_DMA_COMPLETE_TX:
                     i2c_disable_dma(i2c->base);
@@ -263,7 +264,8 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     i2c_send_stop(i2c->base);
                     i2c_peripheral_disable(i2c->base);
                     i2c->state = I2C_STATE_READY;
-                    i2c->completion_fn(i2c->completion_arg, 0);
+                    tasklet_add(i2c->completion_fn, i2c->completion_arg);
+//                    i2c->completion_fn(i2c->completion_arg, 0);
                     break;
             }
             break;

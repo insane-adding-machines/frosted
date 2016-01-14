@@ -42,7 +42,7 @@ static struct module mod_devlsm303dlhc = {
     .ops.close = devlsm303dlhc_close,
 };
 
-static void completion(void * arg, uint32_t result)
+static void completion(void * arg)
 {
     const struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
     
