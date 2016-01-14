@@ -43,7 +43,7 @@ static void spi1_rx_dma_complete(struct dev_spi *spi)
 {
     dma_disable_transfer_complete_interrupt(spi->dma_base, spi->rx_dma_stream);
     spi_disable(spi->base);
-    tasklet_add(spi->completion_fn, spi->completion_arg);           //Do we really need a tasklet????
+    tasklet_add(spi->completion_fn, spi->completion_arg);
     frosted_mutex_unlock(spi->dev->mutex);
 }
 
