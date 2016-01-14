@@ -105,22 +105,26 @@ void adc_init(struct fnode * dev,  const struct adc_addr adc_addrs[], int num_ad
         CLOCK_ENABLE(adc_addrs[i].dma_rcc);
 
         dma_stream_reset(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-        dma_enable_transfer_complete_interrupt(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
+
         dma_set_transfer_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_DIR_PERIPHERAL_TO_MEM);
         dma_set_priority(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_PL_HIGH);
-        dma_enable_circular_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
 
         dma_set_peripheral_address(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, (uint32_t) &ADC_DR(adc_addrs[i].base)); //   (adc_addrs[i].base) + 0x4C);
         dma_disable_peripheral_increment_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
         dma_set_peripheral_size(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_PSIZE_16BIT);
 
-        dma_set_memory_address(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, (uint32_t) DEV_ADC[i].samples);
         dma_enable_memory_increment_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
         dma_set_memory_size(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_MSIZE_16BIT);
 
-        dma_set_number_of_data(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, adc_addrs[i].num_channels);
         dma_enable_direct_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
         dma_set_dma_flow_control(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
+
+
+        dma_enable_transfer_complete_interrupt(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
+        dma_enable_circular_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
+        dma_set_memory_address(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, (uint32_t) DEV_ADC[i].samples);
+
+        dma_set_number_of_data(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, adc_addrs[i].num_channels);
         adc_set_resolution(adc_addrs[i].dma_base, ADC_CR1_RES_12BIT);
 
         nvic_set_priority(adc_addrs[i].dma_irq, 1);
