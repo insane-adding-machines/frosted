@@ -9,6 +9,7 @@ static struct module mod_sysfs;
 static frosted_mutex_t *sysfs_mutex;
 
 extern struct mountpoint *MTAB;
+extern struct f_malloc_stats f_malloc_stats[3];
 
 struct sysfs_fnode {
     struct fnode *fnode;
@@ -180,66 +181,60 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
     int stack_used;
     int p_state;
     if (fno->off == 0) {
-        const char k_stat_banner[] = "\r\n\nKernel statistics\r\n";
-        const char t_stat_banner[] = "\r\n\nTasks statistics\r\n";
-        const char malloc_banner[] = "\tMalloc calls: ";
-        const char free_banner[] = "\tFree calls: ";
+        const char mem_stat_banner[3][50] = {"\r\nKernel memory statistics\r\n",
+                                          "\r\n\nUser memory statistics\r\n",
+                                          "\r\n\nTask space statistics\r\n"
+        };
+
+        const char malloc_banner[] = "\tObjects in use: ";
         const char mem_banner[] = "\tMemory in use: ";
+        const char frags_banner[] = "\tReserved: ";
+        int i;
         frosted_mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!mem_txt)
             return -1;
         off = 0;
 
-        strcpy(mem_txt + off, k_stat_banner);
-        off += strlen(k_stat_banner);
-        strcpy(mem_txt + off, malloc_banner);
-        off += strlen(malloc_banner);
-        off += ul_to_str(f_malloc_stats[0].malloc_calls, mem_txt + off);
-        *(mem_txt + off) = '\r'; 
-        off++;
-        *(mem_txt + off) = '\n'; 
-        off++;
-        strcpy(mem_txt + off, free_banner);
-        off += strlen(free_banner);
-        off += ul_to_str(f_malloc_stats[0].free_calls, mem_txt + off);
-        *(mem_txt + off) = '\r'; 
-        off++;
-        *(mem_txt + off) = '\n'; 
-        off++;
+        for (i = 0; i < 3; i++) {
+            unsigned long allocated = f_malloc_stats[i].malloc_calls - f_malloc_stats[i].free_calls;
+            strcpy(mem_txt + off, mem_stat_banner[i]);
+            off += strlen(mem_stat_banner[i]);
+            strcpy(mem_txt + off, malloc_banner);
+            off += strlen(malloc_banner);
+            off += ul_to_str(allocated, mem_txt + off);
+            *(mem_txt + off) = '\r'; 
+            off++;
+            *(mem_txt + off) = '\n'; 
+            off++;
 
-        strcpy(mem_txt + off, mem_banner);
-        off += strlen(mem_banner);
-        off += ul_to_str(f_malloc_stats[0].mem_allocated, mem_txt + off);
-        *(mem_txt + off) = '\r'; 
-        off++;
-        *(mem_txt + off) = '\n'; 
-        off++;
-        
-        strcpy(mem_txt + off, t_stat_banner);
-        off += strlen(k_stat_banner);
-        strcpy(mem_txt + off, malloc_banner);
-        off += strlen(malloc_banner);
-        off += ul_to_str(f_malloc_stats[1].malloc_calls, mem_txt + off);
-        *(mem_txt + off) = '\r'; 
-        off++;
-        *(mem_txt + off) = '\n'; 
-        off++;
-        strcpy(mem_txt + off, free_banner);
-        off += strlen(free_banner);
-        off += ul_to_str(f_malloc_stats[1].free_calls, mem_txt + off);
-        *(mem_txt + off) = '\r'; 
-        off++;
-        *(mem_txt + off) = '\n'; 
-        off++;
-        strcpy(mem_txt + off, mem_banner);
-        off += strlen(mem_banner);
-        off += ul_to_str(f_malloc_stats[1].mem_allocated, mem_txt + off);
-        *(mem_txt + off) = '\r'; 
-        off++;
-        *(mem_txt + off) = '\n'; 
-        off++;
-        mem_txt[off++] = '\0';
+            strcpy(mem_txt + off, mem_banner);
+            off += strlen(mem_banner);
+            off += ul_to_str(f_malloc_stats[i].mem_allocated, mem_txt + off);
+
+            *(mem_txt + off) = ' '; 
+            off++;
+            *(mem_txt + off) = 'B'; 
+            off++;
+            *(mem_txt + off) = '\r'; 
+            off++;
+            *(mem_txt + off) = '\n'; 
+            off++;
+
+            strcpy(mem_txt + off, frags_banner);
+            off += strlen(frags_banner);
+            off += ul_to_str(mem_stats_frag(i), mem_txt + off);
+            *(mem_txt + off) = ' '; 
+            off++;
+            *(mem_txt + off) = 'B'; 
+            off++;
+            *(mem_txt + off) = '\r'; 
+            off++;
+            *(mem_txt + off) = '\n'; 
+            off++;
+        }
+        if (off > 0)
+            mem_txt[off++] = '\0';
     }
     if (off == fno->off) {
         kfree(mem_txt);

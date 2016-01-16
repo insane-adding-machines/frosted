@@ -54,11 +54,13 @@ struct f_malloc_block {
 /*------------------*/
 /* Local variables  */
 /*------------------*/
-static struct f_malloc_block * malloc_entry_kernel = NULL;
-static struct f_malloc_block * malloc_entry_user = NULL;
-static struct f_malloc_block * malloc_entry_task = NULL;
+static struct f_malloc_block *malloc_entry[3] = {NULL, NULL, NULL};
 
-struct f_malloc_stats f_malloc_stats[2] = {};
+/* Globals */
+struct f_malloc_stats f_malloc_stats[3] = {};
+
+
+
 
 #define KMEM_SIZE   (CONFIG_KRAM_SIZE << 10)
 
@@ -134,12 +136,7 @@ static int block_fits(struct f_malloc_block *blk, size_t size, int flags)
 
 static struct f_malloc_block * f_find_best_fit(int flags, size_t size, struct f_malloc_block ** last)
 {
-    struct f_malloc_block *found = NULL, *blk = malloc_entry_kernel;
-
-    if (flags & MEM_USER)
-        blk = malloc_entry_user;
-    if (flags & MEM_TASK)
-        blk = malloc_entry_task;
+    struct f_malloc_block *found = NULL, *blk = malloc_entry[flags & MEM_OWNER_MASK];
 
     /* See if we can find a free block that fits */
     while (blk) /* last entry will break the loop */
@@ -274,7 +271,7 @@ void * f_malloc(int flags, size_t size)
     } 
 
     /* update stats */
-    f_malloc_stats[flags & MEM_USER ].malloc_calls++;
+    f_malloc_stats[flags & MEM_OWNER_MASK].malloc_calls++;
 
     /* Travel the linked list for first fit */
     blk = f_find_best_fit(flags, size, &last);
@@ -294,24 +291,10 @@ void * f_malloc(int flags, size_t size)
             return NULL;
 
         /* first call -> set entrypoint */
-        if (flags & MEM_USER) {
-            if (malloc_entry_user == NULL) {
-                malloc_entry_user = blk;
-                blk->prev = NULL;
-            }
-        } else if (flags & MEM_TASK) {
-            if (malloc_entry_task == NULL) {
-                malloc_entry_task = blk;
-                blk->prev = NULL;
-            }
-        } else {
-            if (malloc_entry_kernel == NULL)
-            {
-                malloc_entry_kernel = blk;
-                blk->prev = NULL;
-            }
+        if (malloc_entry[flags & MEM_OWNER_MASK] == NULL) {
+            malloc_entry[flags & MEM_OWNER_MASK] = blk;
+            blk->prev = NULL;
         }
-
         blk->magic = F_MALLOC_MAGIC;
         blk->size = size;
         blk->next = NULL; /* Newly allocated memory is always last in the linked list */
@@ -328,8 +311,8 @@ void * f_malloc(int flags, size_t size)
     blk->flags = F_IN_USE | flags;
 
     /* update stats */
-    f_malloc_stats[flags & MEM_USER].objects_allocated++;
-    f_malloc_stats[flags & MEM_USER].mem_allocated += (uint32_t)blk->size;
+    f_malloc_stats[flags & MEM_OWNER_MASK].objects_allocated++;
+    f_malloc_stats[flags & MEM_OWNER_MASK].mem_allocated += ((uint32_t)blk->size + sizeof(struct f_malloc_block));
 
     return (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
 }
@@ -354,9 +337,9 @@ void f_free(void * ptr)
 
         blk->flags &= ~F_IN_USE;
         /* stats */
-        f_malloc_stats[blk->flags & MEM_USER].free_calls++;
-        f_malloc_stats[blk->flags & MEM_USER].objects_allocated--;
-        f_malloc_stats[blk->flags & MEM_USER].mem_allocated -= (uint32_t)blk->size;
+        f_malloc_stats[blk->flags & MEM_OWNER_MASK].free_calls++;
+        f_malloc_stats[blk->flags & MEM_OWNER_MASK].objects_allocated--;
+        f_malloc_stats[blk->flags & MEM_OWNER_MASK].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
         /* Merge adjecent free blocks (consecutive blocks are always adjacent */
         if ((blk->prev) && (!in_use(blk->prev)))
         {
@@ -371,6 +354,20 @@ void f_free(void * ptr)
     } else {
         dbg_malloc("FREE ERR: %p is not a valid allocated pointer!\n", blk);
     }
+}
+
+/* Some statistic helpers */
+
+uint32_t mem_stats_frag(int pool)
+{
+    uint32_t frag_size = 0u;
+    struct f_malloc_block *blk = malloc_entry[pool];
+    while (blk) {
+        if (!in_use(blk)) 
+            frag_size += blk->size + sizeof(struct f_malloc_block); 
+        blk = blk->next;
+    }
+    return frag_size;
 }
 
 
@@ -419,7 +416,7 @@ int sys_realloc_hdlr(int addr, int size)
     
     void print_malloc_entries(void)
     {
-        struct f_malloc_block *blk = malloc_entry_kernel;
+        struct f_malloc_block *blk = malloc_entry[0];
         uint32_t i = 0;
     
         /* See if we can find a free block that fits */

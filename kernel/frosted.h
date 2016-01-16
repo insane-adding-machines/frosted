@@ -241,6 +241,7 @@ void kernel_task_init(void);
 #define kfree  f_free
 #define task_space_free f_free
 #define F_MALLOC_OVERHEAD 20
+uint32_t mem_stats_frag(int pool);
 
 #endif /* BSP_INCLUDED_H */
 
