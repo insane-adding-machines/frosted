@@ -57,7 +57,6 @@ struct f_malloc_block {
 static struct f_malloc_block * malloc_entry_kernel = NULL;
 static struct f_malloc_block * malloc_entry_user = NULL;
 static struct f_malloc_block * malloc_entry_task = NULL;
-static char * heap_end_user;
 
 struct f_malloc_stats f_malloc_stats[2] = {};
 
@@ -159,14 +158,15 @@ static struct f_malloc_block * f_find_best_fit(int flags, size_t size, struct f_
     return found;
 }
 
+static char * heap_end_kernel;
+static char * heap_stack;
+static char * heap_end_user;
+
 static void * f_sbrk(int flags, int incr)
 {
     extern char   end;           /* Set by linker */
     extern char   _stack;        /* Set by linker */
-    static char * heap_end_kernel;
     const char  * heap_stack_high = &_stack - 4096; /* Reserve 4KB for kernel stack */
-    static char * heap_stack;
-    
     char        * prev_heap_end;
 
     if (heap_end_kernel == 0) {
@@ -193,6 +193,20 @@ static void * f_sbrk(int flags, int incr)
         heap_end_kernel += incr;
     }
     return (void *) prev_heap_end;
+}
+
+static void f_compact(struct f_malloc_block *blk)
+{
+    if (!blk->prev)
+        return;
+    blk->prev->next = NULL;
+    if (blk->flags & MEM_USER) {
+        heap_end_user -= (blk->size + sizeof(struct f_malloc_block));
+    } else if (blk->flags & MEM_TASK) {
+        heap_stack += (blk->size + sizeof(struct f_malloc_block));
+    } else {
+        heap_end_kernel -= (blk->size + sizeof(struct f_malloc_block));
+    }
 }
 
 /*------------------*/
@@ -320,6 +334,7 @@ void * f_malloc(int flags, size_t size)
     return (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
 }
 
+
 void f_free(void * ptr)
 {
     struct f_malloc_block * blk;
@@ -342,9 +357,7 @@ void f_free(void * ptr)
         f_malloc_stats[blk->flags & MEM_USER].free_calls++;
         f_malloc_stats[blk->flags & MEM_USER].objects_allocated--;
         f_malloc_stats[blk->flags & MEM_USER].mem_allocated -= (uint32_t)blk->size;
-        /* Merge adjecent free blocks */
-        //XXX: How to check if actually adjacent? -> Pointer arithmetic? (sizeof(struct) + blk->size) ?
-        // Or just assume for now that they are adjacent? -> Like FreeRTOS heap4
+        /* Merge adjecent free blocks (consecutive blocks are always adjacent */
         if ((blk->prev) && (!in_use(blk->prev)))
         {
             blk = merge_blocks(blk->prev, blk);
@@ -353,6 +366,8 @@ void f_free(void * ptr)
         {
             blk = merge_blocks(blk, blk->next);
         }
+        if (!blk->next)
+            f_compact(blk);
     } else {
         dbg_malloc("FREE ERR: %p is not a valid allocated pointer!\n", blk);
     }
