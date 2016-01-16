@@ -132,7 +132,25 @@ config KFLASHMEM_SIZE
 
 config KRAMMEM_SIZE
    int "Kernel RAM size (KB)"
-   default 6
+   default 32
+
+choice
+prompt "Default size for tasks stack memory"
+default TASK_STACK_SIZE_2K 
+
+   config TASK_STACK_SIZE_1K
+   bool "Tiny stack (1024 Bytes)"
+
+   config TASK_STACK_SIZE_2K
+   bool "Small stack (2048 Bytes)"
+
+   config TASK_STACK_SIZE_4K
+   bool "Big stack (4096 Bytes)"
+
+   config TASK_STACK_SIZE_8K
+   bool "Huge stack (8192 Bytes)"
+
+endchoice
 
 menu "Subsystems"
    menu "Filesystems"

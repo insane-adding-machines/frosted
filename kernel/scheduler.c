@@ -98,8 +98,8 @@ int sys_register_handler(uint32_t n, int(*_sys_c)(uint32_t arg1, uint32_t arg2, 
 #define MAX_TASKS 16
 #define BASE_TIMESLICE (20)
 #define TIMESLICE(x) ((BASE_TIMESLICE) + ((x)->tb.prio << 2))
-#define CONFIG_TASK_STACK_SIZE ((4096 - sizeof(struct task_block)) - F_MALLOC_OVERHEAD)
-#define INIT_CONFIG_TASK_STACK_SIZE (256)
+#define SCHEDULER_STACK_SIZE ((CONFIG_TASK_STACK_SIZE - sizeof(struct task_block)) - F_MALLOC_OVERHEAD)
+#define INIT_SCHEDULER_STACK_SIZE (256)
 
 struct __attribute__((packed)) nvic_stack_frame {
     uint32_t r0;
@@ -194,7 +194,7 @@ struct __attribute__((packed)) task_block {
 
 struct __attribute__((packed)) task {
     struct task_block tb;
-    uint32_t stack[CONFIG_TASK_STACK_SIZE / 4];
+    uint32_t stack[SCHEDULER_STACK_SIZE / 4];
 };
 
 static struct task struct_task_kernel;
@@ -674,7 +674,7 @@ unsigned scheduler_stack_used(int pid)
     if (!t) 
         t = tasklist_get(&tasks_idling, pid);
     if (t)
-        return CONFIG_TASK_STACK_SIZE - ((char *)t->tb.sp - (char *)t->tb.cur_stack);
+        return SCHEDULER_STACK_SIZE - ((char *)t->tb.sp - (char *)t->tb.cur_stack);
     else return 0;
 }
 
@@ -734,7 +734,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
             pt = tasklist_get(&tasks_running, new->tb.ppid);
         if (pt) {
             /* Restore parent's stack */
-            memcpy((void *)pt->tb.cur_stack, (void *)&new->stack, CONFIG_TASK_STACK_SIZE);
+            memcpy((void *)pt->tb.cur_stack, (void *)&new->stack, SCHEDULER_STACK_SIZE);
             task_resume_vfork(pt->tb.pid);
         }
         new->tb.flags &= (~TASK_FLAG_VFORK);
@@ -742,7 +742,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
 
     
     /* stack memory */
-    sp = (((uint8_t *)(&new->stack)) + CONFIG_TASK_STACK_SIZE - NVIC_FRAME_SIZE);
+    sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
     new->tb.cur_stack = &new->stack;
 
     /* Stack frame is at the end of the stack space */
@@ -854,7 +854,7 @@ int sys_vfork_hdlr(void)
      * sp remains in the parent's pool.
      * This will be restored upon exit/exec
      */
-    memcpy(&new->stack, _cur_task->tb.cur_stack, CONFIG_TASK_STACK_SIZE);
+    memcpy(&new->stack, _cur_task->tb.cur_stack, SCHEDULER_STACK_SIZE);
     if (new != _cur_task) {
         new->tb.sp = _cur_task->tb.sp;
         new->tb.cur_stack = _cur_task->tb.cur_stack;
@@ -1045,7 +1045,7 @@ void task_terminate(int pid)
                     pt = tasklist_get(&tasks_running, t->tb.ppid);
                 /* Restore parent's stack */
                 if (pt) {
-                    memcpy((void *)pt->tb.cur_stack, (void *)&_cur_task->stack, CONFIG_TASK_STACK_SIZE);
+                    memcpy((void *)pt->tb.cur_stack, (void *)&_cur_task->stack, SCHEDULER_STACK_SIZE);
                     t->tb.flags &= ~TASK_FLAG_VFORK;
                 }
                 task_resume_vfork(t->tb.ppid);

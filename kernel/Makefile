@@ -21,6 +21,23 @@ ifeq ($(ARCH_STM32F4),y)
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F4
 endif
+
+
+###### STACK SIZE #######
+ifeq ($(TASK_STACK_SIZE_1K),y)
+    TASK_STACK_SIZE=1024
+endif
+ifeq ($(TASK_STACK_SIZE_2K),y)
+    TASK_STACK_SIZE=2048
+endif
+ifeq ($(TASK_STACK_SIZE_4K),y)
+    TASK_STACK_SIZE=4096
+endif
+ifeq ($(TASK_STACK_SIZE_8K),y)
+    TASK_STACK_SIZE=8192
+endif
+#########################
+
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
@@ -36,6 +53,7 @@ CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD) -D$(ARCH)
 CFLAGS+=-DKLOG_LEVEL=6
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
+CFLAGS+=-DCONFIG_TASK_STACK_SIZE=$(TASK_STACK_SIZE)
 #Include paths
 CFLAGS+=-I. -I../include -I.. -Ilibopencm3/include/libopencm3 -Ilibopencm3/include
 #Freestanding options
