@@ -56,6 +56,7 @@ struct f_malloc_block {
 /*------------------*/
 static struct f_malloc_block * malloc_entry_kernel = NULL;
 static struct f_malloc_block * malloc_entry_user = NULL;
+static struct f_malloc_block * malloc_entry_task = NULL;
 static char * heap_end_user;
 
 struct f_malloc_stats f_malloc_stats[2] = {};
@@ -67,12 +68,16 @@ struct f_malloc_stats f_malloc_stats[2] = {};
 /*------------------*/
 
 /* merges two blocks
- *  first: must have lowest address 
- *  second: must have highest address 
  *  returns: pointer to the merged block
  */
 static struct f_malloc_block * merge_blocks(struct f_malloc_block * first, struct f_malloc_block * second)
 {
+    struct f_malloc_block *temp;
+    if (first > second) {
+        temp = first;
+        first = second;
+        second = temp;
+    }
     /* new size = sum of sizes + overhead */
     first->size = first->size + sizeof(struct f_malloc_block) + second->size;
     /* first block's next pointer should now point the second blocks next pointer */
@@ -112,19 +117,37 @@ static struct f_malloc_block * split_block(struct f_malloc_block * blk, size_t s
     return free_blk;
 }
 
-static struct f_malloc_block * f_find_best_fit(int user, size_t size, struct f_malloc_block ** last)
+static int block_fits(struct f_malloc_block *blk, size_t size, int flags)
+{
+    uint32_t baddr = (uint32_t)blk;
+    uint32_t reqsize = size + sizeof(struct f_malloc_block);
+    if (!blk)
+        return 0;
+
+    if (in_use(blk))
+        return 0;
+
+    if (size > blk->size)
+        return 0;
+    
+    return 1;
+}
+
+static struct f_malloc_block * f_find_best_fit(int flags, size_t size, struct f_malloc_block ** last)
 {
     struct f_malloc_block *found = NULL, *blk = malloc_entry_kernel;
 
-    if (user)
+    if (flags & MEM_USER)
         blk = malloc_entry_user;
+    if (flags & MEM_TASK)
+        blk = malloc_entry_task;
 
     /* See if we can find a free block that fits */
     while (blk) /* last entry will break the loop */
     {
         *last = blk; /* last travelled node */
 
-        if ((!in_use(blk)) && (blk->size >= size))
+        if (block_fits(blk, size, flags))
         {
             /* found a fit - is it better than a possible previously found block? */
             if ((!found) || (blk->size < found->size))
@@ -136,22 +159,33 @@ static struct f_malloc_block * f_find_best_fit(int user, size_t size, struct f_m
     return found;
 }
 
-static void * f_sbrk(int user, int incr)
+static void * f_sbrk(int flags, int incr)
 {
     extern char   end;           /* Set by linker */
+    extern char   _stack;        /* Set by linker */
     static char * heap_end_kernel;
-    char *        prev_heap_end;
+    const char  * heap_stack_high = &_stack - 4096; /* Reserve 4KB for kernel stack */
+    static char * heap_stack;
+    
+    char        * prev_heap_end;
 
     if (heap_end_kernel == 0) {
         heap_end_kernel = &end;
-        heap_end_user = heap_end_kernel + KMEM_SIZE;
+        heap_end_user = heap_stack_high;
+        heap_stack = heap_stack_high; 
     }
 
-    if (user) {
+    if (flags & MEM_USER) {
         if (!heap_end_user)
             return (void *)(0 - 1);
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
+    }
+    else if (flags & MEM_TASK) {
+        if ((heap_stack - incr) < heap_end_kernel)
+            return (void *)(0 - 1);
+        heap_stack -= incr;
+        prev_heap_end = heap_stack;
     } else {
         if ((heap_end_kernel + incr) > ((&end) + KMEM_SIZE))
             return (void*)(0 - 1);
@@ -193,7 +227,7 @@ void* f_realloc(int flags, void* ptr, size_t size)
         /* copy over old block, if valid pointer */
         size_t new_size, copy_size;
         if ((blk->flags & F_IN_USE) == 0) {
-            task_segfault(ptr, 0, MEMFAULT_ACCESS);
+            task_segfault((uint32_t)ptr, 0, MEMFAULT_ACCESS);
         }
         if (size > blk->size)
         {
@@ -219,21 +253,17 @@ realloc_free:
 void * f_malloc(int flags, size_t size)
 {
     struct f_malloc_block * blk = NULL, *last = NULL;
-    int user = 0;
 
-    if (flags & MEM_USER) {
-        user = 1;
-    }
 
     while((size % 4) != 0) {
         size++;
     } 
 
     /* update stats */
-    f_malloc_stats[flags & MEM_USER].malloc_calls++;
+    f_malloc_stats[flags & MEM_USER ].malloc_calls++;
 
     /* Travel the linked list for first fit */
-    blk = f_find_best_fit(user, size, &last);
+    blk = f_find_best_fit(flags, size, &last);
     if (blk)
     {
         dbg_malloc("Found best fit!\n");
@@ -245,22 +275,28 @@ void * f_malloc(int flags, size_t size)
         }
     } else {
         /* No first fit found: ask for new memory */
-        blk = (struct f_malloc_block *)f_sbrk(user, size + sizeof(struct f_malloc_block));  // can OS give us more memory?
+        blk = (struct f_malloc_block *)f_sbrk(flags, size + sizeof(struct f_malloc_block));  // can OS give us more memory?
         if ((long)blk == -1)
             return NULL;
 
         /* first call -> set entrypoint */
-        if ((user) && (malloc_entry_user == NULL))
-        {
-            malloc_entry_user = blk;
-            blk->prev = NULL;
+        if (flags & MEM_USER) {
+            if (malloc_entry_user == NULL) {
+                malloc_entry_user = blk;
+                blk->prev = NULL;
+            }
+        } else if (flags & MEM_TASK) {
+            if (malloc_entry_task == NULL) {
+                malloc_entry_task = blk;
+                blk->prev = NULL;
+            }
+        } else {
+            if (malloc_entry_kernel == NULL)
+            {
+                malloc_entry_kernel = blk;
+                blk->prev = NULL;
+            }
         }
-        if ((!user) && (malloc_entry_kernel == NULL))
-        {
-            malloc_entry_kernel = blk;
-            blk->prev = NULL;
-        }
-
 
         blk->magic = F_MALLOC_MAGIC;
         blk->size = size;
@@ -270,8 +306,8 @@ void * f_malloc(int flags, size_t size)
         {
             // assert(last->next == NULL);
             last->next = blk;
-            blk->prev = last;
         }
+        blk->prev = last;
     }
 
     /* destination found, fill in  meta-data */

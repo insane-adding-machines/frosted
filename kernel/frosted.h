@@ -240,6 +240,7 @@ void kernel_task_init(void);
 #define krealloc(x,y) f_realloc(MEM_KERNEL,x,y)
 #define kfree  f_free
 #define task_space_free f_free
+#define F_MALLOC_OVERHEAD 20
 
 #endif /* BSP_INCLUDED_H */
 
