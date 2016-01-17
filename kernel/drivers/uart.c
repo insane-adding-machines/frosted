@@ -14,6 +14,7 @@
 #endif
 #ifdef STM32F4
 #   include "libopencm3/stm32/usart.h"
+#   include "libopencm3/stm32/rcc.h"
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
