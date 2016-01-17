@@ -2,13 +2,16 @@
 #include "device.h"
 #include <stdint.h>
 #include "cirbuf.h"
+#include "stm32f4_dma.h"
 #include "spi.h"
+#include <libopencm3/cm3/nvic.h>
 
 #ifdef LM3S
 #   include "libopencm3/lm3s/spi.h"
 #   define CLOCK_ENABLE(C) 
 #endif
 #ifdef STM32F4
+#   include <libopencm3/stm32/rcc.h>
 #   include <libopencm3/stm32/dma.h>
 #   include "libopencm3/stm32/spi.h"
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
@@ -23,10 +26,8 @@ struct dev_spi {
     uint32_t base;
     spi_completion completion_fn;
     void * completion_arg;
-    uint32_t dma_base;
-    uint32_t tx_dma_stream;
-    uint32_t rx_dma_stream;
-    uint32_t rx_dma_irq;
+    const struct dma_setup * tx_dma_setup;
+    const struct dma_setup * rx_dma_setup;
 };
 
 #define MAX_SPIS 6
@@ -41,7 +42,7 @@ static struct module mod_devspi = {
 
 static void spi1_rx_dma_complete(struct dev_spi *spi)
 {
-    dma_disable_transfer_complete_interrupt(spi->dma_base, spi->rx_dma_stream);
+    dma_disable_transfer_complete_interrupt(spi->rx_dma_setup->base, spi->rx_dma_setup->stream);
     spi_disable(spi->base);
     tasklet_add(spi->completion_fn, spi->completion_arg);
     frosted_mutex_unlock(spi->dev->mutex);
@@ -55,28 +56,6 @@ void dma2_stream2_isr()
     spi1_rx_dma_complete(&DEV_SPI[0]);  
 }
 #endif
-
-
-
-static void spi_init_dma(uint32_t base, uint32_t dma, uint32_t stream, uint32_t dirn, uint32_t prio, uint32_t channel)
-{
-    dma_stream_reset(dma, stream);
-
-    dma_set_transfer_mode(dma, stream, dirn);
-    dma_set_priority(dma, stream, prio);
-    
-    dma_set_peripheral_address(dma, stream, (uint32_t) &SPI_DR(base));
-    dma_disable_peripheral_increment_mode(dma, stream);
-    dma_set_peripheral_size(dma, stream, DMA_SxCR_PSIZE_8BIT);
-    
-    dma_enable_memory_increment_mode(dma, stream);
-    dma_set_memory_size(dma, stream, DMA_SxCR_MSIZE_8BIT);
-    
-    dma_enable_direct_mode(dma, stream);
-    dma_set_dma_flow_control(dma, stream);
-
-    dma_channel_select(dma,stream,channel);
-}
 
 int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completion_arg, const char *obuf, char *ibuf, unsigned int len)
 {
@@ -94,19 +73,12 @@ int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completi
     spi->completion_fn = completion_fn;
     spi->completion_arg = completion_arg;
 
-    spi_init_dma(spi->base, spi->dma_base, spi->tx_dma_stream, DMA_SxCR_DIR_MEM_TO_PERIPHERAL, DMA_SxCR_PL_MEDIUM, DMA_SxCR_CHSEL_3);
-    dma_set_memory_address(spi->dma_base, spi->tx_dma_stream, (uint32_t)obuf);
-    dma_set_number_of_data(spi->dma_base, spi->tx_dma_stream, len);
-    dma_enable_stream(spi->dma_base, spi->tx_dma_stream);
+    init_dma(spi->tx_dma_setup, (uint32_t)obuf, len);
+    init_dma(spi->rx_dma_setup, (uint32_t)ibuf, len);
 
-    spi_init_dma(spi->base,spi->dma_base,spi->rx_dma_stream,DMA_SxCR_DIR_PERIPHERAL_TO_MEM, DMA_SxCR_PL_VERY_HIGH, DMA_SxCR_CHSEL_3);
-    dma_enable_transfer_complete_interrupt(spi->dma_base, spi->rx_dma_stream);
-    nvic_set_priority(spi->rx_dma_irq, 1);
-    nvic_enable_irq(spi->rx_dma_irq);
-
-    dma_set_memory_address(spi->dma_base, spi->rx_dma_stream, (uint32_t)ibuf);
-    dma_set_number_of_data(spi->dma_base, spi->rx_dma_stream, len);
-    dma_enable_stream(spi->dma_base, spi->rx_dma_stream);
+    dma_enable_transfer_complete_interrupt(spi->rx_dma_setup->base, spi->rx_dma_setup->stream);
+    nvic_set_priority(spi->rx_dma_setup->base, 1);
+    nvic_enable_irq(spi->rx_dma_setup->irq);
 
     spi_enable(spi->base);
 
@@ -122,10 +94,9 @@ static void spi_fno_init(struct fnode *dev, uint32_t n, const struct spi_addr * 
     struct dev_spi *s = &DEV_SPI[n];
     s->dev = device_fno_init(&mod_devspi, addr->name, dev, FL_RDWR, s);
     s->base = addr->base;
-    s->dma_base = addr->dma_base;
-    s->tx_dma_stream = addr->tx_dma_stream;
-    s->rx_dma_stream = addr->rx_dma_stream;
-    s->rx_dma_irq = addr->rx_dma_irq;
+
+    s->tx_dma_setup = &addr->tx_dma;
+    s->rx_dma_setup = &addr->rx_dma;
 }
 
 void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spis)

@@ -6,6 +6,7 @@
 #include "lsm303dlhc_ioctl.h"
 #include "gpio.h"
 #include "stm32f4_exti.h"
+#include "stm32f4_dma.h"
 #include "i2c.h"
 
 typedef enum

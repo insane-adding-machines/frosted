@@ -6,6 +6,7 @@
 #include "l3gd20_ioctl.h"
 #include "gpio.h"
 #include "stm32f4_exti.h"
+#include "stm32f4_dma.h"
 #include "spi.h"
 
 typedef enum

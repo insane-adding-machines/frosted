@@ -2,8 +2,11 @@
 #include "device.h"
 #include <stdint.h>
 #include "ioctl.h"
+#include "stm32f4_dma.h"
 #include "adc.h"
 #ifdef STM32F4
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/dma.h>
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
@@ -18,6 +21,7 @@ struct dev_adc{
     uint8_t num_channels;
     int conversion_done;
     uint16_t samples[NUM_ADC_CHANNELS];
+    const struct dma_setup * dma_setup;
 };
 
 #define MAX_ADCS 1
@@ -104,34 +108,15 @@ void adc_init(struct fnode * dev,  const struct adc_addr adc_addrs[], int num_ad
         CLOCK_ENABLE(adc_addrs[i].rcc);
         CLOCK_ENABLE(adc_addrs[i].dma_rcc);
 
-        dma_stream_reset(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
+        init_dma(&adc_addrs[i].dma, , (uint32_t) DEV_ADC[i].samples, adc_addrs[i].num_channels);
 
-        dma_set_transfer_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_DIR_PERIPHERAL_TO_MEM);
-        dma_set_priority(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_PL_HIGH);
+        dma_enable_circular_mode(adc_addrs[i].dma.base, adc_addrs[i].dma.stream);
 
-        dma_set_peripheral_address(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, (uint32_t) &ADC_DR(adc_addrs[i].base)); //   (adc_addrs[i].base) + 0x4C);
-        dma_disable_peripheral_increment_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-        dma_set_peripheral_size(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_PSIZE_16BIT);
+        dma_enable_transfer_complete_interrupt(adc_addrs[i].dma.base, adc_addrs[i].dma.stream);
+        nvic_set_priority(adc_addrs[i].dma.irq, 1);
+        nvic_enable_irq(adc_addrs[i].dma.irq);
 
-        dma_enable_memory_increment_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-        dma_set_memory_size(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, DMA_SxCR_MSIZE_16BIT);
-
-        dma_enable_direct_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-        dma_set_dma_flow_control(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-
-
-        dma_enable_transfer_complete_interrupt(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-        dma_enable_circular_mode(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-        dma_set_memory_address(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, (uint32_t) DEV_ADC[i].samples);
-
-        dma_set_number_of_data(adc_addrs[i].dma_base, adc_addrs[i].dma_stream, adc_addrs[i].num_channels);
-        adc_set_resolution(adc_addrs[i].dma_base, ADC_CR1_RES_12BIT);
-
-        nvic_set_priority(adc_addrs[i].dma_irq, 1);
-        nvic_enable_irq(adc_addrs[i].dma_irq);
-        dma_enable_stream(adc_addrs[i].dma_base, adc_addrs[i].dma_stream);
-
-
+        adc_set_resolution(adc_addrs[i].dma.base, ADC_CR1_RES_12BIT);
         adc_off(adc_addrs[i].base);
         adc_disable_external_trigger_regular(adc_addrs[i].base);
         adc_set_sample_time_on_all_channels(adc_addrs[i].base, ADC_SMPR_SMP_480CYC);

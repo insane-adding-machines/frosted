@@ -2,10 +2,14 @@
 #include "device.h"
 #include <stdint.h>
 #include "cirbuf.h"
+#include "stm32f4_dma.h"
 #include "i2c.h"
+#include <libopencm3/cm3/nvic.h>
 
 #include <libopencm3/stm32/dma.h>
 #include "libopencm3/stm32/i2c.h"
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
 
 typedef enum
 {
@@ -44,11 +48,9 @@ struct dev_i2c {
     uint32_t er_irq;
     uint8_t slv_address;
     uint8_t slv_register;
-    uint32_t dma_base;
-    uint32_t tx_dma_stream;
-    uint32_t tx_dma_irq;
-    uint32_t rx_dma_stream;
-    uint32_t rx_dma_irq;
+    const struct dma_setup * tx_dma_setup;
+    const struct dma_setup * rx_dma_setup;
+
     uint8_t dirn;
     I2C_STATE_t state;
 };
@@ -276,26 +278,6 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
 
 }
 
-static void i2c_init_dma(uint32_t base, uint32_t dma, uint32_t stream, uint32_t dirn, uint32_t prio, uint32_t channel)
-{
-    dma_stream_reset(dma, stream);
-
-    dma_set_transfer_mode(dma, stream, dirn);
-    dma_set_priority(dma, stream, prio);
-    
-    dma_set_peripheral_address(dma, stream, (uint32_t) &I2C_DR(base));
-    dma_disable_peripheral_increment_mode(dma, stream);
-    dma_set_peripheral_size(dma, stream, DMA_SxCR_PSIZE_8BIT);
-    
-    dma_enable_memory_increment_mode(dma, stream);
-    dma_set_memory_size(dma, stream, DMA_SxCR_MSIZE_8BIT);
-    
-    dma_enable_direct_mode(dma, stream);
-    dma_set_dma_flow_control(dma, stream);
-
-    dma_channel_select(dma,stream,channel);
-}
-
 int i2c_read(struct fnode *fno, i2c_completion completion_fn, void * completion_arg, uint8_t address, uint8_t  slv_register, uint8_t *buf, uint32_t len)
 {
     struct dev_i2c *i2c;
@@ -315,14 +297,10 @@ int i2c_read(struct fnode *fno, i2c_completion completion_fn, void * completion_
     i2c->completion_fn = completion_fn;
     i2c->completion_arg = completion_arg;
     
-    i2c_init_dma(i2c->base, i2c->dma_base, i2c->rx_dma_stream, DMA_SxCR_DIR_PERIPHERAL_TO_MEM, DMA_SxCR_PL_VERY_HIGH, DMA_SxCR_CHSEL_1);
-    dma_enable_transfer_complete_interrupt(i2c->dma_base, i2c->rx_dma_stream);
-    nvic_set_priority(i2c->rx_dma_irq, 1);
-    nvic_enable_irq(i2c->rx_dma_irq);
-
-    dma_set_memory_address(i2c->dma_base, i2c->rx_dma_stream, (uint32_t)buf);
-    dma_set_number_of_data(i2c->dma_base, i2c->rx_dma_stream, len);
-    dma_enable_stream(i2c->dma_base, i2c->rx_dma_stream);
+    init_dma(i2c->rx_dma_setup, (uint32_t)buf, len);
+    dma_enable_transfer_complete_interrupt(i2c->rx_dma_setup->base, i2c->rx_dma_setup->stream);
+    nvic_set_priority(i2c->rx_dma_setup->irq, 1);
+    nvic_enable_irq(i2c->rx_dma_setup->irq);
 
     state_machine(i2c, I2C_STIM_START);
     return 0;
@@ -347,14 +325,10 @@ int i2c_write(struct fnode *fno, i2c_completion completion_fn, void * completion
     i2c->completion_fn = completion_fn;
     i2c->completion_arg = completion_arg;
 
-    i2c_init_dma(i2c->base, i2c->dma_base, i2c->tx_dma_stream, DMA_SxCR_DIR_MEM_TO_PERIPHERAL, DMA_SxCR_PL_HIGH, DMA_SxCR_CHSEL_1);
-    dma_enable_transfer_complete_interrupt(i2c->dma_base, i2c->tx_dma_stream);
-    nvic_set_priority(i2c->tx_dma_irq, 1);
-    nvic_enable_irq(i2c->tx_dma_irq);
-
-    dma_set_memory_address(i2c->dma_base, i2c->tx_dma_stream, (uint32_t)buf);
-    dma_set_number_of_data(i2c->dma_base, i2c->tx_dma_stream, len);
-    dma_enable_stream(i2c->dma_base, i2c->tx_dma_stream);
+    init_dma(i2c->tx_dma_setup, (uint32_t)buf, len);
+    dma_enable_transfer_complete_interrupt(i2c->tx_dma_setup->base, i2c->tx_dma_setup->stream);
+    nvic_set_priority(i2c->tx_dma_setup->irq, 1);
+    nvic_enable_irq(i2c->tx_dma_setup->irq);
 
     state_machine(i2c, I2C_STIM_START);
     return 0;
@@ -367,15 +341,10 @@ static void i2c_fno_init(struct fnode *dev, uint32_t n, const struct i2c_addr * 
     i->base = addr->base;
     i->ev_irq = addr->ev_irq;
     i->er_irq = addr->er_irq;
-    i->dma_base = addr->dma_base;
-    i->tx_dma_stream = addr->tx_dma_stream;
-    i->tx_dma_irq = addr->tx_dma_irq;
-    i->rx_dma_stream = addr->rx_dma_stream;
-    i->rx_dma_irq = addr->rx_dma_irq;
+    i->tx_dma_setup = &addr->tx_dma;
+    i->rx_dma_setup = &addr->rx_dma;
     i->state = I2C_STATE_READY;
 }
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
 
 void i2c_init(struct fnode *dev, const struct i2c_addr i2c_addrs[], int num_i2cs)
 {

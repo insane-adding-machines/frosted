@@ -18,10 +18,13 @@ struct spi_addr {
 
     const char * name;
 
-    uint32_t dma_base;
+    struct dma_setup tx_dma;
+    struct dma_setup rx_dma;
+
+//    uint32_t dma_base;
     uint32_t dma_rcc;
-    uint32_t tx_dma_stream;
-    uint32_t rx_dma_stream;
+//    uint32_t tx_dma_stream;
+//    uint32_t rx_dma_stream;
     uint32_t rx_dma_irq;
 };
 

@@ -38,6 +38,10 @@
 #include "stm32f4_exti.h"
 #endif
 
+#ifdef CONFIG_DEVSTM32F4DMA
+#include "stm32f4_dma.h"
+#endif
+
 #ifdef CONFIG_DEVSPI
 #include <libopencm3/stm32/spi.h>
 #include "spi.h"
@@ -203,12 +207,30 @@ static const struct spi_addr spi_addrs[] = {
             /* End move */
             
             .name = "spi1",
-            .dma_base = DMA2,
+            .tx_dma = {
+                .base = DMA2,
+                .stream = DMA_STREAM3,
+                .channel = DMA_SxCR_CHSEL_3,
+                .psize =  DMA_SxCR_PSIZE_8BIT,
+                .msize = DMA_SxCR_MSIZE_8BIT,
+                .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+                .prio = DMA_SxCR_PL_MEDIUM,
+                .paddr =  (uint32_t) &SPI_DR(SPI1),
+                .irq = 0,
+            },
+            .rx_dma = {
+                .base = DMA2,
+                .stream = DMA_STREAM2,
+                .channel = DMA_SxCR_CHSEL_3,
+                .psize =  DMA_SxCR_PSIZE_8BIT,
+                .msize = DMA_SxCR_MSIZE_8BIT,
+                .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+                .prio = DMA_SxCR_PL_VERY_HIGH,
+                .paddr =  (uint32_t) &SPI_DR(SPI1),
+                .irq = NVIC_DMA2_STREAM2_IRQ,
+            },
+           
             .dma_rcc = RCC_DMA2,
-
-            .tx_dma_stream = DMA_STREAM3,
-            .rx_dma_stream = DMA_STREAM2,
-            .rx_dma_irq = NVIC_DMA2_STREAM2_IRQ,
             
         },
 #endif
@@ -238,19 +260,37 @@ static const struct i2c_addr i2c_addrs[] = {
             .ev_irq = NVIC_I2C1_EV_IRQ,
             .er_irq = NVIC_I2C1_ER_IRQ,
             .rcc = RCC_I2C1,
-            .name = "i2c1",
+            
             .clock_f = I2C_CR2_FREQ_36MHZ,
             .fast_mode = 1,
             .rise_time = 11,
             .bus_clk_frequency = 10,
 
-            .dma_base = DMA1,
+            .name = "i2c1",
+            .tx_dma = {
+                .base = DMA1,
+                .stream = DMA_STREAM6,
+                .channel = DMA_SxCR_CHSEL_1,
+                .psize =  DMA_SxCR_PSIZE_8BIT,
+                .msize = DMA_SxCR_MSIZE_8BIT,
+                .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+                .prio = DMA_SxCR_PL_MEDIUM,
+                .paddr =  (uint32_t) &I2C_DR(I2C1),
+                .irq = NVIC_DMA1_STREAM6_IRQ,
+            },
+            .rx_dma = {
+                .base = DMA1,
+                .stream = DMA_STREAM0,
+                .channel = DMA_SxCR_CHSEL_1,
+                .psize =  DMA_SxCR_PSIZE_8BIT,
+                .msize = DMA_SxCR_MSIZE_8BIT,
+                .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+                .prio = DMA_SxCR_PL_VERY_HIGH,
+                .paddr =  (uint32_t) &I2C_DR(I2C1),
+                .irq = NVIC_DMA1_STREAM0_IRQ,
+            },
+                    
             .dma_rcc = RCC_DMA1,
-
-            .tx_dma_stream = DMA_STREAM6,
-            .tx_dma_irq = NVIC_DMA1_STREAM6_IRQ,
-            .rx_dma_stream = DMA_STREAM0,
-            .rx_dma_irq = NVIC_DMA1_STREAM0_IRQ,
         },
 #endif
 };
@@ -290,10 +330,18 @@ static const struct adc_addr adc_addrs[] = {
             .channel_array = {1, 8, 9},     /*ADC_IN1,8,9 on PA1, PB0, PB1 */
             .num_channels = 3,
             /* Use DMA to fetch sample data */
-            .dma_base = DMA2,
+            .dma = {
+                .base = DMA2,
+                .stream = DMA_STREAM0,
+                .channel = DMA_SxCR_CHSEL_1,
+                .psize =  DMA_SxCR_PSIZE_16BIT,
+                .msize = DMA_SxCR_MSIZE_16BIT,
+                .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+                .prio = DMA_SxCR_PL_HIGH,
+                .paddr =  (uint32_t) &ADC_DR(ADC1),
+                .irq = NVIC_DMA2_STREAM0_IRQ,
+            },
             .dma_rcc = RCC_DMA2,
-            .dma_stream = DMA_STREAM0,
-            .dma_irq = NVIC_DMA2_STREAM0_IRQ,
         }
 };
 #define NUM_ADC (sizeof(adc_addrs)/sizeof(struct adc_addr))

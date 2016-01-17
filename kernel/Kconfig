@@ -63,6 +63,9 @@ config ARCH_STM32F411
 config ARCH_STM32F429
     bool
 
+config DEVSTM32F4DMA
+    bool
+
 #Temp hack to allow '407 & '411 clock setups to coexist
 choice
     prompt "Clock Speed"
@@ -230,11 +233,13 @@ menu "Subsystems"
        menuconfig DEVADC
        bool "Generic ADC driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       select DEVSTM32F4DMA
        default n
 
        menuconfig DEVF4I2C
        bool "STM32F4 I2C driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       select DEVSTM32F4DMA
        default n
 
        if DEVF4I2C
@@ -257,6 +262,7 @@ menu "Subsystems"
        menuconfig DEVSPI
        bool "Generic SPI driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       select DEVSTM32F4DMA
        default n
 
        if DEVSPI

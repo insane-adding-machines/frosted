@@ -15,12 +15,9 @@ struct i2c_addr {
     uint32_t rise_time;
     uint32_t bus_clk_frequency;
     uint32_t clock_f;
-    uint32_t dma_base;
     uint32_t dma_rcc;
-    uint32_t tx_dma_stream;
-    uint32_t tx_dma_irq;
-    uint32_t rx_dma_stream;
-    uint32_t rx_dma_irq;
+    struct dma_setup tx_dma;
+    struct dma_setup rx_dma;
 };
 
 typedef void (* i2c_completion)(void * arg);
