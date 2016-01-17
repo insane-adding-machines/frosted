@@ -3,6 +3,8 @@
 #include "libopencmsis/core_cm3.h"
 #include "stm32/tools.h"
 
+#define MPUSIZE_1K      (0x09 << 1)
+#define MPUSIZE_2K      (0x0a << 1)
 #define MPUSIZE_4K      (0x0b << 1)
 #define MPUSIZE_8K      (0x0c << 1)
 #define MPUSIZE_16K     (0x0d << 1)
@@ -38,6 +40,10 @@
 uint32_t mpu_size(uint32_t size)
 {
     switch(size) {
+        case (1 * 1024):
+            return MPUSIZE_1K;
+        case (2 * 1024):
+            return MPUSIZE_2K;
         case (4 * 1024):
             return MPUSIZE_4K;
         case (8 * 1024):
@@ -86,6 +92,14 @@ int mpu_enable(void)
     return 0;
 }
 
+int mpu_disable(void)
+{
+    if (!mpu_bits)
+        return -1;
+    MPU_CTRL = 0;
+    return 0;
+}
+
 static void mpu_select(uint32_t region)
 {
     MPU_RNR = region;
@@ -120,12 +134,13 @@ void mpu_init(void)
     /* Read-only sectors */
     mpu_setaddr(2, FLASH_START);    /* Internal Flash           0x00000000 (512M) */
     mpu_setattr(2, MPUSIZE_512M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
-    mpu_setaddr(3, EXTFLASH_START); /* External Flash           0x80000000 (512M) */
-    mpu_setattr(3, MPUSIZE_512M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
 
     /* System (No user access) */
-    //mpu_setaddr(4, RAM_START);      /* Kernel memory            0x20000000 (CONFIG_KRAM_SIZE KB) */
-    //mpu_setattr(4, mpu_size(CONFIG_KRAM_SIZE << 10) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_UNO);
+    mpu_setaddr(3, RAM_START);      /* Kernel memory            0x20000000 (CONFIG_KRAM_SIZE KB) */
+    mpu_setattr(3, mpu_size(CONFIG_KRAM_SIZE << 10) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_UNO);
+
+    /* Priority 4 reserved for task stack exception in kernel memory */
+
     mpu_setaddr(5, DEV_START);      /* Peripherals              0x40000000 (512MB)*/
     mpu_setattr(5, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
     mpu_setaddr(6, EXTDEV_START);   /* External Peripherals     0xA0000000 (1GB)   */
@@ -137,3 +152,13 @@ void mpu_init(void)
     mpu_enable();
     irq_on();
 }
+
+void mpu_task_on(void *stack)
+{
+    mpu_disable();
+    mpu_setaddr(4, stack + 20);
+    mpu_setattr(4, mpu_size(CONFIG_TASK_STACK_SIZE) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
+    mpu_enable();
+}
+
+

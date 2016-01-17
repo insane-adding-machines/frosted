@@ -264,6 +264,15 @@ static void task_destroy(struct task *t)
     }
     tasklist_del(&tasks_idling, t->tb.pid);
     kfree(t->tb.filedesc);
+    if (t->tb.arg) {
+        char **arg = (char **)(t->tb.arg);
+        i = 0;
+        while(arg[i]) {
+            f_free(arg[i]);
+            i++;
+        }
+    }
+    f_free(t->tb.arg);
     task_space_free(t);
     number_of_tasks--;
 }
@@ -716,6 +725,35 @@ void task_end(void)
 
 static void task_resume_vfork(int pid);
 
+static void *task_pass_args(void *_args)
+{
+    char **args = (char **)_args;
+    char **new = NULL;
+    int i = 0, n = 0;
+    if (!_args)
+        return NULL;
+    while(args[n] != NULL) {
+        n++;
+    }
+    new = f_malloc(MEM_USER, (n + 1) * (sizeof(char*)));
+
+    if (!new)
+        return NULL;
+
+    new[n] = NULL;
+
+    for(i = 0; i < n; i++) {
+        size_t l = strlen(args[i]);
+        if (l > 0) { 
+            new[i] = f_malloc(MEM_USER, l + 1);
+            if (!new[i])
+                break;
+            memcpy(new[i], args[i], l + 1);
+        }
+    }
+    return new;
+}
+
 static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio, uint32_t r9val)
 {
     struct nvic_stack_frame *nvic_frame;
@@ -723,7 +761,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     uint8_t *sp;
 
     new->tb.start = init;
-    new->tb.arg = arg;
+    new->tb.arg = task_pass_args(arg);
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.sighdlr = NULL;
@@ -748,8 +786,8 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     /* Stack frame is at the end of the stack space */
     nvic_frame = (struct nvic_stack_frame *) sp;
     memset(nvic_frame, 0, NVIC_FRAME_SIZE);
-    nvic_frame->r0 = (uint32_t) arg;
-    nvic_frame->pc = (uint32_t) init;
+    nvic_frame->r0 = (uint32_t) new->tb.arg;
+    nvic_frame->pc = (uint32_t) new->tb.start;
     nvic_frame->lr = (uint32_t) task_end;
     nvic_frame->psr = 0x01000000u;
     sp -= EXTRA_FRAME_SIZE;
@@ -802,6 +840,7 @@ int scheduler_exec(void (*init)(void *), void *args)
     //asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp + EXTRA_FRAME_SIZE));
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
     _cur_task->tb.state = TASK_RUNNING;
+    mpu_task_on((void *)(((uint32_t)_cur_task->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
     return 0;
 }
 
@@ -947,6 +986,7 @@ void __naked  pend_sv_handler(void)
         restore_kernel_context();
         runnable = RUN_KERNEL;
     } else {
+        mpu_task_on((void *)(((uint32_t)_cur_task->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
         asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
         asm volatile ("isb");
         asm volatile ("msr CONTROL, %0" :: "r" (0x01));
@@ -1270,6 +1310,7 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
         restore_kernel_context();
         runnable = RUN_KERNEL;
     } else {
+        mpu_task_on((void *)(((uint32_t)_cur_task->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
         asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
         asm volatile ("isb");
         asm volatile ("msr CONTROL, %0" :: "r" (0x01));

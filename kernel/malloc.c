@@ -163,13 +163,13 @@ static void * f_sbrk(int flags, int incr)
 {
     extern char   end;           /* Set by linker */
     extern char   _stack;        /* Set by linker */
-    const char  * heap_stack_high = &_stack - 4096; /* Reserve 4KB for kernel stack */
+    const char  * heap_stack_high = &_stack;
     char        * prev_heap_end;
 
     if (heap_end_kernel == 0) {
         heap_end_kernel = &end;
         heap_end_user = heap_stack_high;
-        heap_stack = heap_stack_high; 
+        heap_stack = heap_stack_high - 4096; 
     }
 
     if (flags & MEM_USER) {

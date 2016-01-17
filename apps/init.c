@@ -200,10 +200,13 @@ void init(void *arg)
 {
     volatile int i = (int)arg;
     volatile int pid;
+    const char arg0_fresh[] = "fresh";
+    const char arg0_idling[] = "idling";
+    const char *arg_fresh[2]={ arg0_fresh, NULL };
+    const char *arg_idling[2]={ arg0_idling, NULL };
     int status;
     int fd, sd;
     uint32_t *temp;
-    int testval = 42;
     /* c-lib and init test */
     temp = (uint32_t *)malloc(32);
     free(temp);
@@ -221,27 +224,13 @@ void init(void *arg)
 
     /* Thread create test */
     if (vfork() == 0)
-        execb(idling, &testval);
-    //thread_create(idling, &testval, 1);
+        execb(idling, &arg_idling);
  
 #ifdef CONFIG_FRESH
     if (vfork() == 0)
-        execb(fresh, &testval);
-     // thread_create(fresh, &testval, 1);
+        execb(fresh, &arg_fresh);
       
 #endif
-
-#ifdef CONFIG_PRODCONS
-    if (thread_create(prod, &testval, 1) < 0)
-        IDLE();
-    if (thread_create(cons, &testval, 1) < 0)
-        IDLE();
-#endif
-/*
-    if (vfork() == 0) {
-        execb(posix_test, &testval);
-    }
-*/
 
     while(1) {
         pid = wait(&status);
