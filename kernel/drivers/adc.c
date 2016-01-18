@@ -108,7 +108,7 @@ void adc_init(struct fnode * dev,  const struct adc_addr adc_addrs[], int num_ad
         CLOCK_ENABLE(adc_addrs[i].rcc);
         CLOCK_ENABLE(adc_addrs[i].dma_rcc);
 
-        init_dma(&adc_addrs[i].dma, , (uint32_t) DEV_ADC[i].samples, adc_addrs[i].num_channels);
+        init_dma(&adc_addrs[i].dma,  (uint32_t) DEV_ADC[i].samples, adc_addrs[i].num_channels);
 
         dma_enable_circular_mode(adc_addrs[i].dma.base, adc_addrs[i].dma.stream);
 
