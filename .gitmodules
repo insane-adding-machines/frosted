@@ -4,3 +4,6 @@
 [submodule "apps/busybox"]
 	path = apps/busybox
 	url = git@github.com:insane-adding-machines/busybox.git
+[submodule "frosted-mini-userspace"]
+	path = frosted-mini-userspace
+	url = git@github.com:insane-adding-machines/frosted-mini-userspace.git

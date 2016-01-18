@@ -1,20 +1,27 @@
 -include kconfig/.config
 -include config.mk
+FROSTED:=$(PWD)
 
-ifeq ($(FRESH),y)
+ifeq ($(USERSPACE_MINI),y)
+  USERSPACE=frosted-mini-userspace
   CFLAGS+=-DCONFIG_FRESH=1
+  CFLAGS += -DCONFIG_IDDLELEDS=1
+  APPS-y:= $(USERSPACE)/apps/init.o 
+  APPS-y+=$(USERSPACE)/apps/fresh.o
+  APPS-y+=$(USERSPACE)/apps/binutils.o
+  APPS-y+=$(USERSPACE)/apps/stubs.o
 endif
 
-ifeq ($(SCSH),y)
-  CFLAGS+=-DCONFIG_SCSH=1
+ifeq ($(ARCH_SEEEDPRO),y)
+	FAMILY=lpc17xx 
+	ARCH=seedpro
+	CFLAGS+=-DSEEEDPRO
 endif
 
-ifeq ($(PRODCONS),y)
-  CFLAGS+=-DCONFIG_PRODCONS=1
-endif
-
-ifeq ($(IDDLELEDS),y)
-    CFLAGS += -DCONFIG_IDDLELEDS=1
+ifeq ($(ARCH_QEMU),y)
+	FAMILY=stellaris
+	ARCH=stellaris_qemu
+	CFLAGS+=-DLM3S
 endif
 
 CROSS_COMPILE?=arm-none-eabi-
@@ -33,8 +40,7 @@ CFLAGS+=-ggdb
 #CFLAGS+=-Os
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-APPS-y:= apps/init.o 
-APPS-$(FRESH)+=apps/fresh.o apps/binutils.o apps/stubs.o
+
 
 
 OBJS-y:=kernel/systick.o kernel/drivers/device.o
@@ -72,9 +78,6 @@ CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
 OBJS-$(DEVGPIO)+=kernel/drivers/gpio.o
 CFLAGS-$(DEVGPIO)+=-DCONFIG_DEVGPIO
-
-OBJS-$(DEVSTM32F4DMA)+=kernel/drivers/stm32f4_dma.o
-CFLAGS-$(DEVSTM32F4DMA)+=-DCONFIG_DEVSTM32F4DMA
 
 OBJS-$(DEVF4EXTI)+=kernel/drivers/stm32f4_exti.o
 CFLAGS-$(DEVF4EXTI)+=-DCONFIG_DEVF4EXTI
@@ -114,7 +117,7 @@ $(PREFIX)/lib/libkernel.a: FORCE
 	make -C kernel
 
 $(PREFIX)/lib/libfrosted.a: FORCE
-	make -C libfrosted
+	make -C $(USERSPACE)/libfrosted FROSTED=$(PWD)
 
 tools/xipfstool: tools/xipfs.c
 	make -C tools
@@ -126,7 +129,7 @@ image.bin: kernel.elf apps.elf
 	cat apps.bin >> $@
 	#cat apps/apps.bflt >> $@
 
-apps/apps.ld: apps/apps.ld.in
+$(USERSPACE)/apps/apps.ld: $(USERSPACE)/apps/apps.ld.in
 	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
 	export AMEM_SIZE_B=`python2 -c "print '0x%X' % ( ($(RAM_SIZE) - $(KRAMMEM_SIZE)) * 1024)"`;	\
 	export KFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
@@ -141,8 +144,8 @@ apps/apps.ld: apps/apps.ld.in
 			 >$@
 
 
-apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) apps/apps.ld
-	$(CC) -o $@  $(APPS-y) -Tapps/apps.ld -lfrosted -lc -lfrosted -Wl,-Map,apps.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) $(USERSPACE)/apps/apps.ld
+	$(CC) -o $@  $(APPS-y) -T$(USERSPACE)/apps/apps.ld -lfrosted -lc -lfrosted -Wl,-Map,apps.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 	make -C kernel/libopencm3 $(OPENCM3FLAGS)
@@ -162,11 +165,6 @@ kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3
 	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a -Wl,--end-group \
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 	
-apps/busybox/busybox: busybox
-
-busybox:
-	CROSS_COMPILE=arm-none-eabi- make -C apps/busybox
-
 qemu: image.bin 
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
 
@@ -187,10 +185,9 @@ clean:
 	rm -f malloc.test
 	rm -f  kernel/$(BOARD)/$(BOARD).ld
 	@make -C kernel clean
-	@make -C libfrosted clean
+	@make -C frosted-mini-userspace clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf
-	@rm -f apps/apps.ld
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
 	@rm -f tools/xipfstool
 	@find . |grep "\.o" | xargs -x rm -f
