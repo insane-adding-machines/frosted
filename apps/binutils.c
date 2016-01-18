@@ -23,7 +23,9 @@
 #include "l3gd20_ioctl.h"
 #include "lsm303dlhc_ioctl.h"
 #include <string.h>
+#include <strings.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <poll.h>
@@ -33,6 +35,8 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <getopt.h>
+#include <ctype.h>
+#include <signal.h>
 
 #ifndef STDIN_FILENO
 #   define STDIN_FILENO 0
@@ -57,7 +61,7 @@
 #  define ARCH	"STM32F4"
 #endif
 
-inline int nargs( void** argv ){
+static inline int nargs( void** argv ){
     int argc = 0;
     while( argv[argc] ) argc++;
     return argc;
@@ -281,7 +285,7 @@ int bin_cat(void **args)
     exit(0);
 }
 
-uint32_t rand(void)
+static uint32_t read_rand(void)
 {
 	int rngfd;
 	rngfd = open("/dev/random", O_RDONLY);
@@ -300,8 +304,8 @@ uint32_t rand(void)
  */
 int roll(void)
 {
-	uint8_t player1 = rand() % 6;
-	uint8_t player2 = rand() % 6;
+	uint8_t player1 = read_rand() % 6;
+	uint8_t player2 = read_rand() % 6;
 	if (player1 > player2) {
 		return 1;
 	} else if (player1 < player2) {
@@ -372,7 +376,7 @@ int bin_dice(void **args)
 
 int bin_random(void **args)
 {
-	printf("\r\nHere's a random number for ya: \t%u\r\n\r\n", rand());
+	printf("\r\nHere's a random number for ya: \t%u\r\n\r\n", read_rand());
 	exit(0);
 }
 
@@ -1063,8 +1067,8 @@ struct cm_board {
 
 int cm_init_board(struct cm_board *b)
 {
-	b->wolf = rand() % 256;
-	b->sheep = rand() % 256;
+	b->wolf = read_rand() % 256;
+	b->sheep = read_rand() % 256;
 	//printf("Wolf is at :  %02X  -  sheep is at :  %02X\r\n", b->wolf, b->sheep);
 	return 0;
 }

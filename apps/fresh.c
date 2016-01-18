@@ -29,6 +29,7 @@
 #include <frosted_api.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include "simple-c-shell.h"
 #include "binutils.h"

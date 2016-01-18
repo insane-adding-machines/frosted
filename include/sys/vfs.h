@@ -31,6 +31,8 @@ extern "C" {
 int statfs (const char *__path, struct statfs *__buf);
 int fstatfs (int __fd, struct statfs *__buf);
 
+int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *args);
+
 #ifdef __cplusplus
 };
 #endif /* __cplusplus */

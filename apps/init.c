@@ -21,6 +21,9 @@
 #include "fresh.h"
 #include "syscalls.h"
 #include "ioctl.h"
+#include "semaphore.h"
+#include "mutex.h"
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <signal.h>
@@ -198,7 +201,7 @@ extern int scsh(void *arg);
 
 void init(void *arg)
 {
-    volatile int i = (int)arg;
+    (void)arg;
     volatile int pid;
     const char arg0_fresh[] = "fresh";
     const char arg0_idling[] = "idling";
@@ -235,7 +238,6 @@ void init(void *arg)
     while(1) {
         pid = wait(&status);
     }
-    (void)i;
 }
 
 //*****************************************************************************

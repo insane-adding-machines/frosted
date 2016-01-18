@@ -18,9 +18,13 @@
  *
  */  
 #include "frosted.h"
+#include <sys/vfs.h>
 #include "libopencmsis/core_cm3.h"
 #include "libopencm3/cm3/systick.h"
 #include "bflt.h"
+#include "null.h"
+#include "sysfs.h"
+#include "memfs.h"
 
 #define IDLE() while(1){do{}while(0);}
 

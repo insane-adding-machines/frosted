@@ -27,7 +27,7 @@ int open(const char *name, int flags, ...);
 int wait(int *status);
 //int write(int file, const void *ptr, int len);
 void free(void * ptr);
-void *malloc(int size);
+//void *malloc(int size);   get this from stdlib.h
 DIR *opendir(const char *path);
 int mkdir(const char *_path, mode_t __mode);
 int readdir(DIR *d, struct dirent *ep);
