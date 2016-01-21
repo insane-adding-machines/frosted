@@ -7,3 +7,6 @@
 [submodule "frosted-mini-userspace"]
 	path = frosted-mini-userspace
 	url = git@github.com:insane-adding-machines/frosted-mini-userspace.git
+[submodule "frosted-mini-userspace-bflt"]
+	path = frosted-mini-userspace-bflt
+	url = git@github.com:insane-adding-machines/frosted-mini-userspace-bflt.git
