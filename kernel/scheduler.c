@@ -796,7 +796,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.sp = (uint32_t *)sp;
 } 
 
-int task_create(void (*init)(void *), void *arg, unsigned int prio)
+int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic)
 {
     struct task *new;
     int i;
@@ -827,16 +827,16 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio)
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
-    task_create_real(new, init, arg, prio, 0);
+    task_create_real(new, init, arg, prio, pic);
     new->tb.state = TASK_RUNNABLE;
     irq_on();
     return new->tb.pid;
 }
 
-int scheduler_exec(void (*init)(void *), void *args)
+int scheduler_exec(void (*init)(void *), void *args, uint32_t pic)
 {
     volatile struct task *t = _cur_task;
-    task_create_real(t, init, (void *)args, t->tb.prio, 0);
+    task_create_real(t, init, (void *)args, t->tb.prio, pic);
     //asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp + EXTRA_FRAME_SIZE));
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
     _cur_task->tb.state = TASK_RUNNING;
@@ -846,7 +846,7 @@ int scheduler_exec(void (*init)(void *), void *args)
 
 int sys_execb_hdlr(uint32_t arg1, uint32_t arg2)
 {
-    return scheduler_exec((void (*)(void*))arg1, (void *)arg2);
+    return scheduler_exec((void (*)(void*))arg1, (void *)arg2, 0);
 }
 
 static void task_suspend_to(int newstate);

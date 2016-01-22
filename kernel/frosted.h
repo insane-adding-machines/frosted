@@ -37,7 +37,6 @@ typedef struct semaphore frosted_mutex_t;
 /* generics */
 volatile unsigned int jiffies;
 volatile int _syscall_retval;
-void frosted_init(void);
 void klog_set_write(int (*wr)(int, const void *, unsigned int));
 
 /* klog */
@@ -74,7 +73,6 @@ void ktimer_cancel(struct ktimer *t);
 
 /* Scheduler */
 void frosted_scheduler_on(void);
-int scheduler_exec(void (*init)(void *), void *arg);
 uint16_t scheduler_get_cur_pid(void);
 uint16_t scheduler_get_cur_ppid(void);
 int task_timeslice(void);
@@ -90,7 +88,7 @@ int task_fd_writable(int fd);
 int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
-int task_create(void (*init)(void *), void *arg, unsigned int prio);
+int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic);
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
 
@@ -140,8 +138,8 @@ int fno_fullpath(struct fnode *f, char *dst, int len);
 #define FL_INUSE  0x08
 #define FL_TTY    0x10
 
+#define FL_EXEC   0x40
 #define FL_LINK   0x80
-#define FL_EXEC   0xC0
 
 struct fnode {
     struct module *owner;
@@ -207,7 +205,7 @@ struct module {
         int (*seek)(struct fnode *fno, int offset, int whence);
         int (*creat)(struct fnode *fno);
         int (*unlink)(struct fnode *fno);
-        void * (*exe)(struct fnode *fno, void *arg);
+        void * (*exe)(struct fnode *fno, void *arg, uint32_t *pic);
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);

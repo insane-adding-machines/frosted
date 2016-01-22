@@ -32,7 +32,6 @@
  * the application code
  */
 void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
-uint8_t * flt_file = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
 static int (*_klog_write)(int, const void *, unsigned int) = NULL;
     
@@ -97,9 +96,10 @@ static void hw_init(void)
     SysTick_Config(CONFIG_SYS_CLOCK / 1000);
 }
 
-void frosted_init(void)
+int frosted_init(void)
 {
     extern void * _k__syscall__;
+    int xip_mounted;
 
     vfs_init();
     devnull_init(fno_search("/dev"));
@@ -119,9 +119,7 @@ void frosted_init(void)
     sysfs_init();
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
-
-    /* TODO: pass binary blob as source */
-    vfs_mount(NULL, "/bin", "xipfs", 0, NULL);
+    xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);
 
     vfs_mount(NULL, "/sys", "sysfs", 0, NULL);
 
@@ -132,6 +130,7 @@ void frosted_init(void)
 #endif
 
     frosted_scheduler_on();
+    return xip_mounted;
 }
 
 static void tasklet_test(void *arg)
@@ -145,22 +144,32 @@ static void ktimer_test(uint32_t time, void *arg)
 }
 
 
-void frosted_kernel(void)
+void frosted_kernel(int xipfs_mounted)
 {
-    if (0)
+    if (xipfs_mounted == 0)
     {
-        /* Load init from BFLT */
+        struct fnode *fno = fno_search("/bin/init");
         void * memptr;
         size_t mem_size;
         size_t stack_size;
         uint32_t got_loc;
-        bflt_load(flt_file, &memptr, &mem_size, &init, &stack_size, &got_loc);
-        if (task_create_GOT(init, (void *)0, 2, got_loc) < 0)
-            IDLE();
+        if (!fno) {
+            /* PANIC: Unable to find /bin/init */
+            while(1 < 2);
+        }
+
+        if (fno->owner && fno->owner->ops.exe) {
+            void *start = NULL;
+            uint32_t pic;
+
+            start = fno->owner->ops.exe(fno, NULL, &pic);
+            task_create(start, NULL, 2, (void *)pic);
+        }
+
     } else {
         /* Create "init" task */
         klog(LOG_INFO, "Starting Init task\n");
-        if (task_create(init, (void *)0, 2) < 0)
+        if (task_create(init, (void *)0, 2, 0) < 0)
             IDLE();
     }
 
@@ -174,7 +183,8 @@ void frosted_kernel(void)
 /* OS entry point */
 void main(void) 
 {
-    frosted_init();
-    frosted_kernel(); /* never returns */
+    int xipfs_mounted;
+    xipfs_mounted = frosted_init();
+    frosted_kernel(xipfs_mounted); /* never returns */
 }
 

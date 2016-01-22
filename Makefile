@@ -4,12 +4,10 @@ FROSTED:=$(PWD)
 
 ifeq ($(USERSPACE_MINI),y)
   USERSPACE=frosted-mini-userspace
-  CFLAGS+=-DCONFIG_FRESH=1
-  CFLAGS += -DCONFIG_IDDLELEDS=1
-  APPS-y:= $(USERSPACE)/apps/init.o 
-  APPS-y+=$(USERSPACE)/apps/fresh.o
-  APPS-y+=$(USERSPACE)/apps/binutils.o
-  APPS-y+=$(USERSPACE)/apps/stubs.o
+endif
+
+ifeq ($(USERSPACE_BFLT),y)
+  USERSPACE=frosted-mini-userspace-bflt
 endif
 
 ifeq ($(ARCH_SEEEDPRO),y)
@@ -103,7 +101,7 @@ SHELL=/bin/bash
 APPS_START = 0x20000
 PADTO = $$(($(FLASH_ORIGIN)+$(APPS_START)))
 
-all: image.bin tools/xipfstool
+all: tools/xipfstool image.bin
 
 kernel/syscall_table.c: kernel/syscall_table_gen.py
 	python2 $^
@@ -116,18 +114,20 @@ include/syscall_table.h: kernel/syscall_table.c
 $(PREFIX)/lib/libkernel.a: FORCE
 	make -C kernel
 
-$(PREFIX)/lib/libfrosted.a: FORCE
-	make -C $(USERSPACE)/libfrosted FROSTED=$(PWD)
-
 tools/xipfstool: tools/xipfs.c
 	make -C tools
 
-image.bin: kernel.elf apps.elf
+kernel.img: kernel.elf
 	export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
-	$(CROSS_COMPILE)objcopy -O binary --pad-to=0x40000 apps.elf apps.bin
-	cat apps.bin >> $@
-	#cat apps/apps.bflt >> $@
+
+apps.img: $(USERSPACE)
+	make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
+
+
+
+image.bin: kernel.img apps.img
+	cat $^ > $@
 
 $(USERSPACE)/apps/apps.ld: $(USERSPACE)/apps/apps.ld.in
 	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
@@ -144,8 +144,7 @@ $(USERSPACE)/apps/apps.ld: $(USERSPACE)/apps/apps.ld.in
 			 >$@
 
 
-apps.elf: $(PREFIX)/lib/libfrosted.a $(APPS-y) $(USERSPACE)/apps/apps.ld
-	$(CC) -o $@  $(APPS-y) -T$(USERSPACE)/apps/apps.ld -lfrosted -lc -lfrosted -Wl,-Map,apps.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 	make -C kernel/libopencm3 $(OPENCM3FLAGS)
@@ -187,7 +186,7 @@ clean:
 	@make -C kernel clean
 	@make -C frosted-mini-userspace clean
 	@rm -f $(OBJS-y)
-	@rm -f *.map *.bin *.elf
+	@rm -f *.map *.bin *.elf *.img
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
 	@rm -f tools/xipfstool
 	@find . |grep "\.o" | xargs -x rm -f

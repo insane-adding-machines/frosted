@@ -42,13 +42,20 @@ static int xipfs_creat(struct fnode *fno)
     
 }
 
-static void *xipfs_exe(struct fnode *fno, void *arg)
+static void *xipfs_exe(struct fnode *fno, void *arg, uint32_t *pic)
 {
     int pid;
     struct xipfs_fnode *xip = fno->priv;
+    void * memptr;
+    size_t mem_size;
+    size_t stack_size;
+    void *init = NULL;
     if (!xip)
         return NULL;
-    return xip->init;
+
+    bflt_load(xip->init, &memptr, &mem_size, &init, &stack_size, pic);
+
+    return init;
 }
 
 static int xipfs_unlink(struct fnode *fno)
@@ -70,6 +77,7 @@ static int xip_add(const char *name, void (*init))
 
     /* Make executable */
     xip->fnode->flags |= FL_EXEC;
+    xip->init = init;
     return 0;
 }
 
@@ -81,7 +89,7 @@ static int xipfs_parse_blob(uint8_t *blob)
     if (fat->fs_magic != XIPFS_MAGIC)
         return -1;
 
-    offset = sizeof(struct xipfs_fhdr);
+    offset = sizeof(struct xipfs_fat);
     for (i = 0; i < fat->fs_files; i++) {
         f = (struct xipfs_fhdr *) (blob + offset);
         if (f->magic != XIPFS_MAGIC)
@@ -108,11 +116,6 @@ static int xipfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 
     if (!tgt_dir || ((tgt_dir->flags & FL_DIR) == 0)) {
         /* Not a valid mountpoint. */
-        return -1;
-    }
-
-    if (tgt_dir->children) {
-        /* Only allowed to mount on empty directory */
         return -1;
     }
 

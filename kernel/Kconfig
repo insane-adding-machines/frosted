@@ -290,6 +290,9 @@ choice
     config USERSPACE_MINI
     bool "Frosted Minimalistic Userspace"
 
+    config USERSPACE_BFLT
+    depends on XIPFS
+    bool "Frosted Userspace with bFLT executables in xipfs filesystem"
 
 endchoice
 endmenu
