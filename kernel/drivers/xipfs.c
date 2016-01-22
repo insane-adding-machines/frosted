@@ -46,14 +46,14 @@ static void *xipfs_exe(struct fnode *fno, void *arg, uint32_t *pic)
 {
     int pid;
     struct xipfs_fnode *xip = fno->priv;
-    void * memptr;
-    size_t mem_size;
+    void *reloc_text, *reloc_data, *reloc_bss;
     size_t stack_size;
     void *init = NULL;
+
     if (!xip)
         return NULL;
 
-    bflt_load(xip->init, &memptr, &mem_size, &init, &stack_size, pic);
+    bflt_load(xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, pic);
 
     return init;
 }

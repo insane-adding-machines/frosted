@@ -165,7 +165,6 @@ void frosted_kernel(int xipfs_mounted)
             start = fno->owner->ops.exe(fno, NULL, &pic);
             task_create(start, NULL, 2, (void *)pic);
         }
-
     } else {
         /* Create "init" task */
         klog(LOG_INFO, "Starting Init task\n");
