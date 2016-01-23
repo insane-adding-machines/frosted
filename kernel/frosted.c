@@ -33,6 +33,22 @@
  */
 void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
+static int (*_klog_write)(int, const void *, unsigned int) = NULL;
+    
+
+void klog_set_write(int (*wr)(int, const void *, unsigned int))
+{
+    _klog_write = wr;
+}
+
+int klog_write(int file, char *ptr, int len)
+{
+    if (_klog_write) {
+        _klog_write(file, ptr, len);
+    }
+    return len;
+}
+
 void hard_fault_handler(void)
 {
     volatile uint32_t hfsr = SCB_HFSR;
@@ -109,10 +125,6 @@ int frosted_init(void)
 
     kernel_task_init();
 
-    /* kernel is now _cur_task, open filedesc for kprintf */
-    kprintf_init();
-    kprintf("Frosted kernel version 16.01. (GCC version %s, built %s)\n", __VERSION__, __TIMESTAMP__);
-
 #ifdef UNIX    
     socket_un_init();
 #endif
@@ -123,7 +135,7 @@ int frosted_init(void)
 
 static void tasklet_test(void *arg)
 {
-    kprintf("Tasklet executed\n");
+    klog(LOG_INFO, "Tasklet executed\n");
 }
 
 static void ktimer_test(uint32_t time, void *arg)
@@ -155,7 +167,7 @@ void frosted_kernel(int xipfs_mounted)
         }
     } else {
         /* Create "init" task */
-        kprintf("Starting Init task\n");
+        klog(LOG_INFO, "Starting Init task\n");
         if (task_create(init, (void *)0, 2, 0) < 0)
             IDLE();
     }

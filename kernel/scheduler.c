@@ -974,7 +974,7 @@ void __naked  pend_sv_handler(void)
     task_switch();
     
     if (((int)(_cur_task->tb.sp) - (int)(&_cur_task->stack)) < STACK_THRESHOLD) {
-        kprintf("PendSV: Process %d is running out of stack space!\n", _cur_task->tb.pid);
+        klog(LOG_WARNING, "Process %d is running out of stack space!\n", _cur_task->tb.pid);
     }
 
     /* write new stack pointer and restore context */

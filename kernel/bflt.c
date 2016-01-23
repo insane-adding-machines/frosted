@@ -50,17 +50,17 @@ static void load_header(struct flat_hdr * to_hdr, struct flat_hdr * from_hdr) {
 
 int check_header(struct flat_hdr * header) {
     if (memcmp(header->magic, "bFLT", 4) != 0) {
-        kprintf("bFLT: Magic number does not match\n");
+        klog(LOG_INFO,"Magic number does not match");
         return -1;
     }
     if (long_be(header->rev) != FLAT_VERSION){
-        kprintf("bFLT: Version number does not match\n");
+        klog(LOG_INFO,"Version number does not match");
         return -1;
     }
 
     /* check for unsupported flags */
     if (long_be(header->flags) & (FLAT_FLAG_GZIP | FLAT_FLAG_GZDATA)) {
-        kprintf("bFLT: Unsupported flags detected - GZip'd data is not supported\n");
+        klog(LOG_INFO,"Unsupported flags detected - GZip'd data is not supported");
         return -1;
     }
     return 0;
@@ -72,7 +72,7 @@ static unsigned long * calc_reloc(uint8_t * base, uint32_t offset)
     int id = (offset >> 24) & 0x000000FFu;
     if (id)
     {
-        kprintf("bFLT: No shared library support\n");
+        klog(LOG_ERR, "No shared library support\n");
         return RELOC_FAILED;
     }
     return (unsigned long *)(base + (offset & 0x00FFFFFFu));
@@ -181,7 +181,7 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long da
         }
 
         if (relocd_addr == (unsigned long *)RELOC_FAILED) {
-            kprintf("bFLT: Unable to calculate relocation address\n");
+            klog(LOG_ERR, "Unable to calculate relocation address");
             return;
         }
 
@@ -222,7 +222,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     int relocs;
     int rev;
 
-    kprintf("bFLT: Loading from %p\n", from);
+    klog(LOG_INFO, "Begin loading");
 
     if (!address_zero) {
         goto error;
@@ -232,7 +232,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     load_header(&hdr, (struct flat_hdr *)address_zero);
 
     if (check_header(&hdr) != 0) {
-        kprintf("bFLT: Bad FLT header\n");
+        klog(LOG_ERR, "Bad FLT header\n");
         goto error;    
     }
 
@@ -279,7 +279,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
         data_dest_start = f_malloc(MEM_USER, alloc_len);
         if (!(data_dest_start))
         {
-            kprintf("bFLT: Could not allocate enough memory for process\n");
+            klog(LOG_ERR, "Could not allocate enough memory for process");
             goto error;
         }
         *reloc_text = text_src_start; /* for now, we never relocate .text */
@@ -319,7 +319,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
      */
     process_relocs(&hdr, address_zero, data_dest_start, relocs_src_start, relocs);
 
-    kprintf("bFLT: GDB: add-symbol-file <filename.gdb> %p -s .data %p -s .bss %p\n", *reloc_text, *reloc_data, *reloc_bss);
+    klog(LOG_INFO, "Successfully loaded bFLT executable to memory");
     return 0;
 
 error:
@@ -328,6 +328,6 @@ error:
     *reloc_data  = NULL;
     *reloc_bss   = NULL;
     *entry_point = NULL;
-    kprintf("bFLT: Caught error - exiting\n");
+    klog(LOG_ERR, "Caught error - exiting");
 }
 

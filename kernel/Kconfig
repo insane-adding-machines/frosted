@@ -124,23 +124,15 @@ endchoice
 endmenu
 
 menu "Kernel Configuration"
+endmenu
  
 config KFLASHMEM_SIZE
-    int "Kernel Flash size (KB)"
-    default 32
+   int "Kernel Flash size (KB)"
+   default 32
 
 config KRAMMEM_SIZE
-    int "Kernel RAM size (KB)"
-    default 32
-
-config KLOG
-    bool "Enable kernel logging"
-config KLOG_DEV
-    depends on (KLOG && DEVUART)
-    int "Kernel log output device"
-    default "/dev/ttyS0"
-
-endmenu
+   int "Kernel RAM size (KB)"
+   default 32
 
 choice
 prompt "Default size for tasks stack memory"

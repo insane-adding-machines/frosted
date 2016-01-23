@@ -33,7 +33,7 @@ static int sock_close(int fd)
     struct fnode *fno;
     if (sock_check_fd(fd, &fno))
         return -1;
-    kprintf("## Closed UNIX socket!\n");
+    klog(LOG_INFO, "## Closed UNIX socket!\n");
     /* TODO */
     return 0;
 }
@@ -41,7 +41,7 @@ static int sock_close(int fd)
 int sock_socket(int domain, int type, int protocol)
 {
     int fd = -1;
-    kprintf("## Opened UNIX socket!\n");
+    klog(LOG_INFO, "## Opened UNIX socket!\n");
     fd = task_filedesc_add(&FNO_SOCKUN_STUB);
     return fd;
 }
