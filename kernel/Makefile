@@ -51,9 +51,11 @@ PREFIX:=$(PWD)/build
 #Target flags
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD) -D$(ARCH)
-CFLAGS+=-DKLOG_LEVEL=6
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
 CFLAGS+=-DCONFIG_TASK_STACK_SIZE=$(TASK_STACK_SIZE)
+CFLAGS-$(KLOG)+=-DCONFIG_KLOG
+CFLAGS+=-DCONFIG_KLOG_DEV=\"$(KLOG_DEV)\"
+CFLAGS+=$(CFLAGS-y)
 #Include paths
 CFLAGS+=-I. -I../include -I.. -Ilibopencm3/include/libopencm3 -Ilibopencm3/include
 #Freestanding options
@@ -85,6 +87,7 @@ OBJS-y+= \
 	timer.o				\
 	term.o				\
 	bflt.o				\
+	kprintf.o			\
 	pipe.o
 
 OBJS-y += vfs.o

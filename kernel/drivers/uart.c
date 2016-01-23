@@ -57,7 +57,10 @@ void uart_isr(struct dev_uart *uart)
     /* TX interrupt */
     if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
         usart_clear_tx_interrupt(uart->base);
-        frosted_mutex_lock(uart->dev->mutex);
+
+        if (scheduler_get_cur_pid() != 0) /* cannot spinlock in ISR! */
+            frosted_mutex_lock(uart->dev->mutex);
+
         /* Are there bytes left to be written? */
         if (cirbuf_bytesinuse(uart->outbuf))
         {
