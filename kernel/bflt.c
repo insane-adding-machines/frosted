@@ -222,7 +222,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     int relocs;
     int rev;
 
-    kprintf("bFLT: Loading from %p\n", from);
+    kprintf("bFLT: Loading from 0x%p\n", from);
 
     if (!address_zero) {
         goto error;
@@ -319,7 +319,6 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
      */
     process_relocs(&hdr, address_zero, data_dest_start, relocs_src_start, relocs);
 
-    kprintf("bFLT: GDB: add-symbol-file <filename.gdb> %p -s .data %p -s .bss %p\n", *reloc_text, *reloc_data, *reloc_bss);
     return 0;
 
 error:
