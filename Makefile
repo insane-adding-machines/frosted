@@ -26,7 +26,7 @@ CROSS_COMPILE?=arm-none-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
-CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DSYS_CLOCK=$(SYS_CLOCK)
+CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DSYS_CLOCK=$(SYS_CLOCK) -DCORTEX_M3 -DFROSTED
 CFLAGS+=-Ikernel/libopencm3/include -Ikernel -Iinclude -Inewlb/include
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
@@ -42,6 +42,8 @@ ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
 
 OBJS-y:=kernel/systick.o kernel/drivers/device.o
+
+OBJS-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a kernel/net/socket/pico_bsd_sockets.o kernel/net/socket/pico_osal_frosted.o
 
 # device drivers 
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o

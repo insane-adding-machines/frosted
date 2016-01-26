@@ -149,6 +149,13 @@ frosted_mutex_t *frosted_mutex_init()
     return s;
 }
 
+void frosted_mutex_destroy(frosted_mutex_t *s)
+{
+    if (s->listener)
+        kfree(s->listener);
+    kfree(s);
+}
+
 static int frosted_mutex_spinlock(frosted_mutex_t *s)
 {
     if (!s)

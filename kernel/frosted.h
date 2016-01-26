@@ -80,7 +80,7 @@ int sem_destroy(sem_t *s);
 int frosted_mutex_lock(frosted_mutex_t *s);
 int frosted_mutex_unlock(frosted_mutex_t *s);
 frosted_mutex_t *frosted_mutex_init();
-int frostd_mutex_destroy(frosted_mutex_t *s);
+void frosted_mutex_destroy(frosted_mutex_t *s);
 
 #define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
 

@@ -26,6 +26,14 @@
 #include "sysfs.h"
 #include "memfs.h"
 
+#ifdef CONFIG_PICOTCP
+# include "pico_stack.h"
+# include "pico_bsd_sockets.h"
+#else
+# define pico_stack_init() do{}while(0)
+# define pico_bsd_init() do{}while(0)
+#endif
+
 #define IDLE() while(1){do{}while(0);}
 
 /* The following needs to be defined by
@@ -161,6 +169,8 @@ void frosted_kernel(int xipfs_mounted)
     }
 
     ktimer_add(1000, ktimer_test, NULL);
+    pico_stack_init();
+    pico_bsd_init();
 
     while(1) {
         check_tasklets();

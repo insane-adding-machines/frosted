@@ -1,5 +1,17 @@
 include ../kconfig/.config
 include ../config.mk
+
+FLASH_ORIGIN?=0x0
+FLASH_SIZE?=256K
+CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
+
+CROSS_COMPILE?=arm-none-eabi-
+CC:=$(CROSS_COMPILE)gcc
+AS:=$(CROSS_COMPILE)as
+AR:=$(CROSS_COMPILE)ar
+LIBNAME:=libkernel.a
+PREFIX:=$(PWD)/build
+
 ifeq ($(ARCH_LPC17XX),y)
 	CPU=cortex-m
 	BOARD=lpc1768
@@ -37,17 +49,6 @@ ifeq ($(TASK_STACK_SIZE_8K),y)
     TASK_STACK_SIZE=8192
 endif
 #########################
-
-FLASH_ORIGIN?=0x0
-FLASH_SIZE?=256K
-CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
-
-CROSS_COMPILE?=arm-none-eabi-
-CC:=$(CROSS_COMPILE)gcc
-AS:=$(CROSS_COMPILE)as
-AR:=$(CROSS_COMPILE)ar
-LIBNAME:=libkernel.a
-PREFIX:=$(PWD)/build
 #Target flags
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD) -D$(ARCH)
@@ -94,9 +95,51 @@ OBJS-y += vfs.o
 
 CFLAGS+=$(CFLAGS-y)
 
+ifeq ($(PICOTCP),y)
+	CFLAGS+=-DCONFIG_PICOTCP -I$(PREFIX)/include -Inet/socket
+    PICO_OPTIONS=CROSS_COMPILE=arm-none-eabi- ARCH=cortexm3 RTOS=1 PREFIX=$(PREFIX) \
+    		 DHCP_CLIENT=0 DHCP_SERVER=0 MDNS=0 DNS_SD=0 \
+    			 OLSR=0 SLAACV4=0 SNTP_CLIENT=0 PPP=0 TFTP=0 \
+				 IPV6=0 \
+				 DEBUG=0 EXTRA_CFLAGS="-DFROSTED -I$(PWD)/kernel -I$(PWD)/include -nostdlib"
+
+ifneq ($(CONFIG_PICOTCP_IPV4),y)
+  PICO_OPTIONS+=IPV4=0
+endif
+ifneq ($(CONFIG_PICOTCP_IPV6),y)
+  PICO_OPTIONS+=IPV6=0
+endif
+ifneq ($(CONFIG_PICOTCP_DEVLOOP),y)
+  PICO_OPTIONS+=DEVLOOP=0
+endif
+ifneq ($(CONFIG_PICOTCP_ETH),y)
+  PICO_OPTIONS+=ETH=0
+endif
+ifneq ($(CONFIG_PICOTCP_TCP),y)
+  PICO_OPTIONS+=TCP=0
+endif
+ifneq ($(CONFIG_PICOTCP_UDP),y)
+  PICO_OPTIONS+=UDP=0
+endif
+ifneq ($(CONFIG_PICOTCP_MULTICAST),y)
+  PICO_OPTIONS+=MCAST=0
+endif
+ifneq ($(CONFIG_PICOTCP_NAT),y)
+  PICO_OPTIONS+=NAT=0
+endif
+ifneq ($(CONFIG_PICOTCP_ICMP4),y)
+  PICO_OPTIONS+=ICMP4=0
+endif
+
+    BUILD_PICO=make -C net/picotcp $(PICO_OPTIONS)
+    BUILD_SOCK=make -C net/socket CFLAGS="$(CFLAGS) -I$(PREFIX)/include -I$(PWD)/kernel -I$(PWD)/include -DFROSTED -DCORTEX_M3 -nostdlib"
+endif
+
 
 all: syscall_table.h $(OBJS-y)
 	@echo -e "\t[AR] $(PREFIX)/lib/$(LIBNAME)"
+	@$(BUILD_PICO)
+	$(BUILD_SOCK)
 	@mkdir -p $(PREFIX)/lib
 	$(AR) cr $(PREFIX)/lib/$(LIBNAME) $(OBJS-y)
 
@@ -109,4 +152,5 @@ clean:
 	@rm -f syscall_table.c
 	@rm -f $(OBJS-y)
 	@rm -f $(PREFIX)/lib/$(LIBNAME)
+	@make -C net/socket clean
 

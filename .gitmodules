@@ -10,3 +10,6 @@
 [submodule "frosted-mini-userspace-bflt"]
 	path = frosted-mini-userspace-bflt
 	url = git@github.com:insane-adding-machines/frosted-mini-userspace-bflt.git
+[submodule "kernel/net/picotcp"]
+	path = kernel/net/picotcp
+	url = https://github.com/insane-adding-machines/picotcp.git

@@ -179,6 +179,19 @@ menu "Subsystems"
        config SOCK_UNIX
        bool "UNIX Sockets for IPC"
        default y
+       config SOCK_INET
+       bool "TCP/IP Socket support"
+       choice NET_STACK
+        prompt "TCP/IP stack selection"
+        default PICOTCP
+        depends on SOCK_INET
+
+        config PICOTCP
+        bool "Built-in PicoTCP"
+        default y
+       endchoice
+       source ../kernel/net/Kconfig
+
    endmenu
 
    menu "Devices"
