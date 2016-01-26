@@ -39,8 +39,6 @@ CFLAGS+=-ggdb
 
 ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
 
-
-
 OBJS-y:=kernel/systick.o kernel/drivers/device.o
 
 OBJS-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a kernel/net/socket/pico_bsd_sockets.o kernel/net/socket/pico_osal_frosted.o
@@ -97,6 +95,13 @@ OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_LPC1679XPRESSO)+=kernel/$(BOARD)/lpc1769xpresso.o
 OBJS-$(MACH_LM3S6965EVB)+=kernel/$(BOARD)/lm3s6965evb.o
 
+
+LIB-y:=
+
+LIB-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a
+LIB-y+=$(PREFIX)/lib/libkernel.a $(OBJS-y) 
+LIB-y+=kernel/libopencm3/lib/libopencm3_$(BOARD).a
+
 CFLAGS+=$(CFLAGS-y)
 
 SHELL=/bin/bash
@@ -131,27 +136,14 @@ apps.img: $(USERSPACE)
 image.bin: kernel.img apps.img
 	cat $^ > $@
 
-$(USERSPACE)/apps/apps.ld: $(USERSPACE)/apps/apps.ld.in
-	export KMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
-	export AMEM_SIZE_B=`python2 -c "print '0x%X' % ( ($(RAM_SIZE) - $(KRAMMEM_SIZE)) * 1024)"`;	\
-	export KFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
-	export AFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( ($(FLASH_SIZE) - $(KFLASHMEM_SIZE)) * 1024)"`;	\
-	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
-	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
-			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
-			 sed -e "s/__AFLASHMEM_SIZE/$$AFLASHMEM_SIZE_B/g" | \
-			 sed -e "s/__RAM_BASE/$(RAM_BASE)/g" |\
-			 sed -e "s/__KRAMMEM_SIZE/$$KRAMMEM_SIZE_B/g" |\
-			 sed -e "s/__AMEM_SIZE/$$AMEM_SIZE_B/g" \
-			 >$@
-
-
-
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 	make -C kernel/libopencm3 $(OPENCM3FLAGS)
 
 $(PREFIX)/lib/libkernel.a: kernel/libopencm3/lib/libopencm3_$(BOARD).a
+
+$(PREFIX)/lib/libpicotcp.a:
+	make -C kernel picotcp
 
 kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
@@ -162,7 +154,7 @@ kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 			 sed -e "s/__KRAMMEM_SIZE/$$KRAMMEM_SIZE_B/g" \
 			 >$@
 
-kernel.elf: $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a kernel/$(BOARD)/$(BOARD).ld
+kernel.elf: $(LIB-y) $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a kernel/$(BOARD)/$(BOARD).ld
 	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a -Wl,--end-group \
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 	
@@ -192,4 +184,5 @@ clean:
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
 	@rm -f tools/xipfstool
 	@find . |grep "\.o" | xargs -x rm -f
+	@rm -rf build
 

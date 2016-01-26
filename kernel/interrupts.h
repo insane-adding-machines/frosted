@@ -2,6 +2,8 @@
 #ifndef FROSTED_INTERRUPTS_H
 #define FROSTED_INTERRUPTS_H
 
+extern void __set_BASEPRI(int);
+
 #ifdef DEBUG
     static void irq_off(void)
     {

@@ -129,14 +129,19 @@ int frosted_init(void)
     return xip_mounted;
 }
 
-static void tasklet_test(void *arg)
+static void ktimer_tcpip(uint32_t time, void *arg);
+
+static void tasklet_tcpip(void *arg)
 {
-    kprintf("Tasklet executed\n");
+#ifdef CONFIG_PICOTCP
+    pico_bsd_stack_tick();
+    ktimer_add(1, ktimer_tcpip, NULL);
+#endif
 }
 
-static void ktimer_test(uint32_t time, void *arg)
+static void ktimer_tcpip(uint32_t time, void *arg)
 {
-    tasklet_add(tasklet_test, NULL);
+    tasklet_add(tasklet_tcpip, NULL);
 }
 
 
@@ -168,7 +173,7 @@ void frosted_kernel(int xipfs_mounted)
             IDLE();
     }
 
-    ktimer_add(1000, ktimer_test, NULL);
+    ktimer_add(1000, ktimer_tcpip, NULL);
     pico_stack_init();
     pico_bsd_init();
 

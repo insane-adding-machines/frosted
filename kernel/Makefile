@@ -100,40 +100,16 @@ ifeq ($(PICOTCP),y)
     PICO_OPTIONS=CROSS_COMPILE=arm-none-eabi- ARCH=cortexm3 RTOS=1 PREFIX=$(PREFIX) \
     		 DHCP_CLIENT=0 DHCP_SERVER=0 MDNS=0 DNS_SD=0 \
     			 OLSR=0 SLAACV4=0 SNTP_CLIENT=0 PPP=0 TFTP=0 \
-				 IPV6=0 \
-				 DEBUG=0 EXTRA_CFLAGS="-DFROSTED -I$(PWD)/kernel -I$(PWD)/include -nostdlib"
+				 AODV=0 NAT=0 IPFILTER=0 DNSCLIENT=0\
+				 EXTRA_CFLAGS="-DFROSTED -I$(PWD)/kernel -I$(PWD)/include -nostdlib"
 
-ifneq ($(CONFIG_PICOTCP_IPV4),y)
-  PICO_OPTIONS+=IPV4=0
-endif
 ifneq ($(CONFIG_PICOTCP_IPV6),y)
   PICO_OPTIONS+=IPV6=0
 endif
-ifneq ($(CONFIG_PICOTCP_DEVLOOP),y)
-  PICO_OPTIONS+=DEVLOOP=0
-endif
-ifneq ($(CONFIG_PICOTCP_ETH),y)
-  PICO_OPTIONS+=ETH=0
-endif
-ifneq ($(CONFIG_PICOTCP_TCP),y)
-  PICO_OPTIONS+=TCP=0
-endif
-ifneq ($(CONFIG_PICOTCP_UDP),y)
-  PICO_OPTIONS+=UDP=0
-endif
-ifneq ($(CONFIG_PICOTCP_MULTICAST),y)
-  PICO_OPTIONS+=MCAST=0
-endif
-ifneq ($(CONFIG_PICOTCP_NAT),y)
-  PICO_OPTIONS+=NAT=0
-endif
-ifneq ($(CONFIG_PICOTCP_ICMP4),y)
-  PICO_OPTIONS+=ICMP4=0
-endif
-
     BUILD_PICO=make -C net/picotcp $(PICO_OPTIONS)
     BUILD_SOCK=make -C net/socket CFLAGS="$(CFLAGS) -I$(PREFIX)/include -I$(PWD)/kernel -I$(PWD)/include -DFROSTED -DCORTEX_M3 -nostdlib"
 endif
+
 
 
 all: syscall_table.h $(OBJS-y)
@@ -145,6 +121,9 @@ all: syscall_table.h $(OBJS-y)
 
 syscall_table.c: syscall_table_gen.py
 	python2 $^
+
+picotcp:
+	@$(BUILD_PICO)
 
 syscall_table.h: syscall_table.c
 

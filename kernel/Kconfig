@@ -178,9 +178,10 @@ menu "Subsystems"
    menu "Sockets"
        config SOCK_UNIX
        bool "UNIX Sockets for IPC"
-       default y
+       default n
        config SOCK_INET
        bool "TCP/IP Socket support"
+       default n
        choice NET_STACK
         prompt "TCP/IP stack selection"
         default PICOTCP
