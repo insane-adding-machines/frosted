@@ -251,6 +251,8 @@ static void idling_to_running(volatile struct task *t)
 
 static void running_to_idling(volatile struct task *t)
 {
+    if (t->tb.pid < 1)
+        return;
     if (tasklist_del(&tasks_running, t->tb.pid) == 0)
         tasklist_add(&tasks_idling, t);
 }
@@ -1035,6 +1037,8 @@ void kernel_task_init(void)
 
 static void task_suspend_to(int newstate)
 {
+    if (_cur_task->tb.pid < 1)
+        return;
     running_to_idling(_cur_task);
     if (_cur_task->tb.state == TASK_RUNNABLE || _cur_task->tb.state == TASK_RUNNING) {
         _cur_task->tb.timeslice = 0;
