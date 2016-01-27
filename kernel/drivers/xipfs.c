@@ -45,7 +45,7 @@ static int xipfs_creat(struct fnode *fno)
 static void *xipfs_exe(struct fnode *fno, void *arg, uint32_t *pic)
 {
     int pid;
-    struct xipfs_fnode *xip = fno->priv;
+    struct xipfs_fnode *xip = (struct xipfs_fnode *)fno->priv;
     void *reloc_text, *reloc_data, *reloc_bss;
     size_t stack_size;
     void *init = NULL;
@@ -64,7 +64,7 @@ static int xipfs_unlink(struct fnode *fno)
     return -1; /* Cannot unlink */
 }
 
-static int xip_add(const char *name, void (*init))
+static int xip_add(const char *name, const void (*init))
 {
     struct xipfs_fnode *xip = kalloc(sizeof(struct xipfs_fnode));
     if (!xip)
@@ -82,20 +82,19 @@ static int xip_add(const char *name, void (*init))
     return 0;
 }
 
-static int xipfs_parse_blob(uint8_t *blob)
+static int xipfs_parse_blob(const uint8_t *blob)
 {
-    struct xipfs_fat *fat = (struct xipfs_fat *)blob;
-    struct xipfs_fhdr *f;
+    const struct xipfs_fat *fat = (const struct xipfs_fat *)blob;
+    const struct xipfs_fhdr *f;
     int i, offset;
-    if (fat->fs_magic != XIPFS_MAGIC)
+    if (!fat || fat->fs_magic != XIPFS_MAGIC)
         return -1;
 
     offset = sizeof(struct xipfs_fat);
     for (i = 0; i < fat->fs_files; i++) {
-        f = (struct xipfs_fhdr *) (blob + offset);
+        f = (const struct xipfs_fhdr *) (blob + offset);
         if (f->magic != XIPFS_MAGIC)
             return -1;
-        f->name[55] = (char) 0;
         xip_add(f->name, f->payload);
         offset += f->len + sizeof(struct xipfs_fhdr);
     }
