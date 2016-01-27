@@ -137,7 +137,7 @@ config KLOG
     bool "Enable kernel logging"
 config KLOG_DEV
     depends on (KLOG && DEVUART)
-    int "Kernel log output device"
+    string "Kernel log output device"
     default "/dev/ttyS0"
 
 endmenu
