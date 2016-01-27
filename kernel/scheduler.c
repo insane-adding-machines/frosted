@@ -1187,7 +1187,7 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
         }
 
         t = tasklist_get(&tasks_idling, pid);
-        if (!t || (t->tb.ppid != _cur_task->tb.ppid))
+        if (!t || (t->tb.ppid != _cur_task->tb.pid))
             return -ESRCH;
         if (t->tb.state == TASK_ZOMBIE)
             goto child_found;
