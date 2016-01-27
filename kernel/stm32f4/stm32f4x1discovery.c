@@ -352,9 +352,9 @@ void machine_init(struct fnode * dev)
 {
         /* 401 & 411 run 84 and 100 MHz max respectively */
 #       if CONFIG_SYS_CLOCK == 48000000
-        rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_48MHZ]);
+        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_48MHZ]);
 #       elif CONFIG_SYS_CLOCK == 84000000
-        rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_84MHZ]);
+        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_84MHZ]);
 #       else
 #error No valid clock speed selected for STM32F4x1 Discovery
 #endif

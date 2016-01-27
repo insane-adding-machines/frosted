@@ -108,11 +108,11 @@ static const struct rng_addr rng_addrs[] = {
 void machine_init(struct fnode * dev)
 {
 #       if CONFIG_SYS_CLOCK == 168000000
-            rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_168MHZ]);
+            rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
 #       elif CONFIG_SYS_CLOCK == 84000000
-            rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_84MHZ]);
+            rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_84MHZ]);
 #       elif CONFIG_SYS_CLOCK == 48000000
-            rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_48MHZ]);
+            rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_48MHZ]);
 #       else
 #error No valid clock speed selected for STM32F429 Discovery
 #endif
