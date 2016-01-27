@@ -119,7 +119,7 @@ int frosted_init(void)
 
     /* kernel is now _cur_task, open filedesc for kprintf */
     kprintf_init();
-    kprintf("Frosted kernel version 16.01. (GCC version %s, built %s)\n", __VERSION__, __TIMESTAMP__);
+    kprintf("\r\n\n\nFrosted kernel version 16.01. (GCC version %s, built %s)\r\n", __VERSION__, __TIMESTAMP__);
 
 #ifdef UNIX    
     socket_un_init();
@@ -168,7 +168,7 @@ void frosted_kernel(int xipfs_mounted)
         }
     } else {
         /* Create "init" task */
-        kprintf("Starting Init task\n");
+        kprintf("Starting Init task\r\n");
         if (task_create(init, (void *)0, 2, 0) < 0)
             IDLE();
     }

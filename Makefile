@@ -179,6 +179,7 @@ clean:
 	rm -f  kernel/$(BOARD)/$(BOARD).ld
 	@make -C kernel clean
 	@make -C frosted-mini-userspace clean
+	@make -C frosted-mini-userspace-bflt clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf *.img
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
