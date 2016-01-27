@@ -3,9 +3,9 @@
  layout src
  symbol-file
  file kernel.elf
- add-symbol-file ./frosted-mini-userspace-bflt/init.gdb 0x10090 -s .data 0x20008014 -s .bss 0x20008954
- add-symbol-file frosted-mini-userspace-bflt/idling.gdb 0x12004 -s .data 0x20008dbc -s .bss 0x20009654
- add-symbol-file frosted-mini-userspace-bflt/fresh.gdb 0x13f14 -s .data 0x20009ab8 -s .bss 0x2000a854
+ add-symbol-file ./frosted-mini-userspace-bflt/init.gdb 0x20090 -s .data 0x20008014 -s .bss 0x2000813c
+ add-symbol-file frosted-mini-userspace-bflt/idling.gdb 0x20a84 -s .data 0x2000815c -s .bss 0x200081ac
+ add-symbol-file frosted-mini-userspace-bflt/fresh.gdb 0x21334 -s .data 0x200081f8 -s .bss 0x20008b84
  add-symbol-file frosted-mini-userspace-bflt/binutils.gdb 0x18de0 -s .data 0x2000acf0 -s .bss 0x2000c610
  mon reset
  mon halt
