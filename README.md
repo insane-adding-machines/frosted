@@ -61,7 +61,7 @@ The frosted-mini-userspace can be built with the GCC ARM Embedded toolchain, and
 binary that can be flashed separately from the kernel.
 
 Unless you are compiling applications in a single elf, you need the arm-frosted-gcc toolchain 
-to generate userland binaries and libraries (e.g. to compile the frosted-mini-userspace-bflt.
+to generate userland binaries and libraries (e.g. to compile the frosted-mini-userspace-bflt).
 
 [Get the latest frosted userland toolchain here](https://github.com/insane-adding-machines/crosstool-ng/releases/tag/v16.01).
 
