@@ -54,6 +54,18 @@ How to run the QEMU example synthetic target:
  * Use ```make qemu2``` to run frosted in a virtual machine.
  * Use ```make qemu``` to run frosted in a virtual machine. The kernel will wait until a GDB debugger is connected to local port 3333.
 
+
+### Compiling userland
+
+The frosted-mini-userspace can be built with the GCC ARM Embedded toolchain, and it will produce a single, standalone elf 
+binary that can be flashed separately from the kernel.
+
+Unless you are compiling applications in a single elf, you need the arm-frosted-gcc toolchain 
+to generate userland binaries and libraries (e.g. to compile the frosted-mini-userspace-bflt.
+
+[Get the latest frosted userland toolchain here](https://github.com/insane-adding-machines/crosstool-ng/releases/tag/v16.01).
+
+
 ### Joining the team / contacts
 
 We are constantly looking for new developers to join the team. Please contact us if you are interested.
