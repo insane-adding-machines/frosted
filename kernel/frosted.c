@@ -119,7 +119,9 @@ int frosted_init(void)
 
     /* kernel is now _cur_task, open filedesc for kprintf */
     kprintf_init();
+    /* 
     kprintf("\r\n\n\nFrosted kernel version 16.01. (GCC version %s, built %s)\r\n", __VERSION__, __TIMESTAMP__);
+    */
 
 #ifdef UNIX    
     socket_un_init();
