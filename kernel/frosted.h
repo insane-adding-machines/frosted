@@ -52,6 +52,10 @@ struct ktimer;
 int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg);
 void ktimer_cancel(struct ktimer *t);
 
+/* FS initializers */
+void memfs_init(void);
+void sysfs_init(void);
+
 /* Scheduler */
 void frosted_scheduler_on(void);
 uint16_t scheduler_get_cur_pid(void);

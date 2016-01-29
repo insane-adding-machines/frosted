@@ -23,8 +23,6 @@
 #include "libopencm3/cm3/systick.h"
 #include "bflt.h"
 #include "null.h"
-#include "sysfs.h"
-#include "memfs.h"
 
 #ifdef CONFIG_PICOTCP
 # include "pico_stack.h"
