@@ -1,26 +1,3 @@
-### BASE ARCHITECTURE ###
-
-ifeq ($(ARCH_LPC17XX),y)
-	CPU=cortex-m
-	CFLAGS+=-mcpu=cortex-m3
-	BOARD?=lpc17xx
-	ARCH=LPC17XX
-endif
-
-ifeq ($(ARCH_LM3S),y)
-	CPU=cortex-m
-	CFLAGS+=-mcpu=cortex-m3
-	ARCH=LM3S
-	BOARD?=lm3s
-	SYS_CLOCK=50000000
-endif
-
-ifeq ($(ARCH_STM32F4),y)
-	CPU=cortex-m
-	BOARD?=stm32f4
-	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
-	ARCH=STM32F4
-endif
 
 ###### STACK SIZE #######
 ifeq ($(TASK_STACK_SIZE_1K),y)

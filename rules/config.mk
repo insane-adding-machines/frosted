@@ -4,6 +4,7 @@ ifeq ($(ARCH_LPC17XX),y)
 	BOARD=lpc17xx
 	FLASH_ORIGIN=0x00000000
 	RAM_BASE=0x10000000
+	ARCH=LPC17XX
 	CFLAGS+=-DLPC17XX -mcpu=cortex-m3
 endif
 
@@ -12,6 +13,8 @@ ifeq ($(ARCH_LM3S),y)
 	BOARD=lm3s
 	FLASH_ORIGIN=0x00000000
 	RAM_BASE=0x20000000
+	SYS_CLOCK=50000000
+	ARCH=LM3S
 	CFLAGS+=-DLM3S -mcpu=cortex-m3
 endif
 
@@ -21,6 +24,7 @@ ifeq ($(ARCH_STM32F4),y)
 	FLASH_ORIGIN=0x08000000
 	RAM_BASE=0x20000000
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
+	ARCH=STM32F4
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
 endif
 

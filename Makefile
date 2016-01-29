@@ -1,13 +1,19 @@
 -include kconfig/.config
--include config.mk
 FROSTED:=$(PWD)
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
 
-include arch.mk
-include userspace.mk
-include picotcp.mk
+ifneq ($(V),1)
+   Q:=@
+   #Do not print "Entering directory ...".
+   MAKEFLAGS += --no-print-directory
+endif
+
+-include rules/config.mk
+include  rules/arch.mk
+include  rules/userspace.mk
+include  rules/picotcp.mk
 
 #debugging
 CFLAGS+=-ggdb
@@ -103,36 +109,36 @@ PADTO = $$(($(FLASH_ORIGIN)+$(APPS_START)))
 all: tools/xipfstool image.bin
 
 kernel/syscall_table.c: kernel/syscall_table_gen.py
-	python2 $^
+	@python2 $^
 
 $(PREFIX)/lib/libpicotcp.a:
-	$(BUILD_PICO)
-	$(BUILD_SOCK)
-	pwd
-	$(CROSS_COMPILE)ar rs $@ kernel/net/socket/*.o
+	@$(BUILD_PICO)
+	@$(BUILD_SOCK)
+	@pwd
+	@$(CROSS_COMPILE)ar rs $@ kernel/net/socket/*.o
 
 include/syscall_table.h: kernel/syscall_table.c
 
 .PHONY: FORCE
 
 tools/xipfstool: tools/xipfs.c
-	make -C tools
+	@make -C tools
 
 kernel.img: kernel.elf
-	export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
+	@export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 
-apps.img: $(USERSPACE)
-	make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
+apps.img: $(USERSPACE) tools/xipfstool
+	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
 
-image.bin: kernel.img apps.img
+image.bin: kernel.img apps.img tools/xipfstool
 	cat $^ > $@
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
-	make -C kernel/libopencm3
+	@make -C kernel/libopencm3
 
 kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
-	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
+	@export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
 	export KFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
 	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
 			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
@@ -141,12 +147,12 @@ kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 			 >$@
 
 kernel.elf: $(LIB-y) $(OBJS-y) kernel/$(BOARD)/$(BOARD).ld
-	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $(OBJS-y) $(LIB-y) -Wl,--end-group \
+	@$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $(OBJS-y) $(LIB-y) -Wl,--end-group \
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 
 	
-qemu: image.bin 
+qemu: image.bin
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
 
 qemu2: image.bin
@@ -156,14 +162,14 @@ menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
 
 malloc_test:
-	gcc -o malloc.test kernel/malloc.c -Iinclude -Inewlib/include -DCONFIG_KRAM_SIZE=4
+	@gcc -o malloc.test kernel/malloc.c -Iinclude -Inewlib/include -DCONFIG_KRAM_SIZE=4
 
 libclean:
 	@make -C kernel/libopencm3 clean
 
 clean:
-	rm -f malloc.test
-	rm -f  kernel/$(BOARD)/$(BOARD).ld
+	@rm -f malloc.test
+	@rm -f  kernel/$(BOARD)/$(BOARD).ld
 	@make -C frosted-mini-userspace clean
 	@make -C frosted-mini-userspace-bflt clean
 	@rm -f $(OBJS-y)
