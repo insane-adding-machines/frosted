@@ -72,6 +72,22 @@ int strcmp(const char *s1, const char *s2)
     }
 	return diff;
 }
+
+int strcasecmp(const char *s1, const char *s2)
+{
+    int diff = 0;
+    while(!diff && *s1)
+    {
+        diff = (int)*s1 - (int)*s2;
+        if ((diff == 'A' - 'a') || (diff == 'a' - 'A'))
+            diff = 0;
+        s1++;
+        s2++;
+    }
+	return diff;
+}
+
+
 /* 
  * strcmp implementation
  *
@@ -120,6 +136,8 @@ int strncmp(const char *s1, const char *s2, size_t n)
     while(!diff && *s1 && n)
     {
         diff = (int)*s1 - (int)*s2;
+        if (!s1 || !s2)
+            break;
         s1++;
         s2++;
         n--;
@@ -174,3 +192,15 @@ char *strcpy(char *dst, const char *src)
     return dst;
 }
 
+int memcmp(const unsigned char *s1, const unsigned char *s2, size_t n)
+{
+    int diff = 0;
+    while(!diff && *s1 && n)
+    {
+        diff = (int)*s1 - (int)*s2;
+        s1++;
+        s2++;
+        n--;
+    }
+	return diff;
+}

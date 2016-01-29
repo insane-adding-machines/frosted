@@ -83,9 +83,9 @@ syscalls = [
  #####
 #######
 #################################################################
-hdr = open("../include/syscall_table.h", "w")
-usercode = open("../frosted-mini-userspace/libfrosted/syscall_table.c", "w")
-code = open("syscall_table.c", "w")
+hdr = open("include/syscall_table.h", "w")
+usercode = open("frosted-mini-userspace/libfrosted/syscall_table.c", "w")
+code = open("kernel/syscall_table.c", "w")
 
 hdr.write("/* The file syscall_table.h is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n")
 usercode.write("/* The file syscall_table.c is auto generated. DO NOT EDIT, CHANGES WILL BE LOST. */\n/* If you want to add syscalls, use syscall_table_gen.py  */\n\n#include <stdint.h>\n#include \"syscall_table.h\"\n")

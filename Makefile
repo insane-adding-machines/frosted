@@ -1,35 +1,13 @@
 -include kconfig/.config
 -include config.mk
 FROSTED:=$(PWD)
+FLASH_ORIGIN?=0x0
+FLASH_SIZE?=256K
+CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
 
-ifeq ($(USERSPACE_MINI),y)
-  USERSPACE=frosted-mini-userspace
-endif
-
-ifeq ($(USERSPACE_BFLT),y)
-  USERSPACE=frosted-mini-userspace-bflt
-endif
-
-ifeq ($(ARCH_SEEEDPRO),y)
-	FAMILY=lpc17xx 
-	ARCH=seedpro
-	CFLAGS+=-DSEEEDPRO
-endif
-
-ifeq ($(ARCH_QEMU),y)
-	FAMILY=stellaris
-	ARCH=stellaris_qemu
-	CFLAGS+=-DLM3S
-endif
-
-CROSS_COMPILE?=arm-none-eabi-
-CC:=$(CROSS_COMPILE)gcc
-AS:=$(CROSS_COMPILE)as
-AR:=$(CROSS_COMPILE)ar
-CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DSYS_CLOCK=$(SYS_CLOCK) -DCORTEX_M3 -DFROSTED
-CFLAGS+=-Ikernel/libopencm3/include -Ikernel -Iinclude -Inewlib/include
-PREFIX:=$(PWD)/build
-LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
+include arch.mk
+include userspace.mk
+include picotcp.mk
 
 #debugging
 CFLAGS+=-ggdb
@@ -37,11 +15,29 @@ CFLAGS+=-ggdb
 #optimization
 #CFLAGS+=-Os
 
-ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
-
-OBJS-y:=kernel/systick.o kernel/drivers/device.o
-
-OBJS-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a kernel/net/socket/pico_bsd_sockets.o kernel/net/socket/pico_osal_frosted.o
+# minimal kernel
+OBJS-y:= kernel/frosted.o \
+		 kernel/vfs.o \
+		 kernel/systick.o \
+		 kernel/drivers/device.o \
+		 kernel/mpu.o				\
+		 kernel/string.o			\
+		 kernel/sys.o				\
+		 kernel/locks.o				\
+		 kernel/semaphore.o			\
+		 kernel/mutex.o				\
+		 kernel/tasklet.o			\
+		 kernel/scheduler.o			\
+		 kernel/syscall_table.o		\
+		 kernel/malloc.o			\
+		 kernel/module.o			\
+		 kernel/poll.o				\
+		 kernel/cirbuf.o			\
+		 kernel/timer.o				\
+		 kernel/term.o				\
+		 kernel/bflt.o				\
+		 kernel/kprintf.o			\
+		 kernel/pipe.o
 
 # device drivers 
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
@@ -53,8 +49,6 @@ CFLAGS-$(SYSFS)+=-DCONFIG_SYSFS
 
 OBJS-$(DEVNULL)+= kernel/drivers/null.o
 CFLAGS-$(DEVNULL)+=-DCONFIG_DEVNULL
-
-
 
 OBJS-$(SOCK_UNIX)+= kernel/drivers/socket_un.o
 CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
@@ -97,9 +91,7 @@ OBJS-$(MACH_LM3S6965EVB)+=kernel/$(BOARD)/lm3s6965evb.o
 
 
 LIB-y:=
-
 LIB-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a
-LIB-y+=$(PREFIX)/lib/libkernel.a $(OBJS-y) 
 LIB-y+=kernel/libopencm3/lib/libopencm3_$(BOARD).a
 
 CFLAGS+=$(CFLAGS-y)
@@ -113,13 +105,15 @@ all: tools/xipfstool image.bin
 kernel/syscall_table.c: kernel/syscall_table_gen.py
 	python2 $^
 
+$(PREFIX)/lib/libpicotcp.a:
+	$(BUILD_PICO)
+	$(BUILD_SOCK)
+	pwd
+	$(CROSS_COMPILE)ar rs $@ kernel/net/socket/*.o
 
 include/syscall_table.h: kernel/syscall_table.c
 
 .PHONY: FORCE
-
-$(PREFIX)/lib/libkernel.a: FORCE
-	make -C kernel
 
 tools/xipfstool: tools/xipfs.c
 	make -C tools
@@ -131,19 +125,11 @@ kernel.img: kernel.elf
 apps.img: $(USERSPACE)
 	make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
 
-
-
 image.bin: kernel.img apps.img
 	cat $^ > $@
 
-
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
-	make -C kernel/libopencm3 $(OPENCM3FLAGS)
-
-$(PREFIX)/lib/libkernel.a: kernel/libopencm3/lib/libopencm3_$(BOARD).a
-
-$(PREFIX)/lib/libpicotcp.a:
-	make -C kernel picotcp
+	make -C kernel/libopencm3
 
 kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
@@ -154,9 +140,11 @@ kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 			 sed -e "s/__KRAMMEM_SIZE/$$KRAMMEM_SIZE_B/g" \
 			 >$@
 
-kernel.elf: $(LIB-y) $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a kernel/$(BOARD)/$(BOARD).ld
-	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $(PREFIX)/lib/libkernel.a $(OBJS-y) kernel/libopencm3/lib/libopencm3_$(BOARD).a -Wl,--end-group \
+kernel.elf: $(LIB-y) $(OBJS-y) kernel/$(BOARD)/$(BOARD).ld
+	$(CC) -o $@   -Tkernel/$(BOARD)/$(BOARD).ld -Wl,--start-group $(OBJS-y) $(LIB-y) -Wl,--end-group \
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
+
+
 	
 qemu: image.bin 
 	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
@@ -167,7 +155,6 @@ qemu2: image.bin
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
 
-
 malloc_test:
 	gcc -o malloc.test kernel/malloc.c -Iinclude -Inewlib/include -DCONFIG_KRAM_SIZE=4
 
@@ -177,7 +164,6 @@ libclean:
 clean:
 	rm -f malloc.test
 	rm -f  kernel/$(BOARD)/$(BOARD).ld
-	@make -C kernel clean
 	@make -C frosted-mini-userspace clean
 	@make -C frosted-mini-userspace-bflt clean
 	@rm -f $(OBJS-y)
