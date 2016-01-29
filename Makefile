@@ -178,4 +178,6 @@ clean:
 	@rm -f tools/xipfstool
 	@find . |grep "\.o" | xargs -x rm -f
 	@rm -rf build
+	@rm -f tags
+	@rm -f kernel/syscall_table.c
 
