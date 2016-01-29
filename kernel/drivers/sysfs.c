@@ -121,8 +121,9 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     static int off;
     int i;
     int stack_used;
+    char *name;
     int p_state;
-    const char legend[]="pid\tstate\tstack used\r\n";
+    const char legend[]="pid\tstate\tstack\tname\r\n";
     if (fno->off == 0) {
         frosted_mutex_lock(sysfs_mutex);
         task_txt = kalloc(MAX_SYSFS_BUFFER);
@@ -152,6 +153,15 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
                 task_txt[off++] = '\t';
                 stack_used = scheduler_stack_used(i);
                 off += ul_to_str(stack_used, task_txt + off);
+
+                task_txt[off++] = '\t';
+                name = scheduler_task_name(i);
+                if (name)
+                {
+                    strcpy(&task_txt[off], name);
+                    off += strlen(name);
+                }
+
                 task_txt[off++] = '\r';
                 task_txt[off++] = '\n';
             }

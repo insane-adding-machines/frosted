@@ -38,7 +38,7 @@ int sys_thread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t
     unsigned int prio = (unsigned int) arg3;
 
     init = (void (*)(void *)) arg1;
-    return task_create(init, arg, prio, 0);
+    return task_create(init, arg, prio, 0, "task");
 }
 
 

@@ -164,12 +164,12 @@ void frosted_kernel(int xipfs_mounted)
             uint32_t pic;
 
             start = fno->owner->ops.exe(fno, NULL, &pic);
-            task_create(start, NULL, 2, (void *)pic);
+            task_create(start, NULL, 2, (void *)pic, "init");
         }
     } else {
         /* Create "init" task */
         kprintf("Starting Init task\r\n");
-        if (task_create(init, (void *)0, 2, 0) < 0)
+        if (task_create(init, (void *)0, 2, 0, "init") < 0)
             IDLE();
     }
 

@@ -190,6 +190,7 @@ struct __attribute__((packed)) task_block {
     void *sp;
     void *cur_stack;
     struct task *next;
+    char * name;
 };
 
 struct __attribute__((packed)) task {
@@ -689,6 +690,16 @@ unsigned scheduler_stack_used(int pid)
     else return 0;
 }
 
+char * scheduler_task_name(int pid)
+{
+    struct task *t = tasklist_get(&tasks_running, pid);
+    if (!t) 
+        t = tasklist_get(&tasks_idling, pid);
+    if (t)
+        return t->tb.name;
+    else return NULL;
+}
+
 uint16_t scheduler_get_cur_pid(void)
 {
     if (!_cur_task)
@@ -798,7 +809,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.sp = (uint32_t *)sp;
 } 
 
-int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic)
+int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic, char * name)
 {
     struct task *new;
     int i;
@@ -815,6 +826,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic
     new->tb.n_files = 0;
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
+    new->tb.name = name;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -835,9 +847,10 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic
     return new->tb.pid;
 }
 
-int scheduler_exec(void (*init)(void *), void *args, uint32_t pic)
+int scheduler_exec(void (*init)(void *), void *args, uint32_t pic, char * name)
 {
     volatile struct task *t = _cur_task;
+    t->tb.name = name;
     task_create_real(t, init, (void *)args, t->tb.prio, pic);
     //asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp + EXTRA_FRAME_SIZE));
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
@@ -848,7 +861,7 @@ int scheduler_exec(void (*init)(void *), void *args, uint32_t pic)
 
 int sys_execb_hdlr(uint32_t arg1, uint32_t arg2)
 {
-    return scheduler_exec((void (*)(void*))arg1, (void *)arg2, 0);
+    return scheduler_exec((void (*)(void*))arg1, (void *)arg2, 0, "task");
 }
 
 static void task_suspend_to(int newstate);
