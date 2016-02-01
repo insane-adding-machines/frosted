@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "ioctl.h"
 #include "poll.h"
+
 #ifdef STM32F4
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/exti.h>
@@ -13,6 +14,37 @@
 #include <libopencm3/lpc17xx/nvic.h>
 #include <libopencm3/lpc17xx/gpio.h>
 #include <libopencm3/lpc17xx/exti.h>
+#endif
+
+#ifdef PYBOARD
+# define LED0 "gpio_1_13"
+# define LED1 "gpio_1_14"
+# define LED2 "gpio_1_15"
+# define LED3 "gpio_1_4"
+#elif defined (STM32F4)
+# define LED0 "gpio_3_12"
+# define LED1 "gpio_3_13"
+# define LED2 "gpio_3_14"
+# define LED3 "gpio_3_15"
+#elif defined (LPC17XX)
+#if 0
+/*LPCXpresso 1769 */
+# define LED0 "/dev/gpio_0_22"
+# define LED1 "/dev/null"
+# define LED2 "/dev/null"
+# define LED3 "/dev/null"
+#else
+/* mbed 1768 */
+# define LED0 "gpio_1_18"
+# define LED1 "gpio_1_20"
+# define LED2 "gpio_1_21"
+# define LED3 "gpio_1_23"
+#endif
+#else
+# define LED0 "null"
+# define LED1 "null"
+# define LED2 "null"
+# define LED3 "null"
 #endif
 #include "gpio.h"
 
@@ -208,6 +240,35 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
             continue;
 
         gpio_fno_init(dev, i, &gpio_addrs[i]);
+
+        if (gpio_addrs[i].name) {
+
+            if (strcmp(gpio_addrs[i].name, LED0) == 0) 
+            {
+                char gpio_name[32] = "/dev/";
+                strcat(gpio_name, LED0);
+                vfs_symlink(gpio_name, "/dev/led0");
+            }
+            if (strcmp(gpio_addrs[i].name, LED1) == 0)
+            {
+                char gpio_name[32] = "/dev/";
+                strcat(gpio_name, LED1);
+                vfs_symlink(gpio_name, "/dev/led1");
+            }
+            if (strcmp(gpio_addrs[i].name, LED2) == 0)
+            {
+                char gpio_name[32] = "/dev/";
+                strcat(gpio_name, LED2);
+                vfs_symlink(gpio_name, "/dev/led2");
+            }
+            if (strcmp(gpio_addrs[i].name, LED3) == 0)
+            {
+                char gpio_name[32] = "/dev/";
+                strcat(gpio_name, LED3);
+                vfs_symlink(gpio_name, "/dev/led3");
+            }
+        }
+
     
         GPIO_CLOCK_ENABLE(gpio_addrs[i].base)
             
@@ -268,6 +329,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 break;
         }
     }
+    
     register_module(&mod_devgpio);
 }
 

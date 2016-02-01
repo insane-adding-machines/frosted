@@ -180,7 +180,7 @@ static struct fnode *fno_link(char *src, char *dst)
         fno_unlink(link);
         return NULL;
     }
-    strncpy(link->linkname, p_src, file_name_len);
+    strncpy(link->linkname, p_src, file_name_len + 1);
     return link;
 }
 
