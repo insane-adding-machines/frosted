@@ -145,11 +145,14 @@ static void ktimer_tcpip(uint32_t time, void *arg)
 }
 
 
+static const char init_path[] = "/bin/init";
+static const char *const init_args[2] = { init_path, NULL };
+
 void frosted_kernel(int xipfs_mounted)
 {
     if (xipfs_mounted == 0)
     {
-        struct fnode *fno = fno_search("/bin/init");
+        struct fnode *fno = fno_search(init_path);
         void * memptr;
         size_t mem_size;
         size_t stack_size;
@@ -163,13 +166,13 @@ void frosted_kernel(int xipfs_mounted)
             void *start = NULL;
             uint32_t pic;
 
-            start = fno->owner->ops.exe(fno, NULL, &pic);
-            task_create(start, NULL, 2, (void *)pic, "init");
+            start = fno->owner->ops.exe(fno, init_args, &pic);
+            task_create(start, init_args, 2, (void *)pic);
         }
     } else {
         /* Create "init" task */
         kprintf("Starting Init task\r\n");
-        if (task_create(init, (void *)0, 2, 0, "init") < 0)
+        if (task_create(init, (void *)0, 2, 0) < 0)
             IDLE();
     }
 
