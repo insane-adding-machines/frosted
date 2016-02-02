@@ -26,10 +26,10 @@
 
 #ifdef CONFIG_PICOTCP
 # include "pico_stack.h"
-# include "pico_bsd_sockets.h"
+void socket_in_ini(void);
 #else
 # define pico_stack_init() do{}while(0)
-# define pico_bsd_init() do{}while(0)
+# define socket_in_init()  do{}while(0)
 #endif
 
 #define IDLE() while(1){do{}while(0);}
@@ -134,7 +134,7 @@ static void ktimer_tcpip(uint32_t time, void *arg);
 static void tasklet_tcpip(void *arg)
 {
 #ifdef CONFIG_PICOTCP
-    pico_bsd_stack_tick();
+    pico_stack_tick();
     ktimer_add(1, ktimer_tcpip, NULL);
 #endif
 }
@@ -178,7 +178,8 @@ void frosted_kernel(int xipfs_mounted)
 
     ktimer_add(1000, ktimer_tcpip, NULL);
     pico_stack_init();
-    pico_bsd_init();
+    socket_in_init();
+    
 
     while(1) {
         check_tasklets();

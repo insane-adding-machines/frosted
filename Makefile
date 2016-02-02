@@ -59,6 +59,8 @@ CFLAGS-$(DEVNULL)+=-DCONFIG_DEVNULL
 OBJS-$(SOCK_UNIX)+= kernel/drivers/socket_un.o
 CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
 
+OBJS-$(PICOTCP)+= kernel/drivers/socket_in.o
+
 OBJS-$(DEVL3GD20)+= kernel/drivers/l3gd20.o
 CFLAGS-$(DEVL3GD20)+=-DCONFIG_DEVL3GD20
 
@@ -113,9 +115,7 @@ kernel/syscall_table.c: kernel/syscall_table_gen.py
 
 $(PREFIX)/lib/libpicotcp.a:
 	@$(BUILD_PICO)
-	@$(BUILD_SOCK)
 	@pwd
-	@$(CROSS_COMPILE)ar rs $@ kernel/net/socket/*.o
 
 include/syscall_table.h: kernel/syscall_table.c
 

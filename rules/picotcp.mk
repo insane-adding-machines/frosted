@@ -36,6 +36,5 @@ ifneq ($(CONFIG_PICOTCP_IPFILTER),y)
   PICO_OPTIONS+=IPFILTER=0
 endif
     BUILD_PICO=make -C kernel/net/picotcp $(PICO_OPTIONS)
-    BUILD_SOCK=make -C kernel/net/socket CFLAGS="$(CFLAGS) -I$(PREFIX)/build/include -I$(PWD)/kernel -I$(PWD)/include -DFROSTED -DCORTEX_M3 -DPICO_PORT_CUSTOM -nostdlib"
 endif
 

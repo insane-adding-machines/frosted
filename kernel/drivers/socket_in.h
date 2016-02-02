@@ -6,8 +6,8 @@ holders.
 
 Author: Maxime Vincent, Daniele Lacamera
 *********************************************************************/
-#ifndef PICO_BSD_SOCKETS_H_
-#define PICO_BSD_SOCKETS_H_
+#ifndef FROSTED_IN_SOCKETS_H_
+#define FROSTED_IN_SOCKETS_H_
 
 #include <stdint.h>
 #include <signal.h>
@@ -211,62 +211,6 @@ struct timezone {
         uint16_t events;
         uint16_t revents;
     };
-#endif
-
-int pico_newsocket(int domain, int type, int proto);
-int pico_bind(int sd, struct sockaddr * local_addr, socklen_t socklen);
-int pico_listen(int sd, int backlog);
-int pico_connect(int sd, struct sockaddr *_saddr, socklen_t socklen);
-int pico_isconnected(int sd);
-int pico_accept(int sd, struct sockaddr *_orig, socklen_t *socklen);
-int pico_sendto(int sd, void * buf, int len, int flags, struct sockaddr *_dst, socklen_t socklen);
-int pico_recvfrom(int sd, void * buf, int len, int flags, struct sockaddr *_addr, socklen_t *socklen);
-int pico_write(int sd, void * buf, int len);
-int pico_send(int sd, void * buf, int len, int flags);
-int pico_read(int sd, void * buf, int len);
-int pico_recv(int sd, void * buf, int len, int flags);
-int pico_close(int sd);
-int pico_shutdown(int sd, int how);
-int pico_getsockname(int sd, struct sockaddr * local_addr, socklen_t *socklen);
-int pico_getpeername(int sd, struct sockaddr * remote_addr, socklen_t *socklen);
-int pico_fcntl(int sd, int cmd, int arg);
-int pico_join_multicast_group(int sd, const char *address, const char *local);
-
-#ifdef PICO_SUPPORT_DNS_CLIENT
-    struct hostent *pico_gethostbyname(const char *name);
-    
-    /* getaddrinfo */
-    int pico_getaddrinfo(const char *node, const char *service,
-                           const struct addrinfo *hints,
-                           struct addrinfo **res);
-    
-    void pico_freeaddrinfo(struct addrinfo *res);
-#endif
-
-int pico_setsockopt          (int sockfd, int level, int optname, const void *optval, socklen_t optlen); 
-int pico_getsockopt          (int sockfd, int level, int optname, void *optval, socklen_t *optlen);
-
-int pico_select              (int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
-int pico_pselect             (int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const struct timespec *timeout, 
-                                    const sigset_t *sigmask);
-
-int pico_poll                (struct pollfd *pfd, nfds_t npfd, int timeout);
-int pico_ppoll               (struct pollfd *pfd, nfds_t npfd, const struct timespec *timeout_ts, const sigset_t *sigmask);
-
-
-/* arpa/inet.h */
-const char *pico_inet_ntop   (int af, const void *src, char *dst, socklen_t size);
-char       *pico_inet_ntoa   (struct in_addr in);
-
-/* Non-POSIX */
-void                        pico_bsd_init(void);
-void                        pico_bsd_deinit(void);
-void                        pico_bsd_stack_tick(void);
-void                        pico_bsd_stack_tick_timeout(int timeout_ms);
-uint16_t                    pico_bsd_select(struct pico_bsd_endpoint *ep);
-
-#ifdef REPLACE_STDCALLS
-    #include "pico_bsd_syscalls.h"
 #endif
 
 #endif /* PICO_BSD_SOCKETS_H_ */
