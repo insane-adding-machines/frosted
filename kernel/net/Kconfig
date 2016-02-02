@@ -2,8 +2,45 @@ if PICOTCP
 
 menu "picoTCP configuration"
 
+config CONFIG_PICOTCP_IPV4
+    bool "Support for IP version 4"
+    default y
+
 config CONFIG_PICOTCP_IPV6
-    bool "Support IP version 6"
+    bool "Support for IP version 6"
     default n
+
+config CONFIG_PICOTCP_TCP
+    bool "Support for TCP"
+    default y
+
+config CONFIG_PICOTCP_UDP
+    bool "Support for UDP"
+    default y
+
+config CONFIG_PICOTCP_DNS
+    bool "Support for DNS client"
+    default y
+
+config CONFIG_PICOTCP_MCAST
+    bool "Support for Multicast"
+    default n
+
+config CONFIG_PICOTCP_NAT
+    bool "Support for NAT"
+    default n
+
+config CONFIG_PICOTCP_IPFILTER
+    bool "Support for IP Filter"
+    default n
+
+config CONFIG_PICOTCP_LOOP
+    bool "Support for loopback device"
+    default y
+
+config CONFIG_PICOTCP_DEBUG
+    bool "Activate debugging symbols"
+    default n
+
 endmenu
 endif

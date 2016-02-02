@@ -13,6 +13,3 @@
 [submodule "kernel/net/picotcp"]
 	path = kernel/net/picotcp
 	url = https://github.com/tass-belgium/picotcp.git
-[submodule "frosted-busybox-userspace/busybox"]
-	path = frosted-busybox-userspace/busybox
-	url = git://git.busybox.net/busybox
