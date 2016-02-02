@@ -75,7 +75,8 @@ syscalls = [
     ["sigprocmask", 3, "sys_sigprocmask_hdlr"],
     ["sigsuspend", 1, "sys_sigsuspend_hdlr"],
     ["vfork", 0, "sys_vfork_hdlr"],
-    ["waitpid", 3, "sys_waitpid_hdlr"]
+    ["waitpid", 3, "sys_waitpid_hdlr"],
+    ["lstat", 2, "sys_lstat_hdlr"]
 ]
 
    #

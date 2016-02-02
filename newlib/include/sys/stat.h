@@ -34,7 +34,7 @@ struct	stat
   gid_t		st_gid;
   dev_t		st_rdev;
   off_t		st_size;
-#if defined(__rtems__)
+#if defined(__rtems__) || defined (__frosted__)
   struct timespec st_atim;
   struct timespec st_mtim;
   struct timespec st_ctim;

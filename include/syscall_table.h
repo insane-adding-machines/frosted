@@ -66,4 +66,5 @@
 #define SYS_SIGSUSPEND 			(62)
 #define SYS_VFORK 			(63)
 #define SYS_WAITPID 			(64)
-#define _SYSCALLS_NR (65) /* We have 65 syscalls! */
+#define SYS_LSTAT 			(65)
+#define _SYSCALLS_NR (66) /* We have 66 syscalls! */

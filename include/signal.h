@@ -24,9 +24,19 @@
 #define SIGCHLD     17
 #define SIGCONT     18
 #define SIGSTOP     19
-#define SIGTTIN     20
-
-#define SIGMAX      21
+#define SIGTSTP     20
+#define SIGTTIN     21
+#define SIGTTOU     22
+#define SIGURG      23
+#define SIGXCPU     24
+#define SIGXFSZ     25
+#define SIGVTALRM   26
+#define SIGPROF     27
+#define SIGWINCH    28
+#define SIGIO       29
+#define SIGPWR      30
+#define SIGSYS      31
+#define SIGMAX      32
 
 typedef uint32_t sigset_t;
 #define SI_USER    1    /* Sent by a user. kill(), abort(), etc */
@@ -37,6 +47,10 @@ typedef uint32_t sigset_t;
 
 #define SIG_DFL ((void (*)(int)) 0)
 #define SIG_IGN ((void (*)(int)) 0xFFFFFFFF)
+
+#ifdef __frosted__
+#define SA_RESTART	0x10000000u
+#endif
 
 union sigval {
   int    sival_int;    /* Integer signal value */
