@@ -185,9 +185,8 @@ void frosted_kernel(int xipfs_mounted)
     ktimer_add(1000, ktimer_tcpip, NULL);
 
     pico_stack_init();
-    socket_in_init();
     pico_loop_create();
-    
+    socket_in_init();
 
     while(1) {
         check_tasklets();

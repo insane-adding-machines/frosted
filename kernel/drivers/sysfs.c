@@ -11,12 +11,6 @@ static frosted_mutex_t *sysfs_mutex;
 extern struct mountpoint *MTAB;
 extern struct f_malloc_stats f_malloc_stats[3];
 
-struct sysfs_fnode {
-    struct fnode *fnode;
-    int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len);
-    int (*do_write)(struct sysfs_fnode *sfs, const void *buf, int len);
-};
-
 static int sysfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
     struct sysfs_fnode *mfno;
@@ -372,12 +366,16 @@ int sysfs_no_write(struct sysfs_fnode *sfs, const void *buf, int len)
 }
 
 
-int sysfs_register(char *name, 
+int sysfs_register(char *name, char *dir, 
         int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len), 
         int (*do_write)(struct sysfs_fnode *sfs, const void *buf, int len) )
 {
-    struct fnode *fno = fno_create(&mod_sysfs, name, sysfs);
-    struct sysfs_fnode *mfs = kalloc(sizeof(struct sysfs_fnode));
+    struct fnode *fno = fno_create(&mod_sysfs, name, fno_search(dir));
+    struct sysfs_fnode *mfs;
+    if (!fno)
+        return -1;
+   
+    mfs = kalloc(sizeof(struct sysfs_fnode));
     if (mfs) {
         mfs->fnode = fno;
         fno->priv = mfs;
@@ -412,11 +410,11 @@ static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
     }
     */
     tgt_dir->owner = &mod_sysfs;
-    sysfs_register("time", sysfs_time_read, sysfs_no_write);
-    sysfs_register("tasks", sysfs_tasks_read, sysfs_no_write);
-    sysfs_register("mem", sysfs_mem_read, sysfs_no_write);
-    sysfs_register("modules", sysfs_modules_read, sysfs_no_write);
-    sysfs_register("mtab", sysfs_mtab_read, sysfs_no_write);
+    sysfs_register("time", "/sys", sysfs_time_read, sysfs_no_write);
+    sysfs_register("tasks","/sys",  sysfs_tasks_read, sysfs_no_write);
+    sysfs_register("mem", "/sys", sysfs_mem_read, sysfs_no_write);
+    sysfs_register("modules", "/sys", sysfs_modules_read, sysfs_no_write);
+    sysfs_register("mtab", "/sys", sysfs_mtab_read, sysfs_no_write);
     return 0;
 }
 
@@ -434,9 +432,7 @@ void sysfs_init(void)
 
     sysfs = fno_search("/sys");
     register_module(&mod_sysfs);
+    fno_mkdir(&mod_sysfs, "net", sysfs);            
     sysfs_mutex = frosted_mutex_init();
 }
-
-
-
 

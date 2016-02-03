@@ -54,7 +54,13 @@ void ktimer_cancel(struct ktimer *t);
 
 /* FS initializers */
 void memfs_init(void);
+struct sysfs_fnode {
+    struct fnode *fnode;
+    int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len);
+    int (*do_write)(struct sysfs_fnode *sfs, const void *buf, int len);
+};
 void sysfs_init(void);
+
 
 /* Scheduler */
 void frosted_scheduler_on(void);

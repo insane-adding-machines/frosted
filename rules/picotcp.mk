@@ -11,6 +11,9 @@ ifeq ($(PICOTCP),y)
 ifneq ($(CONFIG_PICOTCP_DEBUG),y)
   PICO_OPTIONS+=DEBUG=0
 endif
+ifneq ($(CONFIG_PICOTCP_LOOP),y)
+  PICO_OPTIONS+=DEVLOOP=0
+endif
 ifneq ($(CONFIG_PICOTCP_IPV6),y)
   PICO_OPTIONS+=IPV6=0
 endif

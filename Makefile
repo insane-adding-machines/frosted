@@ -60,6 +60,7 @@ OBJS-$(SOCK_UNIX)+= kernel/drivers/socket_un.o
 CFLAGS-$(SOCK_UNIX)+=-DCONFIG_SOCK_UNIX
 
 OBJS-$(PICOTCP)+= kernel/drivers/socket_in.o
+CFLAGS-$(CONFIG_PICOTCP_LOOP)+="-DCONFIG_PICOTCP_LOOP"
 
 OBJS-$(DEVL3GD20)+= kernel/drivers/l3gd20.o
 CFLAGS-$(DEVL3GD20)+=-DCONFIG_DEVL3GD20

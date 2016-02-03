@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 static struct module mod_socket_in;
+static frosted_mutex_t *sysfs_mutex;
 
 struct frosted_inet_socket {
     struct fnode *node;
@@ -288,12 +289,61 @@ int sock_shutdown(int fd, uint16_t how)
     return pico_socket_shutdown(s->sock, how);
 }
 
+#define MAX_DEVNET_BUF 64
+
+/* /sys/net hooks */
+static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    static int off;
+    static char *txt;
+    int i;
+    struct pico_device *dev;
+    struct pico_tree_node *index;
+    const char iface_banner[] = "Interface | \r\n";
+    if (fno->off == 0) {
+        txt = kcalloc(MAX_DEVNET_BUF, 1);
+        off = 0;
+        if (!txt)
+            return -1;
+
+        strcpy(txt, iface_banner);
+        off += strlen(iface_banner);
+        pico_tree_foreach(index, &Device_tree){
+            dev = index->keyValue;
+            strcat(txt, dev->name);
+            off += strlen(dev->name);
+            txt[off++] = '\r';
+            txt[off++] = '\n';
+        }
+    }
+    if (off == fno->off) {
+        kfree(txt);
+        frosted_mutex_unlock(sysfs_mutex);
+        return -1;
+    }
+    if (len > (off - fno->off)) {
+       len = off - fno->off;
+    }
+    memcpy(res, txt + fno->off, len);
+    fno->off += len;
+    return len;
+}
+
+static int sysfs_no_op(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    return -1;
+}
+
 void socket_in_init(void)
 {
     mod_socket_in.family = FAMILY_INET;
     strcpy(mod_socket_in.name,"picotcp");
     mod_socket_in.ops.poll = sock_poll;
     mod_socket_in.ops.close = sock_close;
+
+    sysfs_mutex = frosted_mutex_init();
 
     mod_socket_in.ops.socket     = sock_socket;
     mod_socket_in.ops.connect    = sock_connect;
@@ -306,6 +356,10 @@ void socket_in_init(void)
 
     register_module(&mod_socket_in);
     register_addr_family(&mod_socket_in, FAMILY_INET);
+
+    /* Register /sys/net/dev */
+    sysfs_register("dev", "/sys/net", sysfs_net_dev_read, NULL);
+
 }
 
 
