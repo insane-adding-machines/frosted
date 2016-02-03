@@ -165,8 +165,8 @@ int vfs_symlink(char *file, char *link);
 /* Modules (for files/sockets) */
 
 
-#define FAMILY_UNIX 0x0000
-#define FAMILY_INET 0x0001
+#define FAMILY_UNIX 0x0001
+#define FAMILY_INET 0x0002
 #define FAMILY_DEV  0x0DEF
 #define FAMILY_FILE 0xFFFF
 
