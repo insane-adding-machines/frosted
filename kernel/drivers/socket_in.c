@@ -311,7 +311,7 @@ static int sock_io_setflags(struct pico_device *dev, struct ifreq *ifr)
 static int sock_io_setaddr(struct pico_device *dev, struct ifreq *ifr)
 {
     struct pico_ipv4_link *l;
-    const struct pico_ip4 NM24 = {.addr = 0x00FFFFFF};
+    const struct pico_ip4 NM24 = {.addr = long_be(0xFFFFFF00)};
     struct sockaddr_in *if_addr = ((struct sockaddr_in *) &ifr->ifr_addr);
     struct pico_ip4 dev_addr = {};
 
@@ -402,7 +402,7 @@ static int sock_io_getnmask(struct pico_device *dev, struct ifreq *ifr)
     if (!l)
     	return 0;
     if_nmask->sin_family = AF_INET;
-    if_nmask->sin_addr.s_addr = (l->address.addr & l->netmask.addr) | (~l->netmask.addr);
+    if_nmask->sin_addr.s_addr = l->netmask.addr;
     return 0;
 }
 
