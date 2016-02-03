@@ -32,6 +32,12 @@ void socket_in_ini(void);
 # define socket_in_init()  do{}while(0)
 #endif
 
+#ifdef CONFIG_PICOTCP_LOOP
+struct pico_device *pico_loop_create(void);
+#else
+# define pico_loop_create() NULL
+#endif
+
 #define IDLE() while(1){do{}while(0);}
 
 /* The following needs to be defined by
@@ -166,8 +172,8 @@ void frosted_kernel(int xipfs_mounted)
             void *start = NULL;
             uint32_t pic;
 
-            start = fno->owner->ops.exe(fno, init_args, &pic);
-            task_create(start, init_args, 2, (void *)pic);
+            start = fno->owner->ops.exe(fno, (void *)init_args, &pic);
+            task_create(start, (void *)init_args, 2, pic);
         }
     } else {
         /* Create "init" task */
@@ -177,8 +183,10 @@ void frosted_kernel(int xipfs_mounted)
     }
 
     ktimer_add(1000, ktimer_tcpip, NULL);
+
     pico_stack_init();
     socket_in_init();
+    pico_loop_create();
     
 
     while(1) {
