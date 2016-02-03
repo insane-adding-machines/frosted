@@ -226,7 +226,6 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
 
     if (!address_zero) {
         goto error;
-        /// ("Recieved bad file pointer");
     }
 
     load_header(&hdr, (struct flat_hdr *)address_zero);

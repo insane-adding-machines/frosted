@@ -190,6 +190,7 @@ struct __attribute__((packed)) task_block {
     void *sp;
     void *cur_stack;
     struct task *next;
+    void *allocated; /* to be freed when task dies */
 };
 
 struct __attribute__((packed)) task {
@@ -274,6 +275,11 @@ static void task_destroy(struct task *t)
             f_free(arg[i]);
             i++;
         }
+    }
+    if (t->tb.allocated) /* free allocated mem, e.g. by bflt_load */
+    {
+        kprintf("Freeing %p\n", t->tb.allocated);
+        f_free(t->tb.allocated);
     }
     f_free(t->tb.arg);
     task_space_free(t);
@@ -781,6 +787,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.sighdlr = NULL;
+    new->tb.allocated = NULL;
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -847,6 +854,18 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic
     new->tb.state = TASK_RUNNABLE;
     irq_on();
     return new->tb.pid;
+}
+
+int task_set_allocated(int pid, void *allocated)
+{
+    struct task *t = tasklist_get(&tasks_running, pid);
+    if (!t)
+        t = tasklist_get(&tasks_idling, pid);
+    if (!t)
+        return -1;
+
+    t->tb.allocated = allocated;
+    return 0;
 }
 
 int scheduler_exec(void (*init)(void *), void *args, uint32_t pic)

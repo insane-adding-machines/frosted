@@ -424,7 +424,7 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exe) {
         start = f->owner->ops.exe(f, arg, &pic);
         if (start) 
-            scheduler_exec(start, arg, pic, f->fname);
+            scheduler_exec(start, arg, pic);
     }
     return -EINVAL;
 }
