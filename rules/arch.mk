@@ -20,7 +20,7 @@ CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DSYS_CLOCK=$(SYS_CLOCK) -DCORTEX_M3 -DFROSTED
-CFLAGS+=-Ikernel/libopencm3/include -Ikernel -Iinclude -Inewlib/include -I.
+CFLAGS+=-Ikernel/libopencm3/include -Ikernel -Iinclude -I.
 PREFIX:=$(PWD)/build
 LDFLAGS:=-gc-sections -nostartfiles -ggdb -L$(PREFIX)/lib 
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
