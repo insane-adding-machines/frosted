@@ -30,19 +30,19 @@
  static const struct uart_addr uart_addrs[] = { 
 #ifdef CONFIG_USART_0
          {   
-             .base = USART0, 
+             .base = USART0_BASE, 
              .irq = NVIC_UART0_IRQ, 
          },
 #endif
 #ifdef CONFIG_USART_1
          { 
-             .base = USART1, 
+             .base = USART1_BASE, 
              .irq = NVIC_UART1_IRQ, 
          },
 #endif
 #ifdef CONFIG_USART_2
          { 
-             .base = USART2, 
+             .base = USART2_BASE, 
              .irq = NVIC_UART2_IRQ, 
          },
 #endif         
@@ -53,7 +53,7 @@
 
  void machine_init(struct fnode * dev)
  {
-     rcc_qemu_init();
+     rcc_lm3s_init();
 #ifdef CONFIG_DEVUART
      uart_init(dev, uart_addrs, NUM_UARTS);
 #endif
