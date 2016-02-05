@@ -11,6 +11,8 @@
 #ifdef LM3S
 #   include "libopencm3/lm3s/usart.h"
 #   define CLOCK_ENABLE(C) 
+#   define USART_SR_RXNE  USART_IC_RX
+#   define USART_SR_TXE   USART_IC_TX
 #endif
 #ifdef STM32F4
 #   include "libopencm3/stm32/usart.h"
