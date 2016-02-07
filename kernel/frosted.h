@@ -139,7 +139,7 @@ struct fnode {
     uint32_t flags;
     struct fnode *parent;
     struct fnode *children;
-    const void *priv;
+    void *priv;
     uint32_t size;
     uint32_t off;
     uint32_t usage;

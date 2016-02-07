@@ -126,7 +126,7 @@ static int memfs_unlink(struct fnode *fno)
     return 0;
 }
 
-static int memfs_mount(char *source, char *tgt, uint32_t flags, char *arg)
+static int memfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 {
     struct fnode *tgt_dir = NULL;
     /* Source must be NULL */
