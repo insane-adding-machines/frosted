@@ -89,7 +89,7 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr * addr)
 {
 	struct dev_rng *r = &DEV_RNG[n];
-	r->dev = device_fno_init(&mod_devrng, &mod_devrng.name, dev, FL_RDONLY, r);
+	r->dev = device_fno_init(&mod_devrng, mod_devrng.name, dev, FL_RDONLY, r);
 	r->base = addr->base;
 }
 
