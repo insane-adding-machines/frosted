@@ -168,8 +168,8 @@ static void * f_sbrk(int flags, int incr)
 
     if (heap_end_kernel == 0) {
         heap_end_kernel = &end;
-        heap_end_user = heap_stack_high;
-        heap_stack = heap_stack_high - 4096; 
+        heap_end_user = &_stack;
+        heap_stack = &_stack - 4096; 
     }
 
     if (flags & MEM_USER) {
