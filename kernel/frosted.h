@@ -64,6 +64,7 @@ void sysfs_init(void);
 
 /* Scheduler */
 void frosted_scheduler_on(void);
+char * scheduler_task_name(int pid);
 uint16_t scheduler_get_cur_pid(void);
 uint16_t scheduler_get_cur_ppid(void);
 int task_timeslice(void);
