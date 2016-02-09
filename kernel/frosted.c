@@ -187,6 +187,9 @@ void frosted_kernel(int xipfs_mounted)
     pico_stack_init();
     pico_loop_create();
     socket_in_init();
+#ifdef CONFIG_USBETH
+    usb_ethernet_init();
+#endif
 
     while(1) {
         check_tasklets();

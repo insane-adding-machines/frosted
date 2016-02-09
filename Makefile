@@ -89,6 +89,11 @@ CFLAGS-$(DEVADC)+=-DCONFIG_DEVADC
 OBJS-$(DEVRNG)+=kernel/drivers/random.o
 CFLAGS-$(DEVRNG)+=-DCONFIG_RNG
 
+OBJS-$(DEVUSBETH)+= kernel/drivers/usb_ethernet.o
+CFLAGS-$(DEVUSBETH)+=-DCONFIG_USBETH
+CFLAGS-$(DEVUSBETH)+=-DCONFIG_USB_DEFAULT_IP=\"$(USB_DEFAULT_IP)\"
+CFLAGS-$(DEVUSBETH)+=-DCONFIG_USB_DEFAULT_NM=\"$(USB_DEFAULT_NM)\"
+
 OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o 
 OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o 
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o 

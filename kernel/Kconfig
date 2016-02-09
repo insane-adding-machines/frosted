@@ -243,6 +243,20 @@ menu "Subsystems"
             depends on ARCH_LPC17XX
 
        endif
+       
+       config DEVUSBETH
+       bool "Ethernet over USB (CDC-ECM)"
+       default n
+    
+       if DEVUSBETH
+       config USB_DEFAULT_IP
+       string "Default (boot-up) address for usb0"
+       default 192.168.6.150
+
+       config USB_DEFAULT_NM
+       string "Default (boot-up) netmask for usb0"
+       default 255.255.255.0
+       endif
 
        menuconfig DEVF4EXTI
        bool "STM32F4 EXTI driver"
