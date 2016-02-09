@@ -245,6 +245,7 @@ menu "Subsystems"
        endif
        
        config DEVUSBETH
+       depends on PICOTCP
        bool "Ethernet over USB (CDC-ECM)"
        default n
     
