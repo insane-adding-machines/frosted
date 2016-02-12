@@ -43,9 +43,6 @@ static struct frosted_inet_socket *fd_inet(int fd)
 {
     struct fnode *fno;
     struct frosted_inet_socket *s;
-    if (!fno)
-        return NULL;
-
     if (sock_check_fd(fd, &fno) != 0)
         return NULL;
 
@@ -144,12 +141,13 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
         if ((addr) && ((*addrlen) > 0))
             ret = pico_socket_recvfrom(s->sock, buf + s->bytes, len - s->bytes, &paddr, &port);
         else
-            ret = pico_socket_recvfrom(s->sock, buf + s->bytes, len - s->bytes, NULL, NULL);
+            ret = pico_socket_read(s->sock, buf + s->bytes, len - s->bytes);
 
         if (ret < 0)
             return 0 - pico_err;
         if (ret == 0) {
             s->events = PICO_SOCK_EV_RD;
+            s->pid = scheduler_get_cur_pid();
             task_suspend();
             return SYS_CALL_AGAIN;
         }
@@ -185,10 +183,11 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
             port = ((struct sockaddr_in *)addr)->sin_port;
             ret = pico_socket_sendto(s->sock, buf + s->bytes, len - s->bytes, &paddr, port); 
         } else {
-            ret = pico_socket_sendto(s->sock, buf + s->bytes, len - s->bytes, NULL, 0); 
+            ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes); 
         }
         if (ret == 0) {
             s->events = PICO_SOCK_EV_WR;
+            s->pid = scheduler_get_cur_pid();
             task_suspend();
             return SYS_CALL_AGAIN;
         }
@@ -218,9 +217,9 @@ static int sock_bind(int fd, struct sockaddr *addr, unsigned int addrlen)
     paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
     port = ((struct sockaddr_in *)addr)->sin_port;
     ret = pico_socket_bind(s->sock, &paddr, &port);
-    if (ret > 0) {
+    if (ret == 0) {
         ((struct sockaddr_in *)addr)->sin_port = port;
-        ret = 0;
+        return 0;
     }
     return 0 - pico_err;
 }
@@ -254,6 +253,7 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
         s->fd = task_filedesc_add(s->node);
         return s->fd;
     } else {
+        l->pid = scheduler_get_cur_pid();
         task_suspend();
         return SYS_CALL_AGAIN;
     }
@@ -273,6 +273,7 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
         paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
         port = ((struct sockaddr_in *)addr)->sin_port;
         ret = pico_socket_connect(s->sock, &paddr, port);
+        s->pid = scheduler_get_cur_pid();
         task_suspend();
         return SYS_CALL_AGAIN;
     }
@@ -503,6 +504,7 @@ void socket_in_init(void)
 {
     mod_socket_in.family = FAMILY_INET;
     strcpy(mod_socket_in.name,"picotcp");
+
     mod_socket_in.ops.poll = sock_poll;
     mod_socket_in.ops.close = sock_close;
 

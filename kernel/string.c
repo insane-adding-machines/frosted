@@ -195,7 +195,7 @@ char *strcpy(char *dst, const char *src)
 int memcmp(const unsigned char *s1, const unsigned char *s2, size_t n)
 {
     int diff = 0;
-    while(!diff && *s1 && n)
+    while(!diff && n)
     {
         diff = (int)*s1 - (int)*s2;
         s1++;

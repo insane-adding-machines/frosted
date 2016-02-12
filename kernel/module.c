@@ -88,6 +88,8 @@ int sys_read_hdlr(int fd, void *buf, int len)
         return -EPERM;
     if (fno && fno->owner->ops.read) {
         return fno->owner->ops.read(fno, buf, len);
+    } else if (fno->owner && fno->owner->ops.recvfrom) {
+        return fno->owner->ops.recvfrom(fd, buf, len, 0, NULL, NULL);
     }
     return -ENOENT;
 }
@@ -101,6 +103,8 @@ int sys_write_hdlr(int fd, void *buf, int len)
         return -ENOENT;
     if (fno->owner && fno->owner->ops.write) {
         return fno->owner->ops.write(fno, buf, len);
+    } else if (fno->owner && fno->owner->ops.sendto) {
+        return fno->owner->ops.sendto(fd, buf, len, 0, NULL, 0);
     }
     return -EOPNOTSUPP;
 }

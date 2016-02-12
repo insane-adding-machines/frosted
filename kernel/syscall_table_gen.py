@@ -103,32 +103,32 @@ for n in range(len(syscalls)):
     usercode.write( "/* Syscall: %s(%d arguments) */\n" % (name, tp))
     if (tp == 0):
         usercode.write( "int sys_%s(void){\n" % name)
-        usercode.write( "    syscall(SYS_%s, 0, 0, 0, 0, 0); \n" % name.upper())
+        usercode.write( "    return syscall(SYS_%s, 0, 0, 0, 0, 0); \n" % name.upper())
         usercode.write( "}\n")
         usercode.write("\n")
     if (tp == 1):
         usercode.write( "int sys_%s(uint32_t arg1){\n" % name)
-        usercode.write( "    syscall(SYS_%s, arg1, 0, 0, 0, 0); \n" % name.upper())
+        usercode.write( "    return syscall(SYS_%s, arg1, 0, 0, 0, 0); \n" % name.upper())
         usercode.write( "}\n")
         usercode.write("\n")
     if (tp == 2):
         usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2){\n" % name)
-        usercode.write( "    syscall(SYS_%s, arg1, arg2, 0, 0, 0); \n" % name.upper())
+        usercode.write( "    return syscall(SYS_%s, arg1, arg2, 0, 0, 0); \n" % name.upper())
         usercode.write( "}\n")
         usercode.write("\n")
     if (tp == 3):
         usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3){\n" % name)
-        usercode.write( "    syscall(SYS_%s, arg1, arg2, arg3, 0,  0); \n" % name.upper())
+        usercode.write( "    return syscall(SYS_%s, arg1, arg2, arg3, 0,  0); \n" % name.upper())
         usercode.write( "}\n")
         usercode.write("\n")
     if (tp == 4):
         usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4){\n" % name)
-        usercode.write( "    syscall(SYS_%s, arg1, arg2, arg3, arg4, 0); \n" % name.upper())
+        usercode.write( "    return syscall(SYS_%s, arg1, arg2, arg3, arg4, 0); \n" % name.upper())
         usercode.write( "}\n")
         usercode.write("\n")
     if (tp == 5):
         usercode.write( "int sys_%s(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5){\n" % name)
-        usercode.write( "    syscall(SYS_%s, arg1, arg2, arg3, arg4, arg5); \n" % name.upper())
+        usercode.write( "    return syscall(SYS_%s, arg1, arg2, arg3, arg4, arg5); \n" % name.upper())
         usercode.write( "}\n")
         usercode.write("\n")
 
