@@ -140,8 +140,10 @@ static void ktimer_tcpip(uint32_t time, void *arg);
 static void tasklet_tcpip(void *arg)
 {
 #ifdef CONFIG_PICOTCP
+    irq_off();
     pico_stack_tick();
     ktimer_add(1, ktimer_tcpip, NULL);
+    irq_on();
 #endif
 }
 

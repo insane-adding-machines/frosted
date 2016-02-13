@@ -52,6 +52,8 @@ static struct frosted_inet_socket *fd_inet(int fd)
 
 static struct frosted_inet_socket *pico_inet(struct pico_socket *s)
 {
+    if (!s || !s->priv)
+        return NULL;
     return (struct frosted_inet_socket *)(s->priv);
 }
 
@@ -63,8 +65,11 @@ static void pico_socket_event(uint16_t ev, struct pico_socket *sock)
         return;
     }
     s->revents |= ev;
-    if ((s->revents & s->events) != 0)
+    if ((s->revents & s->events) != 0) {
         task_resume(s->pid);
+        s->revents &= (~s->events);
+        s->events = 0;
+    }
 }
 
 static int sock_close(struct fnode *fno)
@@ -152,7 +157,7 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
             return SYS_CALL_AGAIN;
         }
         s->bytes += ret;
-        if ((s->sock->proto->proto_number) == PICO_PROTO_UDP && (s->bytes > 0))
+        if (s->bytes > 0)
             break;
     }
     if (addr) {
@@ -160,6 +165,7 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
         ((struct sockaddr_in *)addr)->sin_port = port;
         ((struct sockaddr_in *)addr)->sin_addr.s_addr = paddr.addr;
     }
+    ret = s->bytes;
     s->bytes = 0;
     s->events  &= (~PICO_SOCK_EV_RD);
     s->revents &= (~PICO_SOCK_EV_RD);
