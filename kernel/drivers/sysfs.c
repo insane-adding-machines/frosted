@@ -7,10 +7,23 @@
 static struct fnode *sysfs;
 static struct module mod_sysfs;
 
-static frosted_mutex_t *sysfs_mutex;
+static frosted_mutex_t *sysfs_mutex = NULL;
 
 extern struct mountpoint *MTAB;
 extern struct f_malloc_stats f_malloc_stats[3];
+
+
+void sysfs_lock(void)
+{
+    if (sysfs_mutex)
+        frosted_mutex_lock(sysfs_mutex);
+}
+
+void sysfs_unlock(void)
+{
+    if (sysfs_mutex)
+        frosted_mutex_unlock(sysfs_mutex);
+}
 
 static int sysfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
@@ -176,6 +189,12 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     return len;
 }
 
+#ifdef CONFIG_TCPIP_MEMPOOL
+#   define NPOOLS 4
+#else
+#   define NPOOLS 3
+#endif
+
 int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
@@ -186,9 +205,13 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
     int stack_used;
     int p_state;
     if (fno->off == 0) {
-        const char mem_stat_banner[3][50] = {"\r\nKernel memory statistics\r\n",
+        const char mem_stat_banner[NPOOLS][50] = {"\r\nKernel memory statistics\r\n",
                                           "\r\n\nUser memory statistics\r\n",
-                                          "\r\n\nTask space statistics\r\n"
+                                          "\r\n\nTask space statistics\r\n",
+#ifdef CONFIG_TCPIP_MEMPOOL
+                                          "\r\n\nTCP/IP space statistics\r\n",
+#endif
+
         };
 
         const char malloc_banner[] = "\tObjects in use: ";
@@ -201,7 +224,7 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
             return -1;
         off = 0;
 
-        for (i = 0; i < 3; i++) {
+        for (i = 0; i < NPOOLS; i++) {
             unsigned long allocated = f_malloc_stats[i].malloc_calls - f_malloc_stats[i].free_calls;
             strcpy(mem_txt + off, mem_stat_banner[i]);
             off += strlen(mem_stat_banner[i]);

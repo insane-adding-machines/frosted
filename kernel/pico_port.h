@@ -5,11 +5,12 @@
 #ifdef FROSTED
 #include "frosted.h"
 #include "string.h"
+#include "malloc.h"
 int kprintf(const char *format, ...);
 
 
 #define pico_free(x) f_free(x)
-#define pico_zalloc(x) f_calloc(MEM_KERNEL, x, 1)
+#define pico_zalloc(x) f_calloc(MEM_TCPIP, x, 1)
 
 static void *pico_mutex_init(void) {
     return frosted_mutex_init();

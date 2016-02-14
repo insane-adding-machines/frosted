@@ -6,7 +6,7 @@
 #include <sys/ioctl.h>
 
 static struct module mod_socket_in;
-static frosted_mutex_t *sysfs_mutex;
+static frosted_mutex_t *picotcp_lock = NULL;
 
 struct frosted_inet_socket {
     struct fnode *node;
@@ -17,6 +17,19 @@ struct frosted_inet_socket {
     uint16_t revents;
     int bytes;
 };
+
+
+void pico_lock(void)
+{
+    if (picotcp_lock)
+        frosted_mutex_lock(picotcp_lock);
+}
+
+void pico_unlock(void)
+{
+    if (picotcp_lock)
+        frosted_mutex_unlock(picotcp_lock);
+}
 
 static int sock_check_fd(int fd, struct fnode **fno)
 {
@@ -80,7 +93,9 @@ static int sock_close(struct fnode *fno)
     s = (struct frosted_inet_socket *)fno->priv;
     if (!s)
         return -1;
+    pico_lock();
     pico_socket_close(s->sock);
+    pico_unlock();
     kprintf("## Closed INET socket!\n");
     kfree((struct fnode *)s->node);
     kfree(s);
@@ -118,7 +133,9 @@ static int sock_socket(int domain, int type, int protocol)
     if (type == 2)
         type = PICO_PROTO_UDP;
 
+    pico_lock();
     s->sock = pico_socket_open(domain, type, pico_socket_event);
+    pico_unlock();
     if (!s->sock) {
         kfree((struct fnode *)s->node);
         kfree(s);
@@ -143,10 +160,15 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
     if (!s)
         return -EINVAL;
     while (s->bytes < len) {
-        if ((addr) && ((*addrlen) > 0))
+        if ((addr) && ((*addrlen) > 0)) {
+            pico_lock();
             ret = pico_socket_recvfrom(s->sock, buf + s->bytes, len - s->bytes, &paddr, &port);
-        else
+            pico_unlock();
+        } else {
+            pico_lock();
             ret = pico_socket_read(s->sock, buf + s->bytes, len - s->bytes);
+            pico_unlock();
+        }
 
         if (ret < 0)
             return 0 - pico_err;
@@ -187,9 +209,13 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
         {
             paddr.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
             port = ((struct sockaddr_in *)addr)->sin_port;
+            pico_lock();
             ret = pico_socket_sendto(s->sock, buf + s->bytes, len - s->bytes, &paddr, port); 
+            pico_unlock();
         } else {
+            pico_lock();
             ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes); 
+            pico_unlock();
         }
         if (ret == 0) {
             s->events = PICO_SOCK_EV_WR;
@@ -205,6 +231,7 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
         if ((s->sock->proto->proto_number) == PICO_PROTO_UDP && (s->bytes > 0))
             break;
     }
+    ret = s->bytes;
     s->bytes = 0;
     s->events  &= (~PICO_SOCK_EV_WR);
     s->revents &= (~PICO_SOCK_EV_WR);
@@ -222,7 +249,9 @@ static int sock_bind(int fd, struct sockaddr *addr, unsigned int addrlen)
         return -EINVAL;
     paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
     port = ((struct sockaddr_in *)addr)->sin_port;
+    pico_lock();
     ret = pico_socket_bind(s->sock, &paddr, &port);
+    pico_unlock();
     if (ret == 0) {
         ((struct sockaddr_in *)addr)->sin_port = port;
         return 0;
@@ -242,14 +271,18 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
         return -EINVAL;
     l->events = PICO_SOCK_EV_CONN;
 
+    pico_lock();
     cli = pico_socket_accept(l->sock, &paddr, &port);
+    pico_unlock();
     if ((cli == NULL) && (pico_err != PICO_ERR_EAGAIN))
         return 0 - pico_err;
 
     if (cli) {
         s = inet_socket_new();
         if (!s) {
+            pico_lock();
             pico_socket_close(cli);
+            pico_unlock();
             return -ENOMEM;
         }
         s->sock = cli;
@@ -278,7 +311,9 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
     if ((s->revents & PICO_SOCK_EV_CONN) == 0) {
         paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
         port = ((struct sockaddr_in *)addr)->sin_port;
+        pico_lock();
         ret = pico_socket_connect(s->sock, &paddr, port);
+        pico_unlock();
         s->pid = scheduler_get_cur_pid();
         task_suspend();
         return SYS_CALL_AGAIN;
@@ -291,19 +326,27 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
 static int sock_listen(int fd, int backlog)
 {
     struct frosted_inet_socket *s;
+    int ret;
     s = fd_inet(fd);
     if (!s)
         return -EINVAL;
-    return pico_socket_listen(s->sock, backlog);
+    pico_lock();
+    ret = pico_socket_listen(s->sock, backlog);
+    pico_unlock();
+    return ret;
 }
 
 static int sock_shutdown(int fd, uint16_t how)
 {
     struct frosted_inet_socket *s;
+    int ret;
     s = fd_inet(fd);
     if (!s)
         return -EINVAL;
-    return pico_socket_shutdown(s->sock, how);
+    pico_lock();
+    ret =  pico_socket_shutdown(s->sock, how);
+    pico_unlock();
+    return ret;
 }
 
 
@@ -471,12 +514,14 @@ static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
     struct pico_device *dev;
     struct pico_tree_node *index;
     const char iface_banner[] = "Interface | \r\n";
+    sysfs_lock();
     if (fno->off == 0) {
         txt = kcalloc(MAX_DEVNET_BUF, 1);
         off = 0;
-        if (!txt)
-            return -1;
-
+        if (!txt) {
+            len = -1;
+            goto out;
+        }
         strcpy(txt, iface_banner);
         off += strlen(iface_banner);
         pico_tree_foreach(index, &Device_tree){
@@ -489,14 +534,16 @@ static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
     }
     if (off == fno->off) {
         kfree(txt);
-        frosted_mutex_unlock(sysfs_mutex);
-        return -1;
+        len = -1;
+        goto out;
     }
     if (len > (off - fno->off)) {
        len = off - fno->off;
     }
     memcpy(res, txt + fno->off, len);
     fno->off += len;
+out:
+    sysfs_unlock();
     return len;
 }
 
@@ -514,7 +561,7 @@ void socket_in_init(void)
     mod_socket_in.ops.poll = sock_poll;
     mod_socket_in.ops.close = sock_close;
 
-    sysfs_mutex = frosted_mutex_init();
+    picotcp_lock = frosted_mutex_init();
 
     mod_socket_in.ops.socket     = sock_socket;
     mod_socket_in.ops.connect    = sock_connect;

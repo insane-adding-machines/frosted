@@ -6,7 +6,15 @@
 #define MEM_KERNEL 0
 #define MEM_USER   1
 #define MEM_TASK   2
-#define MEM_OWNER_MASK 3
+
+#ifdef CONFIG_TCPIP_MEMPOOL
+#   define MEM_TCPIP  4
+#   define MEM_OWNER_MASK 7
+#else
+#   define MEM_TCPIP MEM_KERNEL
+#   define MEM_OWNER_MASK 3
+#endif
+
 
 struct f_malloc_stats {
     uint32_t malloc_calls;

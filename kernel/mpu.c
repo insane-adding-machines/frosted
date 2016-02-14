@@ -125,15 +125,15 @@ void mpu_init(void)
     irq_off();
 
     /* User area: prio 0, from start */
-    mpu_setaddr(0, RAM_START);      /* Userspace memory block   0x20000000 (512M) */
-    mpu_setattr(0, MPUSIZE_512M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
+    mpu_setaddr(0, 0);              /* Userspace memory block   0x00000000 (1G) - Internal flash is an exception of this */
+    mpu_setattr(0, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
 
     mpu_setaddr(1, EXTRAM_START);   /* External RAM bank        0x60000000 (512M) */
     mpu_setattr(1, MPUSIZE_512M   | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
 
     /* Read-only sectors */
-    mpu_setaddr(2, FLASH_START);    /* Internal Flash           0x00000000 (512M) */
-    mpu_setattr(2, MPUSIZE_512M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
+    mpu_setaddr(2, FLASH_START);    /* Internal Flash           0x00000000 - 0x0FFFFFFF (256M) */
+    mpu_setattr(2, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
 
     /* System (No user access) */
     mpu_setaddr(3, RAM_START);      /* Kernel memory            0x20000000 (CONFIG_KRAM_SIZE KB) */

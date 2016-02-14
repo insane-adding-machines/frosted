@@ -32,6 +32,8 @@ void socket_in_ini(void);
 #else
 # define pico_stack_init() do{}while(0)
 # define socket_in_init()  do{}while(0)
+# define pico_lock() do{}while(0)
+# define pico_unlock() do{}while(0)
 #endif
 
 #ifdef CONFIG_PICOTCP_LOOP
@@ -142,10 +144,10 @@ static void ktimer_tcpip(uint32_t time, void *arg);
 static void tasklet_tcpip(void *arg)
 {
 #ifdef CONFIG_PICOTCP
-    irq_off();
+    pico_lock();
     pico_stack_tick();
     ktimer_add(1, ktimer_tcpip, NULL);
-    irq_on();
+    pico_unlock();
 #endif
 }
 

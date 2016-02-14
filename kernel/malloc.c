@@ -38,6 +38,7 @@
 
 #define F_IN_USE 0x20
 #define in_use(x) (((x->flags) & F_IN_USE) == F_IN_USE)
+#define MEMPOOL(x) ((((x) & MEM_OWNER_MASK) < 4)?(x):(3))
 
 /*------------------*/
 /* Structures       */
@@ -54,10 +55,10 @@ struct f_malloc_block {
 /*------------------*/
 /* Local variables  */
 /*------------------*/
-static struct f_malloc_block *malloc_entry[3] = {NULL, NULL, NULL};
+static struct f_malloc_block *malloc_entry[4] = {NULL, NULL, NULL, NULL};
 
 /* Globals */
-struct f_malloc_stats f_malloc_stats[3] = {};
+struct f_malloc_stats f_malloc_stats[4] = {};
 
 
 
@@ -136,7 +137,7 @@ static int block_fits(struct f_malloc_block *blk, size_t size, int flags)
 
 static struct f_malloc_block * f_find_best_fit(int flags, size_t size, struct f_malloc_block ** last)
 {
-    struct f_malloc_block *found = NULL, *blk = malloc_entry[flags & MEM_OWNER_MASK];
+    struct f_malloc_block *found = NULL, *blk = malloc_entry[MEMPOOL(flags)];
 
     /* See if we can find a free block that fits */
     while (blk) /* last entry will break the loop */
@@ -159,6 +160,12 @@ static char * heap_end_kernel;
 static char * heap_stack;
 static char * heap_end_user;
 
+#ifdef CONFIG_TCPIP_MEMPOOL
+    static char * heap_end_tcpip = CONFIG_TCPIP_MEMPOOL;
+#else
+    static char * heap_end_tcpip = NULL;
+#endif
+
 static void * f_sbrk(int flags, int incr)
 {
     extern char   end;           /* Set by linker */
@@ -169,6 +176,7 @@ static void * f_sbrk(int flags, int incr)
     if (heap_end_kernel == 0) {
         heap_end_kernel = &end;
         heap_end_user = &_stack;
+
         heap_stack = &_stack - 4096; 
     }
 
@@ -183,6 +191,11 @@ static void * f_sbrk(int flags, int incr)
             return (void *)(0 - 1);
         heap_stack -= incr;
         prev_heap_end = heap_stack;
+    } else if (flags & MEM_TCPIP) {
+        if (!heap_end_tcpip)
+            return (void *)(0 - 1);
+        prev_heap_end = heap_end_tcpip;
+        heap_end_tcpip += incr;
     } else {
         if ((heap_end_kernel + incr) > ((&end) + KMEM_SIZE))
             return (void*)(0 - 1);
@@ -201,6 +214,8 @@ static void f_compact(struct f_malloc_block *blk)
         heap_end_user -= (blk->size + sizeof(struct f_malloc_block));
     } else if (blk->flags & MEM_TASK) {
         heap_stack += (blk->size + sizeof(struct f_malloc_block));
+    } else if (blk->flags & MEM_TCPIP) {
+        heap_end_tcpip -= (blk->size + sizeof(struct f_malloc_block));
     } else {
         heap_end_kernel -= (blk->size + sizeof(struct f_malloc_block));
     }
@@ -271,7 +286,7 @@ void * f_malloc(int flags, size_t size)
     } 
 
     /* update stats */
-    f_malloc_stats[flags & MEM_OWNER_MASK].malloc_calls++;
+    f_malloc_stats[MEMPOOL(flags)].malloc_calls++;
 
     /* Travel the linked list for first fit */
     blk = f_find_best_fit(flags, size, &last);
@@ -291,8 +306,8 @@ void * f_malloc(int flags, size_t size)
             return NULL;
 
         /* first call -> set entrypoint */
-        if (malloc_entry[flags & MEM_OWNER_MASK] == NULL) {
-            malloc_entry[flags & MEM_OWNER_MASK] = blk;
+        if (malloc_entry[MEMPOOL(flags)] == NULL) {
+            malloc_entry[MEMPOOL(flags)] = blk;
             blk->prev = NULL;
         }
         blk->magic = F_MALLOC_MAGIC;
@@ -311,8 +326,8 @@ void * f_malloc(int flags, size_t size)
     blk->flags = F_IN_USE | flags;
 
     /* update stats */
-    f_malloc_stats[flags & MEM_OWNER_MASK].objects_allocated++;
-    f_malloc_stats[flags & MEM_OWNER_MASK].mem_allocated += ((uint32_t)blk->size + sizeof(struct f_malloc_block));
+    f_malloc_stats[MEMPOOL(flags)].objects_allocated++;
+    f_malloc_stats[MEMPOOL(flags)].mem_allocated += ((uint32_t)blk->size + sizeof(struct f_malloc_block));
 
     return (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
 }
@@ -337,9 +352,9 @@ void f_free(void * ptr)
 
         blk->flags &= ~F_IN_USE;
         /* stats */
-        f_malloc_stats[blk->flags & MEM_OWNER_MASK].free_calls++;
-        f_malloc_stats[blk->flags & MEM_OWNER_MASK].objects_allocated--;
-        f_malloc_stats[blk->flags & MEM_OWNER_MASK].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
+        f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
+        f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
+        f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
         /* Merge adjecent free blocks (consecutive blocks are always adjacent */
         if ((blk->prev) && (!in_use(blk->prev)))
         {

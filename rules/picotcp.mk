@@ -1,11 +1,15 @@
 
+ifeq ($(TCPIP_MEMPOOL_YN),y)
+  MEMPOOL+=-DCONFIG_TCPIP_MEMPOOL=$(CONFIG_TCPIP_MEMPOOL)
+endif
+
 ifeq ($(PICOTCP),y)
 	CFLAGS+=-DCONFIG_PICOTCP -I$(PREFIX)/include -Ikernel/net/socket 
     PICO_OPTIONS=CROSS_COMPILE=arm-none-eabi- ARCH=cortexm3 RTOS=1 PREFIX=$(PREFIX) \
     		 DHCP_CLIENT=0 DHCP_SERVER=0 MDNS=0 DNS_SD=0 \
     			 OLSR=0 SLAACV4=0 SNTP_CLIENT=0 PPP=0 TFTP=0 \
 				 AODV=0 \
-				 EXTRA_CFLAGS="-DFROSTED -I$(PWD)/kernel -I$(PWD)/include -nostdlib -DPICO_PORT_CUSTOM"
+				 EXTRA_CFLAGS="-DFROSTED -I$(PWD)/kernel -I$(PWD)/include -nostdlib -DPICO_PORT_CUSTOM $(MEMPOOL)"
     PICO_LIB:=$(PREFIX)/lib/libpicotcp.a
 
 ifneq ($(CONFIG_PICOTCP_DEBUG),y)
@@ -35,6 +39,7 @@ endif
 ifneq ($(CONFIG_PICOTCP_NAT),y)
   PICO_OPTIONS+=NAT=0
 endif
+
 ifneq ($(CONFIG_PICOTCP_IPFILTER),y)
   PICO_OPTIONS+=IPFILTER=0
 endif

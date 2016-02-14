@@ -185,6 +185,14 @@ menu "Subsystems"
        config SOCK_INET
        bool "TCP/IP Socket support"
        default n
+       config TCPIP_MEMPOOL_YN
+       bool "Separate memory pool for TCP/IP stack"
+       default n
+       if TCPIP_MEMPOOL_YN
+        config TCPIP_MEMPOOL
+        string "TCP/IP pool base address"
+        default "0x10000000"
+       endif
        choice NET_STACK
         prompt "TCP/IP stack selection"
         default PICOTCP
