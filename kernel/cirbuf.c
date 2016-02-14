@@ -19,6 +19,7 @@
  */  
 
 #include "frosted.h"
+#include "cirbuf.h"
 #include "errno.h"
 
 struct cirbuf {

@@ -19,6 +19,7 @@
  */  
 #include "frosted.h"
 #include "string.h"
+#include "scheduler.h"
 #include "sys/stat.h"
 
 #define O_MODE(o) ((o & O_ACCMODE))

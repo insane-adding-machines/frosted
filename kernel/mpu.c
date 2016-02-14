@@ -156,7 +156,7 @@ void mpu_init(void)
 void mpu_task_on(void *stack)
 {
     mpu_disable();
-    mpu_setaddr(4, stack + 20);
+    mpu_setaddr(4, (int)(stack + 20));
     mpu_setattr(4, mpu_size(CONFIG_TASK_STACK_SIZE) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
     mpu_enable();
 }

@@ -1,5 +1,7 @@
 #include "frosted.h"
 #include <string.h>
+#include "bflt.h"
+#include "kprintf.h"
 #include "xipfs.h"
 
 static struct fnode *xipfs;
@@ -53,7 +55,7 @@ static void *xipfs_exe(struct fnode *fno, void *arg, uint32_t *pic)
     if (!xip)
         return NULL;
 
-    bflt_load(xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, pic);
+    bflt_load((uint8_t*)xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, pic);
     kprintf("xipfs: GDB: add-symbol-file %s.gdb 0x%p -s .data 0x%p -s .bss 0x%p\r\n", fno->fname, reloc_text, reloc_data, reloc_bss);
 
     return init;

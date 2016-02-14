@@ -19,6 +19,7 @@
  */  
 #include "frosted.h"
 #include "flat.h"
+#include "kprintf.h"
 #include "libopencmsis/core_cm3.h"
 #include "libopencm3/cm3/systick.h"
 
@@ -73,22 +74,22 @@ static unsigned long * calc_reloc(uint8_t * base, uint32_t offset)
     if (id)
     {
         kprintf("bFLT: No shared library support\r\n");
-        return RELOC_FAILED;
+        return (unsigned long *)RELOC_FAILED;
     }
     return (unsigned long *)(base + (offset & 0x00FFFFFFu));
 }
 
-int process_GOT_relocs(struct flat_hdr * hdr, uint8_t * base, unsigned long * got_start)
+int process_GOT_relocs(struct flat_hdr * hdr, uint8_t * base, uint8_t * got_start)
 {
     /*
      * Addresses in header are relative to start of FILE (so including flat_hdr)
      * Addresses in the relocs are relative to start of .text (so excluding flat_hdr)
      */
-    unsigned long * rp = got_start;
+    unsigned long * rp = (unsigned long * )got_start;
     unsigned long data_start = long_be(hdr->data_start) - sizeof(struct flat_hdr);
     unsigned long bss_end = long_be(hdr->bss_end) - sizeof(struct flat_hdr);
-    unsigned long text_start_dest = base + sizeof(struct flat_hdr);
-    unsigned long data_start_dest = (unsigned long)got_start;
+    uint8_t * text_start_dest = base + sizeof(struct flat_hdr);
+    uint8_t * data_start_dest = got_start;
 
     for (rp; *rp != 0xffffffff; rp++) {
         if (*rp) {
@@ -182,7 +183,7 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long da
 
         if (relocd_addr == (unsigned long *)RELOC_FAILED) {
             kprintf("bFLT: Unable to calculate relocation address\r\n");
-            return;
+            return -1;
         }
 
     }

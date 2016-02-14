@@ -1,5 +1,5 @@
 #include "frosted.h"
-#include <string.h>
+#include "string.h"
 
 static struct module mod_memfs;
 

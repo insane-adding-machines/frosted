@@ -21,6 +21,7 @@
 #include "syscall_table.h"
 #include "string.h" /* flibc string.h */
 #include "signal.h"
+#include "kprintf.h"
 #include "sys/wait.h"
 
 

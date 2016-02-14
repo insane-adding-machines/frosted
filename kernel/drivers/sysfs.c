@@ -1,5 +1,6 @@
 #include "frosted.h"
-#include <string.h>
+#include "string.h"
+#include "scheduler.h"
 
 #define MAX_SYSFS_BUFFER 512
 
