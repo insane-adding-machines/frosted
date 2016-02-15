@@ -208,6 +208,11 @@ void usb_eth_init(const unsigned char * usb_name)
     else
     {
         usb->usbd_dev =  usb_register_set_config_callback(fno, cdcecm_set_config);
+        pico_usbeth = usb;
+        
+        pico_ipv4_link_add(&usb->dev, default_ip, default_nm);
+        
+        pico_usbeth->tx_busy = 0;
     }
 }
 
