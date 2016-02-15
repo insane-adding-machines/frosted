@@ -22,8 +22,13 @@
 # define LED2 "gpio_1_15"
 # define LED3 "gpio_1_4"
 #elif defined (STM32F4)
-# define LED0 "gpio_3_12"
-# define LED1 "gpio_3_13"
+# if defined (F429DISCO)
+#  define LED0 "gpio_6_13"
+#  define LED1 "gpio_6_14"
+# else
+#  define LED0 "gpio_3_12"
+#  define LED1 "gpio_3_13"
+#endif
 # define LED2 "gpio_3_14"
 # define LED3 "gpio_3_15"
 #elif defined (LPC17XX)
@@ -68,7 +73,7 @@ static struct module mod_devgpio = {
     .family = FAMILY_FILE,
     .name = "gpio",
     .ops.open = device_open,
-    .ops.read = devgpio_read, 
+    .ops.read = devgpio_read,
     .ops.poll = devgpio_poll,
     .ops.write = devgpio_write,
     .ops.ioctl = devgpio_ioctl,
@@ -90,7 +95,7 @@ static struct module mod_devgpio = {
                                                                 case GPIOJ:rcc_periph_clock_enable(RCC_GPIOJ);  break;  \
                                                                 case GPIOK:rcc_periph_clock_enable(RCC_GPIOK);  break;  \
                                                                 }
-                                                                
+
 #define SET_INPUT(P, D, I)               gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);
 
 #define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);   \
@@ -103,7 +108,7 @@ static struct module mod_devgpio = {
 #endif
 
 #ifdef LPC17XX
-#define GPIO_CLOCK_ENABLE(C) 
+#define GPIO_CLOCK_ENABLE(C)
 
 #define SET_INPUT(P, D, I)                  gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);    \
                                                                gpio_set_af(P, GPIO_AF0, I);
@@ -211,7 +216,7 @@ static int devgpio_poll(struct fnode * fno, uint16_t events, uint16_t *revents)
     *revents = 0;
     if (events & POLLOUT) {
         *revents |= POLLOUT;
-        ret = 1; 
+        ret = 1;
     }
     if (events == POLLIN) {
         *revents |= POLLIN;
@@ -243,7 +248,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
 
         if (gpio_addrs[i].name) {
 
-            if (strcmp(gpio_addrs[i].name, LED0) == 0) 
+            if (strcmp(gpio_addrs[i].name, LED0) == 0)
             {
                 char gpio_name[32] = "/dev/";
                 strcat(gpio_name, LED0);
@@ -269,9 +274,9 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
             }
         }
 
-    
+
         GPIO_CLOCK_ENABLE(gpio_addrs[i].base)
-            
+
         switch(gpio_addrs[i].mode)
         {
             case GPIO_MODE_INPUT:
@@ -287,38 +292,38 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 {
                     switch(gpio_addrs[i].pin)
                     {
-                        /* LPC17XX only supports EXTI on P2.10 - P2.13 
+                        /* LPC17XX only supports EXTI on P2.10 - P2.13
                             Doesn't seem to matter what we do here we always
                             get an interrupt when configuring the EXTI :( */
-                        case GPIOPIN10: 
+                        case GPIOPIN10:
                             nvic_disable_irq(NVIC_EINT0_IRQ);
                             exti_set_trigger(EXTI0, gpio_addrs[i].trigger);
                             exti_clear_flag(EXTI0);
                             nvic_clear_pending_irq(NVIC_EINT0_IRQ);
                             nvic_enable_irq(NVIC_EINT0_IRQ);
                             break;
-                        case GPIOPIN11: 
+                        case GPIOPIN11:
                             nvic_disable_irq(NVIC_EINT1_IRQ);
                             exti_set_trigger(EXTI1, gpio_addrs[i].trigger);
                             nvic_clear_pending_irq(NVIC_EINT1_IRQ);
                             exti_clear_flag(EXTI1);
                             nvic_enable_irq(NVIC_EINT1_IRQ);
                             break;
-                        case GPIOPIN12: 
+                        case GPIOPIN12:
                             nvic_disable_irq(NVIC_EINT2_IRQ);
                             exti_set_trigger(EXTI2, gpio_addrs[i].trigger);
                             nvic_clear_pending_irq(NVIC_EINT2_IRQ);
                             exti_clear_flag(EXTI2);
                             nvic_enable_irq(NVIC_EINT2_IRQ);
                             break;
-                        case GPIOPIN13: 
+                        case GPIOPIN13:
                             nvic_disable_irq(NVIC_EINT3_IRQ);
                             exti_set_trigger(EXTI3, gpio_addrs[i].trigger);
                             nvic_clear_pending_irq(NVIC_EINT3_IRQ);
                             exti_clear_flag(EXTI3);
                             nvic_enable_irq(NVIC_EINT3_IRQ);
                             break;
-                        default: 
+                        default:
                             break;
                     }
                 }
@@ -329,7 +334,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 break;
         }
     }
-    
+
     register_module(&mod_devgpio);
 }
 
