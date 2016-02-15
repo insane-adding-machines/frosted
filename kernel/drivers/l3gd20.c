@@ -7,7 +7,7 @@
 #include "gpio.h"
 #include "stm32f4_exti.h"
 #include "stm32f4_dma.h"
-#include "spi.h"
+#include "stm32f4_spi.h"
 
 typedef enum
 {

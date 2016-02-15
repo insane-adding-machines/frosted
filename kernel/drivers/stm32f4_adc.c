@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "ioctl.h"
 #include "stm32f4_dma.h"
-#include "adc.h"
+#include "stm32f4_adc.h"
 #ifdef STM32F4
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/rcc.h>

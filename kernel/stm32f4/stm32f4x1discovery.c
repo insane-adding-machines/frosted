@@ -33,7 +33,7 @@
 #include "gpio.h"
 #endif
 
-#ifdef CONFIG_DEVF4EXTI
+#ifdef CONFIG_DEVSTM32F4EXTI
 #include <libopencm3/stm32/exti.h>
 #include "stm32f4_exti.h"
 #endif
@@ -42,27 +42,37 @@
 #include "stm32f4_dma.h"
 #endif
 
-#ifdef CONFIG_DEVSPI
+#ifdef CONFIG_DEVSTM32F4SPI
 #include <libopencm3/stm32/spi.h>
-#include "spi.h"
+#include "stm32f4_spi.h"
 #endif
 
 #ifdef CONFIG_DEVL3GD20
 #include "l3gd20.h"
 #endif
 
-#ifdef CONFIG_DEVI2C
+#ifdef CONFIG_DEVSTM32F4I2C
 #include <libopencm3/stm32/i2c.h>
-#include "i2c.h"
+#include "stm32f4_i2c.h"
 #endif
 
 #ifdef CONFIG_DEVLSM303DLHC
 #include "lsm303dlhc.h"
 #endif
 
-#ifdef CONFIG_DEVADC
+#ifdef CONFIG_DEVSTM32F4ADC
 #include <libopencm3/stm32/adc.h>
-#include "adc.h"
+#include "stm32f4_adc.h"
+#endif
+
+#ifdef CONFIG_STM32F4USB
+#include <libopencm3/usb/usbd.h>
+#include "stm32f4_usb.h"
+
+#include <libopencm3/usb/cdc.h>
+
+#include "cdc_ecm.h"
+
 #endif
 
 #ifdef CONFIG_DEVGPIO
@@ -121,6 +131,13 @@ static const struct gpio_addr gpio_addrs[] = {
             {.base=GPIOB, .pin=GPIO0,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
             {.base=GPIOB, .pin=GPIO1,.mode=GPIO_MODE_ANALOG, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
 #endif
+
+#ifdef CONFIG_STM32F4USB
+            {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+            {.base=GPIOA, .pin=GPIO11,.mode=GPIO_MODE_AF,.af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+            {.base=GPIOA, .pin=GPIO12,.mode=GPIO_MODE_AF,.af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+#endif
+
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
 #endif
@@ -347,6 +364,167 @@ static const struct adc_addr adc_addrs[] = {
 #define NUM_ADC (sizeof(adc_addrs)/sizeof(struct adc_addr))
 #endif
 
+#ifdef CONFIG_STM32F4USB
+
+static const struct usb_device_descriptor usbdev_desc= {
+    .bLength = USB_DT_DEVICE_SIZE,
+    .bDescriptorType = USB_DT_DEVICE,
+    .bcdUSB = 0x0200,
+    .bDeviceClass = USB_CLASS_CDC,
+    .bDeviceSubClass = 0,
+    .bDeviceProtocol = 0,
+    .bMaxPacketSize0 = 64,
+    .idVendor = 0x0483,
+    .idProduct = 0x5740,
+    .bcdDevice = 0x0200,
+    .iManufacturer = 1,
+    .iProduct = 2,
+    .iSerialNumber = 3,
+    .bNumConfigurations = 1,
+};
+
+static const struct usb_endpoint_descriptor comm_endp[] = {
+    {
+    .bLength = USB_DT_ENDPOINT_SIZE,
+    .bDescriptorType = USB_DT_ENDPOINT,
+    .bEndpointAddress = 0x82,
+    .bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
+    .wMaxPacketSize = 16,
+    .bInterval = 0x10,
+    }, 
+};
+
+static const struct usb_endpoint_descriptor data_endp[] = {
+    {
+    .bLength = USB_DT_ENDPOINT_SIZE,
+    .bDescriptorType = USB_DT_ENDPOINT,
+    .bEndpointAddress = 0x01,
+    .bmAttributes = USB_ENDPOINT_ATTR_BULK,
+    .wMaxPacketSize = 64,
+    .bInterval = 1,
+    }, {
+    .bLength = USB_DT_ENDPOINT_SIZE,
+    .bDescriptorType = USB_DT_ENDPOINT,
+    .bEndpointAddress = 0x81,
+    .bmAttributes = USB_ENDPOINT_ATTR_BULK,
+    .wMaxPacketSize = 64,
+    .bInterval = 1,
+    } 
+};
+
+static const struct {
+    struct usb_cdc_header_descriptor header;
+    struct usb_cdc_union_descriptor cdc_union;
+    struct usb_cdc_ecm_descriptor ecm;
+} __attribute__((packed)) cdcecm_functional_descriptors = {
+    .header = {
+        .bFunctionLength = sizeof(struct usb_cdc_header_descriptor),
+        .bDescriptorType = CS_INTERFACE,
+        .bDescriptorSubtype = USB_CDC_TYPE_HEADER,
+        .bcdCDC = 0x0120,
+    },
+    .cdc_union = {
+        .bFunctionLength = sizeof(struct usb_cdc_union_descriptor),
+        .bDescriptorType = CS_INTERFACE,
+        .bDescriptorSubtype = USB_CDC_TYPE_UNION,
+        .bControlInterface = 0,
+        .bSubordinateInterface0 = 1,
+     },
+    .ecm = {
+        .bFunctionLength = sizeof(struct usb_cdc_ecm_descriptor),
+        .bDescriptorType = CS_INTERFACE,
+        .bDescriptorSubtype = USB_CDC_TYPE_ECM,
+        .iMACAddress = 4,
+        .bmEthernetStatistics = { 0, 0, 0, 0 },
+        .wMaxSegmentSize = USBETH_MAX_FRAME,
+        .wNumberMCFilters = 0,
+        .bNumberPowerFilters = 0,
+    },
+};
+
+static const struct usb_interface_descriptor comm_iface[] = {{
+    .bLength = USB_DT_INTERFACE_SIZE,
+    .bDescriptorType = USB_DT_INTERFACE,
+    .bInterfaceNumber = 0,
+    .bAlternateSetting = 0,
+    .bNumEndpoints = 1,
+    .bInterfaceClass = USB_CLASS_CDC,
+    .bInterfaceSubClass = USB_CDC_SUBCLASS_ECM,
+    .bInterfaceProtocol = USB_CDC_PROTOCOL_NONE,
+    .iInterface = 0,
+
+    .endpoint = comm_endp,
+
+    .extra = &cdcecm_functional_descriptors,
+    .extralen = sizeof(cdcecm_functional_descriptors)
+} };
+
+static const struct usb_interface_descriptor data_iface[] = {{
+    .bLength = USB_DT_INTERFACE_SIZE,
+    .bDescriptorType = USB_DT_INTERFACE,
+    .bInterfaceNumber = 1,
+    .bAlternateSetting = 0,
+    .bNumEndpoints = 2,
+    .bInterfaceClass = USB_CLASS_DATA,
+    .bInterfaceSubClass = 0,
+    .bInterfaceProtocol = 0,
+    .iInterface = 0,
+    .endpoint = data_endp,
+} };
+
+static const struct usb_interface ifaces[] = {
+    {
+        .num_altsetting = 1,
+        .altsetting = comm_iface,
+    },
+    {
+        .num_altsetting = 1,
+        .altsetting = data_iface,
+    } 
+};
+
+static const struct usb_config_descriptor config = {
+    .bLength = USB_DT_CONFIGURATION_SIZE,
+    .bDescriptorType = USB_DT_CONFIGURATION,
+    .wTotalLength = 71,
+    .bNumInterfaces = 2,
+    .bConfigurationValue = 1,
+    .iConfiguration = 0,
+    .bmAttributes = 0xC0,
+    .bMaxPower = 0x32,
+
+    .interface = ifaces,
+};
+
+const char usb_string_manuf[] = "Insane adding machines";
+const char usb_string_name[] = "Frosted Eth gadget";
+const char usb_serialn[] = "01";
+const char usb_macaddr[] = "005af341b4c9";
+
+
+static const char *usb_strings[] = {
+    usb_string_manuf, usb_string_name, usb_serialn, usb_macaddr
+};
+
+#define NUM_USB_STRINGS (sizeof(usb_strings)/sizeof(char *))
+
+static const struct usb_addr usb_addrs[] = {
+    {
+    .irq = NVIC_OTG_FS_IRQ,
+    .rcc = RCC_OTGFS,
+    .name = "usb",
+    .num_callbacks = 1,
+    .usbdev_desc= &usbdev_desc,
+    .comm_endp = comm_endp,
+    .data_endp = data_endp,
+    .config = &config,
+    .usb_strings = usb_strings,
+    .num_usb_strings = NUM_USB_STRINGS,
+    },
+};
+#define NUM_USB (sizeof(usb_addrs)/sizeof(struct usb_addr))
+
+#endif
 
 void machine_init(struct fnode * dev)
 {
@@ -382,6 +560,12 @@ void machine_init(struct fnode * dev)
 #endif
 #ifdef CONFIG_DEVADC
     adc_init(dev, adc_addrs, NUM_ADC);
+#endif
+#ifdef CONFIG_STM32F4USB
+    usb_init(dev, usb_addrs, NUM_USB);
+#ifdef CONFIG_DEVUSBETH2
+    usb_eth_init("/dev/usb");
+#endif
 #endif
 }
 

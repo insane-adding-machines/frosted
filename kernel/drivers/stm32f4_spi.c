@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "cirbuf.h"
 #include "stm32f4_dma.h"
-#include "spi.h"
+#include "stm32f4_spi.h"
 #include <libopencm3/cm3/nvic.h>
 
 #ifdef LM3S

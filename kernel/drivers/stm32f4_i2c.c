@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "cirbuf.h"
 #include "stm32f4_dma.h"
-#include "i2c.h"
+#include "stm32f4_i2c.h"
 #include <libopencm3/cm3/nvic.h>
 
 #include <libopencm3/stm32/dma.h>
