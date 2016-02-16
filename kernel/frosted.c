@@ -26,6 +26,10 @@
 #include "null.h"
 #include "xipfs.h"
 
+#ifdef CONFIG_STM32F4USB
+# include "stm32f4/stm32f4_usbdef.h"
+#endif
+
 #ifdef CONFIG_PICOTCP
 # include "pico_stack.h"
 void socket_in_ini(void);
@@ -193,8 +197,19 @@ void frosted_kernel(int xipfs_mounted)
     pico_stack_init();
     pico_loop_create();
     socket_in_init();
-#ifdef CONFIG_USBETH
+
+#ifdef CONFIG_DEV_USB_ETH
     usb_ethernet_init();
+#endif
+
+#ifdef CONFIG_STM32F4USB
+        usb_init(usb_addrs, NUM_USB);
+    #ifdef CONFIG_DEVUSBCDCACM
+        cdcacm_init(dev, cdcacm_addrs, NUM_USBCDCACM);
+    #endif
+    #ifdef CONFIG_DEVUSBCDCECM
+        cdcecm_init("usb0");
+    #endif
 #endif
 
     while(1) {

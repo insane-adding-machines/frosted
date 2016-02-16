@@ -193,7 +193,6 @@ void cdcecm_init(const unsigned char * usb_name)
         return;
 
     memset(usb, 0, sizeof(struct pico_dev_usbeth));
-    fno = fno_search(usb_name);
 
     pico_string_to_ipv4(CONFIG_USB_DEFAULT_IP, &default_ip.addr);
     pico_string_to_ipv4(CONFIG_USB_DEFAULT_NM, &default_nm.addr);
@@ -202,12 +201,12 @@ void cdcecm_init(const unsigned char * usb_name)
     usb->dev.send = pico_usbeth_send;
     usb->dev.poll = pico_usbeth_poll;
     usb->dev.destroy = pico_usbeth_destroy;
-    if (pico_device_init(&usb->dev,"usb0", mac_addr) < 0) {
+    if (pico_device_init(&usb->dev, usb_name, mac_addr) < 0) {
         kfree(usb);
     }
     else
     {
-        usb->usbd_dev =  usb_register_set_config_callback(fno, cdcecm_set_config);
+        usb->usbd_dev =  usb_register_set_config_callback(cdcecm_set_config);
         pico_usbeth = usb;
         
         pico_ipv4_link_add(&usb->dev, default_ip, default_nm);

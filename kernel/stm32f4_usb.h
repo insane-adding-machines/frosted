@@ -12,8 +12,8 @@ struct usb_addr{
     int num_usb_strings;
 };
 
-void usb_init(struct fnode *dev, const struct usb_addr usb_addrs[], int num_usb);
-usbd_device * usb_register_set_config_callback(struct fnode *fno, usbd_set_config_callback callback);
+void usb_init(const struct usb_addr usb_addrs[], int num_usb);
+usbd_device * usb_register_set_config_callback(usbd_set_config_callback callback);
 
 #endif
 
