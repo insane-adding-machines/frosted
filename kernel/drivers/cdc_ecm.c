@@ -183,7 +183,7 @@ static void pico_usbeth_destroy(struct pico_device *dev)
 }
 
 
-void usb_eth_init(const unsigned char * usb_name)
+void cdcecm_init(const unsigned char * usb_name)
 {
     struct fnode *fno;
     struct pico_ip4 default_ip, default_nm;

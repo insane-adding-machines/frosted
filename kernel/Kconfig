@@ -256,16 +256,22 @@ menu "Subsystems"
        endif
        
        config DEVUSBETH
-       depends on (PICOTCP && !DEVF4USB && !DEVUSBETH2)
+       depends on (PICOTCP && !DEVF4USB && !DEVUSBCDCECM && !DEVUSBCDCACM)
        bool "Ethernet over USB (CDC-ECM)"
        default n
 
-       config DEVUSBETH2
+       config DEVUSBCDCECM
        depends on (PICOTCP && DEVF4USB && !DEVUSBETH)
        bool "Ethernet over USB (CDC-ECM) - Layered"
        default n
+
+       config DEVUSBCDCACM
+       depends on (DEVF4USB && !DEVUSBETH)
+       bool "UART over USB (CDC-ACM) - Layered"
+       default n
+
     
-       if (DEVUSBETH || DEVUSBETH2)
+       if (DEVUSBETH || DEVUSBCDCECM)
        config USB_DEFAULT_IP
        string "Default (boot-up) address for usb0"
        default 192.168.6.150
@@ -278,7 +284,6 @@ menu "Subsystems"
        menuconfig DEVF4USB
        bool "STM32F4 USB Driver"
        depends on (ARCH_STM32F411)
-       select DEVSTM32F4DMA
        default n
 
        menuconfig DEVF4EXTI

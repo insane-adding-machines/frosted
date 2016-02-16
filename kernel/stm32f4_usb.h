@@ -7,8 +7,6 @@ struct usb_addr{
     uint8_t num_callbacks;
     const char * name;
     const struct usb_device_descriptor * usbdev_desc;
-    const struct usb_endpoint_descriptor * comm_endp;
-    const struct usb_endpoint_descriptor * data_endp;
     const struct usb_config_descriptor * config;
     const char ** usb_strings;
     int num_usb_strings;
