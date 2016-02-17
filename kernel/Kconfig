@@ -255,9 +255,9 @@ menu "Subsystems"
 
        endif
        
-       config DEVUSBETH
-       depends on (PICOTCP && !DEVF4USB && !DEVUSBCDCECM && !DEVUSBCDCACM)
-       bool "Ethernet over USB (CDC-ECM)"
+       config DEV_USB_ETH
+       depends on (PICOTCP)
+       bool "Legacy Ethernet over USB (CDC-ECM)"
        default n
 
        config DEVUSBCDCECM
@@ -271,7 +271,7 @@ menu "Subsystems"
        default n
 
     
-       if (DEVUSBETH || DEVUSBCDCECM)
+       if (DEV_USB_ETH || DEVUSBCDCECM)
        config USB_DEFAULT_IP
        string "Default (boot-up) address for usb0"
        default 192.168.6.150
@@ -283,7 +283,7 @@ menu "Subsystems"
 
        menuconfig DEVF4USB
        bool "STM32F4 USB Driver"
-       depends on (ARCH_STM32F411)
+       depends on (ARCH_STM32F411 || ARCH_STM32F407)
        default n
 
        menuconfig DEVF4EXTI

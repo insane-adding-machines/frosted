@@ -333,6 +333,8 @@ int usb_ethernet_init(void)
     struct pico_dev_usbeth *usb = kalloc(sizeof(struct pico_dev_usbeth));;
     uint8_t *usb_buf;
     struct pico_ip4 default_ip, default_nm;
+    const char ipstr[] = CONFIG_USB_DEFAULT_IP;
+    const char nmstr[] = CONFIG_USB_DEFAULT_NM;
 
 
     if (!usb)
@@ -344,8 +346,8 @@ int usb_ethernet_init(void)
         return -ENOMEM;
     }
 
-    pico_string_to_ipv4(CONFIG_USB_DEFAULT_IP, &default_ip.addr);
-    pico_string_to_ipv4(CONFIG_USB_DEFAULT_NM, &default_nm.addr);
+    pico_string_to_ipv4(ipstr, &default_ip.addr);
+    pico_string_to_ipv4(nmstr, &default_nm.addr);
 
 
     memset(usb, 0, sizeof(struct pico_dev_usbeth));
