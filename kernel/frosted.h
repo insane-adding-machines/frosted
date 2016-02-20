@@ -129,6 +129,7 @@ int fno_fullpath(struct fnode *f, char *dst, int len);
 #define FL_DIR    0x04
 #define FL_INUSE  0x08
 #define FL_TTY    0x10
+#define FL_BLK    0x20
 
 #define FL_EXEC   0x40
 #define FL_LINK   0x80
@@ -215,6 +216,10 @@ struct module {
         /* Terminal operations */
         int (*tcsetattr)(int td, int opts, const struct termios *tp);
         int (*tcgetattr)(int td, struct termios *tp);
+
+        /* Block device operations */
+        int (*block_read)(struct fnode *fno, void *buf, uint32_t sector, int offset, int count);
+        int (*block_write)(struct fnode *fno, const void *buf, uint32_t sector, int offset, int count);
 
     } ops;
     struct module *next;

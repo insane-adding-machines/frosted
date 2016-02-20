@@ -50,6 +50,10 @@ OBJS-$(MEMFS)+= kernel/drivers/memfs.o
 OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
 
+OBJS-$(FATFS)+= kernel/fatfs.o
+CFLAGS-$(FAT32)+=-DCONFIG_FAT32
+CFLAGS-$(FAT16)+=-DCONFIG_FAT16
+
 OBJS-$(SYSFS)+= kernel/drivers/sysfs.o
 CFLAGS-$(SYSFS)+=-DCONFIG_SYSFS
 
@@ -155,7 +159,7 @@ apps.img: $(USERSPACE) tools/xipfstool
 	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
 
 image.bin: kernel.img apps.img tools/xipfstool
-	cat $^ > $@
+	cat kernel.img apps.img > $@
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 	make -C kernel/libopencm3 FP_FLAGS="-mfloat-abi=soft"

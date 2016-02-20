@@ -710,6 +710,11 @@ void __attribute__((weak)) sysfs_init(void)
 
 }
 
+void __attribute__((weak)) fatfs_init(void)
+{
+
+}
+
 void __attribute__((weak)) devgpio_init(struct fnode *dev)
 {
 

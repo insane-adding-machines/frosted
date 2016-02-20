@@ -121,6 +121,7 @@ int frosted_init(void)
     memfs_init();
     xipfs_init();
     sysfs_init();
+    fatfs_init();
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);
