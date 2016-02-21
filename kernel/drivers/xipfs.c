@@ -13,10 +13,44 @@ struct xipfs_fnode {
     uint16_t pid;
 };
 
+
+
+#define SECTOR_SIZE (512)
+
 static int xipfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
+    struct xipfs_fnode *xfno;
+    if (len <= 0)
+        return len;
+
+    xfno = FNO_MOD_PRIV(fno, &mod_xipfs);
+    if (!xfno)
+        return -1;
+
+    if (fno->size <= (fno->off))
+        return -1;
+
+    if (len > (fno->size - fno->off))
+        len = fno->size - fno->off;
+
+    memcpy(buf, ((char *)xfno->init) + fno->off, len);
+    fno->off += len;
+    return len;
+}
+
+static int xipfs_block_read(struct fnode *fno, void *buf, uint32_t sector, int offset, int count)
+{
+    fno->off = sector * SECTOR_SIZE + offset;
+    if (fno->off > fno->size) {
+        fno->off = 0;
+        return -1;
+    }
+    if (xipfs_read(fno, buf, count) == count)
+        return 0;
     return -1;
 }
+
+
 
 static int xipfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
@@ -66,7 +100,7 @@ static int xipfs_unlink(struct fnode *fno)
     return -1; /* Cannot unlink */
 }
 
-static int xip_add(const char *name, const void (*init))
+static int xip_add(const char *name, const void (*init), uint32_t size)
 {
     struct xipfs_fnode *xip = kalloc(sizeof(struct xipfs_fnode));
     if (!xip)
@@ -80,6 +114,7 @@ static int xip_add(const char *name, const void (*init))
 
     /* Make executable */
     xip->fnode->flags |= FL_EXEC;
+    xip->fnode->size = size;
     xip->init = init;
     return 0;
 }
@@ -97,7 +132,7 @@ static int xipfs_parse_blob(const uint8_t *blob)
         f = (const struct xipfs_fhdr *) (blob + offset);
         if (f->magic != XIPFS_MAGIC)
             return -1;
-        xip_add(f->name, f->payload);
+        xip_add(f->name, f->payload, f->len);
         offset += f->len + sizeof(struct xipfs_fhdr);
     }
     return 0;
@@ -142,6 +177,8 @@ void xipfs_init(void)
     mod_xipfs.ops.unlink = xipfs_unlink;
     mod_xipfs.ops.close = xipfs_close;
     mod_xipfs.ops.exe = xipfs_exe;
+
+    mod_xipfs.ops.block_read = xipfs_block_read;
     register_module(&mod_xipfs);
 }
 

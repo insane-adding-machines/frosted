@@ -821,5 +821,8 @@ void vfs_init(void)
     
     /* Init "/bin" dir */
     dev = fno_mkdir(NULL, "bin", NULL);
+    
+    /* Init "/mnt" dir */
+    dev = fno_mkdir(NULL, "mnt", NULL);
 }
 
