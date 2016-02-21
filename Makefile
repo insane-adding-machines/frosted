@@ -155,7 +155,7 @@ apps.img: $(USERSPACE) tools/xipfstool
 	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
 
 image.bin: kernel.img apps.img tools/xipfstool
-	cat $^ > $@
+	cat kernel.img apps.img > $@
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 	make -C kernel/libopencm3 FP_FLAGS="-mfloat-abi=soft"
