@@ -23,6 +23,7 @@
 #include "signal.h"
 #include "kprintf.h"
 #include "sys/wait.h"
+#include "vfs.h"
 
 
 /* Full kernel space separation */
@@ -191,7 +192,7 @@ struct __attribute__((packed)) task_block {
     void *sp;
     void *cur_stack;
     struct task *next;
-    void *allocated; /* to be freed when task dies */
+    struct vfs_info *vfsi;
 };
 
 struct __attribute__((packed)) task {
@@ -277,10 +278,12 @@ static void task_destroy(struct task *t)
             i++;
         }
     }
-    if (t->tb.allocated) /* free allocated mem, e.g. by bflt_load */
+    if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
     {
-        kprintf("Freeing %p\n", t->tb.allocated);
-        f_free(t->tb.allocated);
+        kprintf("Freeing VFS type %d alllocated pointer 0x%p\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
+        if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
+            f_free(t->tb.vfsi->allocated);
+        f_free(t->tb.vfsi);
     }
     f_free(t->tb.arg);
     task_space_free(t);
@@ -788,7 +791,9 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.sighdlr = NULL;
-    new->tb.allocated = NULL;
+    new->tb.vfsi = NULL;
+
+    // XXX vfs_info
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -820,10 +825,12 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.sp = (uint32_t *)sp;
 } 
 
-int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic)
+int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pic)
 {
     struct task *new;
     int i;
+
+    kprintf("task_create vfsi: %p, type: %d\n", vfsi, vfsi->type);
 
     irq_off();
     new = task_space_alloc(sizeof(struct task));
@@ -837,6 +844,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic
     new->tb.n_files = 0;
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
+    new->tb.vfsi = vfsi; /* VFS info */
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -851,7 +859,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
-    task_create_real(new, init, arg, prio, pic);
+    task_create_real(new, vfsi->init, arg, prio, pic);
     new->tb.state = TASK_RUNNABLE;
     irq_on();
     return new->tb.pid;
@@ -865,7 +873,10 @@ int task_set_allocated(int pid, void *allocated)
     if (!t)
         return -1;
 
-    t->tb.allocated = allocated;
+    if (!t->tb.vfsi)
+        return -1;
+
+    t->tb.vfsi->allocated = allocated;
     return 0;
 }
 
