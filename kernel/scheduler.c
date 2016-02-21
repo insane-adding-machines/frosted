@@ -23,6 +23,7 @@
 #include "signal.h"
 #include "kprintf.h"
 #include "sys/wait.h"
+#include "vfs.h"
 
 
 /* Full kernel space separation */
@@ -191,7 +192,7 @@ struct __attribute__((packed)) task_block {
     void *sp;
     void *cur_stack;
     struct task *next;
-    void *allocated; /* to be freed when task dies */
+    struct vfs_info *vfsi;
 };
 
 struct __attribute__((packed)) task {
@@ -277,10 +278,12 @@ static void task_destroy(struct task *t)
             i++;
         }
     }
-    if (t->tb.allocated) /* free allocated mem, e.g. by bflt_load */
+    if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
     {
-        kprintf("Freeing %p\n", t->tb.allocated);
-        f_free(t->tb.allocated);
+        kprintf("Freeing VFS type %d alllocated pointer 0x%p\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
+        if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
+            f_free(t->tb.vfsi->allocated);
+        f_free(t->tb.vfsi);
     }
     f_free(t->tb.arg);
     task_space_free(t);
@@ -788,7 +791,9 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.sighdlr = NULL;
-    new->tb.allocated = NULL;
+    new->tb.vfsi = NULL;
+
+    // XXX vfs_info
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -865,7 +870,10 @@ int task_set_allocated(int pid, void *allocated)
     if (!t)
         return -1;
 
-    t->tb.allocated = allocated;
+    if (!t->tb.vfsi)
+        return -1;
+
+    t->tb.vfsi->allocated = allocated;
     return 0;
 }
 
