@@ -184,7 +184,7 @@ void frosted_kernel(int xipfs_mounted)
         if (fno->owner && fno->owner->ops.exe) {
             uint32_t pic;
             vfsi = fno->owner->ops.exe(fno, (void *)init_args, &pic);
-            task_create(vfsi->init, (void *)init_args, 2, pic);
+            task_create(vfsi, (void *)init_args, 2, pic);
         }
     } else {
         /* Create "init" task */
@@ -195,7 +195,7 @@ void frosted_kernel(int xipfs_mounted)
         vfsi->init = init;
 
         kprintf("Starting Init task\r\n");
-        if (task_create(init, (void *)0, 2, 0) < 0)
+        if (task_create(vfsi, (void *)0, 2, 0) < 0)
             IDLE();
     }
 
