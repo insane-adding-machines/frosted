@@ -25,6 +25,7 @@
 #include "bflt.h"
 #include "null.h"
 #include "xipfs.h"
+#include "vfs.h"
 
 #ifdef CONFIG_STM32F4USB
 # include "stm32f4/stm32f4_usbdef.h"
@@ -166,6 +167,8 @@ static const char *const init_args[2] = { init_path, NULL };
 
 void frosted_kernel(int xipfs_mounted)
 {
+    struct vfs_info *vfsi = NULL;
+
     if (xipfs_mounted == 0)
     {
         struct fnode *fno = fno_search(init_path);
@@ -179,14 +182,18 @@ void frosted_kernel(int xipfs_mounted)
         }
 
         if (fno->owner && fno->owner->ops.exe) {
-            void *start = NULL;
             uint32_t pic;
-
-            start = fno->owner->ops.exe(fno, (void *)init_args, &pic);
-            task_create(start, (void *)init_args, 2, pic);
+            vfsi = fno->owner->ops.exe(fno, (void *)init_args, &pic);
+            task_create(vfsi->init, (void *)init_args, 2, pic);
         }
     } else {
         /* Create "init" task */
+        vfsi = f_calloc(MEM_KERNEL, 1, sizeof(struct vfs_info));
+        if (!vfsi)
+            while(1) {};
+        vfsi->type = VFS_TYPE_BIN;
+        vfsi->init = init;
+
         kprintf("Starting Init task\r\n");
         if (task_create(init, (void *)0, 2, 0) < 0)
             IDLE();

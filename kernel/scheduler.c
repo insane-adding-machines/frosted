@@ -825,6 +825,8 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.sp = (uint32_t *)sp;
 } 
 
+//int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pic)
+
 int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic)
 {
     struct task *new;
@@ -856,6 +858,7 @@ int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
+    //task_create_real(new, vfsi->init, arg, prio, pic);
     task_create_real(new, init, arg, prio, pic);
     new->tb.state = TASK_RUNNABLE;
     irq_on();

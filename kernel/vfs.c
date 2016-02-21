@@ -425,9 +425,8 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     uint32_t pic;
 
     if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exe) {
-        start = f->owner->ops.exe(f, arg, &pic);
-        //vfsi = (struct vfs_info *)f->owner->ops.exe(f, arg, &pic);
-        //start = vfsi->init;
+        vfsi = (struct vfs_info *)f->owner->ops.exe(f, arg, &pic);
+        start = vfsi->init;
         if (start) 
             scheduler_exec(start, arg, pic);
     }
