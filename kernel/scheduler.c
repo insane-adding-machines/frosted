@@ -844,6 +844,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pi
     new->tb.n_files = 0;
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
+    new->tb.vfsi = vfsi; /* VFS info */
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
