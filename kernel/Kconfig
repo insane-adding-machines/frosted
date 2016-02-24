@@ -18,8 +18,15 @@ choice ARCH
     bool "STM32F4"
     help
         Enable support for ST STM32F4 systems
+
+    config ARCH_STM32F7
+    bool "STM32F7"
+    help
+        Enable support for ST STM32F7 systems
+
 endchoice
 
+source "../kernel/stm32f7/Kconfig"
 source "../kernel/stm32f4/Kconfig"
 source "../kernel/lpc17xx/Kconfig"
 source "../kernel/lm3s/Kconfig"
@@ -37,6 +44,8 @@ config FLASH_SIZE_256KB
 config FLASH_SIZE_128KB
         bool
 
+config RAM_SIZE_340KB
+        bool
 config RAM_SIZE_256KB
         bool
 config RAM_SIZE_192KB
@@ -62,6 +71,8 @@ config ARCH_STM32F411
     bool
 config ARCH_STM32F429
     bool
+config ARCH_STM32F746
+    bool
 
 config DEVSTM32F4DMA
     bool
@@ -74,7 +85,7 @@ choice
         depends on (ARCH_STM32F401  || ARCH_STM32F411 || ARCH_STM32F429)
     config CLK_84MHZ
         bool "84MHz"
-        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429)
+        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429 )
     config CLK_100MHZ
         bool "100MHz"
         depends on ARCH_LPC17XX
@@ -84,10 +95,17 @@ choice
     config CLK_168MHZ
         bool "168MHz"
         depends on (ARCH_STM32F407 ||  ARCH_STM32F405 || ARCH_STM32F429)
+    config CLK_216MHZ
+        bool "216MHZ"
+        depends on (ARCH_STM32F746)
 endchoice
 
 choice 
     prompt "Board"
+config MACH_STM32F746Discovery
+    bool "STM32F746Discovery"
+    depends on (ARCH_STM32F746)
+    default y
 config MACH_STM32F407Discovery
     bool "STM32F407Discovery"
     depends on (ARCH_STM32F407)
@@ -223,11 +241,11 @@ menu "Subsystems"
 
             config USART_1
             bool "USART 1"
-            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 )
+            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 ||  ARCH_STM32F746)
 
             config USART_2
             bool "USART 2"
-            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407)
+            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407 || ARCH_STM32F746)
 
             config USART_3
             bool "USART 3"
@@ -255,23 +273,12 @@ menu "Subsystems"
 
        endif
        
-       config DEV_USB_ETH
-       depends on (PICOTCP)
-       bool "Legacy Ethernet over USB (CDC-ECM)"
+       config DEVUSBETH
+       depends on PICOTCP
+       bool "Ethernet over USB (CDC-ECM)"
        default n
-
-       config DEVUSBCDCECM
-       depends on (PICOTCP && DEVF4USB && !DEVUSBETH)
-       bool "Ethernet over USB (CDC-ECM) - Layered"
-       default n
-
-       config DEVUSBCDCACM
-       depends on (DEVF4USB && !DEVUSBETH)
-       bool "UART over USB (CDC-ACM) - Layered"
-       default n
-
     
-       if (DEV_USB_ETH || DEVUSBCDCECM)
+       if DEVUSBETH
        config USB_DEFAULT_IP
        string "Default (boot-up) address for usb0"
        default 192.168.6.150
@@ -280,11 +287,6 @@ menu "Subsystems"
        string "Default (boot-up) netmask for usb0"
        default 255.255.255.0
        endif
-
-       menuconfig DEVF4USB
-       bool "STM32F4 USB Driver"
-       depends on (ARCH_STM32F411 || ARCH_STM32F407)
-       default n
 
        menuconfig DEVF4EXTI
        bool "STM32F4 EXTI driver"

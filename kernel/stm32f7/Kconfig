@@ -1,0 +1,15 @@
+if ARCH_STM32F7
+
+choice 
+    prompt "MCU"
+    default ARCH_STM32F746_NG
+
+config ARCH_STM32F746_NG
+    bool "STM32F746NG 1MB"
+    select FLASH_SIZE_1MB
+    select RAM_SIZE_312KB
+    select ARCH_STM32F746
+
+endchoice
+
+endif

@@ -28,6 +28,17 @@ ifeq ($(ARCH_STM32F4),y)
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
 endif
 
+ifeq ($(ARCH_STM32F7),y)
+	CPU=cortex-m
+	BOARD=stm32f7
+	FLASH_ORIGIN=0x08000000
+	RAM_BASE=0x20000000
+	CFLAGS=-DSTM32F7 -mcpu=cortex-m7 -mfloat-abi=soft
+	ARCH=STM32F7
+	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
+
+endif
+
 ifeq ($(MACH_STM32F405Pyboard),y)
 	CFLAGS+=-DPYBOARD
 endif
@@ -92,7 +103,9 @@ endif
 ifeq ($(CLK_168MHZ),y)
 	SYS_CLOCK=168000000
 endif
-
+ifeq ($(CLK_216MHZ),y)
+        SYS_CLOCK=216000000
+endif
 #USARTs
 ifeq ($(USART_0),y)
     CFLAGS+=-DCONFIG_USART_0
