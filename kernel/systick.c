@@ -76,6 +76,8 @@ static void ktimers_check(void)
     struct ktimer t_previous;
     if (!ktimer_list)
         return;
+    if (!ktimer_list->size)
+        return;
     t = heap_first(ktimer_list);
     while ((t) && (t->expire_time < jiffies)) {
         if (t->handler) {
