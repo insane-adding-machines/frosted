@@ -12,6 +12,7 @@ details. */
 #define _SYS_RESOURCE_H_
 
 #include <sys/time.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

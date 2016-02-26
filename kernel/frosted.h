@@ -7,6 +7,7 @@
 #include "interrupts.h"
 #include "string.h"
 #include "errno.h"
+#include "vfs.h"
 
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1
@@ -80,7 +81,9 @@ int task_fd_writable(int fd);
 int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
-int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic);
+int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pic);
+//int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic);
+
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
 

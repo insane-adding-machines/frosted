@@ -156,7 +156,7 @@ apps.img: $(USERSPACE) tools/xipfstool
 	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
 
 image.bin: kernel.img apps.img tools/xipfstool
-	cat $^ > $@
+	cat kernel.img apps.img > $@
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
 	make -C kernel/libopencm3 FP_FLAGS="-mfloat-abi=soft"
@@ -184,6 +184,9 @@ qemu2: image.bin
 
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
+
+config:
+	@$(MAKE) -C kconfig/ config -f Makefile.frosted
 
 malloc_test:
 	@gcc -o malloc.test kernel/malloc.c -Iinclude -DCONFIG_KRAM_SIZE=4
