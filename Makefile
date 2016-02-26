@@ -184,6 +184,9 @@ qemu2: image.bin
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
 
+config:
+	@$(MAKE) -C kconfig/ config -f Makefile.frosted
+
 malloc_test:
 	@gcc -o malloc.test kernel/malloc.c -Iinclude -DCONFIG_KRAM_SIZE=4
 

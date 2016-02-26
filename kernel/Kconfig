@@ -88,6 +88,7 @@ endchoice
 
 choice 
     prompt "Board"
+    default MACH_STM32F407Discovery
 config MACH_STM32F407Discovery
     bool "STM32F407Discovery"
     depends on (ARCH_STM32F407)
@@ -116,7 +117,6 @@ config MACH_LPC1679XPRESSO
     bool "LPC1679XPRESSO"
     depends on ARCH_LPC1769
     default y
-
 config MACH_LM3S6965EVB
     bool "lm3s6965evb"
     depends on ARCH_LM3S6965
@@ -130,19 +130,19 @@ menu "Kernel Configuration"
  
 config KFLASHMEM_SIZE
     int "Kernel Flash size (KB)"
-    default 32
+    default 64
 
 config KRAMMEM_SIZE
     int "Kernel RAM size (KB)"
-    default 32
+    default 64
 
 config KLOG
     bool "Enable kernel logging"
+
 config KLOG_DEV
     depends on (KLOG && DEVUART)
     string "Kernel log output device"
     default "/dev/ttyS0"
-
 endmenu
 
 choice
