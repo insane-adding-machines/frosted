@@ -35,6 +35,11 @@ struct fatfs_disk {
     struct fatfs *fs;
 };
 
+struct fatfs_priv {
+    int cluster;
+    struct fatfs_disk *fsd;
+};
+
 typedef uint32_t fatfs_cluster;
 #ifdef CONFIG_FAT32
 # define FATFS_FAT32	1	/* Enable FAT32 */
@@ -828,7 +833,15 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
                 struct fnode *newfile;
                 newfile = fno_create(&mod_fatfs, fi.fname, parent);
                 if (newfile) {
-                    newfile->size = fi.fsize;
+                    newfile->priv = (void *)kalloc(sizeof(struct fatfs_priv));
+                    if (!newfile->priv) {
+                        fno_unlink(newfile);
+                    } else {
+                        ((struct fatfs_priv *)newfile->priv)->cluster = get_clust(f, dirbuf);
+                        ((struct fatfs_priv *)newfile->priv)->fsd = f;
+                        newfile->size = fi.fsize;
+
+                    }
                 }
             }
             dir_next(f, &dj);
@@ -972,6 +985,43 @@ fail:
     kfree(fsd->fs);
     kfree(fsd);
     return -1;
+}
+
+static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
+{
+    struct fatfs_priv *priv;
+    uint32_t sect;
+    uint32_t r_len = 0;
+    uint32_t r_off = 0;
+
+
+    if (!fno || !fno->priv)
+        return -1;
+    priv = (struct fatfs_priv *)fno->priv;
+
+    if (len + fno->off > fno->size)
+        len = fno->size - fno->off;
+
+    if (len == 0)
+        return -1;
+
+    while (r_len < len) {
+        int r = len - r_len;
+        r_off = fno->off;
+        sect = clust2sect(priv->fsd, priv->cluster);
+        while (r_off > 512) {
+            sect++;
+            r_off -= 512;
+        }
+        if (r + r_off > 512) {
+            r = 512 - r_off;
+        }
+        if (disk_readp(priv->fsd, buf + r_len, sect, r_off, r) != 0)
+            break;
+        r_len += r;
+        fno->off += r;
+    }
+    return r_len;
 }
 
 
@@ -1189,8 +1239,8 @@ void fatfs_init(void)
     strcpy(mod_fatfs.name,"fatfs");
 
     mod_fatfs.mount = fatfs_mount;
-    /*
     mod_fatfs.ops.read = fatfs_read; 
+    /*
     mod_fatfs.ops.poll = fatfs_poll;
     mod_fatfs.ops.write = fatfs_write;
     mod_fatfs.ops.seek = fatfs_seek;
