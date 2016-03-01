@@ -194,6 +194,21 @@ menu "Subsystems"
        config XIPFS
        bool "Xip FS"
        default y
+
+       config FATFS
+       bool "Fat FS"
+       default n
+
+       config FAT32
+       depends on FATFS
+       bool "Fat32 support"
+       default n
+       
+       config FAT16
+       depends on FATFS
+       bool "Fat16 support"
+       default y
+
    endmenu
 
    menu "Sockets"

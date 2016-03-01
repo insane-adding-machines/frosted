@@ -50,6 +50,10 @@ OBJS-$(MEMFS)+= kernel/drivers/memfs.o
 OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
 
+OBJS-$(FATFS)+= kernel/fatfs.o
+CFLAGS-$(FAT32)+=-DCONFIG_FAT32
+CFLAGS-$(FAT16)+=-DCONFIG_FAT16
+
 OBJS-$(SYSFS)+= kernel/drivers/sysfs.o
 CFLAGS-$(SYSFS)+=-DCONFIG_SYSFS
 
