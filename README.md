@@ -25,7 +25,9 @@ kernel without any restriction about distributing your user space application so
 
 ### Hardware support and toolchains
 
-Frosted can be compiled using the [GCC ARM Embedded](https://launchpad.net/gcc-arm-embedded) toolchain.
+~~Frosted can be compiled using the [GCC ARM Embedded](https://launchpad.net/gcc-arm-embedded) toolchain.~~
+
+Frosted requires the [GCC ARM for Frosted](https://github.com/insane-adding-machines/crosstool-ng/releases)
 
 At the moment, only ARM Cortex M0/M3/M4/M7 CPUs are supported.
 
