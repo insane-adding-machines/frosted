@@ -163,7 +163,7 @@ image.bin: kernel.img apps.img tools/xipfstool
 	cat kernel.img apps.img > $@
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
-	make -C kernel/libopencm3 FP_FLAGS="-mfloat-abi=soft"
+	make -C kernel/libopencm3 FP_FLAGS="-mfloat-abi=soft" PREFIX=arm-frosted-eabi V=1
 
 kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 	@export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\

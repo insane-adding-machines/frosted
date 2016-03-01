@@ -15,7 +15,7 @@ endif
 
 #########################
 #Target flags
-CROSS_COMPILE?=arm-none-eabi-
+CROSS_COMPILE?=arm-frosted-eabi-
 CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
