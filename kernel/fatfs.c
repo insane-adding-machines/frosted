@@ -1024,6 +1024,53 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     return r_len;
 }
 
+static int fatfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
+{
+    *revents = events;
+    return 1;
+}
+
+static int fatfs_seek(struct fnode *fno, int off, int whence)
+{
+    struct fatfs_fnode *mfno;
+    int new_off;
+    mfno = FNO_MOD_PRIV(fno, &mod_fatfs);
+    if (!mfno)
+        return -1;
+    switch(whence) {
+        case SEEK_CUR:
+            new_off = fno->off + off;
+            break;
+        case SEEK_SET:
+            new_off = off;
+            break;
+        case SEEK_END:
+            new_off = fno->size + off;
+            break;
+        default:
+            return -1;
+    }
+
+    if (new_off < 0)
+        new_off = 0;
+
+    if (new_off > fno->size) {
+        return -1;
+    }
+    fno->off = new_off;
+    return 0;
+}
+
+static int fatfs_close(struct fnode *fno)
+{
+    struct fatfs_fnode *mfno;
+    mfno = FNO_MOD_PRIV(fno, &mod_fatfs);
+    if (!mfno)
+        return -1;
+    fno->off = 0;
+    return 0;
+}
+
 
 #if 0
 
@@ -1240,8 +1287,9 @@ void fatfs_init(void)
 
     mod_fatfs.mount = fatfs_mount;
     mod_fatfs.ops.read = fatfs_read; 
-    /*
+    mod_fatfs.ops.seek = fatfs_seek;
     mod_fatfs.ops.poll = fatfs_poll;
+    /*
     mod_fatfs.ops.write = fatfs_write;
     mod_fatfs.ops.seek = fatfs_seek;
     mod_fatfs.ops.creat = fatfs_creat;

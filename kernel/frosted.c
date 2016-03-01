@@ -126,7 +126,6 @@ int frosted_init(void)
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);
-    vfs_mount("/bin/mini.fatfs", "/mnt", "fatfs", 0, NULL);
     vfs_mount(NULL, "/sys", "sysfs", 0, NULL);
 
     kernel_task_init();
