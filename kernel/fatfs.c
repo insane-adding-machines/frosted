@@ -792,16 +792,25 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
     struct fatfs_dir dj;
     struct fnode *parent;
     char  fullpath[128];
+    int res;
 
     fno_fullpath(f->mountpoint, fullpath, 128);
     if (path && strlen(path) > 0) {
-        strcat(fullpath, "/");
+        if (path[0] != '/')
+            strcat(fullpath, "/");
         strcat(fullpath, path);
     }
     parent = fno_search(fullpath);
     dj.fn = fbuf;
+    if (clust > 0) {
+        dj.clust = clust;
+        dj.sclust = clust;
+        res = 0;
+    } else {
+        res = follow_path(f, &dj, dirbuf, path);
+    }
 
-    if (follow_path(f, &dj, dirbuf, path) == 0) {
+    if (res == 0) {
         dir_rewind(f, &dj);
         while(dir_read(f, &dj, dirbuf) == 0) {
             struct fatfs_finfo fi;
@@ -822,6 +831,7 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
                     newfile->size = fi.fsize;
                 }
             }
+            dir_next(f, &dj);
         }
     }
 }
