@@ -34,8 +34,8 @@
 #endif
 
 #ifdef CONFIG_DEVGPIO
-static const struct gpio_addr gpio_addrs[] = { {.base=GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
-                                                                            {.base=GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
+static const struct gpio_addr gpio_addrs[] = { {.base=GPIOI, .pin=GPIO1,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_9_1"},
+
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
                                                                             {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
@@ -120,6 +120,8 @@ static const struct rng_addr rng_addrs[] = {
 };
 #define NUM_RNGS (sizeof(rng_addrs) / sizeof(struct rng_addr))
 #endif
+
+
 
 void machine_init(struct fnode * dev)
 {

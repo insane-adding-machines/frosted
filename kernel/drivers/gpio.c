@@ -10,6 +10,12 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/nvic.h>
 #endif
+#ifdef STM32F7
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/exti.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/cm3/nvic.h>
+#endif
 #ifdef LPC17XX
 #include <libopencm3/lpc17xx/nvic.h>
 #include <libopencm3/lpc17xx/gpio.h>
@@ -21,6 +27,11 @@
 # define LED1 "gpio_1_14"
 # define LED2 "gpio_1_15"
 # define LED3 "gpio_1_4"
+#elif defined (STM32F7)
+# define LED0 "gpio_9_1"
+# define LED1 ""
+# define LED2 ""
+# define LED3 ""
 #elif defined (STM32F4)
 # if defined (F429DISCO)
 #  define LED0 "gpio_6_13"
@@ -81,7 +92,7 @@ static struct module mod_devgpio = {
 
 #ifdef LM3S
 #endif
-#ifdef STM32F4
+#if defined(STM32F4) || defined(STM32F7)
 #define GPIO_CLOCK_ENABLE(P)       switch(P){    \
                                                                 case GPIOA:rcc_periph_clock_enable(RCC_GPIOA);  break;  \
                                                                 case GPIOB:rcc_periph_clock_enable(RCC_GPIOB);  break;  \
@@ -179,14 +190,14 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
     }
     if (cmd == IOCTL_GPIO_SET_INPUT) {
         /* user land commanded input defaults to no pull up/down*/
-        SET_INPUT(gpio->base, GPIO_PUPD_NONE, gpio->pin)
+        SET_INPUT(gpio->base, GPIO_PUPD_NONE, gpio->pin);
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
 //        SET_OUTPUT(gpio->port, gpio->pin, gpio->optype, gpio->speed)
     }
     if (cmd == IOCTL_GPIO_SET_PULLUPDOWN) {
         /* Setting pullup/down implies an input */
-        SET_INPUT(gpio->base, *((uint32_t*)arg), gpio->pin)
+        SET_INPUT(gpio->base, *((uint32_t*)arg), gpio->pin);
     }
     if (cmd == IOCTL_GPIO_SET_ALT_FUNC) {
          gpio_set_af(gpio->base, *((uint32_t*)arg), gpio->pin);
@@ -275,18 +286,18 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
         }
 
 
-        GPIO_CLOCK_ENABLE(gpio_addrs[i].base)
+        GPIO_CLOCK_ENABLE(gpio_addrs[i].base);
 
         switch(gpio_addrs[i].mode)
         {
             case GPIO_MODE_INPUT:
-                SET_INPUT(gpio_addrs[i].base, gpio_addrs[i].pullupdown, gpio_addrs[i].pin)
+                SET_INPUT(gpio_addrs[i].base, gpio_addrs[i].pullupdown, gpio_addrs[i].pin);
                 break;
             case GPIO_MODE_OUTPUT:
-                SET_OUTPUT(gpio_addrs[i].base, gpio_addrs[i].pin, gpio_addrs[i].optype, gpio_addrs[i].speed)
+                SET_OUTPUT(gpio_addrs[i].base, gpio_addrs[i].pin, gpio_addrs[i].optype, gpio_addrs[i].speed);
                 break;
             case GPIO_MODE_AF:
-                SET_AF(gpio_addrs[i].base, GPIO_MODE_AF, gpio_addrs[i].af,  gpio_addrs[i].pin)
+                SET_AF(gpio_addrs[i].base, GPIO_MODE_AF, gpio_addrs[i].af,  gpio_addrs[i].pin);
 #ifdef LPC17XX
                 if((gpio_addrs[i].base == GPIO2) && (gpio_addrs[i].af == GPIO_AF1))
                 {
