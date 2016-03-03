@@ -46,10 +46,31 @@ static int sock_check_fd(int fd, struct fnode **fno)
     return 0;
 }
 
-static int sock_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
+static int sock_poll(struct fnode *f, uint16_t events, uint16_t *revents)
 {
-    *revents = events;
-    return 1;
+    struct frosted_inet_socket *s;
+    s = (struct frosted_inet_socket *)f->priv;
+    *revents = 0;
+    *revents |= s->revents & (POLLIN | POLLOUT);
+
+
+    if (s->revents & PICO_SOCK_EV_CLOSE)
+        *revents |= POLLHUP;
+
+    if (s->revents & PICO_SOCK_EV_FIN)
+        *revents |= POLLERR;
+
+    if (s->revents & PICO_SOCK_EV_CONN)
+        *revents |= POLLIN;
+
+    if ((*revents) & (POLLHUP | POLLERR) != 0) {
+        return 1;
+    }
+    if ((events & *revents) != 0)
+        return 1;
+
+    s->events |= events;
+    return 0;
 }
 
 static struct frosted_inet_socket *fd_inet(int fd)

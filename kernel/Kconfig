@@ -303,6 +303,11 @@ menu "Subsystems"
        default 255.255.255.0
        endif
 
+       config DEVSTM32F4ETH
+       depends on PICOTCP && (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       bool "Ethernet driver for STM32F4"
+       default n
+
        menuconfig DEVF4EXTI
        bool "STM32F4 EXTI driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
