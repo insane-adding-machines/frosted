@@ -4,7 +4,7 @@
 #include "ioctl.h"
 #include "poll.h"
 
-#ifdef STM32F4
+#if defined(STM32F4) || defined(STM32F7)
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/rcc.h>
