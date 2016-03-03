@@ -33,10 +33,9 @@ ifeq ($(ARCH_STM32F7),y)
 	BOARD=stm32f7
 	FLASH_ORIGIN=0x08000000
 	RAM_BASE=0x20000000
-	CFLAGS=-DSTM32F7 -mcpu=cortex-m7 -mfloat-abi=soft
+	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F7
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
-
 endif
 
 ifeq ($(MACH_STM32F405Pyboard),y)

@@ -20,8 +20,9 @@
 #include "frosted.h"
 #include "libopencm3/cm3/systick.h"
 #include <libopencm3/stm32/rcc.h>
-#include "libopencm3/stm32/usart.h"
-#include "libopencm3/cm3/nvic.h"
+#include <libopencm3/stm32/usart.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/f7/usart.h>
 
 #ifdef CONFIG_DEVUART
 #include "uart.h"
@@ -51,6 +52,8 @@ static const struct gpio_addr gpio_addrs[] = { {.base=GPIOG, .pin=GPIO13,.mode=G
 #ifdef CONFIG_UART_5
 #endif
 #ifdef CONFIG_USART_6
+                                                                            {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+                                                                            {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_UART_7
 #endif
@@ -82,6 +85,19 @@ static const struct uart_addr uart_addrs[] = {
             .base = USART2, 
             .irq = NVIC_USART2_IRQ, 
             .rcc = RCC_USART2, 
+            .baudrate = 115200,
+            .stop_bits = USART_STOPBITS_1,
+            .data_bits = 8,
+            .parity = USART_PARITY_NONE,
+            .flow = USART_FLOWCONTROL_NONE,
+        },
+#endif
+#ifdef CONFIG_USART_6
+        { 
+            .devidx = 6,
+            .base = USART6, 
+            .irq = NVIC_USART6_IRQ, 
+            .rcc = RCC_USART6, 
             .baudrate = 115200,
             .stop_bits = USART_STOPBITS_1,
             .data_bits = 8,

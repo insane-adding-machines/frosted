@@ -268,7 +268,7 @@ menu "Subsystems"
 
             config USART_6
             bool "USART 6"
-            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405)
+            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F746)
 
             config UART_0
             bool "UART 0"
