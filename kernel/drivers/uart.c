@@ -252,15 +252,22 @@ static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     if (!uart)
         return -1;
 
+    frosted_mutex_lock(uart->dev->mutex);
+    usart_disable_rx_interrupt(uart->base);
     *revents = 0;
     if (events & POLLOUT) {
         *revents |= POLLOUT;
-        ret = 1; /* TODO: implement interrupt for write events */
+        ret = 1;
     }
-    if ((events == POLLIN) && usart_is_recv_ready(uart->base)) {
+    if ((events == POLLIN) && (cirbuf_bytesinuse(uart->inbuf) > 0)) {
         *revents |= POLLIN;
         ret = 1;
     }
+    if (!ret) {
+        uart->dev->pid = scheduler_get_cur_pid();
+    }
+    usart_enable_rx_interrupt(uart->base);
+    frosted_mutex_unlock(uart->dev->mutex);
     return ret;
 }
 

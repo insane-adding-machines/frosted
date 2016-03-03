@@ -70,6 +70,7 @@ static int sock_poll(struct fnode *f, uint16_t events, uint16_t *revents)
         return 1;
 
     s->events |= events;
+    s->pid = scheduler_get_cur_pid();
     return 0;
 }
 
@@ -134,6 +135,7 @@ static struct frosted_inet_socket *inet_socket_new(void)
         kfree(s);
         return NULL;
     }
+    s->node->flags = FL_RDWR;
     return s;
 }
 
@@ -167,6 +169,8 @@ static int sock_socket(int domain, int type, int protocol)
     s->sock->priv = s;
     kprintf("## Open INET socket!\n");
     s->fd = task_filedesc_add(s->node);
+    if (s->fd >= 0)
+        task_fd_setmask(s->fd, O_RDWR);
     return s->fd;
 }
 
@@ -311,6 +315,8 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
         s->node->priv = s;
         s->sock->priv = s;
         s->fd = task_filedesc_add(s->node);
+        if (s->fd >= 0)
+            task_fd_setmask(s->fd, O_RDWR);
         return s->fd;
     } else {
         l->pid = scheduler_get_cur_pid();

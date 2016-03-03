@@ -112,9 +112,13 @@ int sys_write_hdlr(int fd, void *buf, int len)
 int sys_socket_hdlr(int family, int type, int proto)
 {
     struct module *m = af_to_module(family);
+    int res = -1;
     if(!m || !(m->ops.socket))
         return -EOPNOTSUPP;
-    return m->ops.socket(family, type, proto);
+    res = m->ops.socket(family, type, proto);
+    if (res >= 0) {
+        
+    }
 }
 
 int sys_bind_hdlr(int sd, struct sockaddr_env *se)

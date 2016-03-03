@@ -403,7 +403,9 @@ int task_fd_readable(int fd)
 
 int task_fd_writable(int fd)
 {
-    if (!task_filedesc_get(fd) || ((_cur_task->tb.filedesc[fd].mask & O_ACCMODE) == O_RDONLY))
+    if (!task_filedesc_get(fd))
+        return 0;
+    if ((_cur_task->tb.filedesc[fd].mask & O_ACCMODE) == O_RDONLY)
         return 0;
     return 1;
 }

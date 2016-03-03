@@ -24,13 +24,14 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
     struct pollfd *pfd = (struct pollfd *)arg1;
     int i, n = (int)arg2;
+    int time_left = (int)arg3;
     uint32_t timeout = jiffies + arg3;
     int ret = 0;
     struct fnode *f;
 
     /* TODO: Set process wakeup timer */
 
-    while (jiffies < timeout) {
+    while ((time_left < 0) || (jiffies < timeout)) {
         for (i = 0; i < n; i++) {
             f = task_filedesc_get(pfd[i].fd);
             if (!f || !f->owner || !f->owner->ops.poll) {
