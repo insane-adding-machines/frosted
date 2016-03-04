@@ -152,10 +152,11 @@ config KFLASHMEM_SIZE
 
 config KRAMMEM_SIZE
     int "Kernel RAM size (KB)"
-    default 64
+    default 32
 
 config KLOG
     bool "Enable kernel logging"
+    default y
 
 config KLOG_DEV
     depends on (KLOG && DEVUART)
@@ -365,4 +366,3 @@ menu "Subsystems"
 
    endmenu
 endmenu
-

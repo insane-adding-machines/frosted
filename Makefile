@@ -3,6 +3,7 @@ FROSTED:=$(PWD)
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
+USERSPACE=frosted-mini-userspace-bflt
 
 ifneq ($(V),1)
    Q:=@
@@ -12,7 +13,6 @@ endif
 
 -include rules/config.mk
 include  rules/arch.mk
-include  rules/userspace.mk
 include  rules/picotcp.mk
 
 #debugging
@@ -204,7 +204,7 @@ libclean:
 clean:
 	@rm -f malloc.test
 	@rm -f  kernel/$(BOARD)/$(BOARD).ld
-	@make -C $(USERSPACE) clean
+	@make -C frosted-mini-userspace-bflt clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf *.img
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
