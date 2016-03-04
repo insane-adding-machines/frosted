@@ -187,16 +187,7 @@ void frosted_kernel(int xipfs_mounted)
             task_create(vfsi, (void *)init_args, 2, pic);
         }
     } else {
-        /* Create "init" task */
-        vfsi = f_calloc(MEM_KERNEL, 1, sizeof(struct vfs_info));
-        if (!vfsi)
-            while(1) {};
-        vfsi->type = VFS_TYPE_BIN;
-        vfsi->init = init;
-
-        kprintf("Starting Init task\r\n");
-        if (task_create(vfsi, (void *)0, 2, 0) < 0)
-            IDLE();
+        IDLE();
     }
 
     ktimer_add(1000, ktimer_tcpip, NULL);

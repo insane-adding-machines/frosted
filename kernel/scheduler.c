@@ -398,6 +398,8 @@ struct fnode *task_filedesc_get(int fd)
 
 int task_fd_readable(int fd)
 {
+    if (!task_filedesc_get(fd))
+        return 0;
     return 1;
 }
 
@@ -793,9 +795,6 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.sighdlr = NULL;
-    new->tb.vfsi = NULL;
-
-    // XXX vfs_info
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -832,8 +831,6 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pi
     struct task *new;
     int i;
 
-    kprintf("task_create vfsi: %p, type: %d\n", vfsi, vfsi->type);
-
     irq_off();
     new = task_space_alloc(sizeof(struct task));
     if (!new) {
@@ -846,7 +843,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pi
     new->tb.n_files = 0;
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
-    new->tb.vfsi = vfsi; /* VFS info */
+    new->tb.vfsi = vfsi;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -867,35 +864,15 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pi
     return new->tb.pid;
 }
 
-int task_set_allocated(int pid, void *allocated)
-{
-    struct task *t = tasklist_get(&tasks_running, pid);
-    if (!t)
-        t = tasklist_get(&tasks_idling, pid);
-    if (!t)
-        return -1;
-
-    if (!t->tb.vfsi)
-        return -1;
-
-    t->tb.vfsi->allocated = allocated;
-    return 0;
-}
-
-int scheduler_exec(void (*init)(void *), void *args, uint32_t pic)
+int scheduler_exec(struct vfs_info *vfsi, void *args, uint32_t pic)
 {
     volatile struct task *t = _cur_task;
-    task_create_real(t, init, (void *)args, t->tb.prio, pic);
-    //asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp + EXTRA_FRAME_SIZE));
+    task_create_real(t, vfsi->init, (void *)args, t->tb.prio, pic);
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
     _cur_task->tb.state = TASK_RUNNING;
+    _cur_task->tb.vfsi = vfsi;
     mpu_task_on((void *)(((uint32_t)_cur_task->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
     return 0;
-}
-
-int sys_execb_hdlr(uint32_t arg1, uint32_t arg2)
-{
-    return scheduler_exec((void (*)(void*))arg1, (void *)arg2, 0);
 }
 
 static void task_suspend_to(int newstate);
@@ -1170,43 +1147,6 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     return 0;
 }
 
-int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
-{
-    int to_arg = (int)arg2;
-    uint32_t timeout;
-    struct task *t = NULL; 
-    uint32_t pid;
-
-    if (arg1 <= 1)
-        return -EINVAL;
-
-    t = tasklist_get(&tasks_running, arg1);
-    if (!t)
-        t = tasklist_get(&tasks_idling, arg1);
-
-    if (!t || _cur_task->tb.pid == arg1 || t->tb.ppid != _cur_task->tb.pid)
-        return -EINVAL;
-
-    if (t->tb.state == TASK_ZOMBIE) {
-        t->tb.state = TASK_OVER;
-        task_destroy(t);
-        return 0; /* TODO: get task return value from stacked NVIC frame -> r0 */
-    }
-
-    if (to_arg == 0)
-        return -EINVAL;
-
-    if (to_arg > 0)  {
-        pid = _cur_task->tb.pid;
-        timeout = jiffies + to_arg;
-        ktimer_add(to_arg, sleepy_task_wakeup, (void *)pid);
-        if (timeout < jiffies)
-            return -ETIMEDOUT;
-    }
-    task_suspend();
-    return SYS_CALL_AGAIN;
-}
-
 int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
     int *status = (int *)arg2;
@@ -1341,11 +1281,11 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
     retval = call(arg1, arg2, arg3, *a4, *a5);
 
     /* Exec does not have a return value, and will use r0 as args for main()*/
-    if ((call != sys_syscall_handlers[SYS_EXECB])
-            && (call != sys_syscall_handlers[SYS_EXEC])
-       )
+    if (call != sys_syscall_handlers[SYS_EXEC])
         asm volatile ( "mov %0, r0" : "=r" 
             (*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
+
+
     irq_on();
 
     if (_cur_task->tb.state != TASK_RUNNING) {

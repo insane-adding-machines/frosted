@@ -40,17 +40,20 @@ int sys_test_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 int sys_thread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    void (*init)(void *arg);
-    void *arg = (void *) arg2;
-    unsigned int prio = (unsigned int) arg3;
-    struct vfs_info *vfsi = f_calloc(MEM_KERNEL, 1, sizeof(struct vfs_info));
-    if (!vfsi)
-        return -1; /* XXX Correct ? */
+    /* Deprecated. */
+    return -1;
+}
 
-    vfsi->init = (void (*)(void *)) arg1;
-    vfsi->type = VFS_TYPE_BIN;
+int sys_thread_join_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    /* Deprecated. */
+    return -1;
+}
 
-    return task_create(vfsi, arg, prio, 0);
+int sys_execb_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    /* Deprecated. */
+    return -1;
 }
 
 
