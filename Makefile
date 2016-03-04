@@ -204,7 +204,7 @@ libclean:
 clean:
 	@rm -f malloc.test
 	@rm -f  kernel/$(BOARD)/$(BOARD).ld
-	@make -C frosted-mini-userspace-bflt clean
+	@make -C $(USERSPACE) clean
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf *.img
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
