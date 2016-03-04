@@ -6,13 +6,11 @@
 
 #if defined(STM32F4) || defined(STM32F7)
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/nvic.h>
 #endif
 #ifdef STM32F7
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/nvic.h>
 #endif
