@@ -102,7 +102,6 @@ static void pico_socket_event(uint16_t ev, struct pico_socket *sock)
     s->revents |= ev;
     if ((s->revents & s->events) != 0) {
         task_resume(s->pid);
-        s->revents &= (~s->events);
         s->events = 0;
     }
 }
@@ -346,7 +345,7 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
         return SYS_CALL_AGAIN;
     }
     s->events  &= (~PICO_SOCK_EV_CONN);
-    s->revents &= (~PICO_SOCK_EV_CONN);
+    s->revents &= ~(PICO_SOCK_EV_CONN | PICO_SOCK_EV_RD);
     return ret;
 }
 
