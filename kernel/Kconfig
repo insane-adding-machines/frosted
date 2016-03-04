@@ -288,12 +288,12 @@ menu "Subsystems"
 
        endif
        
-       config DEVUSBETH
+       config DEV_USB_ETH
        depends on PICOTCP
        bool "Ethernet over USB (CDC-ECM)"
        default n
     
-       if DEVUSBETH
+       if DEV_USB_ETH
        config USB_DEFAULT_IP
        string "Default (boot-up) address for usb0"
        default 192.168.6.150
