@@ -3,7 +3,6 @@ FROSTED:=$(PWD)
 FLASH_ORIGIN?=0x0
 FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
-USERSPACE=frosted-mini-userspace-bflt
 
 ifneq ($(V),1)
    Q:=@
@@ -14,6 +13,7 @@ endif
 -include rules/config.mk
 include  rules/arch.mk
 include  rules/picotcp.mk
+include  rules/userspace.mk
 
 #debugging
 CFLAGS+=-ggdb
