@@ -182,9 +182,8 @@ void frosted_kernel(int xipfs_mounted)
         }
 
         if (fno->owner && fno->owner->ops.exe) {
-            uint32_t pic;
-            vfsi = fno->owner->ops.exe(fno, (void *)init_args, &pic);
-            task_create(vfsi, (void *)init_args, 2, pic);
+            vfsi = fno->owner->ops.exe(fno, (void *)init_args);
+            task_create(vfsi, (void *)init_args, 2);
         }
     } else {
         IDLE();

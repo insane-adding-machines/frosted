@@ -7,6 +7,7 @@
 
 struct vfs_info {
     int type;
+    int pic;
     void (*init)(void *);
     void * allocated;
 };

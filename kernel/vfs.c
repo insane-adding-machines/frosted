@@ -421,11 +421,10 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     struct fnode *f;
     f = fno_search(path);
     struct vfs_info *vfsi = NULL;
-    uint32_t pic;
 
     if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exe) {
-        vfsi = (struct vfs_info *)f->owner->ops.exe(f, arg, &pic);
-        scheduler_exec(vfsi, arg, pic);
+        vfsi = (struct vfs_info *)f->owner->ops.exe(f, arg);
+        scheduler_exec(vfsi, arg);
     }
     return -EINVAL;
 }

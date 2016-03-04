@@ -784,7 +784,7 @@ static void *task_pass_args(void *_args)
     return new;
 }
 
-static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio, uint32_t r9val)
+static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio)
 {
     struct nvic_stack_frame *nvic_frame;
     struct extra_stack_frame *extra_frame;
@@ -822,11 +822,11 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     nvic_frame->psr = 0x01000000u;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
-    extra_frame->r9 = r9val;
+    extra_frame->r9 = new->tb.vfsi->pic;
     new->tb.sp = (uint32_t *)sp;
 } 
 
-int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pic)
+int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio)
 {
     struct task *new;
     int i;
@@ -858,20 +858,21 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pi
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
-    task_create_real(new, vfsi->init, arg, prio, pic);
+    task_create_real(new, vfsi->init, arg, prio);
     new->tb.state = TASK_RUNNABLE;
     irq_on();
     return new->tb.pid;
 }
 
-int scheduler_exec(struct vfs_info *vfsi, void *args, uint32_t pic)
+int scheduler_exec(struct vfs_info *vfsi, void *args)
 {
     volatile struct task *t = _cur_task;
-    task_create_real(t, vfsi->init, (void *)args, t->tb.prio, pic);
+    
+    t->tb.vfsi = vfsi;
+    task_create_real(t, vfsi->init, (void *)args, t->tb.prio);
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
-    _cur_task->tb.state = TASK_RUNNING;
-    _cur_task->tb.vfsi = vfsi;
-    mpu_task_on((void *)(((uint32_t)_cur_task->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
+    t->tb.state = TASK_RUNNING;
+    mpu_task_on((void *)(((uint32_t)t->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
     return 0;
 }
 

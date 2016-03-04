@@ -81,8 +81,7 @@ int task_fd_writable(int fd);
 int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
-int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio, uint32_t pic);
-//int task_create(void (*init)(void *), void *arg, unsigned int prio, uint32_t pic);
+int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio);
 
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
@@ -201,7 +200,7 @@ struct module {
         int (*seek)(struct fnode *fno, int offset, int whence);
         int (*creat)(struct fnode *fno);
         int (*unlink)(struct fnode *fno);
-        void * (*exe)(struct fnode *fno, void *arg, uint32_t *pic);
+        void * (*exe)(struct fnode *fno, void *arg);
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);
