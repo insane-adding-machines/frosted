@@ -13,9 +13,6 @@
 syscalls = [
     ["sleep", 1, "sys_sleep_hdlr"],
     ["suspend", 1, "sys_suspend_hdlr"],
-    ["thread_create", 3, "sys_thread_create_hdlr"],
-    ["thread_join", 2, "sys_thread_join_hdlr"],
-    ["test", 5, "sys_test_hdlr"],
     ["getpid", 0, "sys_getpid_hdlr"],
     ["getppid", 0, "sys_getppid_hdlr"],
     ["open", 3, "sys_open_hdlr"],
@@ -64,7 +61,6 @@ syscalls = [
     ["kill", 2, "sys_kill_hdlr"],
     ["isatty", 1, "sys_isatty_hdlr"],
     ["exec", 2, "sys_exec_hdlr"],
-    ["execb", 2, "sys_execb_hdlr"],
     ["ttyname_r", 3, "sys_ttyname_hdlr"],  
     ["exit", 1, "sys_exit_hdlr"],
     ["tcsetattr", 3, "sys_tcsetattr_hdlr"],
@@ -76,7 +72,8 @@ syscalls = [
     ["sigsuspend", 1, "sys_sigsuspend_hdlr"],
     ["vfork", 0, "sys_vfork_hdlr"],
     ["waitpid", 3, "sys_waitpid_hdlr"],
-    ["lstat", 2, "sys_lstat_hdlr"]
+    ["lstat", 2, "sys_lstat_hdlr"],
+    ["uname", 1, "sys_uname_hdlr"]
 ]
 
    #
@@ -84,7 +81,7 @@ syscalls = [
  #####
 #######
 #################################################################
-hdr = open("include/syscall_table.h", "w")
+hdr = open("syscall_table.h", "w")
 usercode = open("./syscall_table.c", "w")
 code = open("kernel/syscall_table.c", "w")
 

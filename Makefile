@@ -148,7 +148,9 @@ $(PREFIX)/lib/libpicotcp.a:
 	@$(BUILD_PICO)
 	@pwd
 
-include/syscall_table.h: kernel/syscall_table.c
+syscall_table.c: kernel/syscall_table.c
+
+syscall_table.h: syscall_table.c
 
 .PHONY: FORCE
 
@@ -196,7 +198,7 @@ config:
 	@$(MAKE) -C kconfig/ config -f Makefile.frosted
 
 malloc_test:
-	@gcc -o malloc.test kernel/malloc.c -Iinclude -DCONFIG_KRAM_SIZE=4
+	@gcc -o malloc.test kernel/malloc.c -DCONFIG_KRAM_SIZE=4
 
 libclean:
 	@make -C kernel/libopencm3 clean

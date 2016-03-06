@@ -77,3 +77,23 @@ int sys_getppid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
     return scheduler_get_cur_ppid();
 }
 
+
+struct utsname {
+    char sysname[16];    /* Operating system name (e.g., "Frosted") */
+    char nodename[16];   /* Name within network */
+    char release[16];    /* Operating system release (e.g., "16.03") */
+    char version[16];    /* Operating system version (e.g., "16") */
+    char machine[16];    /* Hardware identifier */
+    char domainname[16]; /* NIS or YP domain name */
+};
+
+const struct utsname uts_frosted = { "Frosted", "frosted", "16.03", "16", "arm", "local"};
+
+int sys_uname_hdlr( uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    struct utsname *uts = (struct utsname *)arg1;
+    if (!arg1) 
+        return -EFAULT;
+    memcpy(uts, &uts_frosted, sizeof(struct utsname));
+    return 0;
+}
