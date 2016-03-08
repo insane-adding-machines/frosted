@@ -43,6 +43,7 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/term.o				\
 		 kernel/bflt.o				\
 		 kernel/kprintf.o			\
+		 kernel/getaddrinfo.o		\
 		 kernel/pipe.o
 
 # device drivers 
@@ -117,6 +118,7 @@ OBJS-$(DEV_USB_ETH)+=kernel/drivers/usb_ethernet.o
 CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_DEV_USB_ETH
 CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_USB_DEFAULT_IP=\"$(USB_DEFAULT_IP)\"
 CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_USB_DEFAULT_NM=\"$(USB_DEFAULT_NM)\"
+CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_USB_DEFAULT_GW=\"$(USB_DEFAULT_GW)\"
 
 OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o 
 OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o 

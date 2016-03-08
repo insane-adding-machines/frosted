@@ -91,8 +91,8 @@ struct addrinfo {
     int              ai_socktype;
     int              ai_protocol;
     socklen_t        ai_addrlen;
-    struct sockaddr *ai_addr;
     char            *ai_canonname;
+    struct sockaddr *ai_addr;
     struct addrinfo *ai_next;
 };
 
@@ -212,5 +212,8 @@ struct timezone {
         uint16_t revents;
     };
 #endif
+
+void pico_lock(void);
+void pico_unlock(void);
 
 #endif /* PICO_BSD_SOCKETS_H_ */

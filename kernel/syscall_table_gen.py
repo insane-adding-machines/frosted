@@ -73,7 +73,9 @@ syscalls = [
     ["vfork", 0, "sys_vfork_hdlr"],
     ["waitpid", 3, "sys_waitpid_hdlr"],
     ["lstat", 2, "sys_lstat_hdlr"],
-    ["uname", 1, "sys_uname_hdlr"]
+    ["uname", 1, "sys_uname_hdlr"],
+    ["getaddrinfo", 4, "sys_getaddrinfo_hdlr"],
+    ["freeaddrinfo", 1, "sys_freeaddrinfo_hdlr"]
 ]
 
    #

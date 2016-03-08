@@ -1270,8 +1270,8 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
     /* save current SP to TCB */
     _cur_task->tb.sp = _top_stack;
 
-    a4 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
-    a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 4));
+    a4 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 8));
+    a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 12));
 
     /* Execute syscall */
     volatile int retval;

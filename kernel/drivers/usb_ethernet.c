@@ -11,6 +11,7 @@
 #include <libopencm3/cm3/nvic.h>
 #include <pico_stack.h>
 #include <pico_device.h>
+#include <pico_ipv4.h>
 
 #define USBETH_MAX_FRAME 1514
 struct pico_dev_usbeth {
@@ -332,9 +333,13 @@ int usb_ethernet_init(void)
 {
     struct pico_dev_usbeth *usb = kalloc(sizeof(struct pico_dev_usbeth));;
     uint8_t *usb_buf;
-    struct pico_ip4 default_ip, default_nm;
+    struct pico_ip4 default_ip, default_nm, default_gw, zero;
     const char ipstr[] = CONFIG_USB_DEFAULT_IP;
     const char nmstr[] = CONFIG_USB_DEFAULT_NM;
+    const char gwstr[] = CONFIG_USB_DEFAULT_GW;
+
+
+    memset(&zero, 0, sizeof(zero));
 
 
     if (!usb)
@@ -348,6 +353,7 @@ int usb_ethernet_init(void)
 
     pico_string_to_ipv4(ipstr, &default_ip.addr);
     pico_string_to_ipv4(nmstr, &default_nm.addr);
+    pico_string_to_ipv4(gwstr, &default_gw.addr);
 
 
     memset(usb, 0, sizeof(struct pico_dev_usbeth));
@@ -374,7 +380,10 @@ int usb_ethernet_init(void)
     usbd_register_set_config_callback(usb->usbd_dev, cdcecm_set_config);
     pico_usbeth = usb;
 
+    /* Set address/netmask */
     pico_ipv4_link_add(&usb->dev, default_ip, default_nm);
+    /* Set default gateway */
+    pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
     nvic_enable_irq(NVIC_OTG_FS_IRQ);
     pico_usbeth->tx_busy = 0;
     return 0;

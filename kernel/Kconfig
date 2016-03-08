@@ -302,6 +302,10 @@ menu "Subsystems"
        config USB_DEFAULT_NM
        string "Default (boot-up) netmask for usb0"
        default 255.255.255.0
+       
+       config USB_DEFAULT_GW
+       string "Default (boot-up) gateway for usb0"
+       default 192.168.6.1
        endif
 
        menuconfig DEVF4EXTI
