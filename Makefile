@@ -42,8 +42,8 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/timer.o				\
 		 kernel/term.o				\
 		 kernel/bflt.o				\
-		 kernel/kprintf.o			\
 		 kernel/getaddrinfo.o		\
+		 kernel/kprintf.o			\
 		 kernel/pipe.o
 
 # device drivers 

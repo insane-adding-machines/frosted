@@ -11,6 +11,8 @@ Author: Maxime Vincent, Daniele Lacamera
 
 #include <stdint.h>
 #include <signal.h>
+
+#ifdef CONFIG_PICOTCP
 #include "pico_defines.h"
 #include "pico_constants.h"
 #include "pico_config.h"
@@ -21,6 +23,7 @@ Author: Maxime Vincent, Daniele Lacamera
 #include "pico_ipv6.h"
 #include "pico_dns_client.h"
 #include "pico_socket.h"
+#endif
 
 #define SOCKSIZE  16
 #define SOCKSIZE6 28
@@ -46,6 +49,7 @@ typedef int socklen_t;
 #define TCP_KEEPCNT         (PICO_SOCKET_OPT_KEEPCNT)
 #define TCP_KEEPIDLE        (PICO_SOCKET_OPT_KEEPIDLE)
 #define TCP_KEEPINTVL       (PICO_SOCKET_OPT_KEEPINTVL)
+#define TCP_LINGER          (PICO_SOCKET_OPT_LINGER)
 #define SO_ERROR            (4103)
 #define SO_REUSEADDR        (2)
 #define sockopt_get_name(x) ((x))
