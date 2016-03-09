@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -65,7 +85,7 @@ static int devadc_read(struct fnode *fno, void *buf, unsigned int len)
 
     frosted_mutex_lock(adc->dev->mutex);
 
-    if (adc->conversion_done == 0) 
+    if (adc->conversion_done == 0)
     {
         adc_enable_dma(adc->base);
         adc_start_conversion_regular(adc->base);
@@ -99,7 +119,7 @@ static void adc_fno_init(struct fnode *dev, uint32_t n, const struct adc_addr * 
 void adc_init(struct fnode * dev,  const struct adc_addr adc_addrs[], int num_adcs)
 {
     int i;
-    for (i = 0; i < num_adcs; i++) 
+    for (i = 0; i < num_adcs; i++)
     {
         if (adc_addrs[i].base == 0)
             continue;
@@ -129,12 +149,3 @@ void adc_init(struct fnode * dev,  const struct adc_addr adc_addrs[], int num_ad
         adc_power_on(adc_addrs[i].base);
     }
 }
-
-
-
-
-
-
-
-
-

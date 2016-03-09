@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -95,14 +115,14 @@ static void i2c_ev(struct dev_i2c * i2c)
         state_machine(i2c, I2C_STIM_BTF);
     else if(    (I2C_SR1(i2c->base) & (I2C_SR1_TxE)) == (I2C_SR1_TxE)   )
         state_machine(i2c, I2C_STIM_TXE);
-    
+
 }
 
 
 /*****************************
     BERR             I2C_SR1_BERR
     AF                  I2C_SR1_AF
-    OVR               I2C_SR1_OVR  
+    OVR               I2C_SR1_OVR
     PECERR          I2C_SR1_PECERR
     TIMEOUT        I2C_SR1_TIMEOUT
     SMBALERT    I2C_SR1_SMBALERT
@@ -133,12 +153,12 @@ void i2c1_er_isr(void)
 void dma1_stream0_isr()
 {
     dma_clear_interrupt_flags(DMA1, DMA_STREAM0, DMA_LISR_TCIF0);
-    i2c_rx_dma_complete(&DEV_I2C[0]);  
+    i2c_rx_dma_complete(&DEV_I2C[0]);
 }
 void dma1_stream6_isr()
 {
     dma_clear_interrupt_flags(DMA1, DMA_STREAM6, DMA_LISR_TCIF0);
-    i2c_tx_dma_complete(&DEV_I2C[0]);  
+    i2c_tx_dma_complete(&DEV_I2C[0]);
 }
 #endif
 
@@ -165,7 +185,7 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     break;
                 case I2C_STIM_MASTER_MODE_SELECT:
                     i2c->state = I2C_STATE_REGISTER;
-                    i2c_send_7bit_address(i2c->base, i2c->slv_address >> 1, 0); 
+                    i2c_send_7bit_address(i2c->base, i2c->slv_address >> 1, 0);
                     break;
             }
             break;
@@ -190,11 +210,11 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
             break;
 
         case I2C_STATE_READ:
-            switch(stim)        
+            switch(stim)
             {
                 case  I2C_STIM_TIMEOUT:
                     break;
-                case I2C_STIM_TXE:    
+                case I2C_STIM_TXE:
                     i2c->state = I2C_STATE_READ_ADDRESS;
                     i2c_send_start(i2c->base);
                     break;
@@ -208,7 +228,7 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     break;
                 case I2C_STIM_MASTER_MODE_SELECT:
                     i2c->state = I2C_STATE_READ_DATA;
-                    i2c_send_7bit_address(i2c->base, i2c->slv_address >> 1, 1); 
+                    i2c_send_7bit_address(i2c->base, i2c->slv_address >> 1, 1);
                     break;
             }
             break;
@@ -224,7 +244,7 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     break;
             }
             break;
-            
+
         case I2C_STATE_DATA:
             switch(stim)
             {
@@ -254,7 +274,7 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     i2c_disable_dma(i2c->base);
                     i2c->state = I2C_STATE_BTF;
                     break;
-            }           
+            }
             break;
 
         case I2C_STATE_BTF:
@@ -281,22 +301,22 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
 int i2c_read(struct fnode *fno, i2c_completion completion_fn, void * completion_arg, uint8_t address, uint8_t  slv_register, uint8_t *buf, uint32_t len)
 {
     struct dev_i2c *i2c;
-    
+
     if (len <= 0)
         return len;
-    
+
     i2c = (struct dev_i2c *)FNO_MOD_PRIV(fno, &mod_devi2c);
     if (i2c == NULL)
         return -1;
 
     frosted_mutex_lock(i2c->dev->mutex);
-   
+
     i2c->dirn = 1;
     i2c->slv_address = address;
     i2c->slv_register = slv_register;
     i2c->completion_fn = completion_fn;
     i2c->completion_arg = completion_arg;
-    
+
     init_dma(i2c->rx_dma_setup, (uint32_t)buf, len);
     dma_enable_transfer_complete_interrupt(i2c->rx_dma_setup->base, i2c->rx_dma_setup->stream);
     nvic_set_priority(i2c->rx_dma_setup->irq, 1);
@@ -309,10 +329,10 @@ int i2c_read(struct fnode *fno, i2c_completion completion_fn, void * completion_
 int i2c_write(struct fnode *fno, i2c_completion completion_fn, void * completion_arg, uint8_t address, uint8_t  slv_register, const uint8_t *buf, uint32_t len)
 {
     struct dev_i2c *i2c;
-    
+
     if (len <= 0)
         return len;
-    
+
     i2c = (struct dev_i2c *)FNO_MOD_PRIV(fno, &mod_devi2c);
     if (i2c == NULL)
         return -1;
@@ -349,7 +369,7 @@ static void i2c_fno_init(struct fnode *dev, uint32_t n, const struct i2c_addr * 
 void i2c_init(struct fnode *dev, const struct i2c_addr i2c_addrs[], int num_i2cs)
 {
     int i;
-    for (i = 0; i < num_i2cs; i++) 
+    for (i = 0; i < num_i2cs; i++)
     {
         if (i2c_addrs[i].base == 0)
             continue;
@@ -377,4 +397,3 @@ void i2c_init(struct fnode *dev, const struct i2c_addr i2c_addrs[], int num_i2cs
         nvic_enable_irq(i2c_addrs[i].er_irq);
     }
 }
-

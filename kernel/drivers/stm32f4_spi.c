@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -8,7 +28,7 @@
 
 #ifdef LM3S
 #   include "libopencm3/lm3s/spi.h"
-#   define CLOCK_ENABLE(C) 
+#   define CLOCK_ENABLE(C)
 #endif
 #ifdef STM32F4
 #   include <libopencm3/stm32/rcc.h>
@@ -18,7 +38,7 @@
 #endif
 #ifdef LPC17XX
 #   include "libopencm3/lpc17xx/spi.h"
-#   define CLOCK_ENABLE(C) 
+#   define CLOCK_ENABLE(C)
 #endif
 
 struct dev_spi {
@@ -53,21 +73,21 @@ static void spi1_rx_dma_complete(struct dev_spi *spi)
 void dma2_stream2_isr()
 {
     dma_clear_interrupt_flags(DMA2, DMA_STREAM2, DMA_LISR_TCIF0);
-    spi1_rx_dma_complete(&DEV_SPI[0]);  
+    spi1_rx_dma_complete(&DEV_SPI[0]);
 }
 #endif
 
 int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completion_arg, const char *obuf, char *ibuf, unsigned int len)
 {
     struct dev_spi *spi;
-    
+
     if (len <= 0)
         return len;
-    
+
     spi = (struct dev_spi *)FNO_MOD_PRIV(fno, &mod_devspi);
     if (spi == NULL)
         return -1;
-    
+
     frosted_mutex_lock(spi->dev->mutex);
 
     spi->completion_fn = completion_fn;
@@ -85,7 +105,7 @@ int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completi
     spi_enable_rx_dma(spi->base);
     spi_enable_tx_dma(spi->base);
 
-    return len;    
+    return len;
 }
 
 
@@ -103,7 +123,7 @@ void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spi
 {
     int i;
 
-    for (i = 0; i < num_spis; i++) 
+    for (i = 0; i < num_spis; i++)
     {
         if (spi_addrs[i].base == 0)
             continue;
@@ -111,9 +131,9 @@ void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spi
         spi_fno_init(dev, i, &spi_addrs[i]);
         CLOCK_ENABLE(spi_addrs[i].rcc);
         CLOCK_ENABLE(spi_addrs[i].dma_rcc);
-        
+
         spi_disable(spi_addrs[i].base);
-        
+
         spi_set_master_mode(spi_addrs[i].base);
         spi_set_baudrate_prescaler(spi_addrs[i].base, spi_addrs[i].baudrate_prescaler);
         if(spi_addrs[i].clock_pol == 0) spi_set_clock_polarity_0(spi_addrs[i].base);
@@ -136,5 +156,3 @@ void spi_init(struct fnode * dev, const struct spi_addr spi_addrs[], int num_spi
     }
     register_module(&mod_devspi);
 }
-
-

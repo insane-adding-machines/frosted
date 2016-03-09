@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,8 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
+
 #include "frosted.h"
 #include "syscall_table.h"
 
@@ -92,7 +93,7 @@ const struct utsname uts_frosted = { "Frosted", "frosted", "16.03", "16", "arm",
 int sys_uname_hdlr( uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     struct utsname *uts = (struct utsname *)arg1;
-    if (!arg1) 
+    if (!arg1)
         return -EFAULT;
     memcpy(uts, &uts_frosted, sizeof(struct utsname));
     return 0;

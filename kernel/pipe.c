@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,8 +14,10 @@
  *      You should have received a copy of the GNU General Public License
  *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *      Authors: Daniele Lacamera
  *
- */  
+ */
+
 #include "frosted.h"
 #include "cirbuf.h"
 #include "string.h"
@@ -50,11 +52,11 @@ int sys_pipe2_hdlr(int paddr, int flags)
         return -ENOMEM;
     }
 
-    rd = fno_create(&mod_pipe, "", &PIPE_ROOT); 
+    rd = fno_create(&mod_pipe, "", &PIPE_ROOT);
     if (!rd) {
         goto fail_rd;
     }
-    wr = fno_create(&mod_pipe, "", &PIPE_ROOT); 
+    wr = fno_create(&mod_pipe, "", &PIPE_ROOT);
     if (!wr) {
         goto fail_wr;
     }
@@ -65,10 +67,10 @@ int sys_pipe2_hdlr(int paddr, int flags)
     if (pfd[0] < 0 || pfd[1] < 0) {
         goto fail_all;
     }
-    
+
     task_fd_setmask(pfd[0], O_RDONLY);
     task_fd_setmask(pfd[1], O_WRONLY);
-    
+
     rd->priv = pp;
     wr->priv = pp;
 
@@ -133,7 +135,7 @@ static int pipe_close(struct fnode *f)
 
     if (f->owner != &mod_pipe)
         return -EINVAL;
-    
+
     pp = (struct pipe_priv *)f->priv;
     if (!pp)
         return -EINVAL;
@@ -203,12 +205,12 @@ static int pipe_write(struct fnode *f, const void *buf, unsigned int len)
     pp = (struct pipe_priv *)f->priv;
     if (!pp)
         return -EINVAL;
-    
+
     if (pp->fno_w != f)
         return -EPERM;
 
     out = pp->w_off;
-    
+
     len_available =  cirbuf_bytesfree(pp->cb);
     if (len_available > (len - out))
         len_available = (len - out);
@@ -242,5 +244,3 @@ void sys_pipe_init(void)
 
     register_module(&mod_pipe);
 }
-
-

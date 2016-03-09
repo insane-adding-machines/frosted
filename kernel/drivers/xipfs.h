@@ -16,4 +16,3 @@ struct xipfs_fhdr {
     uint8_t  payload[0];
 };
 #endif
-

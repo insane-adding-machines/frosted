@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+
 #include "frosted.h"
 #include "string.h"
 
@@ -48,7 +68,7 @@ void devnull_init(struct fnode *dev)
     strcpy(mod_devnull.name,"devnull");
     mod_devnull.family = FAMILY_FILE;
     mod_devnull.ops.open = devnull_open;
-    mod_devnull.ops.read = devnull_read; 
+    mod_devnull.ops.read = devnull_read;
     mod_devnull.ops.poll = devnull_poll;
     mod_devnull.ops.write = devnull_write;
 
@@ -56,6 +76,3 @@ void devnull_init(struct fnode *dev)
     devzero = fno_create_rdonly(&mod_devnull, "zero", dev);
     register_module(&mod_devnull);
 }
-
-
-

@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,9 +14,9 @@
  *      You should have received a copy of the GNU General Public License
  *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
  *
- *      Authors: Daniele Lacamera, Maxime Vincent
+ *      Authors: Daniele Lacamera, Maxime Vincent, brabo
  *
- */  
+ */
 #include "frosted.h"
 #include "libopencm3/cm3/systick.h"
 #include <libopencm3/stm32/rcc.h>
@@ -62,13 +62,13 @@ static const struct gpio_addr gpio_addrs[] = { {.base=GPIOG, .pin=GPIO13,.mode=G
 #endif
 
 #ifdef CONFIG_DEVUART
-static const struct uart_addr uart_addrs[] = { 
+static const struct uart_addr uart_addrs[] = {
 #ifdef CONFIG_USART_1
-            { 
+            {
                 .devidx = 1,
-                .base = USART1, 
-                .irq = NVIC_USART1_IRQ, 
-                .rcc = RCC_USART1, 
+                .base = USART1,
+                .irq = NVIC_USART1_IRQ,
+                .rcc = RCC_USART1,
                 .baudrate = 115200,
                 .stop_bits = USART_STOPBITS_1,
                 .data_bits = 8,
@@ -77,11 +77,11 @@ static const struct uart_addr uart_addrs[] = {
             },
 #endif
 #ifdef CONFIG_USART_2
-        { 
+        {
             .devidx = 2,
-            .base = USART2, 
-            .irq = NVIC_USART2_IRQ, 
-            .rcc = RCC_USART2, 
+            .base = USART2,
+            .irq = NVIC_USART2_IRQ,
+            .rcc = RCC_USART2,
             .baudrate = 115200,
             .stop_bits = USART_STOPBITS_1,
             .data_bits = 8,
@@ -127,4 +127,3 @@ void machine_init(struct fnode * dev)
     rng_init(dev, rng_addrs, NUM_RNGS);
 #endif
 }
-

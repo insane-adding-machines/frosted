@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "cm3/mpu.h"
 #include "libopencmsis/core_cm3.h"
@@ -32,7 +52,7 @@
 #define FLASH_START       (0x00000000)
 #define RAM_START         (0x20000000)
 #define DEV_START         (0x40000000)
-#define EXTRAM_START      (0x60000000) 
+#define EXTRAM_START      (0x60000000)
 #define EXTFLASH_START    (0x80000000)
 #define EXTDEV_START      (0xA0000000)
 #define REG_START         (0xE0000000)
@@ -133,7 +153,7 @@ void mpu_init(void)
 
     /* Read-only sectors */
     mpu_setaddr(2, FLASH_START);    /* Internal Flash           0x00000000 - 0x0FFFFFFF (256M) */
-    mpu_setattr(2, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO); 
+    mpu_setattr(2, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRO_URO);
 
     /* System (No user access) */
     mpu_setaddr(3, RAM_START);      /* Kernel memory            0x20000000 (CONFIG_KRAM_SIZE KB) */
@@ -160,5 +180,3 @@ void mpu_task_on(void *stack)
     mpu_setattr(4, mpu_size(CONFIG_TASK_STACK_SIZE) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
     mpu_enable();
 }
-
-

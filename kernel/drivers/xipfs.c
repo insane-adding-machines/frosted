@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include <string.h>
 #include "bflt.h"
@@ -76,7 +96,7 @@ static int xipfs_close(struct fnode *fno)
 static int xipfs_creat(struct fnode *fno)
 {
     return -1;
-    
+
 }
 
 static void *xipfs_exe(struct fnode *fno, void *arg)
@@ -180,7 +200,7 @@ void xipfs_init(void)
     mod_xipfs.family = FAMILY_FILE;
     mod_xipfs.mount = xipfs_mount;
     strcpy(mod_xipfs.name,"xipfs");
-    mod_xipfs.ops.read = xipfs_read; 
+    mod_xipfs.ops.read = xipfs_read;
     mod_xipfs.ops.poll = xipfs_poll;
     mod_xipfs.ops.write = xipfs_write;
     mod_xipfs.ops.seek = xipfs_seek;
@@ -192,6 +212,3 @@ void xipfs_init(void)
     mod_xipfs.ops.block_read = xipfs_block_read;
     register_module(&mod_xipfs);
 }
-
-
-

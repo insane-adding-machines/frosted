@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "string.h"
 #include "scheduler.h"
@@ -104,7 +124,7 @@ static int ul_to_str(unsigned long n, char *s)
         q /= 10;
     }
     return maxlen;
-     
+
 }
 
 int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
@@ -157,7 +177,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
                     task_txt[off++] = 'F';
                 if (p_state == TASK_ZOMBIE)
                     task_txt[off++] = 'Z';
-                
+
                 task_txt[off++] = '\t';
                 stack_used = scheduler_stack_used(i);
                 off += ul_to_str(stack_used, task_txt + off);
@@ -231,34 +251,34 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
             strcpy(mem_txt + off, malloc_banner);
             off += strlen(malloc_banner);
             off += ul_to_str(allocated, mem_txt + off);
-            *(mem_txt + off) = '\r'; 
+            *(mem_txt + off) = '\r';
             off++;
-            *(mem_txt + off) = '\n'; 
+            *(mem_txt + off) = '\n';
             off++;
 
             strcpy(mem_txt + off, mem_banner);
             off += strlen(mem_banner);
             off += ul_to_str(f_malloc_stats[i].mem_allocated, mem_txt + off);
 
-            *(mem_txt + off) = ' '; 
+            *(mem_txt + off) = ' ';
             off++;
-            *(mem_txt + off) = 'B'; 
+            *(mem_txt + off) = 'B';
             off++;
-            *(mem_txt + off) = '\r'; 
+            *(mem_txt + off) = '\r';
             off++;
-            *(mem_txt + off) = '\n'; 
+            *(mem_txt + off) = '\n';
             off++;
 
             strcpy(mem_txt + off, frags_banner);
             off += strlen(frags_banner);
             off += ul_to_str(mem_stats_frag(i), mem_txt + off);
-            *(mem_txt + off) = ' '; 
+            *(mem_txt + off) = ' ';
             off++;
-            *(mem_txt + off) = 'B'; 
+            *(mem_txt + off) = 'B';
             off++;
-            *(mem_txt + off) = '\r'; 
+            *(mem_txt + off) = '\r';
             off++;
-            *(mem_txt + off) = '\n'; 
+            *(mem_txt + off) = '\n';
             off++;
         }
         if (off > 0)
@@ -342,7 +362,7 @@ int sysfs_mtab_read(struct sysfs_fnode *sfs, void *buf, int len)
         while (m) {
             l = fno_fullpath(m->target, mem_txt + off, MAX_SYSFS_BUFFER - off);
             if (l > 0)
-                off += l; 
+                off += l;
             *(mem_txt + (off++)) = '\t';
             *(mem_txt + (off++)) = '\t';
 
@@ -390,15 +410,15 @@ int sysfs_no_write(struct sysfs_fnode *sfs, const void *buf, int len)
 }
 
 
-int sysfs_register(char *name, char *dir, 
-        int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len), 
+int sysfs_register(char *name, char *dir,
+        int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len),
         int (*do_write)(struct sysfs_fnode *sfs, const void *buf, int len) )
 {
     struct fnode *fno = fno_create(&mod_sysfs, name, fno_search(dir));
     struct sysfs_fnode *mfs;
     if (!fno)
         return -1;
-   
+
     mfs = kalloc(sizeof(struct sysfs_fnode));
     if (mfs) {
         mfs->fnode = fno;
@@ -428,7 +448,7 @@ static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
         return -1;
     }
 
-    /* TODO: check empty dir 
+    /* TODO: check empty dir
     if (tgt_dir->children) {
         return -1;
     }
@@ -449,14 +469,13 @@ void sysfs_init(void)
 
     mod_sysfs.mount = sysfs_mount;
 
-    mod_sysfs.ops.read = sysfs_read; 
+    mod_sysfs.ops.read = sysfs_read;
     mod_sysfs.ops.poll = sysfs_poll;
     mod_sysfs.ops.write = sysfs_write;
     mod_sysfs.ops.close = sysfs_close;
 
     sysfs = fno_search("/sys");
     register_module(&mod_sysfs);
-    fno_mkdir(&mod_sysfs, "net", sysfs);            
+    fno_mkdir(&mod_sysfs, "net", sysfs);
     sysfs_mutex = frosted_mutex_init();
 }
-

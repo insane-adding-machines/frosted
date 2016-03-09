@@ -1,5 +1,23 @@
 /*
- * Frosted: USB Ethernet gadget driver
+ *	USB Ethernet gadget driver
+ *
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
  */
 
 #include "frosted.h"
@@ -131,7 +149,7 @@ static const struct usb_interface ifaces[] = {
     {
         .num_altsetting = 1,
         .altsetting = data_iface,
-    } 
+    }
 };
 
 static const struct usb_config_descriptor config = {
@@ -198,7 +216,7 @@ static struct usbeth_rx_buffer *rx_buffer = NULL;
 #define RXBUF_TCPIP    2
 static void rx_buffer_free(uint8_t *arg)
 {
-    (void) arg; 
+    (void) arg;
     rx_buffer->size = 0;
     rx_buffer->status = RXBUF_FREE;
 }

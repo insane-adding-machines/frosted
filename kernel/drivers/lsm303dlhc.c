@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -26,7 +46,7 @@ struct dev_lsm303dlhc {
     LSM303DLHC_MODE mode;
 };
 
-#define MAX_LSM303DLHC 2 
+#define MAX_LSM303DLHC 2
 
 static struct dev_lsm303dlhc DEV_LSM303DLHC[MAX_LSM303DLHC];
 
@@ -38,7 +58,7 @@ static struct module mod_devlsm303dlhc = {
     .family = FAMILY_FILE,
     .name = "lsm303dlhc",
     .ops.open = device_open,
-    .ops.read = devlsm303dlhc_read, 
+    .ops.read = devlsm303dlhc_read,
     .ops.ioctl = devlsm303dlhc_ioctl,
     .ops.close = devlsm303dlhc_close,
 };
@@ -46,8 +66,8 @@ static struct module mod_devlsm303dlhc = {
 static void completion(void * arg)
 {
     const struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
-    
-    if (lsm303dlhc->dev->pid > 0) 
+
+    if (lsm303dlhc->dev->pid > 0)
         task_resume(lsm303dlhc->dev->pid);
 }
 
@@ -146,7 +166,7 @@ static void lsm303dlhc_fno_init(struct fnode *dev, uint32_t n, const struct lsm3
     (addr->drdy_name) ? l->drdy_fnode = fno_search(addr->drdy_name) : NULL;
     l->address = addr->address;
     l->mode = LSM303DLHC_IDLE;
-    
+
     if(l->int_1_fnode)exti_register_callback(l->int_1_fnode, int1_callback, l);
     if(l->int_2_fnode)exti_register_callback(l->int_2_fnode, int2_callback, l);
     if(l->drdy_fnode)exti_register_callback(l->drdy_fnode, drdy_callback, l);
@@ -155,10 +175,9 @@ static void lsm303dlhc_fno_init(struct fnode *dev, uint32_t n, const struct lsm3
 void lsm303dlhc_init(struct fnode *dev, const struct lsm303dlhc_addr lsm303dlhc_addrs[], int num_lsm303dlhc)
 {
     int i;
-    for (i = 0; i < num_lsm303dlhc; i++) 
+    for (i = 0; i < num_lsm303dlhc; i++)
     {
         lsm303dlhc_fno_init(dev, i, &lsm303dlhc_addrs[i]);
     }
     register_module(&mod_devlsm303dlhc);
 }
-

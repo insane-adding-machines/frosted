@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "device.h"
 #ifdef STM32F4
@@ -40,9 +60,9 @@ usbd_device * usb_register_set_config_callback(usbd_set_config_callback callback
     {
         if(usbd_register_set_config_callback(usb->usbd_dev, callback) != 0)
         {
-            return NULL;    
+            return NULL;
         }
-        
+
         if(usb->num_callbacks == 1)
         {
             nvic_enable_irq(usb->irq);
@@ -56,9 +76,8 @@ usbd_device * usb_register_set_config_callback(usbd_set_config_callback callback
 void usb_init(const struct usb_addr usb_addrs[], int num_usb)
 {
     int i;
-    for (i = 0; i < num_usb; i++) 
+    for (i = 0; i < num_usb; i++)
     {
         rcc_periph_clock_enable(usb_addrs[i].rcc);
     }
 }
-

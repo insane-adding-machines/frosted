@@ -34,7 +34,7 @@ void pico_unlock(void)
 static int sock_check_fd(int fd, struct fnode **fno)
 {
     *fno = task_filedesc_get(fd);
-    
+
     if (!fno)
         return -1;
 
@@ -149,7 +149,7 @@ static int sock_socket(int domain, int type, int protocol)
     if (domain != PICO_PROTO_IPV4)
         domain = PICO_PROTO_IPV4;
 
-    if (type == 1) 
+    if (type == 1)
         type = PICO_PROTO_TCP;
 
     if (type == 2)
@@ -234,11 +234,11 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
             paddr.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
             port = ((struct sockaddr_in *)addr)->sin_port;
             pico_lock();
-            ret = pico_socket_sendto(s->sock, buf + s->bytes, len - s->bytes, &paddr, port); 
+            ret = pico_socket_sendto(s->sock, buf + s->bytes, len - s->bytes, &paddr, port);
             pico_unlock();
         } else {
             pico_lock();
-            ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes); 
+            ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes);
             pico_unlock();
         }
         if (ret == 0) {
@@ -287,7 +287,7 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
 {
     struct frosted_inet_socket *l, *s;
     struct pico_socket *cli;
-    union pico_address paddr; 
+    union pico_address paddr;
     uint16_t port;
 
     l = fd_inet(fd);
@@ -391,7 +391,7 @@ static int sock_io_setaddr(struct pico_device *dev, struct ifreq *ifr)
     struct sockaddr_in *if_addr = ((struct sockaddr_in *) &ifr->ifr_addr);
     struct pico_ip4 dev_addr = {};
 
-    l = pico_ipv4_link_by_dev(dev); 
+    l = pico_ipv4_link_by_dev(dev);
     if (l) {
         pico_ipv4_link_del(dev, l->address);
     }
@@ -406,7 +406,7 @@ static int sock_io_setnetmask(struct pico_device *dev, struct ifreq *ifr)
     struct pico_ip4 dev_addr = {};
     struct pico_ip4 dev_nm = {};
 
-    l = pico_ipv4_link_by_dev(dev); 
+    l = pico_ipv4_link_by_dev(dev);
     if (!l)
         return -ENOTCONN;
     dev_addr.addr = l->address.addr;
@@ -429,7 +429,7 @@ static int sock_io_getaddr(struct pico_device *dev, struct ifreq *ifr)
     struct sockaddr_in *if_addr = ((struct sockaddr_in *) &ifr->ifr_addr);
     memset(ifr, 0, sizeof(struct ifreq));
     strncpy(ifr->ifr_name, dev->name, IFNAMSIZ);
-    l = pico_ipv4_link_by_dev(dev); 
+    l = pico_ipv4_link_by_dev(dev);
     if (!l)
     	return 0;
     ifr->ifr_flags = IFF_UP|IFF_RUNNING|IFF_MULTICAST|IFF_BROADCAST;
@@ -443,7 +443,7 @@ static int sock_io_gethwaddr(struct pico_device *dev, struct ifreq *eth)
 {
     if (!dev->eth)
         return -EPROTONOSUPPORT;
-    /* TODO 
+    /* TODO
     memset(eth, 0, sizeof(struct ifreq));
     strncpy(eth->ifr_name, dev->name, IFNAMSIZ);
     eth->ifr_flags = IFF_UP|IFF_RUNNING|IFF_MULTICAST|IFF_BROADCAST;
@@ -461,7 +461,7 @@ static int sock_io_getbcast(struct pico_device *dev, struct ifreq *ifr)
 
     memset(if_addr, 0, sizeof(struct sockaddr_in));
     if_addr->sin_addr.s_addr = 0xFFFFFFFF;
-    l = pico_ipv4_link_by_dev(dev); 
+    l = pico_ipv4_link_by_dev(dev);
     if (!l)
     	return 0;
     if_addr->sin_family = AF_INET;
@@ -473,7 +473,7 @@ static int sock_io_getnmask(struct pico_device *dev, struct ifreq *ifr)
 {
     struct pico_ipv4_link *l;
     struct sockaddr_in *if_nmask = ((struct sockaddr_in *) &ifr->ifr_netmask);
-    l = pico_ipv4_link_by_dev(dev); 
+    l = pico_ipv4_link_by_dev(dev);
     memset(if_nmask, 0, sizeof(struct sockaddr_in));
     if (!l)
     	return 0;
@@ -606,6 +606,3 @@ void socket_in_init(void)
     sysfs_register("dev", "/sys/net", sysfs_net_dev_read, NULL);
 
 }
-
-
-

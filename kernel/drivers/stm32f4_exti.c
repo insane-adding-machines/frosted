@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -145,7 +165,7 @@ void exti_init(struct fnode * dev,  const struct exti_addr exti_addrs[], int num
             continue;
 
         exti_fno_init(dev, i, &exti_addrs[i]);
-        
+
         switch(exti_addrs[i].pin)
         {
             case GPIO0:     DEV_EXTI[i].exti = EXTI0;       exti_irq = NVIC_EXTI0_IRQ;  exti_fno[0] = &DEV_EXTI[i];  break;
@@ -166,7 +186,7 @@ void exti_init(struct fnode * dev,  const struct exti_addr exti_addrs[], int num
             case GPIO15:    DEV_EXTI[i].exti = EXTI15;       exti_irq = NVIC_EXTI15_10_IRQ;  exti_fno[15] = &DEV_EXTI[i];  break;
             default: break;
         }
-        
+
         nvic_enable_irq(exti_irq);
         exti_select_source(DEV_EXTI[i].exti, exti_addrs[i].base);
         exti_set_trigger(DEV_EXTI[i].exti, exti_addrs[i].trigger);
@@ -174,4 +194,3 @@ void exti_init(struct fnode * dev,  const struct exti_addr exti_addrs[], int num
     }
     register_module(&mod_devexti);
 }
-

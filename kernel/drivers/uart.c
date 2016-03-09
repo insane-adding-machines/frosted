@@ -1,3 +1,23 @@
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
+ */
+ 
 #include "frosted.h"
 #include "device.h"
 #include "cirbuf.h"
@@ -10,7 +30,7 @@
 
 #ifdef LM3S
 #   include "libopencm3/lm3s/usart.h"
-#   define CLOCK_ENABLE(C) 
+#   define CLOCK_ENABLE(C)
 #   define USART_SR_RXNE  USART_IC_RX
 #   define USART_SR_TXE   USART_IC_TX
 #endif
@@ -30,7 +50,7 @@
 #endif
 #ifdef LPC17XX
 #   include "libopencm3/lpc17xx/uart.h"
-#   define CLOCK_ENABLE(C) 
+#   define CLOCK_ENABLE(C)
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
@@ -56,7 +76,7 @@ static struct module mod_devuart = {
     .family = FAMILY_FILE,
     .name = "uart",
     .ops.open = device_open,
-    .ops.read = devuart_read, 
+    .ops.read = devuart_read,
     .ops.poll = devuart_poll,
     .ops.write = devuart_write,
 };
@@ -88,14 +108,14 @@ void uart_isr(struct dev_uart *uart)
         /* if data available */
         if (usart_is_recv_ready(uart->base))
         {
-            char byte = (char)(usart_recv(uart->base) & 0xFF); 
+            char byte = (char)(usart_recv(uart->base) & 0xFF);
             /* read data into circular buffer */
             cirbuf_writebyte(uart->inbuf, byte);
         }
     }
 
     /* If a process is attached, resume the process */
-    if (uart->dev->pid > 0) 
+    if (uart->dev->pid > 0)
         task_resume(uart->dev->pid);
 }
 
@@ -155,7 +175,7 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
     if (!uart)
         return -1;
-    
+
     if (len <= 0)
         return len;
     if (uart->w_start == NULL) {
@@ -291,7 +311,7 @@ void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_
 {
     int i,j;
 
-    for (i = 0; i < num_uarts; i++) 
+    for (i = 0; i < num_uarts; i++)
     {
         if (uart_addrs[i].base == 0)
             continue;
@@ -312,5 +332,3 @@ void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_
     }
     register_module(&mod_devuart);
 }
-
-
