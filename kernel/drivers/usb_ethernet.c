@@ -387,9 +387,20 @@ int usb_ethernet_init(void)
         kfree(usb);
         return -1;
     }
+
+#ifdef STM32F4
     gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE,
             GPIO9 | GPIO11 | GPIO12);
     gpio_set_af(GPIOA, GPIO_AF10, GPIO9 | GPIO11 | GPIO12);
+#endif
+
+#ifdef STM32F7
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
+    gpio_set_af(GPIOA, GPIO_AF10, GPIO11 | GPIO12);
+    gpio_set_af(GPIOA, GPIO_AF10, GPIO9);
+#endif
+
 
     /* USB init */
     usb->usbd_dev = usbd_init(&otgfs_usb_driver, &usbdev_desc, &config,
