@@ -51,6 +51,7 @@ The requirements to test frosted on synthetic target are:
  * The GCC ARM Embedded debugger (gdb), for kernel debugging
 
 How to run the QEMU example synthetic target:
+ * Run ```git submodule init && git submodule update``` in your repo, to clone submodules needed.
  * Use ```make menuconfig``` to select preferred options. For running under qemu, the CPU type has to be set to "LM3S"
  * Use ```make``` to start the build
  * Use ```make qemu2``` to run frosted in a virtual machine.
