@@ -620,6 +620,30 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     return 0;
 }
 
+int sys_fstat_hdlr(uint32_t arg1, uint32_t arg2)
+{
+    struct stat *st = (struct stat *)arg2;
+    struct fnode *fno = task_filedesc_get(arg1);
+    if (!fno)
+        return -EINVAL;
+    if (!fno)
+        return -ENOENT;
+    if (fno->flags & FL_DIR) {
+        st->st_mode = S_IFDIR;
+        st->st_size = 0;
+    } else if (fno->flags & FL_LINK) {
+        return sys_stat_hdlr((uint32_t)fno->linkname, arg2); /* Stat follows symlink */
+    } else {
+        st->st_mode = S_IFREG;
+        st->st_size = fno->size;
+    }
+
+    if (fno->flags & FL_EXEC) {
+        st->st_mode |= P_EXEC;
+    }
+    return 0;
+}
+
 int sys_lstat_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;

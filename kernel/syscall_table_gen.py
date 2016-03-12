@@ -75,7 +75,8 @@ syscalls = [
     ["lstat", 2, "sys_lstat_hdlr"],
     ["uname", 1, "sys_uname_hdlr"],
     ["getaddrinfo", 4, "sys_getaddrinfo_hdlr"],
-    ["freeaddrinfo", 1, "sys_freeaddrinfo_hdlr"]
+    ["freeaddrinfo", 1, "sys_freeaddrinfo_hdlr"],
+    ["fstat", 2, "sys_fstat_hdlr"]
 ]
 
    #
