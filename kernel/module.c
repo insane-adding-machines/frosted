@@ -202,3 +202,21 @@ int sys_getsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned i
     }
     return -EINVAL;
 }
+
+int sys_getsockname_hdlr(int sd, struct sockaddr_env *se)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.getsockname) {
+        return fno->owner->ops.getsockname(sd, se->se_addr, &(se->se_len));
+    }
+    return -EINVAL;
+}
+
+int sys_getpeername_hdlr(int sd, struct sockaddr_env *se)
+{
+    struct fnode *fno = task_filedesc_get(sd);
+    if (fno && fno->owner && fno->owner->ops.getpeername) {
+        return fno->owner->ops.getpeername(sd, se->se_addr, &(se->se_len));
+    }
+    return -EINVAL;
+}

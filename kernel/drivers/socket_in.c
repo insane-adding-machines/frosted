@@ -573,6 +573,96 @@ out:
     return len;
 }
 
+
+static int sock_getsockopt(int sd, int level, int optname, void *optval, unsigned int *optlen)
+{
+    struct frosted_inet_socket *s;
+    int ret;
+    if (*optlen < sizeof(int))
+        return -EFAULT;
+    s = fd_inet(sd);
+    if (!s)
+        return -EINVAL;
+    ret = pico_socket_getoption(s->sock, optname, optval);
+    if (ret < 0) 
+        return 0 - pico_err;
+    *optlen = sizeof(int);
+    return ret;
+}
+
+static int sock_setsockopt(int sd, int level, int optname, void *optval, unsigned int optlen)
+{
+    struct frosted_inet_socket *s;
+    int ret;
+    if (optlen < sizeof(int))
+        return -EFAULT;
+
+    s = fd_inet(sd);
+    if (!s)
+        return -EINVAL;
+    ret = pico_socket_setoption(s->sock, optname, optval);
+    if (ret < 0) 
+        return 0 - pico_err;
+    return ret;
+}
+
+static int sock_getsockname(int sd, struct sockaddr *_addr, unsigned int *addrlen)
+{
+    struct pico_ip4 ip4a;
+    struct frosted_inet_socket *s;
+    struct sockaddr_in *addr = (struct sockaddr_in *)addr;
+    int r;
+    uint16_t port, proto;
+    s = fd_inet(sd);
+    if (!s)
+        return -EINVAL;
+
+    if (*addrlen < sizeof(struct sockaddr_in))
+        return -ENOBUFS;
+    r = pico_socket_getname(s->sock, &ip4a, &port, &proto);
+    if (r < 0) 
+        return 0 - pico_err;
+
+    if (proto != PICO_PROTO_IPV4)
+        return -ENOENT;
+
+    memset(addr, 0, *addrlen);
+    *addrlen = sizeof(struct sockaddr_in);
+    addr->sin_family = AF_INET;
+    addr->sin_port = port;
+    addr->sin_addr.s_addr = ip4a.addr;
+    return 0;
+}
+
+static int sock_getpeername(int sd, struct sockaddr *_addr, unsigned int *addrlen)
+{
+    struct pico_ip4 ip4a;
+    struct frosted_inet_socket *s;
+    struct sockaddr_in *addr = (struct sockaddr_in *)addr;
+    int r;
+    uint16_t port, proto;
+    s = fd_inet(sd);
+    if (!s)
+        return -EINVAL;
+
+    if (*addrlen < sizeof(struct sockaddr_in))
+        return -ENOBUFS;
+    r = pico_socket_getpeername(s->sock, &ip4a, &port, &proto);
+    if (r < 0) 
+        return 0 - pico_err;
+
+    if (proto != PICO_PROTO_IPV4)
+        return -ENOTCONN;
+
+    memset(addr, 0, *addrlen);
+    *addrlen = sizeof(struct sockaddr_in);
+    addr->sin_family = AF_INET;
+    addr->sin_port = port;
+    addr->sin_addr.s_addr = ip4a.addr;
+    return 0;
+}
+
+
 static int sysfs_no_op(struct sysfs_fnode *sfs, void *buf, int len)
 {
     return -1;
@@ -598,6 +688,10 @@ void socket_in_init(void)
     mod_socket_in.ops.sendto     = sock_sendto;
     mod_socket_in.ops.shutdown   = sock_shutdown;
     mod_socket_in.ops.ioctl      = sock_ioctl;
+    mod_socket_in.ops.getsockopt   = sock_getsockopt;
+    mod_socket_in.ops.setsockopt   = sock_setsockopt;
+    mod_socket_in.ops.getsockname   = sock_getsockname;
+    mod_socket_in.ops.getpeername   = sock_getpeername;
 
     register_module(&mod_socket_in);
     register_addr_family(&mod_socket_in, FAMILY_INET);

@@ -213,6 +213,8 @@ struct module {
         int (*shutdown)(int fd, uint16_t how);
         int (*setsockopt)(int sd, int level, int optname, void *optval, unsigned int optlen);
         int (*getsockopt)(int sd, int level, int optname, void *optval, unsigned int *optlen);
+        int (*getsockname)(int fd, struct sockaddr *addr, unsigned int *addrlen);
+        int (*getpeername)(int fd, struct sockaddr *addr, unsigned int *addrlen);
 
 
         /* Terminal operations */
