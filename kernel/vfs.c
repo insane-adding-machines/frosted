@@ -414,6 +414,28 @@ void fno_unlink(struct fnode *fno)
     kfree(fno);
 }
 
+int sys_readlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    char *path = (char*)arg1;
+    char *buf = (char*)arg2;
+    size_t size = (size_t)arg3;
+    int len;
+    char abs_p[MAX_FILE];
+    struct fnode *fno;
+    if(!buf)
+        return -1;
+    path_abs(path, abs_p, MAX_FILE);
+    fno = fno_search_nofollow(abs_p);
+    if(!fno)
+        return -ENOENT;
+    else if (fno->flags & FL_LINK)
+        strncpy(buf, fno->linkname, size);
+    else
+        return -EINVAL;
+    len = strlen(fno->linkname);
+    return len < size ? len : size;
+}
+
 int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     char *path = (char *)arg1;

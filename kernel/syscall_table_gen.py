@@ -78,7 +78,8 @@ syscalls = [
     ["freeaddrinfo", 1, "sys_freeaddrinfo_hdlr"],
     ["fstat", 2, "sys_fstat_hdlr"],
     ["getsockname", 2, "sys_getsockname_hdlr"],
-    ["getpeername", 2, "sys_getpeername_hdlr"]
+    ["getpeername", 2, "sys_getpeername_hdlr"],
+    ["readlink", 3, "sys_readlink_hdlr"]
 
 ]
 
