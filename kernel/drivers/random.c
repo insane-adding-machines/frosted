@@ -28,11 +28,15 @@
 #   include "libopencm3/lm3s/rng.h"
 #   define CLOCK_ENABLE(C) 
 #endif
-#ifdef STM32F4
+#if defined(STM32F4) || defined( STM32F7)
 #include <libopencm3/cm3/common.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/f4/rng.h>
+#   ifdef STM32F4
+#       include <libopencm3/stm32/f4/rng.h>
+#   elif defined(STM32F7)
+#       include <libopencm3/stm32/f7/rng.h>
+#   endif
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #endif
 #ifdef LPC17XX
