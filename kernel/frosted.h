@@ -186,7 +186,6 @@ struct module {
     int (*umount)(char *target, uint32_t flags);
     int (*mount_info)(struct fnode *fno, char *buf, int size);
 
-    /* TODO: perhaps we should make a union here... */
     struct module_operations {
         /* Common module operations */
         int (*read) (struct fnode *fno, void *buf, unsigned int len);
@@ -243,6 +242,14 @@ void kernel_task_init(void);
 #define task_space_free f_free
 #define F_MALLOC_OVERHEAD 20
 uint32_t mem_stats_frag(int pool);
+
+/* Helper defined by sysfs.c */
+int ul_to_str(unsigned long n, char *s);
+int sysfs_register(char *name, char *dir,
+        int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len),
+        int (*do_write)(struct sysfs_fnode *sfs, const void *buf, int len) );
+void sysfs_lock(void);
+void sysfs_unlock(void);
 
 #endif /* BSP_INCLUDED_H */
 

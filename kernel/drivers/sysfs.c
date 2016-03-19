@@ -95,7 +95,7 @@ static int sysfs_close(struct fnode *fno)
     return 0;
 }
 
-static int ul_to_str(unsigned long n, char *s)
+int ul_to_str(unsigned long n, char *s)
 {
     int maxlen = 10;
     int i;

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <net/if.h>
+#include <net/route.h>
 #include <sys/ioctl.h>
 
 static struct module mod_socket_in;
@@ -482,6 +483,55 @@ static int sock_io_getnmask(struct pico_device *dev, struct ifreq *ifr)
     return 0;
 }
 
+static int sock_io_addroute(struct rtentry *rte)
+{
+  struct pico_ip4 a, g, n;
+  struct pico_ipv4_link *link = NULL;
+  int flags = 1;
+  struct pico_device *dev;
+
+  dev = pico_get_device((char *)rte->rt_dev);
+  if (dev)
+    link = pico_ipv4_link_by_dev(dev);
+
+  memcpy(&a, &((struct sockaddr_in *)(&rte->rt_dst))->sin_addr.s_addr, sizeof(struct pico_ip4));
+  memcpy(&g, &((struct sockaddr_in *)(&rte->rt_gateway))->sin_addr.s_addr, sizeof(struct pico_ip4));
+  memcpy(&n, &((struct sockaddr_in *)(&rte->rt_genmask))->sin_addr.s_addr, sizeof(struct pico_ip4));
+  a.addr &= n.addr;
+
+  if (n.addr == 0)
+      flags +=2;
+
+  if (rte->rt_metric <= 0)
+      rte->rt_metric = 1;
+
+  if (pico_ipv4_route_add(a, n, g, rte->rt_metric, link) < 0)
+    return 0 - pico_err;
+  return 0;
+}
+
+static int sock_io_delroute(struct rtentry *rte)
+{
+  struct pico_ip4 a, g, n;
+  int flags = 1;
+
+
+  memcpy(&a, &((struct sockaddr_in *)(&rte->rt_dst))->sin_addr.s_addr, sizeof(struct pico_ip4));
+  memcpy(&n, &((struct sockaddr_in *)(&rte->rt_genmask))->sin_addr.s_addr, sizeof(struct pico_ip4));
+  a.addr &= n.addr;
+
+  if (n.addr == 0)
+      flags +=2;
+
+  if (rte->rt_metric <= 0)
+      rte->rt_metric = 1;
+
+  if (pico_ipv4_route_del(a, n, rte->rt_metric) < 0)
+    return 0 - pico_err;
+  return 0;
+}
+
+
 static int sock_io_ethtool(struct pico_device *dev, struct ifreq *ifr)
 {
 	return 0;
@@ -496,12 +546,24 @@ static int sock_ioctl(struct fnode *fno, const uint32_t cmd, void *arg)
     if (!fno || !arg)
         return -EINVAL;
 
-    ifr = (struct ifreq *)arg;
 
+    /* Check for route commands */
+    if (cmd == SIOCADDRT)
+    {
+        struct rtentry *rte = (struct rtentry *)arg;
+        return sock_io_addroute(rte);
+    }
+    if (cmd == SIOCDELRT)
+    {
+        struct rtentry *rte = (struct rtentry *)arg;
+        return sock_io_delroute(rte);
+    }
+
+    /* Check for interface-related ioctl */
+    ifr = (struct ifreq *)arg;
     dev = pico_get_device(ifr->ifr_name);
     if (!dev)
         return -ENOENT;
-
 
     switch(cmd) {
         case SIOCSIFFLAGS:
@@ -573,6 +635,94 @@ out:
     return len;
 }
 
+#define MAX_SYSFS_BUFFER 512
+int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    static char *mem_txt;
+    struct pico_ipv4_route *r;
+    struct pico_tree_node *index;
+    char dest[16];
+    char mask[16];
+    char gw[16];
+    char metric[5];
+
+
+    static int off;
+    int i;
+    if (fno->off == 0) {
+        const char route_banner[] = "Kernel IP routing table\r\nDestination     Gateway         Genmask         Flags   Metric  Iface \r\n";
+        sysfs_lock();
+        mem_txt = kalloc(MAX_SYSFS_BUFFER);
+        if (!mem_txt)
+            return -1;
+        off = 0;
+        strcpy(mem_txt + off, route_banner);
+        off += strlen(route_banner);
+        pico_tree_foreach(index, &Routes){
+
+            r = index->keyValue;
+
+            /* Destination */
+            pico_ipv4_to_string(dest, r->dest.addr);
+            strcpy(mem_txt + off, dest);
+            off+=strlen(dest);
+            mem_txt[off++] = '\t';
+            if (strlen(dest) < 8) 
+                mem_txt[off++] = '\t';
+            
+            /* Gateway */
+            pico_ipv4_to_string(gw, r->gateway.addr);
+            strcpy(mem_txt + off, gw);
+            off+=strlen(gw);
+            mem_txt[off++] = '\t';
+            if (strlen(gw) < 8) 
+                mem_txt[off++] = '\t';
+            
+            /* Genmask */
+            pico_ipv4_to_string(mask, r->netmask.addr);
+            strcpy(mem_txt + off, mask);
+            off+=strlen(mask);
+            mem_txt[off++] = '\t';
+            if (strlen(mask) < 8) 
+                mem_txt[off++] = '\t';
+
+            /* Flags */
+            mem_txt[off++] = 'U';
+            if (r->netmask.addr == 0)
+                mem_txt[off++] = 'G';
+            mem_txt[off++] = '\t';
+
+            /* Metric */
+            ul_to_str(r->metric, metric);
+            strcpy(mem_txt + off, metric);
+            off += strlen(metric);
+            mem_txt[off++] = '\t';
+
+
+            /* Iface */
+            strcpy(mem_txt + off, r->link->dev->name);
+            off+=strlen(r->link->dev->name);
+
+            /* EOL */
+            mem_txt[off++] = '\r';
+            mem_txt[off++] = '\n';
+        }
+    }
+    if (off == fno->off) {
+        kfree(mem_txt);
+        sysfs_unlock();
+        return -1;
+    }
+    if (len > (off - fno->off)) {
+       len = off - fno->off;
+    }
+    memcpy(res, mem_txt + fno->off, len);
+    fno->off += len;
+    sysfs_unlock();
+    return len;
+}
 
 static int sock_getsockopt(int sd, int level, int optname, void *optval, unsigned int *optlen)
 {
@@ -698,5 +848,8 @@ void socket_in_init(void)
 
     /* Register /sys/net/dev */
     sysfs_register("dev", "/sys/net", sysfs_net_dev_read, NULL);
+
+    /* Register /sys/net/route */
+    sysfs_register("route", "/sys/net", sysfs_net_route_list, NULL);
 
 }
