@@ -159,5 +159,4 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_RNG
     rng_init(dev, rng_addrs, NUM_RNGS);
 #endif
-
 }

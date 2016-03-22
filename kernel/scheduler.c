@@ -231,6 +231,18 @@ static int tasklist_del(struct task **list, uint16_t pid)
     return -1;
 }
 
+static int tasklist_len(struct task **list)
+{
+    struct task *t = *list;
+    struct task *p = NULL;
+    int len = 0;
+    while (t) {
+        len++;
+        t=t->tb.next;
+    }
+    return len;
+}
+
 static struct task *tasklist_get(struct task **list, uint16_t pid)
 {
     struct task *t = *list;
@@ -692,6 +704,13 @@ int scheduler_task_state(int pid)
     if (t)
         return t->tb.state;
     else return TASK_OVER;
+}
+
+int scheduler_can_sleep(void)
+{
+    if (tasklist_len(&tasks_running) == 1)
+        return 1;
+    else return 0;
 }
 
 unsigned scheduler_stack_used(int pid)

@@ -47,6 +47,11 @@ endif
 ifneq ($(CONFIG_PICOTCP_IPFILTER),y)
   PICO_OPTIONS+=IPFILTER=0
 endif
+
+ifeq ($(LOWPOWER),y)
+  PICO_OPTIONS+=TICKLESS=1
+endif
+
     BUILD_PICO=make -C kernel/net/picotcp $(PICO_OPTIONS)
 endif
 

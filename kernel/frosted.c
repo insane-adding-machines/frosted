@@ -146,6 +146,22 @@ int frosted_init(void)
 
 static void ktimer_tcpip(uint32_t time, void *arg);
 
+static void tasklet_tcpip_lowpower(void *arg)
+{
+#ifdef CONFIG_PICOTCP
+    int interval;
+    pico_lock();
+    do {
+        interval = pico_stack_go();
+    } while (interval == 0);
+
+    if (interval < 0)
+        interval = 200;
+    ktimer_add(interval, ktimer_tcpip, NULL);
+    pico_unlock();
+#endif
+}
+
 static void tasklet_tcpip(void *arg)
 {
 #ifdef CONFIG_PICOTCP
@@ -158,7 +174,11 @@ static void tasklet_tcpip(void *arg)
 
 static void ktimer_tcpip(uint32_t time, void *arg)
 {
+#ifdef CONFIG_LOWPOWER
+    tasklet_add(tasklet_tcpip_lowpower, NULL);
+#else
     tasklet_add(tasklet_tcpip, NULL);
+#endif
 }
 
 
@@ -211,6 +231,7 @@ void frosted_kernel(int xipfs_mounted)
 
     while(1) {
         check_tasklets();
+        __WFI();
     }
 }
 
