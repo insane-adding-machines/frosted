@@ -44,6 +44,7 @@ void tasklet_add(void (*exe)(void*), void *arg)
         tasklet_list_tail->next = t;
         tasklet_list_tail = t;
     }
+    systick_counter_enable();
 }
 
 void check_tasklets(void)

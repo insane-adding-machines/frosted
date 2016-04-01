@@ -9,7 +9,7 @@ ifeq ($(PICOTCP),y)
     		 DHCP_CLIENT=0 DHCP_SERVER=0 MDNS=0 DNS_SD=0 \
     			 OLSR=0 SLAACV4=0 SNTP_CLIENT=0 PPP=0 TFTP=0 \
 				 AODV=0 \
-				 EXTRA_CFLAGS="-DFROSTED -I$(PWD)/kernel -I$(PWD)/include -nostdlib -DPICO_PORT_CUSTOM $(MEMPOOL)"
+				 SIXLOWPAN=0 
     PICO_LIB:=$(PREFIX)/lib/libpicotcp.a
 
 ifneq ($(CONFIG_PICOTCP_DEBUG),y)
@@ -43,15 +43,14 @@ endif
 ifneq ($(CONFIG_PICOTCP_NAT),y)
   PICO_OPTIONS+=NAT=0
 endif
-
 ifneq ($(CONFIG_PICOTCP_IPFILTER),y)
   PICO_OPTIONS+=IPFILTER=0
 endif
-
 ifeq ($(LOWPOWER),y)
   PICO_OPTIONS+=TICKLESS=1
 endif
 
-    BUILD_PICO=make -C kernel/net/picotcp $(PICO_OPTIONS)
+  PICO_OPTIONS+=EXTRA_CFLAGS="-DFROSTED -I$(PWD)/kernel -I$(PWD)/include -nostdlib -DPICO_PORT_CUSTOM $(MEMPOOL)"
+  BUILD_PICO=make -C kernel/net/picotcp $(PICO_OPTIONS)
 endif
 

@@ -250,6 +250,7 @@ int sysfs_register(char *name, char *dir,
         int (*do_write)(struct sysfs_fnode *sfs, const void *buf, int len) );
 void sysfs_lock(void);
 void sysfs_unlock(void);
+void frosted_tcpip_wakeup(void);
 
 #endif /* BSP_INCLUDED_H */
 

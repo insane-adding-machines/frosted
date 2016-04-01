@@ -49,6 +49,8 @@ struct pico_device *pico_loop_create(void);
 
 #define IDLE() while(1){do{}while(0);}
 
+static int tcpip_timer_pending = 0;
+
 /* The following needs to be defined by
  * the application code
  */
@@ -157,7 +159,8 @@ static void tasklet_tcpip_lowpower(void *arg)
 
     if (interval < 0)
         interval = 200;
-    ktimer_add(interval, ktimer_tcpip, NULL);
+    if (!tcpip_timer_pending++)
+        ktimer_add(interval, ktimer_tcpip, NULL);
     pico_unlock();
 #endif
 }
@@ -179,6 +182,12 @@ static void ktimer_tcpip(uint32_t time, void *arg)
 #else
     tasklet_add(tasklet_tcpip, NULL);
 #endif
+    tcpip_timer_pending = 0;
+}
+    
+void frosted_tcpip_wakeup(void)
+{
+    tasklet_add(tasklet_tcpip_lowpower, NULL);
 }
 
 

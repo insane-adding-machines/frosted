@@ -211,14 +211,22 @@ struct usbeth_rx_buffer {
 };
 
 static struct usbeth_rx_buffer *rx_buffer = NULL;
+static unsigned n_buffers = 0;
 #define RXBUF_FREE 0
 #define RXBUF_INCOMING 1
 #define RXBUF_TCPIP    2
 static void rx_buffer_free(uint8_t *arg)
 {
-    (void) arg;
-    rx_buffer->size = 0;
-    rx_buffer->status = RXBUF_FREE;
+    struct usbeth_rx_buffer *buf = (struct usbeth_rx_buffer*) arg;
+    if (!rx_buffer)
+        rx_buffer = buf;
+    if (buf == rx_buffer) {
+        rx_buffer->size = 0;
+        rx_buffer->status = RXBUF_FREE;
+    } else {
+        kfree(buf);
+        n_buffers--;
+    }
 }
 
 struct usbeth_tx_frame {
@@ -243,16 +251,41 @@ static void cdcecm_data_tx_complete_cb(usbd_device *usbd_dev, uint8_t ep)
     tx_frame.off += usbd_ep_write_packet(pico_usbeth->usbd_dev, 0x81, tx_frame.base + tx_frame.off, len);
     if (tx_frame.off == tx_frame.size)
         pico_usbeth->tx_busy = 0;
+    frosted_tcpip_wakeup();
+}
+
+
+static void pico_usbeth_rx(void *arg) 
+{
+    static int notified_link_up = 0;
+    struct usbeth_rx_buffer *cur_rxbuf = (struct usbeth_rx_buffer *)arg;
+    if (!notified_link_up) {
+        uint8_t buf[8] = { };
+        buf[0] = 0x51;
+        buf[1] = 0;
+        buf[2] = 1;
+        buf[3] = 0;
+
+        notified_link_up++;
+        usbd_ep_write_packet(pico_usbeth->usbd_dev, 0x82, buf, 8);
+    }
+    if (cur_rxbuf->status == RXBUF_INCOMING) {
+        //pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size, rx_buffer_free);
+        pico_stack_recv(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size);
+        //cur_rxbuf->status++;
+        cur_rxbuf->status = RXBUF_FREE;
+    }
 }
 
 static void cdcecm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 {
     (void)ep;
     int len;
-    if (!rx_buffer) {
+    if ((!rx_buffer)) {
         rx_buffer = kalloc(USBETH_MAX_FRAME);
         rx_buffer->size =0;
         rx_buffer->status = RXBUF_FREE; /* First call! */
+        n_buffers++;
     }
     if (!pico_usbeth || !rx_buffer || (rx_buffer->status != RXBUF_FREE)) {
         char buf[64];
@@ -268,6 +301,8 @@ static void cdcecm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
     if (len < 64) {
         /* End of frame. */
         rx_buffer->status++; /* incoming packet */
+        tasklet_add(pico_usbeth_rx, rx_buffer);
+        //rx_buffer = NULL;
     }
 }
 
@@ -310,40 +345,12 @@ static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
     return 0;
 }
 
-static int pico_usbeth_poll(struct pico_device *dev, int loop_score)
-{
-    static int notified_link_up = 0;
-    if (!notified_link_up) {
-        struct pico_dev_usbeth *usbeth = (struct pico_dev_usbeth *) dev;
-        uint8_t buf[8] = { };
-        buf[0] = 0x51;
-        buf[1] = 0;
-        buf[2] = 1;
-        buf[3] = 0;
-
-        notified_link_up++;
-        usbd_ep_write_packet(usbeth->usbd_dev, 0x82, buf, 8);
-    }
-    if (rx_buffer->status == RXBUF_INCOMING) {
-        pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev, rx_buffer->buf, rx_buffer->size, rx_buffer_free);
-        rx_buffer->status++;
-        loop_score--;
-    }
-    return loop_score;
-}
-
 static void pico_usbeth_destroy(struct pico_device *dev)
 {
     struct pico_dev_usbeth *usbeth = (struct pico_dev_usbeth *) dev;
     kfree(rx_buffer);
     kfree(usbeth);
     pico_usbeth = NULL;
-}
-
-void otg_fs_isr(void)
-{
-    if (pico_usbeth)
-        usbd_poll(pico_usbeth->usbd_dev);
 }
 
 
@@ -380,7 +387,7 @@ int usb_ethernet_init(void)
 
     usb->dev.overhead = 0;
     usb->dev.send = pico_usbeth_send;
-    usb->dev.poll = pico_usbeth_poll;
+
     usb->dev.destroy = pico_usbeth_destroy;
     if (pico_device_init(&usb->dev,"usb0", mac_addr) < 0) {
         kfree(usb_buf);
@@ -417,3 +424,11 @@ int usb_ethernet_init(void)
     pico_usbeth->tx_busy = 0;
     return 0;
 }
+
+
+void otg_fs_isr(void)
+{
+    if (pico_usbeth)
+        usbd_poll(pico_usbeth->usbd_dev);
+}
+

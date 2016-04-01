@@ -39,7 +39,6 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/module.o			\
 		 kernel/poll.o				\
 		 kernel/cirbuf.o			\
-		 kernel/timer.o				\
 		 kernel/term.o				\
 		 kernel/bflt.o				\
 		 kernel/getaddrinfo.o		\
@@ -151,7 +150,8 @@ kernel/syscall_table.c: kernel/syscall_table_gen.py
 	@python2 $^
 
 $(PREFIX)/lib/libpicotcp.a:
-	@$(BUILD_PICO)
+	echo $(BUILD_PICO)
+	$(BUILD_PICO)
 	@pwd
 
 syscall_table.c: kernel/syscall_table.c

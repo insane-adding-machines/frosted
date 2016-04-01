@@ -30,8 +30,8 @@ struct timeval_kernel
 
 int sys_suspend_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    Timer_on(arg1);
-    return 0;
+    /* Deprecated. */
+    return -1;
 }
 
 int sys_test_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)

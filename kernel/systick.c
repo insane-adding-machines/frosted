@@ -108,7 +108,7 @@ void sys_tick_handler(void)
     }
 
     /* Checking deep sleep */
-    if (next_timer > 50 && scheduler_can_sleep()) {
+    if (next_timer >= 1000 && scheduler_can_sleep()) {
         systick_interrupt_disable();
         cputimer_start(next_timer);
         return;

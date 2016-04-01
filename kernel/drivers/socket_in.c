@@ -5,6 +5,7 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <sys/ioctl.h>
+#include <pico_device.h>
 
 static struct module mod_socket_in;
 static frosted_mutex_t *picotcp_lock = NULL;
