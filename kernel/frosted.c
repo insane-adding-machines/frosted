@@ -148,6 +148,7 @@ int frosted_init(void)
 
 static void ktimer_tcpip(uint32_t time, void *arg);
 
+#ifdef CONFIG_LOWPOWER
 static void tasklet_tcpip_lowpower(void *arg)
 {
 #ifdef CONFIG_PICOTCP
@@ -164,6 +165,7 @@ static void tasklet_tcpip_lowpower(void *arg)
     pico_unlock();
 #endif
 }
+#endif
 
 static void tasklet_tcpip(void *arg)
 {
@@ -185,10 +187,12 @@ static void ktimer_tcpip(uint32_t time, void *arg)
     tcpip_timer_pending = 0;
 }
     
+#ifdef CONFIG_LOWPOWER
 void frosted_tcpip_wakeup(void)
 {
     tasklet_add(tasklet_tcpip_lowpower, NULL);
 }
+#endif
 
 
 static const char init_path[] = "/bin/init";
