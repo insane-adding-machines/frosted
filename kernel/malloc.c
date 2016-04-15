@@ -279,11 +279,12 @@ realloc_free:
 void * f_malloc(int flags, size_t size)
 {
     struct f_malloc_block * blk = NULL, *last = NULL;
-
-
     while((size % 4) != 0) {
         size++;
     } 
+
+    if (flags == 0)
+        irq_off();
 
     /* update stats */
     f_malloc_stats[MEMPOOL(flags)].malloc_calls++;
@@ -302,8 +303,10 @@ void * f_malloc(int flags, size_t size)
     } else {
         /* No first fit found: ask for new memory */
         blk = (struct f_malloc_block *)f_sbrk(flags, size + sizeof(struct f_malloc_block));  // can OS give us more memory?
-        if ((long)blk == -1)
+        if ((long)blk == -1) {
+            irq_on();
             return NULL;
+        }
 
         /* first call -> set entrypoint */
         if (malloc_entry[MEMPOOL(flags)] == NULL) {
@@ -329,6 +332,7 @@ void * f_malloc(int flags, size_t size)
     f_malloc_stats[MEMPOOL(flags)].objects_allocated++;
     f_malloc_stats[MEMPOOL(flags)].mem_allocated += ((uint32_t)blk->size + sizeof(struct f_malloc_block));
 
+    irq_on();
     return (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
 }
 

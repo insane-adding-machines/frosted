@@ -254,9 +254,9 @@ static void pico_usbeth_rx(void *arg)
     struct usbeth_rx_buffer *cur_rxbuf = (struct usbeth_rx_buffer *)arg;
     if (cur_rxbuf->status == RXBUF_INCOMING) {
         pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size, rx_buffer_free);
+        cur_rxbuf->status++;
         // Alternate settings
         //pico_stack_recv(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size);
-        //cur_rxbuf->status++;
         //cur_rxbuf->status = RXBUF_FREE;
     } else {
         tasklet_add(pico_usbeth_rx, cur_rxbuf);

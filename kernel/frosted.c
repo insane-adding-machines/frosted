@@ -179,12 +179,12 @@ static void tasklet_tcpip(void *arg)
 
 static void ktimer_tcpip(uint32_t time, void *arg)
 {
+    tcpip_timer_pending = 0;
 #ifdef CONFIG_LOWPOWER
     tasklet_add(tasklet_tcpip_lowpower, NULL);
 #else
     tasklet_add(tasklet_tcpip, NULL);
 #endif
-    tcpip_timer_pending = 0;
 }
     
 #ifdef CONFIG_LOWPOWER
@@ -245,6 +245,9 @@ void frosted_kernel(int xipfs_mounted)
     while(1) {
         check_tasklets();
         __WFI();
+#ifdef CONFIG_LOWPOWER
+        tasklet_add(tasklet_tcpip_lowpower, NULL);
+#endif
     }
 }
 

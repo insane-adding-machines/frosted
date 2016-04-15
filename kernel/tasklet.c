@@ -31,34 +31,41 @@ struct tasklet *tasklet_list_tail = NULL;
 
 void tasklet_add(void (*exe)(void*), void *arg)
 {
-    struct tasklet *t = kalloc(sizeof(struct tasklet));
+    struct tasklet *t, *x;
+    irq_off();
+    t = kalloc(sizeof(struct tasklet));
+    x = tasklet_list_tail;
     if  (!t)
         return;
     t->exe = exe;
     t->arg = arg;
     t->next = NULL;
-    if (!tasklet_list_head) {
+    if (!x) {
         tasklet_list_head = t;
         tasklet_list_tail = t;
     } else {
-        tasklet_list_tail->next = t;
+        x->next = t;
         tasklet_list_tail = t;
     }
     systick_counter_enable();
+    irq_on();
 }
 
 void check_tasklets(void)
 {
-    struct tasklet *t;
-    while(tasklet_list_head) {
-        t = tasklet_list_head;
+    struct tasklet *t, *n;
+    irq_off();
+    t = tasklet_list_head;
+    tasklet_list_head = NULL;
+    tasklet_list_tail = NULL;
+    irq_on();
+    while(t) {
+        n = t->next;
         if (t->exe) {
             t->exe(t->arg);
         }
-        tasklet_list_head = t->next;
+        //memset(t, 0x0a, sizeof(struct tasklet)); /* For testing... */
         kfree(t);
-        if (!tasklet_list_head)
-            tasklet_list_tail = NULL;
+        t = n;
     }
 }
-
