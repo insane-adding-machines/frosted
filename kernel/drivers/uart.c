@@ -301,8 +301,8 @@ static int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr *
 
     u->base = addr->base;
     u->dev = device_fno_init(&mod_devuart, name, dev, FL_TTY, u);
-    u->inbuf = cirbuf_create(128);
-    u->outbuf = cirbuf_create(128);
+    u->inbuf = cirbuf_create(256);
+    u->outbuf = cirbuf_create(256);
     return 0;
 
 }
