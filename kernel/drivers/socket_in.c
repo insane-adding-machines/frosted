@@ -379,6 +379,7 @@ static int sock_listen(int fd, int backlog)
     pico_lock();
     ret = pico_socket_listen(s->sock, backlog);
     pico_unlock();
+    s->events |= PICO_SOCK_EV_CONN;
     return ret;
 }
 
