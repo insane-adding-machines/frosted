@@ -79,7 +79,8 @@ syscalls = [
     ["fstat", 2, "sys_fstat_hdlr"],
     ["getsockname", 2, "sys_getsockname_hdlr"],
     ["getpeername", 2, "sys_getpeername_hdlr"],
-    ["readlink", 3, "sys_readlink_hdlr"]
+    ["readlink", 3, "sys_readlink_hdlr"],
+    ["fcntl", 3, "sys_fcntl_hdlr"]
 
 ]
 

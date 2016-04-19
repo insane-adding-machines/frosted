@@ -845,6 +845,24 @@ int sys_umount_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     return vfs_umount(target, flags);
 
 }
+
+int sys_fcntl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
+{
+    int fd = arg1;
+    int cmd = arg2;
+    uint32_t fl_set = arg3;
+    struct fnode *f = task_filedesc_get(arg1);
+    if (!f) {
+        return -EINVAL;
+    }
+    if (cmd == F_SETFL) {
+        f->flags |= fl_set;
+    } else if (cmd == F_GETFL) {
+        return f->flags;
+    }
+    return 0;
+}
+
 void vfs_init(void) 
 {
     struct fnode *dev = NULL;

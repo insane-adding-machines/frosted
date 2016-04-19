@@ -136,6 +136,31 @@ int fno_fullpath(struct fnode *f, char *dst, int len);
 #define FL_EXEC   0x40
 #define FL_LINK   0x80
 
+#ifndef FD_CLOEXEC
+    #define FD_CLOEXEC	1
+#endif
+
+#ifndef F_DUPFD
+    #define F_DUPFD 0
+#endif
+
+#ifndef F_GETFD
+    #define F_GETFD 1
+#endif
+
+#ifndef F_SETFD
+    #define F_SETFD 2 
+#endif
+
+#ifndef F_GETFL
+    #define F_GETFL 3
+#endif
+
+#ifndef F_SETFL
+    #define F_SETFL 4
+#endif
+
+
 struct fnode {
     struct module *owner;
     char *fname;
