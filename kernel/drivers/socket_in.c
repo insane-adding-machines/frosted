@@ -20,6 +20,8 @@ struct frosted_inet_socket {
     int bytes;
 };
 
+#define SOCK_BLOCKING(s) (((s->node->flags & O_NONBLOCK) == 0))
+
 
 void pico_lock(void)
 {
@@ -119,13 +121,13 @@ static int sock_close(struct fnode *fno)
     pico_lock();
     pico_socket_close(s->sock);
     pico_unlock();
-    kprintf("## Closed INET socket!\n");
+    //kprintf("## Closed INET socket!\n");
     kfree((struct fnode *)s->node);
     kfree(s);
     return 0;
 }
 
-static struct frosted_inet_socket *inet_socket_new(void)
+static struct frosted_inet_socket *inet_socket_new(uint32_t flags)
 {
     struct frosted_inet_socket *s;
     s = kcalloc(sizeof(struct frosted_inet_socket), 1);
@@ -136,16 +138,18 @@ static struct frosted_inet_socket *inet_socket_new(void)
         kfree(s);
         return NULL;
     }
-    s->node->flags = FL_RDWR;
+    s->node->flags = FL_RDWR | flags;
     return s;
 }
 
-static int sock_socket(int domain, int type, int protocol)
+static int sock_socket(int domain, int type_flags, int protocol)
 {
     int fd = -1;
     struct frosted_inet_socket *s;
+    int type = type_flags & 0xFFFF;
+    uint32_t fnode_flags = ((uint32_t)type_flags) & 0xFFFF0000u;
 
-    s = inet_socket_new();
+    s = inet_socket_new(fnode_flags);
     if (!s)
         return -ENOMEM;
     if (domain != PICO_PROTO_IPV4)
@@ -168,7 +172,7 @@ static int sock_socket(int domain, int type, int protocol)
     s->node->owner = &mod_socket_in;
     s->node->priv = s;
     s->sock->priv = s;
-    kprintf("## Open INET socket!\n");
+    //kprintf("## Open INET socket!\n");
     s->fd = task_filedesc_add(s->node);
     if (s->fd >= 0)
         task_fd_setmask(s->fd, O_RDWR);
@@ -198,7 +202,7 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
 
         if (ret < 0)
             return 0 - pico_err;
-        if (ret == 0) {
+        if ((ret == 0) && SOCK_BLOCKING(s))  {
             s->events = PICO_SOCK_EV_RD;
             s->pid = scheduler_get_cur_pid();
             task_suspend();
@@ -217,6 +221,9 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
     s->bytes = 0;
     s->events  &= (~PICO_SOCK_EV_RD);
     s->revents &= (~PICO_SOCK_EV_RD);
+    if ((ret == 0) && !SOCK_BLOCKING(s)) {
+        ret = -EAGAIN;
+    }
     return ret;
 }
 
@@ -243,7 +250,7 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
             ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes);
             pico_unlock();
         }
-        if (ret == 0) {
+        if ((ret == 0) && SOCK_BLOCKING(s)) {
             s->events = PICO_SOCK_EV_WR;
             s->pid = scheduler_get_cur_pid();
             task_suspend();
@@ -261,6 +268,9 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
     s->bytes = 0;
     s->events  &= (~PICO_SOCK_EV_WR);
     s->revents &= (~PICO_SOCK_EV_WR);
+    if ((ret == 0) && !SOCK_BLOCKING(s)) {
+        ret = -EAGAIN;
+    }
     return ret;
 }
 
@@ -304,7 +314,7 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
         return 0 - pico_err;
 
     if (cli) {
-        s = inet_socket_new();
+        s = inet_socket_new(0);
         if (!s) {
             pico_lock();
             pico_socket_close(cli);
@@ -320,9 +330,13 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
             task_fd_setmask(s->fd, O_RDWR);
         return s->fd;
     } else {
-        l->pid = scheduler_get_cur_pid();
-        task_suspend();
-        return SYS_CALL_AGAIN;
+        if (SOCK_BLOCKING(l)) {
+            l->pid = scheduler_get_cur_pid();
+            task_suspend();
+            return SYS_CALL_AGAIN;
+        } else {
+            return -EAGAIN;
+        }
     }
 }
 
@@ -342,9 +356,13 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
         pico_lock();
         ret = pico_socket_connect(s->sock, &paddr, port);
         pico_unlock();
-        s->pid = scheduler_get_cur_pid();
-        task_suspend();
-        return SYS_CALL_AGAIN;
+        if (SOCK_BLOCKING(s)) {
+            s->pid = scheduler_get_cur_pid();
+            task_suspend();
+            return SYS_CALL_AGAIN;
+        } else {
+            return -EAGAIN;
+        }
     }
     s->events  &= (~PICO_SOCK_EV_CONN);
     s->revents &= ~(PICO_SOCK_EV_CONN | PICO_SOCK_EV_RD);

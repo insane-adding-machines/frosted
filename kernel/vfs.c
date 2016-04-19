@@ -24,6 +24,7 @@
 #include "sys/stat.h"
 
 #define O_MODE(o) ((o & O_ACCMODE))
+#define O_BLOCKING(f) ((f->flags & O_NONBLOCK) == 0)
 
 struct mountpoint *MTAB = NULL;
 

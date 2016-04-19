@@ -151,6 +151,7 @@ struct fnode {
 };
 
 #define FNO_MOD_PRIV(fno,mod) (((fno == NULL)?NULL:((mod != fno->owner)?NULL:(fno->priv))))
+#define FNO_BLOCKING(f) ((f->flags & O_NONBLOCK) == 0)
 
 struct mountpoint 
 {
