@@ -24,6 +24,7 @@
 #include "kprintf.h"
 #include "xipfs.h"
 #include "vfs.h"
+#define GDB_PATH "frosted-userland/gdb/"
 
 static struct fnode *xipfs;
 static struct module mod_xipfs;
@@ -117,7 +118,7 @@ static void *xipfs_exe(struct fnode *fno, void *arg)
 
     /* note: xip->init is bFLT load address! */
     bflt_load((uint8_t*)xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, &vfsi->pic);
-    kprintf("xipfs: GDB: add-symbol-file %s.gdb 0x%p -s .data 0x%p -s .bss 0x%p\r\n", fno->fname, reloc_text, reloc_data, reloc_bss);
+    kprintf("xipfs: GDB: add-symbol-file %s%s.gdb 0x%p -s .data 0x%p -s .bss 0x%p\r\n", GDB_PATH, fno->fname, reloc_text, reloc_data, reloc_bss);
 
     vfsi->type = VFS_TYPE_BFLT;
     vfsi->allocated = reloc_data;
