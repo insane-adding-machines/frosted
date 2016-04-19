@@ -779,7 +779,7 @@ static int sock_getsockname(int sd, struct sockaddr *_addr, unsigned int *addrle
 {
     struct pico_ip4 ip4a;
     struct frosted_inet_socket *s;
-    struct sockaddr_in *addr = (struct sockaddr_in *)addr;
+    struct sockaddr_in *addr = (struct sockaddr_in *)_addr;
     int r;
     uint16_t port, proto;
     s = fd_inet(sd);
