@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include "frosted.h"
 #include "gpio.h"
+
+#include <pico_device.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/syscfg.h>
@@ -28,6 +30,8 @@
 #include <libopencm3/ethernet/phy.h>
 
 #define dbg(...)
+
+#define USBETH_MAX_FRAME 1514
 
 
     /* For STM32F4DIS-BB Discover-Mo board 
@@ -77,6 +81,19 @@ const struct gpio_addr gpio_eth[] = {
 
 #define BOARD_PHY_ID      PHY_LAN8710A_ID
 
+
+struct dev_eth {
+    struct pico_device dev;
+    uint32_t rx_prod;
+    uint32_t rx_cons;
+    uint8_t mac_addr[6];
+    uint8_t phy_addr;
+};
+
+static struct dev_eth * dev_eth_stm = NULL;
+static const uint8_t default_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+
+
 static uint32_t eth_smi_get_phy_divider(void)
 {
     uint32_t hclk = rcc_ahb_frequency;
@@ -122,15 +139,33 @@ static int8_t find_phy(void)
     return -1;
 }
 
-static const uint8_t default_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
-
-void stm32f4_eth_init(void)
+static uint8_t temp_rx_buf[USBETH_MAX_FRAME];
+static int stm_eth_poll(struct pico_device *dev, int loop_score)
 {
-    int8_t phy_found;
+    uint32_t rx_len;
+    while (eth_rx(temp_rx_buf, &rx_len, USBETH_MAX_FRAME))
+    {
+        pico_stack_recv(&dev_eth_stm->dev, temp_rx_buf, rx_len);
+    }
+    return loop_score;
+}
+
+
+int stm32f4_eth_init(void)
+{
+    int8_t phy_id;
+
+    dev_eth_stm = kalloc(sizeof(struct dev_eth));
+    if (!dev_eth_stm)
+        return -1;
+
+    memset(dev_eth_stm, 0, sizeof(struct dev_eth));
+
+    /* PINUX -> Move out of generic driver! */
     gpio_init(NULL, gpio_eth, sizeof(gpio_eth) / sizeof(struct gpio_addr));
-    //gpio_set(GPIOC, GPIO0); // ???
     gpio_set(GPIOE,GPIO2); /* Clear RESET pin */
 
+    /* FIXME */
 #define BOARD_PHY_RMII
 #define SYSCFG_PMC_MII_RMII_SEL         ((uint32_t)0x00800000) /*!<Ethernet PHY interface selection */
 
@@ -155,8 +190,47 @@ void stm32f4_eth_init(void)
     
     rcc_periph_reset_pulse(RST_ETHMAC);
 
+    phy_id = find_phy(); /* Detect PHY address */
+
+    if (phy_id == -1)
+        return -1;
+
+    uint8_t * descriptors;
+    descriptors = kalloc(2 * 2 * USBETH_MAX_FRAME);
+    if (!descriptors)
+        return -1;
+
+    eth_desc_init(descriptors, 2, 2, USBETH_MAX_FRAME, USBETH_MAX_FRAME, false);
     eth_init(0, ETH_CLK_150_168MHZ); /* does a phy_reset */
     eth_set_mac((uint8_t*)default_mac);
-    phy_found = find_phy();
+
+    /* set pico function pointers */
+    dev_eth_stm->dev.poll = stm_eth_poll;
+    //dev_eth_stm->dev.send;
+    //dev_eth_stm->dev.link_state;
+
+
+    if (pico_device_init(&dev_eth_stm->dev,"eth0", default_mac) < 0) {
+        kfree(dev_eth_stm);
+        return -1;
+    }
+
+    /* test link */
+    phy_link_isup(phy_id);
+
+    eth_start();
+
+    eth_irq_enable(ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE); /* NISE needed ?? */
+
+    return 0;
+}
+
+void eth_isr(void)
+{
+    if (ETH_DMASR & ETH_DMASR_RS)
+    {
+        /* Receive Status bit set */
+        dev_eth_stm->rx_prod++;
+    }
 }
 
