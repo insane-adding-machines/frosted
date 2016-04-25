@@ -330,6 +330,7 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
             task_fd_setmask(s->fd, O_RDWR);
         return s->fd;
     } else {
+        l->revents &= (~PICO_SOCK_EV_CONN);
         if (SOCK_BLOCKING(l)) {
             l->pid = scheduler_get_cur_pid();
             task_suspend();
