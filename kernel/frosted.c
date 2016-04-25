@@ -134,7 +134,7 @@ int frosted_init(void)
 
     /* kernel is now _cur_task, open filedesc for kprintf */
     kprintf_init();
-    /* 
+    /*
     kprintf("\r\n\n\nFrosted kernel version 16.01. (GCC version %s, built %s)\r\n", __VERSION__, __TIMESTAMP__);
     */
 
@@ -227,6 +227,10 @@ void frosted_kernel(int xipfs_mounted)
     pico_stack_init();
     pico_loop_create();
     socket_in_init();
+
+#ifdef CONFIG_DEVSTMETH
+    stm_eth_init();
+#endif
 
 #ifdef CONFIG_DEV_USB_ETH
     usb_ethernet_init();

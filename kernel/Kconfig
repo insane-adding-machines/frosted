@@ -323,6 +323,11 @@ menu "Device Drivers"
        select DEVSTM32F4DMA
        default n
 
+       menuconfig DEVF4ETH
+       bool "STM32F4 Ethernet driver"
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       default n
+
        menuconfig DEVF4I2C
        bool "STM32F4 I2C driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
