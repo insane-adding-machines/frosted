@@ -54,9 +54,6 @@ static int sock_poll(struct fnode *f, uint16_t events, uint16_t *revents)
 {
     struct frosted_inet_socket *s;
     s = (struct frosted_inet_socket *)f->priv;
-    *revents = 0;
-    *revents |= s->revents & (POLLIN | POLLOUT);
-
 
     if (s->revents & PICO_SOCK_EV_CLOSE)
         *revents |= POLLHUP;
@@ -66,6 +63,12 @@ static int sock_poll(struct fnode *f, uint16_t events, uint16_t *revents)
 
     if (s->revents & PICO_SOCK_EV_CONN)
         *revents |= POLLIN;
+
+    if (s->revents & PICO_SOCK_EV_RD)
+        *revents |= POLLIN;
+
+    if (s->revents & PICO_SOCK_EV_WR)
+        *revents |= POLLOUT;
 
     if ((*revents) & (POLLHUP | POLLERR) != 0) {
         return 1;
@@ -202,11 +205,15 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
 
         if (ret < 0)
             return 0 - pico_err;
-        if ((ret == 0) && SOCK_BLOCKING(s))  {
-            s->events = PICO_SOCK_EV_RD;
-            s->pid = scheduler_get_cur_pid();
-            task_suspend();
-            return SYS_CALL_AGAIN;
+        if (ret == 0) {
+            s->revents &= (~PICO_SOCK_EV_RD);
+            if (SOCK_BLOCKING(s))  {
+                s->events = PICO_SOCK_EV_RD;
+                s->pid = scheduler_get_cur_pid();
+                task_suspend();
+                return SYS_CALL_AGAIN;
+            }
+            break;
         }
         s->bytes += ret;
         if (s->bytes > 0)
@@ -250,13 +257,15 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
             ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes);
             pico_unlock();
         }
-        if ((ret == 0) && SOCK_BLOCKING(s)) {
-            s->events = PICO_SOCK_EV_WR;
-            s->pid = scheduler_get_cur_pid();
-            task_suspend();
-            return SYS_CALL_AGAIN;
+        if (ret == 0) {
+            s->revents &= (~PICO_SOCK_EV_WR);
+            if (SOCK_BLOCKING(s)) {
+                s->events = PICO_SOCK_EV_WR;
+                s->pid = scheduler_get_cur_pid();
+                task_suspend();
+                return SYS_CALL_AGAIN;
+            }
         }
-
         if (ret < 0)
             return (0 - pico_err);
 
@@ -267,7 +276,6 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
     ret = s->bytes;
     s->bytes = 0;
     s->events  &= (~PICO_SOCK_EV_WR);
-    s->revents &= (~PICO_SOCK_EV_WR);
     if ((ret == 0) && !SOCK_BLOCKING(s)) {
         ret = -EAGAIN;
     }

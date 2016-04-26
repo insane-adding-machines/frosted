@@ -152,7 +152,10 @@ int sys_accept_hdlr(int sd, struct sockaddr_env *se)
 {
     struct fnode *fno = task_filedesc_get(sd);
     if (fno && fno->owner && fno->owner->ops.accept) {
-        return fno->owner->ops.accept(sd, se->se_addr, &(se->se_len));
+        if (se)
+            return fno->owner->ops.accept(sd, se->se_addr, &(se->se_len));
+        else
+            return fno->owner->ops.accept(sd, NULL, NULL);
     }
     return -EINVAL;
 }
@@ -162,7 +165,10 @@ int sys_recvfrom_hdlr(int sd, void *buf, int len, int flags, struct sockaddr_env
 {
     struct fnode *fno = task_filedesc_get(sd);
     if (fno && fno->owner && fno->owner->ops.recvfrom) {
-        return fno->owner->ops.recvfrom(sd, buf, len, flags, se->se_addr, &(se->se_len));
+        if (se)
+            return fno->owner->ops.recvfrom(sd, buf, len, flags, se->se_addr, &(se->se_len));
+        else
+            return fno->owner->ops.recvfrom(sd, buf, len, flags, NULL, NULL);
     }
     return -EINVAL;
 }
@@ -171,7 +177,10 @@ int sys_sendto_hdlr(int sd, const void *buf, int len, int flags, struct sockaddr
 {
     struct fnode *fno = task_filedesc_get(sd);
     if (fno && fno->owner && fno->owner->ops.sendto) {
-        return fno->owner->ops.sendto(sd, buf, len, flags, se->se_addr, se->se_len);
+        if (se)
+            return fno->owner->ops.sendto(sd, buf, len, flags, se->se_addr, se->se_len);
+        else
+            return fno->owner->ops.sendto(sd, buf, len, flags, NULL, 0);
     }
     return -EINVAL;
 }
