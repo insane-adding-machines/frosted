@@ -35,9 +35,11 @@
 #define ETH_MAX_FRAME    (1514)
 #define ETH_IRQ_PRIO        (1)
 
-/* FIXME */
-#define BOARD_PHY_RMII
+/* FIXME: Put in board config */
+#define BOARD_PHY_RMII                          /* Whether the board uses RMII or MII */
+#define BOARD_phy_addr      PHY_LAN8710A_ID     /* The PHY ID to be detected on one of the PHY addresses */
 
+/* PHY register addresses */
 #define PHY_PHYID1              0x02    /**< PHYS ID 1.                     */
 #define PHY_PHYID2              0x03    /**< PHYS ID 2.                     */
 
@@ -50,9 +52,6 @@
 #define PHY_AM79C875_ID   0x00225540
 #define PHY_STE101P_ID    0x00061C50
 
-#define BOARD_phy_addr      PHY_LAN8710A_ID
-
-
 struct dev_eth {
     struct pico_device dev;
     uint32_t rx_prod;
@@ -63,41 +62,6 @@ struct dev_eth {
 
 static struct dev_eth * dev_eth_stm = NULL;
 static const uint8_t default_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
-
-
-
-
-    /* For STM32F4DIS-BB Discover-Mo board 
-       ETH_MDIO --------------> PA2
-       ETH_MDC ---------------> PC1
-
-       ETH_RMII_REF_CLK-------> PA1
-
-       ETH_RMII_CRS_DV -------> PA7
-       ETH_MII_RX_ER   -------> PB10
-       ETH_RMII_RXD0   -------> PC4
-       ETH_RMII_RXD1   -------> PC5
-       ETH_RMII_TX_EN  -------> PB11
-       ETH_RMII_TXD0   -------> PB12
-       ETH_RMII_TXD1   -------> PB13
-
-       ETH_nRST_PIN    -------> PE2
-       */
-
-/* XXX: Bad idea to hardcode pinmux here ... */
-const struct gpio_addr gpio_eth[] = {
-    {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // MDIO
-    {.base=GPIOC, .pin=GPIO1, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // MDC
-    {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII REF CLK
-    {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII CRS DV
-    {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXER
-    {.base=GPIOC, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXD0
-    {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXD1
-    {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXEN
-    {.base=GPIOB, .pin=GPIO12,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXD0
-    {.base=GPIOB, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXD1
-    {.base=GPIOE, .pin=GPIO2, .mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name=NULL, .pullupdown=GPIO_PUPD_PULLUP},            // PHY RESET
-};
 
 static uint32_t eth_smi_get_phy_divider(void)
 {
@@ -284,26 +248,7 @@ int stm_eth_init(void)
     nvic_enable_irq(NVIC_ETH_IRQ);
 
     eth_start();
-
     eth_irq_enable(ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE); /* NISE needed ?? */
-
-
-    /* Enabling required interrupt sources.*/
-    ETH_DMASR    = ETH_DMASR;
-    ETH_DMAIER   = ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE;
-
-    /* DMA general settings.*/
-  #define ETH_DMABMR_RDP_1Beat    ((uint32_t)0x00020000)  /* maximum number of beats to be transferred in one RxDMA transaction is 1 */
-  #define ETH_DMABMR_PBL_1Beat    ((uint32_t)0x00000100)  /* maximum number of beats to be transferred in one TxDMA (or both) transaction is 1 */
-    ETH_DMABMR   = ETH_DMABMR_AAB | ETH_DMABMR_RDP_1Beat | ETH_DMABMR_PBL_1Beat;
-
-    /* Transmit FIFO flush.*/
-    ETH_DMAOMR   = ETH_DMAOMR_FTF;
-    while (ETH_DMAOMR & ETH_DMAOMR_FTF)
-    {};
-
-    /* DMA final configuration and start.*/
-    ETH_DMAOMR   = ETH_DMAOMR_DTCEFD | ETH_DMAOMR_RSF | ETH_DMAOMR_TSF | ETH_DMAOMR_ST | ETH_DMAOMR_SR;
 
     return 0;
 }
