@@ -81,7 +81,7 @@ CFLAGS-$(DEVSPI)+=-DCONFIG_DEVSTM32F4SPI
 OBJS-$(DEVF4I2C)+= kernel/drivers/stm32f4_i2c.o
 CFLAGS-$(DEVF4I2C)+=-DCONFIG_DEVSTM32F4I2C
 
-OBJS-$(DEVF4ETH)+= kernel/drivers/stm_eth.o
+OBJS-$(DEVF4ETH)+= kernel/drivers/stm32fx_eth.o
 CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEVSTMETH
 
 OBJS-$(DEVUART)+= kernel/drivers/uart.o

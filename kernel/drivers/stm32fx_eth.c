@@ -32,16 +32,12 @@
 
 #define dbg(...)
 
-#define ETH_MAX_FRAME    (1514)
+#define ETH_MAX_FRAME    (1500)
 #define ETH_IRQ_PRIO        (1)
 
 /* FIXME: Put in board config */
 #define BOARD_PHY_RMII                          /* Whether the board uses RMII or MII */
 #define BOARD_phy_addr      PHY_LAN8710A_ID     /* The PHY ID to be detected on one of the PHY addresses */
-
-/* PHY register addresses */
-#define PHY_PHYID1              0x02    /**< PHYS ID 1.                     */
-#define PHY_PHYID2              0x03    /**< PHYS ID 2.                     */
 
 /* Some known PHY-identifiers */
 #define PHY_KSZ8021_ID    0x00221556
@@ -100,22 +96,22 @@ static int8_t find_phy(uint32_t clk_div)
     for (phy = 0; phy < 31; phy++)
     {
         ETH_MACMIIDR = (phy << 6) | clk_div;
-        if ( (eth_smi_read(phy, PHY_PHYID1) == (BOARD_phy_addr >> 16)) &&
-            ((eth_smi_read(phy, PHY_PHYID2) & 0xFFF0) == (BOARD_phy_addr & 0xFFF0)) )
+        if ( (eth_smi_read(phy, PHY_REG_ID1) == (BOARD_phy_addr >> 16)) &&
+            ((eth_smi_read(phy, PHY_REG_ID2) & 0xFFF0) == (BOARD_phy_addr & 0xFFF0)) )
             return (int8_t)phy;
     }
     /* PHY not detected */
     return -1;
 }
 
+// XXX: Remove extra memcpy
 static uint8_t temp_rx_buf[ETH_MAX_FRAME];
-static uint8_t temp_tx_buf[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf };
 static int stm_eth_poll(struct pico_device *dev, int loop_score)
 {
     uint32_t rx_len = 0;
     while (eth_rx(temp_rx_buf, &rx_len, ETH_MAX_FRAME))
     {
-        pico_stack_recv(&dev_eth_stm->dev, temp_rx_buf, rx_len);
+        pico_stack_recv(dev, temp_rx_buf, rx_len);
         rx_len = 0;
         loop_score--;
     }
@@ -134,7 +130,7 @@ static int stm_eth_send(struct pico_device *dev, void * buf, int len)
 static int stm_eth_link_state(struct pico_device *dev)
 {
     struct dev_eth *stm = (struct dev_eth *)dev;
-    /* test link */
+    /* test link state */
     if (phy_link_isup(stm->phy_addr))
         return 1;
     else
@@ -142,8 +138,9 @@ static int stm_eth_link_state(struct pico_device *dev)
 }
 
 /**
- * Description:         Low level MAC initialization.
+ * Description: Low level MAC initialization.
  * Parameters:  phy_addr    Pointer a phy_addr variable
+ *              clk_div     Phy Clock Divider
  */
 static int mac_init(uint8_t * phy_addr, uint32_t clk_div)
 {
@@ -157,7 +154,7 @@ static int mac_init(uint8_t * phy_addr, uint32_t clk_div)
     rcc_periph_clock_disable(RCC_ETHMACTX);
     rcc_periph_clock_disable(RCC_ETHMACRX);
 
-    /* FIXME */
+    /* XXX FIXME */
     #define SYSCFG_PMC_MII_RMII_SEL         ((uint32_t)0x00800000) /*!<Ethernet PHY interface selection */
     #if defined(BOARD_PHY_RMII)
       SYSCFG_PMC |= SYSCFG_PMC_MII_RMII_SEL;
@@ -188,16 +185,13 @@ static int mac_init(uint8_t * phy_addr, uint32_t clk_div)
 
     /* PHY address setup.*/
     phy_detect = find_phy(clk_div);
+    *phy_addr = (uint8_t)phy_detect;
     if (phy_detect == -1)   /* Detect PHY address */
         return -1;          /* PHY not found */
-    *phy_addr = (uint8_t)phy_detect;
 
-    #define PHY_BMCTRL              0x00    /**< Basic mode control register.   */
-    #define BMCTRL_PDOWN            0x0800  /**< Powerdown                      */
-    #define BMCTRL_RESET            0x8000  /**< Reset                          */
     /* PHY Soft Reset */
-    eth_smi_write(*phy_addr, PHY_BMCTRL, BMCTRL_RESET);
-    while (eth_smi_read(*phy_addr, PHY_BMCTRL) & BMCTRL_RESET) {};
+    eth_smi_write(*phy_addr, PHY_REG_BCR, PHY_REG_BCR_RESET);
+    while (eth_smi_read(*phy_addr, PHY_REG_BCR) & PHY_REG_BCR_RESET) {};
 
     /* ETH DMA Soft Reset */
     ETH_DMABMR |= ETH_DMABMR_SR;
@@ -206,32 +200,31 @@ static int mac_init(uint8_t * phy_addr, uint32_t clk_div)
     return 0;
 }
 
-
 int stm_eth_init(void)
 {
     int8_t phy_addr;
+    uint8_t * descriptors;
     uint32_t clk_div = eth_smi_get_phy_divider();
 
     dev_eth_stm = kalloc(sizeof(struct dev_eth));
     if (!dev_eth_stm)
         return -1;
-
     memset(dev_eth_stm, 0, sizeof(struct dev_eth));
-
     mac_init(&dev_eth_stm->phy_addr, clk_div);
 
-    uint8_t * descriptors;
-    descriptors = kalloc(2 * 2 * ETH_MAX_FRAME);
-    if (!descriptors)
-        return -1;
-
-    /* try DMA soft-reset */
+    /* DMA soft-reset */
     ETH_DMABMR |= ETH_DMABMR_SR;
     while(ETH_DMABMR & ETH_DMABMR_SR) {};
 
     eth_init(phy_addr, clk_div); /* does a phy_reset */
-    eth_desc_init(descriptors, 2, 2, ETH_MAX_FRAME, ETH_MAX_FRAME, true);
     eth_set_mac((uint8_t*)default_mac);
+
+    /* Initialize descriptors */
+    /* sizes must be multiple of 4 bytes! buffer must be 4 byte aligned */
+    descriptors = kalloc(2 * 2 * ETH_MAX_FRAME + 2 * 16); /* size of buffers + size of descriptors */
+    if (!descriptors)
+        return -1;
+    eth_desc_init(descriptors, 2, 2, ETH_MAX_FRAME, ETH_MAX_FRAME, false);
 
     /* set pico function pointers */
     dev_eth_stm->dev.poll = stm_eth_poll;
@@ -243,12 +236,14 @@ int stm_eth_init(void)
         return -1;
     }
 
-    /* Enable interrupt vector .*/
+    /* Enabling required interrupt sources.*/
+    eth_irq_ack_pending(ETH_DMASR);
+    eth_irq_disable(0xFFFF); /* Disable all */
+    eth_irq_enable(ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE);
     nvic_set_priority(NVIC_ETH_IRQ, ETH_IRQ_PRIO);
     nvic_enable_irq(NVIC_ETH_IRQ);
 
     eth_start();
-    eth_irq_enable(ETH_DMAIER_NISE | ETH_DMAIER_RIE | ETH_DMAIER_TIE); /* NISE needed ?? */
 
     return 0;
 }
@@ -258,7 +253,7 @@ void eth_isr(void)
     uint32_t bits = ETH_DMASR;
 
     /* Clear all bits */
-    ETH_DMASR = bits;
+    eth_irq_ack_pending(ETH_DMASR);
 
     if (bits & ETH_DMASR_RS)
     {
