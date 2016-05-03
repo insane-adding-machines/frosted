@@ -32,7 +32,7 @@
 
 #define dbg(...)
 
-#define ETH_MAX_FRAME    (1500)
+#define ETH_MAX_FRAME    (1524)                 /* Round to multiple of 4 bytes! */
 #define ETH_IRQ_PRIO        (1)
 
 /* FIXME: Put in board config */
@@ -109,6 +109,7 @@ static uint8_t temp_rx_buf[ETH_MAX_FRAME];
 static int stm_eth_poll(struct pico_device *dev, int loop_score)
 {
     uint32_t rx_len = 0;
+    /* add eth_rx_peek, then dynamically alloc + zerocopy */
     while (eth_rx(temp_rx_buf, &rx_len, ETH_MAX_FRAME))
     {
         pico_stack_recv(dev, temp_rx_buf, rx_len);
