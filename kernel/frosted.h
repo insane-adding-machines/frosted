@@ -36,6 +36,8 @@ struct termios;
 typedef struct semaphore sem_t;
 typedef struct semaphore frosted_mutex_t;
 
+typedef uint32_t sigset_t;
+
 /* generics */
 volatile unsigned int jiffies;
 volatile int _syscall_retval;
