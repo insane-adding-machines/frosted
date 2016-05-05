@@ -22,6 +22,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include "libopencm3/stm32/usart.h"
 #include "libopencm3/cm3/nvic.h"
+#include "drivers/stm32_sdio.h"
      
 #ifdef CONFIG_DEVUART
 #include "uart.h"
@@ -171,6 +172,9 @@ void machine_init(struct fnode * dev)
 #endif
 #ifdef CONFIG_RNG
     rng_init(dev, rng_addrs, NUM_RNGS);
+#endif
+#ifdef CONFIG_DEVSTM32SDIO
+    stm32_sdio_init(dev);
 #endif
 
 #ifdef CONFIG_DEVSTMETH

@@ -8,6 +8,7 @@
 #include "string.h"
 #include "errno.h"
 #include "vfs.h"
+#include "kprintf.h"
 
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1
