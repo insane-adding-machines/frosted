@@ -33,6 +33,8 @@
 #define RUN_KERNEL  (0xfffffff9u)
 #define RUN_USER    (0xfffffffdu)
 
+#define SV_CALL_SIGRETURN 0xFFFFFFF8
+
 
 #define STACK_THRESHOLD 64
 
@@ -511,6 +513,44 @@ static int del_handler(struct task *t, int signo)
 
 void task_terminate(int pid);
 
+static void sig_hdlr_return(uint32_t arg)
+{
+    /* XXX: In order to use per-sigaction sa_mask, we need to set 
+     * t->tb.sigmask in the catch, and restore it here.
+     */
+    asm volatile ("mov r0, %0" :: "r" (SV_CALL_SIGRETURN));
+    asm volatile ("svc 0\n");
+    asm volatile ("pop {r4-r11}\n");
+}
+
+static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo)
+{
+    /* TOP to Bottom: EXTRA | NVIC | T_EXTRA | T_NVIC */
+    volatile struct extra_stack_frame *cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
+    volatile struct nvic_stack_frame *cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
+    volatile struct extra_stack_frame *tramp_extra = t->tb.sp - EXTRA_FRAME_SIZE;
+    volatile struct nvic_stack_frame *tramp_nvic  = t->tb.sp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
+    volatile struct extra_stack_frame *extra_usr = t->tb.sp;
+    uint8_t *osp = t->tb.sp;
+
+    /* Copy the EXTRA_FRAME into the trampoline extra, to preserve R9 for userspace relocations etc. */
+    memcpy(tramp_extra, cur_extra, EXTRA_FRAME_SIZE);
+    
+
+    memset(tramp_nvic, 0, NVIC_FRAME_SIZE);
+    tramp_nvic->pc = (uint32_t)h->hdlr;
+    tramp_nvic->lr = (uint32_t)sig_hdlr_return;
+    tramp_nvic->r0 = (uint32_t)signo;
+    tramp_nvic->psr = cur_nvic->psr;
+
+    t->tb.sp = (osp - ( 2 * EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
+    
+    /* Copy the userspace-managed frame pointer */
+    memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
+
+    task_resume(t->tb.pid);
+}
+
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
 {
     int i;
@@ -549,15 +589,7 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         {
             h->hdlr(signo); 
         } else {
-            /* Execute signal handler on top of the current task stack */
-            volatile struct nvic_stack_frame *nvic = t->tb.sp + EXTRA_FRAME_SIZE;
-            nvic->pc = (uint32_t)h->hdlr;
-            nvic->r0 = (uint32_t)signo;
-            /* XXX: In order to use per-sigaction sa_mask, we need to set 
-             * t->tb.sigmask here, and restore it in some way before the 
-             * handler returns to nvic->lr.
-             */
-            task_resume(t->tb.pid);
+            sig_trampoline(t, h, signo);
         }
     } else {
         /* Handler not present: SIG_DFL */
@@ -814,6 +846,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     new->tb.sighdlr = NULL;
+    new->tb.sigpend = 0;
     new->tb.sigmask = 0;
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
@@ -1270,6 +1303,11 @@ struct extra_stack_frame *copied_extra = NULL;
 
 int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
+    if (n == SV_CALL_SIGRETURN) {
+        _cur_task->tb.sp = _cur_task->tb.sp + ( 2 * EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
+        goto return_from_syscall;
+    }
+
     if (n >= _SYSCALLS_NR)
         return -1;
     if (sys_syscall_handlers[n] == NULL)
@@ -1313,6 +1351,7 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
         task_switch();
     }
 
+return_from_syscall:
     /* write new stack pointer and restore context */
     if (in_kernel()) {
         asm volatile ("msr "MSP", %0" :: "r" (_cur_task->tb.sp));
