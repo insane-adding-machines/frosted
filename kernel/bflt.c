@@ -223,7 +223,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     int relocs;
     int rev;
 
-    kprintf("bFLT: Loading from 0x%p\r\n", from);
+    //kprintf("bFLT: Loading from 0x%p\r\n", from);
 
     if (!address_zero) {
         goto error;

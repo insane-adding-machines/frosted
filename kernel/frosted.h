@@ -246,6 +246,8 @@ struct module {
 
 
         /* Terminal operations */
+        void (*tty_attach)(struct fnode *fno, int pid);
+        int (*tty_getsid)(struct fnode *fno);
         int (*tcsetattr)(int td, int opts, const struct termios *tp);
         int (*tcgetattr)(int td, struct termios *tp);
 

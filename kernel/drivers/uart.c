@@ -69,10 +69,10 @@ struct dev_uart {
 
 static struct dev_uart DEV_UART[MAX_UARTS];
 
-static int devuart_open(const char *path, int flags);
 static int devuart_write(struct fnode *fno, const void *buf, unsigned int len);
 static int devuart_read(struct fnode *fno, void *buf, unsigned int len);
 static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents);
+static void devuart_tty_attach(struct fnode *fno, int pid);
 
 static struct module mod_devuart = {
     .family = FAMILY_FILE,
@@ -81,6 +81,7 @@ static struct module mod_devuart = {
     .ops.read = devuart_read,
     .ops.poll = devuart_poll,
     .ops.write = devuart_write,
+    .ops.tty_attach = devuart_tty_attach,
 };
 
 void uart_isr(struct dev_uart *uart)
@@ -168,15 +169,13 @@ void usart6_isr(void)
 }
 #endif
 
-static int devuart_open(const char *path, int flags)
+
+static void devuart_tty_attach(struct fnode *fno, int pid)
 {
-    int fd = device_open(path, flags);
-    struct fnode *fno = NULL;
-    struct dev_uart *uart = NULL;
-    if (fd > 0) {
-        fno = fno_search(path);
-        uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
-        uart->sid = scheduler_get_cur_pid();
+    struct dev_uart *uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
+    if (uart->sid != pid) {
+        kprintf("/dev/%s active job pid: %d\r\n", fno->fname, pid);
+        uart->sid = pid;
     }
 }
 

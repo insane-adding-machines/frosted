@@ -274,7 +274,7 @@ static void running_to_idling(volatile struct task *t)
         tasklist_add(&tasks_idling, t);
 }
 
-static int task_filedesc_del_from_task(struct task *t, int fd);
+static int task_filedesc_del_from_task(volatile struct task *t, int fd);
 static void task_destroy(struct task *t)
 {
     int i;
@@ -294,7 +294,7 @@ static void task_destroy(struct task *t)
     }
     if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
     {
-        kprintf("Freeing VFS type %d alllocated pointer 0x%p\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
+        //kprintf("Freeing VFS type %d allocated pointer 0x%p\r\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
         if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
             f_free(t->tb.vfsi->allocated);
         f_free(t->tb.vfsi);
@@ -348,6 +348,12 @@ static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
     t->tb.filedesc = re;
     memset(&(t->tb.filedesc[t->tb.n_files - 1]), 0, sizeof(struct filedesc));
     t->tb.filedesc[t->tb.n_files - 1].fno = f;
+    if (f->flags & FL_TTY) {
+        struct module *mod = f->owner;
+        if (mod && mod->ops.tty_attach) {
+            mod->ops.tty_attach(f, t->tb.pid);
+        }
+    }
     f->usage++;
     return t->tb.n_files - 1;
 }
@@ -357,13 +363,22 @@ int task_filedesc_add(struct fnode *f)
     return task_filedesc_add_to_task(_cur_task, f);
 }
 
-static int task_filedesc_del_from_task(struct task *t, int fd)
+static int task_filedesc_del_from_task(volatile struct task *t, int fd)
 {
+    struct fnode *fno;
     if (!t)
         return -EINVAL;
-    if (!t->tb.filedesc[fd].fno)
+
+    fno = t->tb.filedesc[fd].fno;
+    if (!fno)
         return -ENOENT;
-    t->tb.filedesc[fd].fno->usage--;
+    if ((fno->flags & FL_TTY) && ((t->tb.filedesc[fd].mask & O_NOCTTY) == 0)) {
+        struct module *mod = fno->owner;
+        if (mod && mod->ops.tty_attach) {
+            mod->ops.tty_attach(fno, t->tb.ppid);
+        }
+    }
+    fno->usage--;
     t->tb.filedesc[fd].fno = NULL;
 }
 
@@ -1271,6 +1286,22 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 {
     _cur_task->tb.exitval = (int)arg1;
     task_terminate(_cur_task->tb.pid);
+}
+
+int sys_setsid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
+{
+    int i;
+    for (i = 0; i < _cur_task->tb.n_files; i++) {
+        struct fnode *fno = _cur_task->tb.filedesc[i].fno;
+        if ((fno->flags & FL_TTY) && ((_cur_task->tb.filedesc[i].mask & O_NOCTTY) == 0)) {
+            struct module *mod = fno->owner;
+            if (mod && mod->ops.tty_attach) {
+                mod->ops.tty_attach(fno, _cur_task->tb.ppid);
+                _cur_task->tb.filedesc[i].mask |= O_NOCTTY;
+
+            }
+        }
+    }
 }
 
 int task_segfault(uint32_t address, uint32_t instruction, int flags)
