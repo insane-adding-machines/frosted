@@ -1187,7 +1187,7 @@ void task_terminate(int pid)
                 }
                 task_resume_vfork(t->tb.ppid);
             }
-            sys_kill_hdlr(t->tb.ppid, SIGCHLD);
+            task_kill(t->tb.ppid, SIGCHLD);
         }
     }
 }
@@ -1280,6 +1280,14 @@ int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     if (!t)
         return -ESRCH;
     return catch_signal(t, arg2, t->tb.sigmask);
+}
+
+
+int task_kill(int pid, int signal)
+{
+    if (pid > 0) {
+        return sys_kill_hdlr(pid, signal, 0, 0, 0);
+    }
 }
 
 int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)

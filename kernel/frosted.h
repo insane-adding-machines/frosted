@@ -85,6 +85,7 @@ int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
 int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio);
+int task_kill(int pid, int signal);
 
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);

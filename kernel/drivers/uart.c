@@ -84,6 +84,13 @@ static struct module mod_devuart = {
     .ops.tty_attach = devuart_tty_attach,
 };
 
+static void uart_send_break(void *arg)
+{
+    int *pid = (int *)(arg);
+    if (pid)
+        task_kill(*pid, 2);
+}
+
 void uart_isr(struct dev_uart *uart)
 {
     /* TX interrupt */
@@ -112,6 +119,14 @@ void uart_isr(struct dev_uart *uart)
         if (usart_is_recv_ready(uart->base))
         {
             char byte = (char)(usart_recv(uart->base) & 0xFF);
+
+            /* Intercept ^C */
+            if (byte == 3) {
+                if (uart->sid > 1) {
+                    tasklet_add(uart_send_break, &uart->sid);
+                }
+                return;
+            }
             /* read data into circular buffer */
             cirbuf_writebyte(uart->inbuf, byte);
         }
