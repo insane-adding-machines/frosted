@@ -60,6 +60,7 @@ struct dev_uart {
     uint32_t base;
     struct cirbuf *inbuf;
     struct cirbuf *outbuf;
+    uint16_t sid;
     uint8_t *w_start;
     uint8_t *w_end;
 };
@@ -68,6 +69,7 @@ struct dev_uart {
 
 static struct dev_uart DEV_UART[MAX_UARTS];
 
+static int devuart_open(const char *path, int flags);
 static int devuart_write(struct fnode *fno, const void *buf, unsigned int len);
 static int devuart_read(struct fnode *fno, void *buf, unsigned int len);
 static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents);
@@ -165,6 +167,18 @@ void usart6_isr(void)
     uart_isr(&DEV_UART[6]);
 }
 #endif
+
+static int devuart_open(const char *path, int flags)
+{
+    int fd = device_open(path, flags);
+    struct fnode *fno = NULL;
+    struct dev_uart *uart = NULL;
+    if (fd > 0) {
+        fno = fno_search(path);
+        uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
+        uart->sid = scheduler_get_cur_pid();
+    }
+}
 
 static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
 {
