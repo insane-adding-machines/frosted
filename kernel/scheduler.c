@@ -156,6 +156,7 @@ static void * _top_stack;
 
 
 #define TASK_FLAG_VFORK 0x01
+#define TASK_FLAG_INTR  0x40
 
 struct filedesc {
     struct fnode *fno;
@@ -409,6 +410,13 @@ uint32_t task_fd_getmask(int fd)
     return 0;
 }
 
+int task_is_interrupted(void)
+{
+    if ((_cur_task->tb.flags & TASK_FLAG_INTR) != 0)
+        return 1;
+    return 0;
+}
+
 struct fnode *task_filedesc_get(int fd)
 {
     volatile struct task *t = _cur_task;
@@ -562,7 +570,6 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
     
     /* Copy the userspace-managed frame pointer */
     memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
-
     task_resume(t->tb.pid);
 }
 
@@ -600,6 +607,7 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         if (h->hdlr == SIG_IGN)
             return 0;
 
+        t->tb.flags |= TASK_FLAG_INTR;
         if (_cur_task == t)
         {
             h->hdlr(signo); 
@@ -611,6 +619,7 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         if (signo != SIGCHLD) {
             task_terminate(t->tb.pid);
         } else {
+            t->tb.flags |= TASK_FLAG_INTR;
             task_resume(t->tb.pid);
         }
     }
@@ -1344,6 +1353,7 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
 {
     if (n == SV_CALL_SIGRETURN) {
         _cur_task->tb.sp = _cur_task->tb.sp + ( 2 * EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
+        *((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE)) = -EINTR;
         goto return_from_syscall;
     }
 
@@ -1355,6 +1365,9 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
 
     save_task_context();
     asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
+
+    /* Remove possible stale flag for interrupted syscall. */
+    _cur_task->tb.flags &= (~TASK_FLAG_INTR);
 
     /* save current context on current stack */
     /*
