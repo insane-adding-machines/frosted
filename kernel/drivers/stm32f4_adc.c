@@ -17,7 +17,7 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -137,7 +137,7 @@ void adc_init(struct fnode * dev,  const struct adc_addr adc_addrs[], int num_ad
         nvic_enable_irq(adc_addrs[i].dma.irq);
 
         adc_set_resolution(adc_addrs[i].dma.base, ADC_CR1_RES_12BIT);
-        adc_off(adc_addrs[i].base);
+        adc_power_off(adc_addrs[i].base);
         adc_disable_external_trigger_regular(adc_addrs[i].base);
         adc_set_sample_time_on_all_channels(adc_addrs[i].base, ADC_SMPR_SMP_480CYC);
         adc_set_regular_sequence(adc_addrs[i].base, adc_addrs[i].num_channels, adc_addrs[i].channel_array);
