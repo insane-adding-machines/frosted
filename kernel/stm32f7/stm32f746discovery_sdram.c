@@ -96,7 +96,7 @@ void sdram_init(void)
     cr_tmp |= FMC_SDCR_SDCLK_2HCLK;
     cr_tmp |= FMC_SDCR_CAS_2CYC;
     cr_tmp |= FMC_SDCR_NB4;
-    cr_tmp |= FMC_SDCR_MWID_32b;
+    cr_tmp |= FMC_SDCR_MWID_16b;
     cr_tmp |= FMC_SDCR_NR_12;
     cr_tmp |= FMC_SDCR_NC_8;
 
