@@ -44,10 +44,10 @@
 /* Structures       */
 /*------------------*/
 struct f_malloc_block {
-    uint32_t magic;               /* magic fingerprint */
+    uint32_t magic;                 /* magic fingerprint */
     struct f_malloc_block * prev;   /* previous block */
     struct f_malloc_block * next;   /* next, or last block? */
-    size_t size;    /* malloc size excluding this block - next block is adjacent, if !last_block */
+    size_t size;                    /* malloc size excluding this block - next block is adjacent, if !last_block */
     uint32_t flags; 
 };
 
@@ -168,23 +168,35 @@ static char * heap_end_user;
 
 static void * f_sbrk(int flags, int incr)
 {
-    extern char   end;           /* Set by linker */
-    extern char   _stack;        /* Set by linker */
+    extern char   end;              /* Set by linker */
+    extern char   _stack;           /* Set by linker */
+    extern char   _user_heap_start; /* Set by linker */
+    extern char   _user_heap_end;   /* Set by linker */
     const char  * heap_stack_high = &_stack;
     char        * prev_heap_end;
 
+    /* Set initial heap addresses */
     if (heap_end_kernel == 0) {
+        /* kernel memory */
         heap_end_kernel = &end;
-        heap_end_user = &_stack;
 
+        /* user memory */
+        heap_end_user = &_user_heap_start; /* Start at beginning of heap */
+        //heap_end_user = &_stack; // XXX: FIXME in all LD files
+
+        /* task/stack memory */
         heap_stack = &_stack - 4096; 
     }
 
     if (flags & MEM_USER) {
         if (!heap_end_user)
             return (void *)(0 - 1);
+        /* Do not over-commit */
+        if ((heap_end_user + incr) > &_user_heap_end)
+            return (void *)(0 - 1);
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
+        memset(prev_heap_end, 0, incr);
     }
     else if (flags & MEM_TASK) {
         if ((heap_stack - incr) < heap_end_kernel)

@@ -38,12 +38,12 @@ static const struct gpio_addr gpio_addrs[] = { {.base=GPIOI, .pin=GPIO1,.mode=GP
 
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
-                                                                            {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+    {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+    {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_2
-                                                                            {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+    {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+    {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
 #endif
 #ifdef CONFIG_USART_3
 #endif
@@ -52,14 +52,58 @@ static const struct gpio_addr gpio_addrs[] = { {.base=GPIOI, .pin=GPIO1,.mode=GP
 #ifdef CONFIG_UART_5
 #endif
 #ifdef CONFIG_USART_6
-                                                                            {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
-                                                                            {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+    {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+    {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
 #endif
 #ifdef CONFIG_UART_7
 #endif
 #ifdef CONFIG_UART_8
 #endif
 #endif
+
+#define CONFIG_SDRAM
+#ifdef CONFIG_SDRAM
+//    {.base=GPIOC, .pin=GPIO3, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO0, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO1, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO3, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO8, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO9, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO0, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO1, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO7, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO8, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO9, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO11,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO12,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO13,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO14,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOE, .pin=GPIO15,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO0, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO1, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO2, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO3, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO4, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO5, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO11,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO12,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO13,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO14,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOF, .pin=GPIO15,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOG, .pin=GPIO0, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOG, .pin=GPIO1, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOG, .pin=GPIO4, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOG, .pin=GPIO5, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOG, .pin=GPIO8, .mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOG, .pin=GPIO15,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOH, .pin=GPIO3 ,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+//    {.base=GPIOH, .pin=GPIO5 ,.mode=GPIO_MODE_AF,.af=GPIO_AF12,.pullupdown=GPIO_PUPD_PULLUP, .speed=GPIO_OSPEED_100MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+#endif
+
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
 #endif
@@ -140,5 +184,10 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_RNG
     rng_init(dev, rng_addrs, NUM_RNGS);
 #endif
+#ifdef CONFIG_SDRAM
+    extern void sdram_init(void);
+    sdram_init();
+#endif
+
 }
 

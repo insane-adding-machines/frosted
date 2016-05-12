@@ -2,6 +2,7 @@ MEMORY
 {
     FLASH (rx) : ORIGIN = __FLASH_ORIGIN, LENGTH = __KFLASHMEM_SIZE
     SRAM (rwx) : ORIGIN = __RAM_BASE, LENGTH = __KRAMMEM_SIZE
+    SDRAM(rwx) : ORIGIN = 0xC0000000, LENGTH = 0x800000
 }
 
  /* Enforce emmition of the vector table. */
@@ -69,3 +70,6 @@ SECTIONS
 }
 
 PROVIDE(_stack = ORIGIN(SRAM) + LENGTH(SRAM));
+PROVIDE(_user_heap_start = ORIGIN(SDRAM));
+PROVIDE(_user_heap_end = ORIGIN(SDRAM) + LENGTH(SDRAM));
+

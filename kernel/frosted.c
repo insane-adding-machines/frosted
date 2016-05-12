@@ -228,6 +228,13 @@ void frosted_kernel(int xipfs_mounted)
     pico_loop_create();
     socket_in_init();
 
+    {
+        extern void stm32f7_ltdc_init(void);
+        //stm32f7_ltdc_init();
+        extern void stm32f7_ltdc_test(void * framebuffer);
+        //stm32f7_ltdc_test((void *)0xC0000000);
+    }
+
 #ifdef CONFIG_DEVSTMETH
     stm_eth_init();
 #endif
