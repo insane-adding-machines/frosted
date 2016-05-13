@@ -87,6 +87,9 @@ CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEVSTMETH
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
+OBJS-$(DEVFRAMEBUFFER)+= kernel/drivers/framebuffer.o kernel/drivers/stm32f7_ltdc.o
+CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER
+
 OBJS-$(DEVGPIO)+=kernel/drivers/gpio.o
 CFLAGS-$(DEVGPIO)+=-DCONFIG_DEVGPIO
 
@@ -133,8 +136,7 @@ OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o
 OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o 
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o 
 OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o 
-#OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o 
-OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o kernel/$(BOARD)/stm32f746discovery_sdram.o kernel/drivers/stm32f7_ltdc.o
+OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o kernel/$(BOARD)/stm32f746discovery_sdram.o
 OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_LPC1679XPRESSO)+=kernel/$(BOARD)/lpc1769xpresso.o

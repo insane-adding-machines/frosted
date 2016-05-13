@@ -2,6 +2,8 @@
 #define XIPFS_INCLUDED
 #define XIPFS_MAGIC 0xC519FF55
 
+#include <stdint.h>
+
 struct xipfs_fat {
     uint32_t fs_magic;
     uint32_t fs_size;

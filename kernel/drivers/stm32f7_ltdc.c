@@ -1,4 +1,6 @@
 /* Includes ------------------------------------------------------------------*/
+#include <string.h>
+#include "malloc.h"
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/ltdc.h>
@@ -14,16 +16,19 @@
 #define  RK043FN48H_VFP                 ((uint16_t)2)    /* Vertical front porch       */
 #define  RK043FN48H_FREQUENCY_DIVIDER    5               /* LCD Frequency divider      */
 
-#define LCD_WIDTH   RK043FN48H_WIDTH
-#define LCD_HEIGHT   RK043FN48H_HEIGHT
+#define FB_WIDTH    RK043FN48H_WIDTH
+#define FB_HEIGTH   RK043FN48H_HEIGHT
+#define FB_BPP      (2) /* hardcoded RGB565 - 2 bits per pixel */
 
 /* Private function prototypes -----------------------------------------------*/
 static void lcd_config(void); 
 static void lcd_pinmux(void); 
 static void lcd_clock(void); 
-static void lcd_config_layer(void);
+static int lcd_config_layer(void);
 
 /* Private functions ---------------------------------------------------------*/
+
+void * fb_mem = NULL;
 
 void lcd_pinmux(void)
 {
@@ -83,7 +88,7 @@ void lcd_pinmux(void)
     gpio_set(GPIOK, GPIO3);
 }
 
-static void lcd_config_layer(void)
+static int lcd_config_layer(void)
 {   
   /* Windowing configuration */ 
   ltdc_setup_windowing(LTDC_LAYER_2, 480, 272);
@@ -100,7 +105,13 @@ static void lcd_config_layer(void)
   ltdc_set_blending_factors(LTDC_LAYER_2, LTDC_LxBFCR_BF1_CONST_ALPHA, LTDC_LxBFCR_BF2_CONST_ALPHA);
 
   /* Framebuffer address */
-  ltdc_set_fbuffer_address(LTDC_LAYER_2, (uint32_t)0xC0000000); // XXX SDRAM ADDR!
+  fb_mem = f_malloc(MEM_USER, FB_WIDTH * FB_HEIGTH * FB_BPP);
+  if (!fb_mem)
+  {
+      return -1;
+  }
+
+  ltdc_set_fbuffer_address(LTDC_LAYER_2, (uint32_t)fb_mem); // XXX SDRAM ADDR!
 
   /* Configures the color frame buffer pitch in byte */
   ltdc_set_fb_line_length(LTDC_LAYER_2, 2*480, 2*480); /* RGB565 is 2 bytes/pixel */
@@ -113,6 +124,8 @@ static void lcd_config_layer(void)
 
   /* Sets the Reload type */
   ltdc_reload(LTDC_SRCR_IMR);
+
+  return 0;
 }
 
 /**
@@ -183,28 +196,33 @@ void stm32f7_ltdc_init(void)
     lcd_config(); /* Configure LCD : Only one layer is used */
 }
 
-void stm32f7_ltdc_test(void * framebuffer)
+void * stm32f7_getfb(void)
+{
+    return fb_mem;
+}
+
+void stm32f7_ltdc_test(void)
 {
     int x;
     uint16_t * rgb565;
 
     // write stuff to the framebuffer
-    rgb565 = (uint16_t *)framebuffer;
-    for (x = 0; x < (LCD_WIDTH*LCD_HEIGHT*2)/2; x++)
+    rgb565 = (uint16_t *)fb_mem;
+    for (x = 0; x < (FB_WIDTH*FB_HEIGTH*2)/2; x++)
     {
         *(rgb565++) = 0x1F; // Blue only
     }
     // sleep
 
-    rgb565 = (uint16_t *)framebuffer;
-    for (x = 0; x < (LCD_WIDTH*LCD_HEIGHT*2)/2; x++)
+    rgb565 = (uint16_t *)fb_mem;
+    for (x = 0; x < (FB_WIDTH*FB_HEIGTH*2)/2; x++)
     {
         *(rgb565++) = 0x7E0; // Green only
     }
     //sleep
 
-    rgb565 = (uint16_t *)framebuffer;
-    for (x = 0; x < (LCD_WIDTH*LCD_HEIGHT*2)/2; x++)
+    rgb565 = (uint16_t *)fb_mem;
+    for (x = 0; x < (FB_WIDTH*FB_HEIGTH*2)/2; x++)
     {
         *(rgb565++) = 0xF800; // Red only
     }

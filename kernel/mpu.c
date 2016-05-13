@@ -148,7 +148,6 @@ void mpu_init(void)
     mpu_setaddr(0, 0);              /* Userspace memory block   0x00000000 (1G) - Internal flash is an exception of this */
     mpu_setattr(0, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
 
-    //XXX mpu_setaddr(1, EXTRAM_START);   /* External RAM bank        0x60000000 (512M) */
     mpu_setaddr(1, EXTRAM_START);   /* External RAM bank        0x60000000 (512M) */
     mpu_setattr(1, MPUSIZE_512M   | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
 
@@ -165,7 +164,7 @@ void mpu_init(void)
     mpu_setaddr(5, DEV_START);      /* Peripherals              0x40000000 (512MB)*/
     mpu_setattr(5, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
     mpu_setaddr(6, EXTDEV_START);   /* External Peripherals     0xA0000000 (1GB)   */
-    mpu_setattr(6, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
+    mpu_setattr(6, MPUSIZE_1G | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
     mpu_setaddr(7, REG_START);      /* System Level             0xE0000000 (256MB) */
     mpu_setattr(7, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
 

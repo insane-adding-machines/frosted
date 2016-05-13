@@ -33,6 +33,10 @@
 #include "gpio.h"
 #endif
 
+#ifdef CONFIG_DEVFRAMEBUFFER
+#include "drivers/framebuffer.h"
+#endif
+
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { {.base=GPIOI, .pin=GPIO1,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_9_1"},
 
@@ -187,6 +191,10 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_SDRAM
     extern void sdram_init(void);
     sdram_init();
+#endif
+
+#ifdef CONFIG_DEVFRAMEBUFFER
+    fb_init(dev);
 #endif
 
 }

@@ -100,16 +100,16 @@ void sdram_init(void)
     cr_tmp |= FMC_SDCR_NR_12;
     cr_tmp |= FMC_SDCR_NC_8;
 
-    /* We're programming BANK 1, but per the manual some of the parameters
-     * only work in CR1 and TR1 so we pull those off and put them in the
-     * right place.
+	/* We're programming BANK 1
+     * Per the manual some of the parameters only work in CR1 and TR1
+     * So when using BANK2: we need pull those off and put them in the right place.
+     * FMC_SDCR1 |= (cr_tmp); // & FMC_SDCR_DNC_MASK);
+     * FMC_SDCR2 = cr_tmp;
      */
-    FMC_SDCR1 |= (cr_tmp & FMC_SDCR_DNC_MASK);
-    FMC_SDCR2 = cr_tmp; // NEEDED?
+	FMC_SDCR1 = (cr_tmp);
 
     tr_tmp = sdram_timing(&timing);
-    FMC_SDTR1 |= (tr_tmp & FMC_SDTR_DNC_MASK);
-    FMC_SDTR2 = tr_tmp; // NEEDED?
+	FMC_SDTR1 = (tr_tmp);
 
     /* Now start up the Controller per the manual
      *  - Clock config enable

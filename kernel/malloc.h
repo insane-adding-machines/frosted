@@ -2,6 +2,7 @@
 #define _FROSTED_MALLOC_H
 
 #include "string.h"
+#include "stdint.h"
 
 #define MEM_KERNEL 0
 #define MEM_USER   1

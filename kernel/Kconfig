@@ -382,6 +382,11 @@ menu "Device Drivers"
        bool "STM32F4 RNG driver"
        default y
 
+       menuconfig DEVFRAMEBUFFER
+       depends on (ARCH_STM32F7)
+       bool "STM32F7 Framebuffer driver"
+       default y
+
 endmenu
 
 
