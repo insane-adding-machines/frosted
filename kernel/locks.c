@@ -18,13 +18,7 @@
  *
  */  
 #include "frosted.h"
-
-/* Structures */
-struct semaphore {
-    int value;
-    int listeners;
-    int *listener;
-};
+#include "locks.h"
 
 
 /* Semaphore: internal functions */
@@ -35,11 +29,10 @@ static void _add_listener(sem_t *s)
     for (i = 0; i < s->listeners; i++) {
         if (s->listener[i] == pid)
             return;
+        if (s->listener[i] == -1) {
+            s->listener[i] = pid;
+        }
     }
-    s->listener = krealloc(s->listener, sizeof(int) * (s->listeners + 1));
-    if (!s->listener)
-        return;
-    s->listener[s->listeners++] = pid;
 }
 
 static void _del_listener(sem_t *s)
@@ -65,6 +58,16 @@ static int sem_spinwait(sem_t *s)
 }
 
 /* Semaphore: API */
+
+int sem_trywait(sem_t *s)
+{
+    if (!s)
+        return -EINVAL;
+    if(_sem_wait(s) != 0)
+        return -EAGAIN;
+    return 0;
+}
+
 int sem_wait(sem_t *s)
 {
     if (scheduler_get_cur_pid() == 0)
@@ -89,7 +92,7 @@ int sem_post(sem_t *s)
         int i;
         for(i = 0; i < s->listeners; i++) {
             int pid = s->listener[i];
-            if (pid >= 0) {
+            if (pid > 0) {
                 task_resume(pid);
             }
         }
@@ -109,9 +112,13 @@ sem_t *sem_init(int val)
 {
     sem_t *s = kalloc(sizeof(sem_t));
     if (s) {
+        int i;
         s->value = val;
-        s->listeners = 0;
-        s->listener = NULL;
+        s->listeners = 8;
+        s->listener = kalloc(sizeof(int) * (s->listeners + 1));
+        for (i = 0; i < s->listeners; i++)
+            s->listener[i] = -1;
+
     }
     return s;
 }
@@ -142,9 +149,12 @@ frosted_mutex_t *frosted_mutex_init()
 {
     frosted_mutex_t *s = kalloc(sizeof(frosted_mutex_t));
     if (s) {
+        int i;
         s->value = 1; /* Unlocked. */
-        s->listeners = 0;
-        s->listener = NULL;
+        s->listeners = 8;
+        s->listener = kalloc(sizeof(int) * (s->listeners + 1));
+        for (i = 0; i < s->listeners; i++)
+            s->listener[i] = -1;
     }
     return s;
 }
@@ -163,6 +173,15 @@ static int frosted_mutex_spinlock(frosted_mutex_t *s)
     while (_mutex_lock(s) != 0) {
         /* spin... */
     }
+    return 0;
+}
+
+int frosted_mutex_trylock(frosted_mutex_t *s)
+{
+    if (!s)
+        return -EINVAL;
+    if(_mutex_lock(s) != 0)
+        return -EAGAIN;
     return 0;
 }
 
@@ -189,7 +208,7 @@ int frosted_mutex_unlock(frosted_mutex_t *s)
         int i;
         for(i = 0; i < s->listeners; i++) {
             int pid = s->listener[i];
-            if (pid >= 0) {
+            if (pid > 0) {
                 task_resume(pid);
             }
         }

@@ -18,6 +18,7 @@
  *
  */  
 #include "frosted.h"
+#include "libopencm3/cm3/systick.h"
 
 struct tasklet {
     void (*exe)(void *);

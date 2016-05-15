@@ -154,14 +154,26 @@ config KRAMMEM_SIZE
     int "Kernel RAM size (KB)"
     default 32
 
+menu "Debugging options"
+
 config KLOG
     bool "Enable kernel logging"
     default y
 
-config KLOG_DEV
-    depends on (KLOG && DEVUART)
-    string "Kernel log output device"
-    default "/dev/ttyS0"
+config KLOG_SIZE
+    depends on KLOG
+    int "Kernel log buffer size"
+    default 256
+
+config HARDFAULT_DBG
+    bool "Enable extensive hardfault debug"
+    default n
+
+config STRACE
+    bool "Enable syscall tracer"
+    default n
+
+endmenu
 endmenu
 
 choice

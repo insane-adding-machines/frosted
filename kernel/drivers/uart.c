@@ -108,6 +108,9 @@ void uart_isr(struct dev_uart *uart)
             usart_send(uart->base, (uint16_t)(outbyte));
         } else {
             usart_disable_tx_interrupt(uart->base);
+            /* If a process is attached, resume the process */
+            if (uart->dev->pid > 0)
+                task_resume(uart->dev->pid);
         }
         frosted_mutex_unlock(uart->dev->mutex);
     }
@@ -130,11 +133,11 @@ void uart_isr(struct dev_uart *uart)
             /* read data into circular buffer */
             cirbuf_writebyte(uart->inbuf, byte);
         }
+        /* If a process is attached, resume the process */
+        if (uart->dev->pid > 0)
+            task_resume(uart->dev->pid);
     }
 
-    /* If a process is attached, resume the process */
-    if (uart->dev->pid > 0)
-        task_resume(uart->dev->pid);
 }
 
 void uart0_isr(void)
@@ -189,7 +192,7 @@ static void devuart_tty_attach(struct fnode *fno, int pid)
 {
     struct dev_uart *uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
     if (uart->sid != pid) {
-        kprintf("/dev/%s active job pid: %d\r\n", fno->fname, pid);
+        //kprintf("/dev/%s active job pid: %d\r\n", fno->fname, pid);
         uart->sid = pid;
     }
 }
@@ -199,10 +202,24 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     int i;
     char *ch = (char *)buf;
     struct dev_uart *uart;
-
+    
     uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
     if (!uart)
         return -1;
+        
+    frosted_mutex_lock(uart->dev->mutex);
+    if (cirbuf_bytesinuse(uart->outbuf) && usart_is_send_ready(uart->base)) {
+        char c;
+        cirbuf_readbyte(uart->outbuf, &c);
+        usart_send(uart->base, (uint16_t) c);
+        usart_enable_tx_interrupt(uart->base);
+    }
+
+    if (!cirbuf_bytesfree(uart->outbuf)) {
+        frosted_mutex_unlock(uart->dev->mutex);
+        task_preempt();
+        return SYS_CALL_AGAIN;
+    }
 
     if (len <= 0)
         return len;
@@ -214,8 +231,6 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
         /* previous transmit not finished, do not update w_start */
     }
 
-    frosted_mutex_lock(uart->dev->mutex);
-    usart_enable_tx_interrupt(uart->base);
 
     /* write to circular output buffer */
     uart->w_start += cirbuf_writebytes(uart->outbuf, uart->w_start, uart->w_end - uart->w_start);
@@ -223,6 +238,7 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
         char c;
         cirbuf_readbyte(uart->outbuf, &c);
         usart_send(uart->base, (uint16_t) c);
+        usart_enable_tx_interrupt(uart->base);
     }
 
     if (cirbuf_bytesinuse(uart->outbuf) == 0) {
@@ -237,8 +253,8 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     if (uart->w_start < uart->w_end)
     {
         uart->dev->pid = scheduler_get_cur_pid();
-        task_suspend();
         frosted_mutex_unlock(uart->dev->mutex);
+        task_suspend();
         return SYS_CALL_AGAIN;
     }
 
@@ -300,19 +316,17 @@ static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     if (!uart)
         return -1;
 
+    uart->dev->pid = scheduler_get_cur_pid();
     frosted_mutex_lock(uart->dev->mutex);
     usart_disable_rx_interrupt(uart->base);
     *revents = 0;
-    if (events & POLLOUT) {
+    if ((events & POLLOUT) && (cirbuf_bytesfree(uart->outbuf) > 0)) {
         *revents |= POLLOUT;
         ret = 1;
     }
     if ((events == POLLIN) && (cirbuf_bytesinuse(uart->inbuf) > 0)) {
         *revents |= POLLIN;
         ret = 1;
-    }
-    if (!ret) {
-        uart->dev->pid = scheduler_get_cur_pid();
     }
     usart_enable_rx_interrupt(uart->base);
     frosted_mutex_unlock(uart->dev->mutex);
@@ -331,6 +345,7 @@ static int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr *
     u->dev = device_fno_init(&mod_devuart, name, dev, FL_TTY, u);
     u->inbuf = cirbuf_create(256);
     u->outbuf = cirbuf_create(256);
+    u->dev->pid = -1;
     return 0;
 
 }

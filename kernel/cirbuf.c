@@ -91,6 +91,30 @@ int cirbuf_readbyte(struct cirbuf *cb, uint8_t *byte)
     return 0;
 }
 
+int cirbuf_readbytes(struct cirbuf *cb, void *bytes, int len)
+{
+    int buflen;
+    int i;
+    char *dst = bytes;
+    if (!cb || !bytes)
+        return -1;
+
+    /* check if there is data */
+    buflen = cirbuf_bytesinuse(cb);
+    if (buflen == 0)
+        return -1;
+    if (len > buflen)
+        len = buflen;
+
+    for (i = 0; i < len; i++) {
+        dst[i] = *(cb->readptr++);
+        /* wrap if needed */
+        if (cb->readptr > (cb->buf + cb->bufsize - 1u))
+            cb->readptr = cb->buf;
+    }
+    return len;
+}
+
 /* written len on success, 0 on fail */
 int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
 {
