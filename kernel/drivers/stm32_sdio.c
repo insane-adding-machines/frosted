@@ -484,6 +484,7 @@ sdio_scr(SDIO_CARD c) {
             /* APPCMD (our RCA) */
             err = stm32_sdio_command(55, c->rca << 16);
             if (! err) {
+                SDIO_ICR = 0xFFFFFFFF; /* Clear all status flags */
                 SDIO_DTIMER = 0xffffffff;
                 SDIO_DLEN = 8;
                 SDIO_DCTRL = SDIO_DCTRL_DBLOCKSIZE_3 |
@@ -519,6 +520,8 @@ sdio_scr(SDIO_CARD c) {
         }
     }
     (void) sdio_select(0);
+    if (err)
+        kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
 }
 
@@ -594,6 +597,8 @@ int sdio_block_read(struct fnode *fno, void *_buf, uint32_t lba, int offset, int
     }
     // deselect the card
     (void) sdio_select(0);
+    if (err)
+        kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
 }
 
@@ -659,6 +664,8 @@ sdio_writeblock(SDIO_CARD c, uint32_t lba, uint8_t *buf) {
     }
     // deselect the card
     (void) sdio_select(0);
+    if (err)
+        kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
 }
 
@@ -717,6 +724,9 @@ sdio_status(SDIO_CARD c) {
             }
         }
     }
+
+    if (err)
+        kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
 }
 
@@ -816,7 +826,9 @@ stm32_sdio_open(void) {
                                     if (! err) {
                                         err = stm32_sdio_command(6, 2);
                                         if (! err) {
-                                            stm32_sdio_bus(4, SDIO_24MHZ);
+                                            //XXX stm32_sdio_bus(4, SDIO_24MHZ);
+                                            //Seems we have speed issues for now...
+                                            stm32_sdio_bus(4, SDIO_1MHZ);
                                             (void) sdio_select(0);
                                         }
                                     }
@@ -854,6 +866,9 @@ stm32_sdio_open(void) {
                 res->size = 0; // Bug if its not CSD V1 or V2
         }
     }
+
+    if (err)
+        kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return (err == 0) ? res : NULL;
 }
 

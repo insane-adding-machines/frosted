@@ -337,7 +337,7 @@ menu "Device Drivers"
 
        menuconfig DEVF4ETH
        bool "STM32F4 Ethernet driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       depends on ((ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 ) && PICOTCP)
        default n
 
        menuconfig DEVF4I2C

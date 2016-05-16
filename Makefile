@@ -16,7 +16,7 @@ include  rules/picotcp.mk
 include  rules/userspace.mk
 
 #debugging
-CFLAGS+=-ggdb
+CFLAGS+=-ggdb3
 
 #optimization
 #CFLAGS+=-Os
