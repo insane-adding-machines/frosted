@@ -26,6 +26,7 @@
 #include "null.h"
 #include "xipfs.h"
 #include "vfs.h"
+#include "framebuffer.h"
 
 #ifdef CONFIG_STM32F4USB
 # include "stm32f4/stm32f4_usbdef.h"
@@ -125,6 +126,10 @@ int frosted_init(void)
     xipfs_init();
     sysfs_init();
     fatfs_init();
+
+#ifdef CONFIG_DEVFRAMEBUFFER
+    fb_init(fno_search("/dev"));
+#endif
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);

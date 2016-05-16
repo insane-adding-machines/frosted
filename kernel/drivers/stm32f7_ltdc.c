@@ -1,6 +1,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include "malloc.h"
+#include "framebuffer.h"
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/ltdc.h>
@@ -21,103 +22,73 @@
 #define FB_BPP      (2) /* hardcoded RGB565 - 2 bits per pixel */
 
 /* Private function prototypes -----------------------------------------------*/
-static void lcd_config(void); 
-static void lcd_pinmux(void); 
-static void lcd_clock(void); 
-static int lcd_config_layer(void);
+static void ltdc_config(void); 
+static void ltdc_pinmux(void); 
+static void ltdc_clock(void); 
+static int ltdc_config_layer(struct fb_info *fb);
 
 /* Private functions ---------------------------------------------------------*/
 
-void * fb_mem = NULL;
-
-void lcd_pinmux(void)
+static void ltdc_destroy(struct fb_info *fb)
 {
-    /* Enable the LTDC Clock */
-    rcc_periph_clock_enable(RCC_LTDC);
-
-    /* Enable GPIOs clock */
-    rcc_periph_clock_enable(RCC_GPIOE);
-    rcc_periph_clock_enable(RCC_GPIOG);
-    rcc_periph_clock_enable(RCC_GPIOI);
-    rcc_periph_clock_enable(RCC_GPIOJ);
-    rcc_periph_clock_enable(RCC_GPIOK);
-
-    /*** LTDC Pins configuration ***/
-    gpio_mode_setup(GPIOE, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO4);
-    gpio_set_output_options(GPIOE, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO4);
-    gpio_set_af(GPIOE, GPIO_AF14, GPIO4);
-
-    /* GPIOG configuration */
-    gpio_mode_setup(GPIOG, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO12);
-    gpio_set_output_options(GPIOG, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO12);
-    gpio_set_af(GPIOG, GPIO_AF9, GPIO12);
-
-    /* GPIOI LTDC alternate configuration */
-    gpio_mode_setup(GPIOI, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8 | GPIO9 | GPIO10 | GPIO14 | GPIO15);
-    gpio_set_output_options(GPIOI, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO8 | GPIO9 | GPIO10 | GPIO14 | GPIO15);
-    gpio_set_af(GPIOI, GPIO_AF14, GPIO8 | GPIO9 | GPIO10 | GPIO14 | GPIO15);
-
-    /* GPIOJ configuration */
-    gpio_mode_setup(GPIOJ, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 |
-                                                         GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
-                                                         GPIO10 | GPIO11 | GPIO13 | GPIO14 | GPIO15);
-    gpio_set_output_options(GPIOJ, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 |
-                                                         GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
-                                                         GPIO10 | GPIO11 | GPIO13 | GPIO14 | GPIO15);
-    gpio_set_af(GPIOJ, GPIO_AF14, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 |
-                                                         GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
-                                                         GPIO10 | GPIO11 | GPIO13 | GPIO14 | GPIO15);
-
-    /* GPIOK configuration */
-    gpio_mode_setup(GPIOK, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-    gpio_set_output_options(GPIOK, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-    gpio_set_af(GPIOK, GPIO_AF14, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-  
-    /* LCD_DISP GPIO configuration */
-    gpio_mode_setup(GPIOI, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12);
-    gpio_set_output_options(GPIOI, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO12);
-
-    /* LCD_BL_CTRL GPIO configuration */
-    gpio_mode_setup(GPIOK, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO3);
-    gpio_set_output_options(GPIOK, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO3);
-
-    /* Assert display enable LCD_DISP pin */
-    gpio_set(GPIOI, GPIO12);
-
-    /* Assert backlight LCD_BL_CTRL pin */
-    gpio_set(GPIOK, GPIO3);
+    // TODO: disable framebuffer
+    
+    if (fb && fb->screen_buffer)
+        f_free((void *)fb->screen_buffer);
 }
 
-static int lcd_config_layer(void)
-{   
+static int ltdc_config_layer(struct fb_info *fb)
+{
+  uint32_t format = 0; 
+
+  /* TODO: move to check / set var */
+  fb->var.xres = FB_WIDTH;
+  fb->var.yres = FB_HEIGTH;
+  fb->var.bits_per_pixel = FB_BPP;
+  fb->var.pixel_format = FB_PF_RGB565;
+
+  /* Allocate framebuffer memory */
+  fb->screen_buffer = f_malloc(MEM_USER, fb->var.xres * fb->var.xres * fb->var.bits_per_pixel);
+  if (!fb->screen_buffer)
+  {
+      return -1;
+  }
+
   /* Windowing configuration */ 
-  ltdc_setup_windowing(LTDC_LAYER_2, 480, 272);
+  ltdc_setup_windowing(LTDC_LAYER_2, fb->var.xres, fb->var.xres);
 
   /* Specifies the pixel format */
-  ltdc_set_pixel_format(LTDC_LAYER_2, LTDC_LxPFCR_RGB565);
+  switch (fb->var.pixel_format)
+  {
+      case FB_PF_RGB565:
+          format = LTDC_LxPFCR_RGB565;
+          break;
+      case FB_PF_CMAP256:
+          format = LTDC_LxPFCR_L8;
+          break;
+      default:
+          format = LTDC_LxPFCR_RGB565;
+          break;
+  }
+
+  ltdc_set_pixel_format(LTDC_LAYER_2, format);
 
   /* Default color values */
   ltdc_set_default_colors(LTDC_LAYER_2, 0, 0, 0, 0);
+
   /* Constant alpha */
   ltdc_set_constant_alpha(LTDC_LAYER_2, 255);
 
   /* Blending factors */
   ltdc_set_blending_factors(LTDC_LAYER_2, LTDC_LxBFCR_BF1_CONST_ALPHA, LTDC_LxBFCR_BF2_CONST_ALPHA);
 
-  /* Framebuffer address */
-  fb_mem = f_malloc(MEM_USER, FB_WIDTH * FB_HEIGTH * FB_BPP);
-  if (!fb_mem)
-  {
-      return -1;
-  }
-
-  ltdc_set_fbuffer_address(LTDC_LAYER_2, (uint32_t)fb_mem); // XXX SDRAM ADDR!
+  ltdc_set_fbuffer_address(LTDC_LAYER_2, (uint32_t)fb->screen_buffer);
 
   /* Configures the color frame buffer pitch in byte */
-  ltdc_set_fb_line_length(LTDC_LAYER_2, 2*480, 2*480); /* RGB565 is 2 bytes/pixel */
+  ltdc_set_fb_line_length(LTDC_LAYER_2, fb->var.xres * fb->var.bits_per_pixel, fb->var.yres * fb->var.bits_per_pixel);
 
   /* Configures the frame buffer line number */
-  ltdc_set_fb_line_count(LTDC_LAYER_2, 272);
+  ltdc_set_fb_line_count(LTDC_LAYER_2, fb->var.yres);
 
   /* Enable layer 1 */
   ltdc_layer_ctrl_enable(LTDC_LAYER_2, LTDC_LxCR_LAYER_ENABLE);
@@ -139,7 +110,7 @@ static int lcd_config_layer(void)
   * @retval
   *  None
   */
-static void lcd_config(void)
+static void ltdc_config(void)
 { 
   /* LTDC Initialization */
   ltdc_ctrl_disable(LTDC_GCR_HSPOL_ACTIVE_HIGH); /* Active Low Horizontal Sync */
@@ -155,14 +126,10 @@ static void lcd_config(void)
 
   ltdc_set_background_color(0, 0, 0);
   ltdc_ctrl_enable(LTDC_GCR_LTDC_ENABLE);
-  
-  /* Configure the Layer*/
-  lcd_config_layer();
-
 }
 
 
-static void lcd_clock(void)
+static void ltdc_clock(void)
 {
   /* LCD clock configuration */
   /* PLLSAI_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
@@ -188,43 +155,38 @@ static void lcd_clock(void)
   while(!(RCC_CR & (RCC_CR_PLLSAIRDY))) {};
 }
 
-void stm32f7_ltdc_init(void)
+static int ltdc_blank(struct fb_info *fb)
 {
-    /* init LCD */
-    lcd_pinmux();
-    lcd_clock(); 
-    lcd_config(); /* Configure LCD : Only one layer is used */
-}
-
-void * stm32f7_getfb(void)
-{
-    return fb_mem;
-}
-
-void stm32f7_ltdc_test(void)
-{
+    /* Fake blank -- will actualy BLUE the display */
     int x;
     uint16_t * rgb565;
+    uint32_t pixels = (fb->var.xres * fb->var.yres * fb->var.bits_per_pixel) / sizeof(uint16_t);
 
     // write stuff to the framebuffer
-    rgb565 = (uint16_t *)fb_mem;
-    for (x = 0; x < (FB_WIDTH*FB_HEIGTH*2)/2; x++)
+    rgb565 = (uint16_t *)fb->screen_buffer;
+    for (x = 0; x < pixels; x++)
     {
         *(rgb565++) = 0x1F; // Blue only
     }
-    // sleep
-
-    rgb565 = (uint16_t *)fb_mem;
-    for (x = 0; x < (FB_WIDTH*FB_HEIGTH*2)/2; x++)
-    {
-        *(rgb565++) = 0x7E0; // Green only
-    }
-    //sleep
-
-    rgb565 = (uint16_t *)fb_mem;
-    for (x = 0; x < (FB_WIDTH*FB_HEIGTH*2)/2; x++)
-    {
-        *(rgb565++) = 0xF800; // Red only
-    }
-    //sleep
 }
+
+static int ltdc_open(struct fb_info *info)
+{
+    /* init LCD */
+    ltdc_clock(); 
+    ltdc_config(); /* Configure LCD : Only one layer is used */
+    ltdc_config_layer(info);
+}
+
+static const struct fb_ops  ltdc_fbops = {  .fb_open = ltdc_open,
+                                            .fb_destroy = ltdc_destroy,
+                                            .fb_blank = ltdc_blank };
+
+static struct fb_info ltdc_info = { .fbops = (struct fb_ops *)&ltdc_fbops };
+
+/* DRIVER INIT */
+void stm32f7_ltdc_init(void)
+{
+    register_framebuffer(&ltdc_info);
+}
+

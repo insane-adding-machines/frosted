@@ -87,7 +87,7 @@ CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEVSTMETH
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
-OBJS-$(DEVFRAMEBUFFER)+= kernel/drivers/framebuffer.o kernel/drivers/stm32f7_ltdc.o
+OBJS-$(DEVFRAMEBUFFER)+= kernel/framebuffer.o kernel/drivers/stm32f7_ltdc.o
 CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER
 
 OBJS-$(DEVGPIO)+=kernel/drivers/gpio.o
