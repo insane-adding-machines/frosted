@@ -188,7 +188,6 @@ static void * f_sbrk(int flags, int incr)
 
         /* user memory */
         heap_end_user = &_user_heap_start; /* Start at beginning of heap */
-        //heap_end_user = &_stack; // XXX: FIXME in all LD files
 
         /* task/stack memory */
         heap_stack = &_stack - 4096; 
