@@ -776,7 +776,7 @@ stm32_sdio_open(void) {
                                         if (! err) {
                                             //XXX stm32_sdio_bus(4, SDIO_24MHZ);
                                             //Seems we have speed issues for now...
-                                            stm32_sdio_bus(4, SDIO_1MHZ);
+                                            stm32_sdio_bus(4, SDIO_12MHZ);
                                             (void) sdio_select(0);
                                         }
                                     }
