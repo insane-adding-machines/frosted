@@ -1009,7 +1009,7 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
         int r = len - r_len;
         r_off = fno->off;
         sect = clust2sect(priv->fsd, priv->cluster);
-        while (r_off > 512) {
+        while (r_off >= 512) {
             sect++;
             r_off -= 512;
         }
