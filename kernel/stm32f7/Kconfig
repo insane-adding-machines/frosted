@@ -7,7 +7,7 @@ choice
 config ARCH_STM32F746_NG
     bool "STM32F746NG 1MB"
     select FLASH_SIZE_1MB
-    select RAM_SIZE_312KB
+    select RAM_SIZE_320KB
     select ARCH_STM32F746
 
 endchoice
