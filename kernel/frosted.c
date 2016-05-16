@@ -57,7 +57,7 @@ static int tcpip_timer_pending = 0;
  */
 void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
-void hard_fault_handler(void)
+void simple_hard_fault_handler(void)
 {
     volatile uint32_t hfsr = SCB_HFSR;
     //volatile uint32_t bfsr = SCB_BFSR;
@@ -66,6 +66,75 @@ void hard_fault_handler(void)
     //volatile uint32_t ufsr = SCB_UFSR;
     volatile uint32_t mmfar = SCB_MMFAR;
     while(1);
+}
+
+#ifdef CONFIG_HARDFAULT_DBG 
+
+volatile unsigned long stacked_r0 ;
+volatile unsigned long stacked_r1 ;
+volatile unsigned long stacked_r2 ;
+volatile unsigned long stacked_r3 ;
+volatile unsigned long stacked_r12 ;
+volatile unsigned long stacked_lr ;
+volatile unsigned long stacked_pc ;
+volatile unsigned long stacked_psr ;
+volatile unsigned long _CFSR ;
+volatile unsigned long _HFSR ;
+volatile unsigned long _DFSR ;
+volatile unsigned long _AFSR ;
+volatile unsigned long _BFAR ;
+volatile unsigned long _MMAR ;
+
+void hardfault_handler_dbg(unsigned long *hardfault_args){
+    stacked_r0 = ((unsigned long)hardfault_args[0]) ;
+    stacked_r1 = ((unsigned long)hardfault_args[1]) ;
+    stacked_r2 = ((unsigned long)hardfault_args[2]) ;
+    stacked_r3 = ((unsigned long)hardfault_args[3]) ;
+    stacked_r12 = ((unsigned long)hardfault_args[4]) ;
+    stacked_lr = ((unsigned long)hardfault_args[5]) ;
+    stacked_pc = ((unsigned long)hardfault_args[6]) ;
+    stacked_psr = ((unsigned long)hardfault_args[7]) ;
+
+    // Configurable Fault Status Register
+    // Consists of MMSR, BFSR and UFSR
+    _CFSR = (*((volatile unsigned long *)(0xE000ED28))) ;   
+
+
+
+    // Hard Fault Status Register
+    _HFSR = (*((volatile unsigned long *)(0xE000ED2C))) ;
+
+    // Debug Fault Status Register
+    _DFSR = (*((volatile unsigned long *)(0xE000ED30))) ;
+
+    // Auxiliary Fault Status Register
+    _AFSR = (*((volatile unsigned long *)(0xE000ED3C))) ;
+
+    // Read the Fault Address Registers. These may not contain valid values.
+    // Check BFARVALID/MMARVALID to see if they are valid values
+    // MemManage Fault Address Register
+    _MMAR = (*((volatile unsigned long *)(0xE000ED34))) ;
+    // Bus Fault Address Register
+    _BFAR = (*((volatile unsigned long *)(0xE000ED38))) ;
+    __asm("BKPT #0") ; // Break into the debugger
+}
+#else
+void hardfault_handler_dbg(unsigned long *sp)
+{
+    __asm("BKPT #0") ; // Break into the debugger
+}
+
+#endif
+
+
+__attribute__((naked)) void hard_fault_handler(void)
+{
+    __asm("TST LR, #4           \n"
+          "ITE EQ               \n"
+          "MRSEQ R0, MSP        \n"
+          "MRSNE R0, PSP        \n"
+          "B hardfault_handler_dbg \n"
+           );
 }
 
 void mem_manage_handler(void)
@@ -135,13 +204,9 @@ int frosted_init(void)
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);
     vfs_mount(NULL, "/sys", "sysfs", 0, NULL);
 
+    klog_init();
     kernel_task_init();
 
-    /* kernel is now _cur_task, open filedesc for kprintf */
-    kprintf_init();
-    /*
-    kprintf("\r\n\n\nFrosted kernel version 16.01. (GCC version %s, built %s)\r\n", __VERSION__, __TIMESTAMP__);
-    */
 
 #ifdef UNIX    
     socket_un_init();

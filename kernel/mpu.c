@@ -142,7 +142,6 @@ void mpu_init(void)
 {
     if (!mpu_present())
         return;
-    irq_off();
 
     /* User area: prio 0, from start */
     mpu_setaddr(0, 0);              /* Userspace memory block   0x00000000 (1G) - Internal flash is an exception of this */
@@ -170,7 +169,6 @@ void mpu_init(void)
 
     SCB_SHCSR |= SCB_SHCSR_MEMFAULTENA;
     mpu_enable();
-    irq_on();
 }
 
 void mpu_task_on(void *stack)

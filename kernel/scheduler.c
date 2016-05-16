@@ -38,6 +38,19 @@
 
 #define STACK_THRESHOLD 64
 
+
+#ifdef CONFIG_SYSCALL_TRACE
+#define STRACE_SIZE 10
+struct strace {
+    int pid;
+    int n;
+    uint32_t sp;
+};
+
+volatile struct strace Strace[STRACE_SIZE];
+volatile int StraceTop = 0;
+#endif
+
 static char _my_x_str[11] = "";
 static char *x_str(uint32_t x)
 {
@@ -156,7 +169,10 @@ static void * _top_stack;
 
 
 #define TASK_FLAG_VFORK 0x01
+#define TASK_FLAG_IN_SYSCALL 0x02
+#define TASK_FLAG_SIGNALED 0x04
 #define TASK_FLAG_INTR  0x40
+
 
 struct filedesc {
     struct fnode *fno;
@@ -193,6 +209,7 @@ struct __attribute__((packed)) task_block {
     sigset_t sigpend;
     struct filedesc *filedesc;
     void *sp;
+    void *osp;
     void *cur_stack;
     struct task *next;
     struct vfs_info *vfsi;
@@ -410,13 +427,6 @@ uint32_t task_fd_getmask(int fd)
     return 0;
 }
 
-int task_is_interrupted(void)
-{
-    if ((_cur_task->tb.flags & TASK_FLAG_INTR) != 0)
-        return 1;
-    return 0;
-}
-
 struct fnode *task_filedesc_get(int fd)
 {
     volatile struct task *t = _cur_task;
@@ -541,20 +551,31 @@ static void sig_hdlr_return(uint32_t arg)
     /* XXX: In order to use per-sigaction sa_mask, we need to set 
      * t->tb.sigmask in the catch, and restore it here.
      */
+
+    /* call special svc with n = SV_CALL_SIGRETURN */
     asm volatile ("mov r0, %0" :: "r" (SV_CALL_SIGRETURN));
     asm volatile ("svc 0\n");
-    asm volatile ("pop {r4-r11}\n");
+    //asm volatile ("pop {r4-r11}\n");
 }
+    
+/* TOP to Bottom: EXTRA | NVIC | T_EXTRA | T_NVIC */
+volatile struct extra_stack_frame *cur_extra; 
+volatile struct nvic_stack_frame *cur_nvic;
+volatile struct extra_stack_frame *tramp_extra;
+volatile struct nvic_stack_frame *tramp_nvic; 
+volatile struct extra_stack_frame *extra_usr;  
 
 static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo)
 {
-    /* TOP to Bottom: EXTRA | NVIC | T_EXTRA | T_NVIC */
-    volatile struct extra_stack_frame *cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
-    volatile struct nvic_stack_frame *cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
-    volatile struct extra_stack_frame *tramp_extra = t->tb.sp - EXTRA_FRAME_SIZE;
-    volatile struct nvic_stack_frame *tramp_nvic  = t->tb.sp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
-    volatile struct extra_stack_frame *extra_usr = t->tb.sp;
-    uint8_t *osp = t->tb.sp;
+    cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
+    cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
+    tramp_extra = t->tb.sp - EXTRA_FRAME_SIZE;
+    tramp_nvic  = t->tb.sp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
+    extra_usr = t->tb.sp;
+    
+    /* Save stack pointer for later */
+    memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
+    t->tb.osp = t->tb.sp;
 
     /* Copy the EXTRA_FRAME into the trampoline extra, to preserve R9 for userspace relocations etc. */
     memcpy(tramp_extra, cur_extra, EXTRA_FRAME_SIZE);
@@ -566,10 +587,11 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
     tramp_nvic->r0 = (uint32_t)signo;
     tramp_nvic->psr = cur_nvic->psr;
 
-    t->tb.sp = (osp - ( 2 * EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
+    t->tb.sp = (t->tb.osp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
     
-    /* Copy the userspace-managed frame pointer */
+    t->tb.sp -= EXTRA_FRAME_SIZE;
     memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
+    t->tb.flags |= TASK_FLAG_SIGNALED;
     task_resume(t->tb.pid);
 }
 
@@ -582,7 +604,7 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
     if (!t || (t->tb.pid < 1))
         return -EINVAL;
 
-    if ((t->tb.state == TASK_ZOMBIE) || (t->tb.state == TASK_OVER))
+    if ((t->tb.state == TASK_ZOMBIE) || (t->tb.state == TASK_OVER) || (t->tb.state == TASK_FORKED))
         return -ESRCH;
 
     if (((1 << signo) & t->tb.sigmask) && (h->hdlr != SIG_IGN))
@@ -607,7 +629,6 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         if (h->hdlr == SIG_IGN)
             return 0;
 
-        t->tb.flags |= TASK_FLAG_INTR;
         if (_cur_task == t)
         {
             h->hdlr(signo); 
@@ -619,7 +640,6 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         if (signo != SIGCHLD) {
             task_terminate(t->tb.pid);
         } else {
-            t->tb.flags |= TASK_FLAG_INTR;
             task_resume(t->tb.pid);
         }
     }
@@ -1075,7 +1095,13 @@ void __naked  pend_sv_handler(void)
         _cur_task->tb.state = TASK_RUNNABLE;
 
     /* choose next task */
-    task_switch();
+//    if ((_cur_task->tb.flags & TASK_FLAG_SIGNALED) == 0)
+        task_switch();
+    
+    /* if switching to a signaled task, adjust sp */
+//    if ((_cur_task->tb.flags & (TASK_FLAG_IN_SYSCALL | TASK_FLAG_SIGNALED)) == ((TASK_FLAG_SIGNALED))) {
+//        _cur_task->tb.sp += 32;
+//    }
     
     if (((int)(_cur_task->tb.sp) - (int)(&_cur_task->stack)) < STACK_THRESHOLD) {
         kprintf("PendSV: Process %d is running out of stack space!\n", _cur_task->tb.pid);
@@ -1153,6 +1179,24 @@ void task_suspend(void) {
     return task_suspend_to(TASK_WAITING);
 }
 
+void task_preempt(void) {
+    _cur_task->tb.timeslice = 0;
+    schedule();
+}
+
+void task_preempt_all(void)
+{
+    volatile struct task *t = tasks_running;
+    if (_cur_task->tb.pid == 0)
+        return;
+    while(t) {
+        if (t->tb.pid != 0)
+            t->tb.timeslice = 0;
+        t = t->tb.next;
+    }
+    schedule();
+}
+
 
 void task_resume(int pid)
 {
@@ -1197,6 +1241,7 @@ void task_terminate(int pid)
                 task_resume_vfork(t->tb.ppid);
             }
             task_kill(t->tb.ppid, SIGCHLD);
+            task_preempt();
         }
     }
 }
@@ -1256,6 +1301,9 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
             return -ESRCH;
         if (t->tb.state == TASK_ZOMBIE)
             goto child_found;
+
+        if (options & WNOHANG)
+            return 0;
         task_suspend();
         return SYS_CALL_AGAIN;
     }
@@ -1267,6 +1315,8 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
             goto child_found;
         t = t->tb.next;
     }
+    if (options & WNOHANG)
+        return 0;
     task_suspend();
     return SYS_CALL_AGAIN;
 
@@ -1351,23 +1401,30 @@ struct extra_stack_frame *copied_extra = NULL;
 
 int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
+    irq_off();
+
     if (n == SV_CALL_SIGRETURN) {
-        _cur_task->tb.sp = _cur_task->tb.sp + ( 2 * EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
-        *((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE)) = -EINTR;
+        uint32_t *syscall_retval = (uint32_t *)(_cur_task->tb.osp + EXTRA_FRAME_SIZE);
+        _cur_task->tb.sp = _cur_task->tb.osp;
+        _cur_task->tb.flags &= (~(TASK_FLAG_SIGNALED));
+        if (*syscall_retval == SYS_CALL_AGAIN_VAL) {
+            *syscall_retval = -EINTR;
+        }
+        irq_on();
         goto return_from_syscall;
     }
-
-    if (n >= _SYSCALLS_NR)
+    if (n >= _SYSCALLS_NR) {
+        irq_on();
         return -1;
+    }
     if (sys_syscall_handlers[n] == NULL)
+    {
+        irq_on();
         return -1;
-    irq_off();
+    }
 
     save_task_context();
     asm volatile ("mrs %0, "PSP"" : "=r" (_top_stack));
-
-    /* Remove possible stale flag for interrupted syscall. */
-    _cur_task->tb.flags &= (~TASK_FLAG_INTR);
 
     /* save current context on current stack */
     /*
@@ -1383,11 +1440,21 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
     a4 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 8));
     a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp + (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 12));
 
+#ifdef CONFIG_SYSCALL_TRACE
+    Strace[StraceTop].n = n;
+    Strace[StraceTop].pid = _cur_task->tb.pid;
+    Strace[StraceTop].sp = _top_stack;
+    StraceTop++;
+    if (StraceTop > 9)
+        StraceTop = 0;
+#endif
+
     /* Execute syscall */
     volatile int retval;
     int (*call)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5) = NULL;
 
 
+    _cur_task->tb.flags |= TASK_FLAG_IN_SYSCALL;
     call = sys_syscall_handlers[n];
     retval = call(arg1, arg2, arg3, *a4, *a5);
 
@@ -1396,14 +1463,15 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
         asm volatile ( "mov %0, r0" : "=r" 
             (*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
 
-
     irq_on();
+
 
     if (_cur_task->tb.state != TASK_RUNNING) {
         task_switch();
     }
 
 return_from_syscall:
+
     /* write new stack pointer and restore context */
     if (in_kernel()) {
         asm volatile ("msr "MSP", %0" :: "r" (_cur_task->tb.sp));
@@ -1426,5 +1494,6 @@ return_from_syscall:
     asm volatile ("mov lr, %0" :: "r" (runnable));
 
     /* return (function is naked) */ 
+    _cur_task->tb.flags &= (~TASK_FLAG_IN_SYSCALL);
     asm volatile ( "bx lr");
 }

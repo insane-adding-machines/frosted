@@ -20,6 +20,7 @@
 #include "frosted.h"
 #include "heap.h"
 #include "libopencm3/cm3/nvic.h"
+#include "libopencm3/cm3/systick.h"
 volatile unsigned int jiffies = 0u;
 volatile unsigned int _n_int = 0u;
 int clock_interval = 1;
@@ -65,52 +66,57 @@ void ktimer_init(void)
 int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
 {
     struct ktimer t;
+    int ret;
     t.expire_time = jiffies + count;
     t.handler = handler;
     t.arg = arg;
-    return heap_insert(ktimer_list, &t);
+    irq_off();
+    ret = heap_insert(ktimer_list, &t);
+    irq_on();
+    return ret;
 }
 
-/* Check expired timers */
-static uint32_t ktimers_check(void)
+static inline int ktimer_expired(void)
+{
+    struct ktimer *t;
+    return ((ktimer_list) && (ktimer_list->n > 0) && (t = heap_first(ktimer_list)) && (t->expire_time < jiffies));
+}
+
+/* Tasklet that checks expired timers */
+static void ktimers_check_tasklet(void *arg)
 {
     struct ktimer *t; 
     struct ktimer t_previous;
-    if (!ktimer_list)
-        return -1;
-    if (!ktimer_list->n)
-        return -1;
-    t = heap_first(ktimer_list);
-    while ((t) && (t->expire_time < jiffies)) {
-        if (t->handler) {
-            t->handler(jiffies, t->arg);
-        }
-        heap_peek(ktimer_list, &t_previous); 
+    int next_t;
+
+    next_t = -1;
+
+    if ((ktimer_list) && (ktimer_list->n > 0)) {
+        irq_off();
         t = heap_first(ktimer_list);
+        irq_on();
+
+        while ((t) && (t->expire_time < jiffies)) {
+            if (t->handler) {
+                t->handler(jiffies, t->arg);
+            }
+            irq_off();
+            heap_peek(ktimer_list, &t_previous); 
+            t = heap_first(ktimer_list);
+            irq_on();
+        }
+        next_t = (t->expire_time - jiffies);
     }
-    return (t->expire_time - jiffies);
-}
-
-
-void sys_tick_handler(void)
-{
-    uint32_t next_timer = 0;
-    volatile uint32_t reload = systick_get_reload();
-    uint32_t this_timeslice;
-    SysTick_Hook();
-    jiffies+= clock_interval;
-    _n_int++;
-    next_timer = ktimers_check();
 
 #ifdef CONFIG_LOWPOWER
-    if (next_timer < 0 || next_timer > 1000){
-        next_timer = 1000; /* Wake up every second if timer is too long, or if no timers */
+    if (next_t < 0 || next_t > 1000){
+        next_t = 1000; /* Wake up every second if timer is too long, or if no timers */
     }
 
     /* Checking deep sleep */
-    if (next_timer >= 1000 && scheduler_can_sleep()) {
+    if (next_t >= 1000 && scheduler_can_sleep()) {
         systick_interrupt_disable();
-        cputimer_start(next_timer);
+        cputimer_start(next_t);
         return;
     }
 #ifdef CONFIG_TICKLESS
@@ -124,6 +130,24 @@ void sys_tick_handler(void)
     return;
 #endif
 #endif
+
+}
+
+
+void sys_tick_handler(void)
+{
+    uint32_t next_timer = 0;
+    volatile uint32_t reload = systick_get_reload();
+    uint32_t this_timeslice;
+    SysTick_Hook();
+    jiffies+= clock_interval;
+    _n_int++;
+
+    if (ktimer_expired()) {
+        tasklet_add(ktimers_check_tasklet, NULL);
+        task_preempt_all();
+        return;
+    }
 
     if (_sched_active && ((task_timeslice() == 0) || (!task_running()))) {
         schedule();

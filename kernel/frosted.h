@@ -87,15 +87,20 @@ void task_resume(int pid);
 int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio);
 int task_kill(int pid, int signal);
 
+void task_preempt(void);
+void task_preempt_all(void);
+
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
 
 int sem_wait(sem_t *s);
+int sem_trywait(sem_t *s);
 int sem_post(sem_t *s);
 sem_t *sem_init(int val);
 int sem_destroy(sem_t *s);
 
 int frosted_mutex_lock(frosted_mutex_t *s);
+int frosted_mutex_trylock(frosted_mutex_t *s);
 int frosted_mutex_unlock(frosted_mutex_t *s);
 frosted_mutex_t *frosted_mutex_init();
 void frosted_mutex_destroy(frosted_mutex_t *s);
@@ -125,7 +130,8 @@ void syscalls_init(void);
 int task_is_interrupted(void);
 
 #define SYS_CALL_AGAIN_VAL (-1024) 
-#define SYS_CALL_AGAIN (task_is_interrupted()?(-EINTR):(SYS_CALL_AGAIN_VAL))
+//#define SYS_CALL_AGAIN (task_is_interrupted()?(-EINTR):(SYS_CALL_AGAIN_VAL))
+#define SYS_CALL_AGAIN SYS_CALL_AGAIN_VAL
 
 /* VFS */
 void vfs_init(void);

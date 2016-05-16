@@ -25,20 +25,74 @@
 #include <sys/vfs.h>
 #include "frosted.h"
 #include "errno.h"
+#include "cirbuf.h"
+#include "poll.h"
+#include "device.h"
+#include <stdarg.h>
 
-static struct fnode *fno_klog = NULL;
+struct dev_klog {
+    struct fnode *fno;
+    struct cirbuf *buf;
+	int used;
+    int pid;
+};
 
-static int writechar(char c)
+static struct dev_klog klog;
+
+
+static int klog_open(const char *path, int flags)
 {
-    if (!fno_klog)
-        return -ENOENT;
-    if (fno_klog->owner && fno_klog->owner->ops.write) {
-        return fno_klog->owner->ops.write(fno_klog, &c, 1);
-    }
+    if (klog.used)
+        return -EBUSY;
+    klog.used++;
+    return task_filedesc_add(fno_search("/dev/klog"));
 }
 
+static int klog_close(struct fnode *f)
+{
+    (void)f;
+    klog.used = 0;
+    return 0;
+}
 
-#include <stdarg.h>
+static int klog_read(struct fnode *fno, void *buf, unsigned int len)
+{
+    int ret;
+    if (len == 0)
+        return len;
+    if (!buf)
+        return -EINVAL;
+
+    ret = cirbuf_readbytes(klog.buf, buf, len);
+    if (ret <= 0) {
+        klog.pid = scheduler_get_cur_pid();
+        task_suspend();
+        return SYS_CALL_AGAIN;
+    }
+    return ret;
+}
+
+static int klog_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
+{
+    if (events != POLLIN)
+        return 0;
+    if (cirbuf_bytesinuse(klog.buf) > 0) {
+        *revents = POLLIN;
+        return 1;
+    }
+    return 0;
+}
+
+static struct module mod_klog = {
+    .family = FAMILY_DEV,
+    .name = "klog",
+    .ops.open = klog_open,
+    .ops.read = klog_read,
+    .ops.poll = klog_poll,
+    .ops.close = klog_close
+};
+
+
 
 static void printchar(char **str, int c)
 {
@@ -46,7 +100,13 @@ static void printchar(char **str, int c)
         **str = c;
         ++(*str);
     }
-    else (void)writechar(c);
+    else {
+        if (cirbuf_bytesfree(klog.buf)) {
+            cirbuf_writebyte(klog.buf, c);
+            if (klog.pid > 0) 
+                task_resume(klog.pid);
+        }
+    }
 }
 
 #define PAD_RIGHT 1
@@ -54,11 +114,11 @@ static void printchar(char **str, int c)
 
 static int prints(char **out, const char *string, int width, int pad)
 {
-    register int pc = 0, padchar = ' ';
+    int pc = 0, padchar = ' ';
 
     if (width > 0) {
-        register int len = 0;
-        register const char *ptr;
+        int len = 0;
+        const char *ptr;
         for (ptr = string; *ptr; ++ptr) ++len;
         if (len >= width) width = 0;
         else width -= len;
@@ -88,9 +148,9 @@ static int prints(char **out, const char *string, int width, int pad)
 static int printi(char **out, int i, int b, int sg, int width, int pad, int letbase)
 {
     char print_buf[PRINT_BUF_LEN];
-    register char *s;
-    register int t, neg = 0, pc = 0;
-    register unsigned int u = i;
+    char *s;
+    int t, neg = 0, pc = 0;
+    unsigned int u = i;
 
     if (i == 0) {
         print_buf[0] = '0';
@@ -130,8 +190,8 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
 
 static int print(char **out, const char *format, va_list args )
 {
-    register int width, pad;
-    register int pc = 0;
+    int width, pad;
+    int pc = 0;
     char scr[2];
 
     for (; *format != 0; ++format) {
@@ -195,30 +255,41 @@ out:
     return pc;
 }
 
+static frosted_mutex_t *klog_lock;
+
 int kprintf(const char *format, ...)
 {
     va_list args;
-    va_start(args, format);
-    prints(0, "KLOG> ", 6, 0);
-    return print(0, format, args);
+    int ret;
+    if (cirbuf_bytesfree(klog.buf)) {
+        if (frosted_mutex_trylock(klog_lock) < 0)
+            return 0;
+        va_start(args, format);
+        ret = print(0, format, args);
+        frosted_mutex_unlock(klog_lock);
+        return ret;
+    }
+    return 0;
 }
 
 int ksprintf(char *out, const char *format, ...)
 {
     va_list args;
-
     va_start( args, format );
     return print( &out, format, args );
 }
 
-
-int kprintf_init(void)
+int klog_init(void)
 {
 #ifdef CONFIG_KLOG
-    fno_klog = fno_search(CONFIG_KLOG_DEV);
-    if (!fno_klog) {
-        return -1; /* kprintf init failed */
+    klog.fno = fno_create_rdonly(&mod_klog, "klog", fno_search("/dev"));
+    if (klog.fno == NULL) {
+        return -1;
     }
+    klog.buf = cirbuf_create(CONFIG_KLOG_SIZE);
+	klog.used = 0;
+    klog.pid = 0;
+    klog_lock = frosted_mutex_init();
     return 0;
 #else
     return -1;
