@@ -11,3 +11,5 @@ symbol.o: symbol.c lkc.h expr.h list.h lkc_proto.h
 util.o: util.c lkc.h expr.h list.h lkc_proto.h
 zconf.hash.o: zconf.hash.c
 zconf.lex.o: zconf.lex.c lkc.h expr.h list.h lkc_proto.h
+zconf.tab.o: zconf.tab.c lkc.h expr.h list.h lkc_proto.h zconf.hash.c \
+ zconf.lex.c util.c confdata.c expr.c symbol.c menu.c

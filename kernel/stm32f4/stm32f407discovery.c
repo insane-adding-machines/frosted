@@ -150,6 +150,55 @@ static const struct rng_addr rng_addrs[] = {
 #endif
 
 
+#ifdef CONFIG_DEVSTM32SDIO
+/*
+ * The Embest board ties PB15 to 'card detect' which is useful
+ * for aborting early, and detecting card swap. Needs porting
+ * for other implementations.
+ */
+#define SDIO_HAS_CARD_DETECT
+
+/*
+ * Set up the GPIO pins and peripheral clocks for the SDIO
+ * system. The code should probably take an option card detect
+ * pin, at the moment it uses the one used by the Embest board.
+ */
+static void stm32_sdio_rcc_init(void)
+{
+    /* Enable clocks for SDIO and DMA2 */
+	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_SDIOEN);
+
+#ifdef WITH_DMA2
+    rcc_peripheral_enable_clock(&RCC_AHB1ENR, RCC_AHB1ENR_DMA2EN);
+#endif
+
+
+    /* Setup GPIO Pins for SDIO:
+        PC8 - PC11 - DAT0 thru DAT3
+              PC12 - CLK
+               PD2 - CMD
+    */
+	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO12 );                          // All SDIO lines are push-pull, 25Mhz
+	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO8 | GPIO9 | GPIO10 | GPIO11 ); // All SDIO lines are push-pull, 25Mhz
+	gpio_mode_setup(GPIOC, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO8 | GPIO9 | GPIO10 | GPIO11);            // D0 - D3 enable pullups (bi-directional)
+	gpio_mode_setup(GPIOC, GPIO_MODE_AF, GPIO_PUPD_NONE,  GPIO12);                                      // CLK line no pullup
+	gpio_set_af(GPIOC, GPIO_AF12, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12);
+
+	gpio_set_output_options(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO2);
+	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12 | GPIO15);
+	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO2);
+    gpio_set_af(GPIOD, GPIO_AF12, GPIO2);
+
+#ifdef SDIO_HAS_CARD_DETECT
+    /* SDIO Card Detect pin on the Embest Baseboard */
+    /*     PB15 as a hacked Card Detect (active LOW for card present) */
+    gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO15);
+#endif
+}
+
+#endif /* CONFIG_DEVSTM32SDIO */
+
+
 void machine_init(struct fnode * dev)
 {
 #       if CONFIG_SYS_CLOCK == 48000000
@@ -174,6 +223,7 @@ void machine_init(struct fnode * dev)
     rng_init(dev, rng_addrs, NUM_RNGS);
 #endif
 #ifdef CONFIG_DEVSTM32SDIO
+    stm32_sdio_rcc_init();
     stm32_sdio_init(dev);
 #endif
 

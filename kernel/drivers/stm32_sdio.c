@@ -118,13 +118,6 @@ stm32_sd_bus(int bits, enum SD_CLOCK_DIV freq) {
  */
 
 /*
- * The Embest board ties PB15 to 'card detect' which is useful
- * for aborting early, and detecting card swap. Needs porting
- * for other implementations.
- */
-#define SDIO_HAS_CARD_DETECT
-
-/*
  * Not defined by default
  */
 #ifndef NULL
@@ -202,56 +195,6 @@ stm32_sdio_bus(int bits, enum SDIO_CLOCK_DIV freq) {
 }
 
 /*
- * Set up the GPIO pins and peripheral clocks for the SDIO
- * system. The code should probably take an option card detect
- * pin, at the moment it uses the one used by the Embest board.
- */
-static void stm32_sdio_rcc_init(void)
-{
-    /* Enable clocks for SDIO and DMA2 */
-	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_SDIOEN);
-
-#ifdef WITH_DMA2
-    rcc_peripheral_enable_clock(&RCC_AHB1ENR, RCC_AHB1ENR_DMA2EN);
-#endif
-
-	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12 | GPIO15);
-
-    /* Setup GPIO Pins for SDIO:
-        PC8 - PC11 - DAT0 thru DAT3
-              PC12 - CLK
-               PD2 - CMD
-    */
-    // All SDIO lines are push-pull, 25Mhz
-	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ,
-                            GPIO12 );
-
-    // All SDIO lines are push-pull, 25Mhz
-	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ,
-                            GPIO8 | GPIO9 | GPIO10 | GPIO11 );
-
-    // D0 - D3 enable pullups (bi-directional)
-	gpio_mode_setup(GPIOC, GPIO_MODE_AF, GPIO_PUPD_PULLUP,
-                    GPIO8 | GPIO9 | GPIO10 | GPIO11);
-    // CLK line no pullup
-	gpio_mode_setup(GPIOC, GPIO_MODE_AF, GPIO_PUPD_NONE,  GPIO12);
-
-	gpio_set_af(GPIOC, GPIO_AF12,
-                GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12);
-    gpio_set_af(GPIOD, GPIO_AF12, GPIO2);
-
-    /* GPIOD setup */
-	gpio_set_output_options(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO2);
-	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO2);
-
-#ifdef SDIO_HAS_CARD_DETECT
-    /* SDIO Card Detect pin on the Embest Baseboard */
-    /*     PB15 as a hacked Card Detect (active LOW for card present) */
-    gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO15);
-#endif
-}
-
-/*
  * Reset the state of the SDIO bus and peripheral. This code tries
  * to reset the bus *AND* the card if one is plugged in. The bus
  * can be reset by software but the card is reset by powering it down.
@@ -269,8 +212,13 @@ stm32_sdio_reset(enum SDIO_POWER_STATE state) {
     /* Step 1 power off the interface */
     SDIO_POWER = SDIO_POWER_PWRCTRL_PWROFF;
     /* reset the SDIO peripheral interface */
+#ifdef STM32F4
     rcc_peripheral_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDIORST);
     rcc_peripheral_clear_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDIORST);
+#elif defined STM32F7
+    rcc_peripheral_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDMMC1RST);
+    rcc_peripheral_clear_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDMMC1RST);
+#endif
     if (state == SDIO_POWER_ON) {
         SDIO_POWER = SDIO_POWER_PWRCTRL_PWRON;
         stm32_sdio_bus(1, SDIO_400KHZ); // required by the spec
@@ -889,13 +837,12 @@ void stm32_sdio_init(struct fnode * dev)
 {
     SDIO_CARD card;
     memset(&mod_sdio, 0, sizeof(mod_sdio));
-    stm32_sdio_rcc_init();
     kprintf("Successfully initialized SDIO module.\r\n");
     strcpy(mod_sdio.name,"sdio");
-    register_module(&mod_sdio);
-    tasklet_add(stm32_sdio_card_detect, dev);
-
 
     //mod_sdio.ops.close = sdio_close;
     mod_sdio.ops.block_read = sdio_block_read;
+
+    register_module(&mod_sdio);
+    tasklet_add(stm32_sdio_card_detect, dev);
 }

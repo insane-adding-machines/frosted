@@ -228,6 +228,46 @@ void lcd_pinmux(void)
 }
 #endif
 
+#ifdef CONFIG_DEVSTM32SDIO
+
+#define SDIO_HAS_CARD_DETECT
+/*
+ * Set up the GPIO pins and peripheral clocks for the SDIO
+ * system. The code should probably take an option card detect
+ * pin, at the moment it uses the one used by the Embest board.
+ */
+static void stm32_sdio_rcc_init(void)
+{
+    /* Enable clocks for SDIO and DMA2 */
+    rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_SDMMC1EN);
+
+#ifdef WITH_DMA2
+    rcc_peripheral_enable_clock(&RCC_AHB1ENR, RCC_AHB1ENR_DMA2EN);
+#endif
+
+
+    /* Setup GPIO Pins for SDIO:
+        PC8 - PC11 - DAT0 thru DAT3
+              PC12 - CLK
+               PD2 - CMD
+    */
+    gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 ); // All SDIO lines are push-pull, 25Mhz
+    gpio_mode_setup(GPIOC, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12);            // D0 - D3 enable pullups (bi-directional)
+    gpio_set_af(GPIOC, GPIO_AF12, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12);
+
+    gpio_set_output_options(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO2);
+    gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO2);
+    gpio_set_af(GPIOD, GPIO_AF12, GPIO2);
+
+#ifdef SDIO_HAS_CARD_DETECT
+    /* SDIO Card Detect pin on the STM32F7-Discovery board */
+    /*     PC13 as Card Detect (active LOW for card present) */
+    gpio_mode_setup(GPIOC, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO13);
+#endif
+}
+
+#endif /* CONFIG_DEVSTM32SDIO */
+
 
 
 void machine_init(struct fnode * dev)
@@ -251,10 +291,14 @@ void machine_init(struct fnode * dev)
     extern void sdram_init(void);
     sdram_init();
 #endif
-
 #ifdef CONFIG_DEVFRAMEBUFFER
     lcd_pinmux();
     stm32f7_ltdc_init();
+#endif
+
+#ifdef CONFIG_DEVSTM32SDIO
+    stm32_sdio_rcc_init();
+    stm32_sdio_init(dev);
 #endif
 
 }
