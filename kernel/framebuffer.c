@@ -36,6 +36,7 @@ static struct fb_info *fb[MAX_FBS] = { 0 };
 static int fb_write(struct fnode *fno, const void *buf, unsigned int len);
 static int fb_read(struct fnode *fno, void *buf, unsigned int len);
 static int fb_open(const char *path, int flags);
+static int fb_seek(struct fnode *fno, int off, int whence);
 
 static struct module mod_devfb = {
     .family = FAMILY_FILE,
@@ -43,6 +44,7 @@ static struct module mod_devfb = {
     .ops.open = fb_open,
     .ops.read = fb_read,
     .ops.write = fb_write,
+    .ops.seek = fb_seek,
 };
 
 
@@ -112,6 +114,37 @@ static int fb_read(struct fnode *fno, void *buf, unsigned int len)
     //frosted_mutex_unlock(fb->dev->mutex);
     return len;
 }
+
+/* TODO: Could probably be made generic ? */
+static int fb_seek(struct fnode *fno, int off, int whence)
+{
+    struct fb_info *fb;
+    int new_off;
+
+    switch(whence) {
+        case SEEK_CUR:
+            new_off = fno->off + off;
+            break;
+        case SEEK_SET:
+            new_off = off;
+            break;
+        case SEEK_END:
+            new_off = fno->size + off;
+            break;
+        default:
+            return -1;
+    }
+
+    if (new_off < 0)
+        new_off = 0;
+
+    if (new_off > fno->size) {
+        return -1;
+    }
+    fno->off = new_off;
+    return 0;
+}
+
 
 static int fb_fno_init(struct fnode *dev, struct fb_info * fb)
 {

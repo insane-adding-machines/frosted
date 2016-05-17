@@ -19,7 +19,7 @@
 
 #define FB_WIDTH    RK043FN48H_WIDTH
 #define FB_HEIGTH   RK043FN48H_HEIGHT
-#define FB_BPP      (2) /* hardcoded RGB565 - 2 bits per pixel */
+#define FB_BPP      (16) /* hardcoded RGB565 - 2 bits per pixel */
 
 /* Private function prototypes -----------------------------------------------*/
 static void ltdc_config(void); 
@@ -48,7 +48,7 @@ static int ltdc_config_layer(struct fb_info *fb)
   fb->var.pixel_format = FB_PF_RGB565;
 
   /* Allocate framebuffer memory */
-  fb->screen_buffer = f_malloc(MEM_USER, fb->var.xres * fb->var.xres * fb->var.bits_per_pixel);
+  fb->screen_buffer = f_malloc(MEM_USER, fb->var.xres * fb->var.xres * (fb->var.bits_per_pixel/8));
   if (!fb->screen_buffer)
   {
       return -1;
@@ -82,10 +82,11 @@ static int ltdc_config_layer(struct fb_info *fb)
   /* Blending factors */
   ltdc_set_blending_factors(LTDC_LAYER_2, LTDC_LxBFCR_BF1_CONST_ALPHA, LTDC_LxBFCR_BF2_CONST_ALPHA);
 
+  /* Framebuffer memory address */
   ltdc_set_fbuffer_address(LTDC_LAYER_2, (uint32_t)fb->screen_buffer);
 
   /* Configures the color frame buffer pitch in byte */
-  ltdc_set_fb_line_length(LTDC_LAYER_2, fb->var.xres * fb->var.bits_per_pixel, fb->var.yres * fb->var.bits_per_pixel);
+  ltdc_set_fb_line_length(LTDC_LAYER_2, fb->var.xres * (fb->var.bits_per_pixel/8), fb->var.xres * (fb->var.bits_per_pixel/8));
 
   /* Configures the frame buffer line number */
   ltdc_set_fb_line_count(LTDC_LAYER_2, fb->var.yres);
@@ -158,15 +159,26 @@ static void ltdc_clock(void)
 static int ltdc_blank(struct fb_info *fb)
 {
     /* Fake blank -- will actualy BLUE the display */
-    int x;
+    int x, y;
     uint16_t * rgb565;
-    uint32_t pixels = (fb->var.xres * fb->var.yres * fb->var.bits_per_pixel) / sizeof(uint16_t);
+    uint16_t color = 0x001F;
+    //uint32_t pixels = (fb->var.xres * fb->var.yres * fb->var.bits_per_pixel) / sizeof(uint16_t);
 
     // write stuff to the framebuffer
     rgb565 = (uint16_t *)fb->screen_buffer;
-    for (x = 0; x < pixels; x++)
+
+    /* height */
+    for (y = 0; y < fb->var.yres; y++)
     {
-        *(rgb565++) = 0x1F; // Blue only
+        if (color == 0x001F)
+            color = 0xFFFF;
+        else
+            color = 0x001F;
+        /* width */
+        for (x = 0; x < fb->var.xres; x++)
+        {
+            *(rgb565++) = color;
+        }
     }
 }
 

@@ -272,9 +272,9 @@ static void stm32_sdio_rcc_init(void)
 
 void machine_init(struct fnode * dev)
 {
-#       if CONFIG_SYS_CLOCK == 216000000
-            rcc_clock_setup_hse_3v3(&hse_25mhz_3v3[CLOCK_3V3_216MHZ]);
-#       else
+#if CONFIG_SYS_CLOCK == 216000000
+    rcc_clock_setup_hse_3v3(&hse_25mhz_3v3[CLOCK_3V3_216MHZ]);
+#else
 #error No valid clock speed selected for STM32F729 Discovery
 #endif
 
