@@ -319,42 +319,8 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
 #ifdef LPC17XX
                 if((gpio_addrs[i].base == GPIO2) && (gpio_addrs[i].af == GPIO_AF1))
                 {
-                    switch(gpio_addrs[i].pin)
-                    {
-                        /* LPC17XX only supports EXTI on P2.10 - P2.13
-                            Doesn't seem to matter what we do here we always
-                            get an interrupt when configuring the EXTI :( */
-                        case GPIOPIN10:
-                            nvic_disable_irq(NVIC_EINT0_IRQ);
-                            exti_set_trigger(EXTI0, gpio_addrs[i].trigger);
-                            exti_clear_flag(EXTI0);
-                            nvic_clear_pending_irq(NVIC_EINT0_IRQ);
-                            nvic_enable_irq(NVIC_EINT0_IRQ);
-                            break;
-                        case GPIOPIN11:
-                            nvic_disable_irq(NVIC_EINT1_IRQ);
-                            exti_set_trigger(EXTI1, gpio_addrs[i].trigger);
-                            nvic_clear_pending_irq(NVIC_EINT1_IRQ);
-                            exti_clear_flag(EXTI1);
-                            nvic_enable_irq(NVIC_EINT1_IRQ);
-                            break;
-                        case GPIOPIN12:
-                            nvic_disable_irq(NVIC_EINT2_IRQ);
-                            exti_set_trigger(EXTI2, gpio_addrs[i].trigger);
-                            nvic_clear_pending_irq(NVIC_EINT2_IRQ);
-                            exti_clear_flag(EXTI2);
-                            nvic_enable_irq(NVIC_EINT2_IRQ);
-                            break;
-                        case GPIOPIN13:
-                            nvic_disable_irq(NVIC_EINT3_IRQ);
-                            exti_set_trigger(EXTI3, gpio_addrs[i].trigger);
-                            nvic_clear_pending_irq(NVIC_EINT3_IRQ);
-                            exti_clear_flag(EXTI3);
-                            nvic_enable_irq(NVIC_EINT3_IRQ);
-                            break;
-                        default:
-                            break;
-                    }
+                    /* XXX */
+                    /* Insert updated EXTI code for LPC17XX */
                 }
 #endif
                 break;

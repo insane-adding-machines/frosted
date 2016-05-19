@@ -51,8 +51,6 @@
 #ifdef LPC17XX
 #   include "libopencm3/lpc17xx/uart.h"
 #   define CLOCK_ENABLE(C)
-#   define usart_clear_rx_interrupt(x) do{}while(0)
-#   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
 
 struct dev_uart {

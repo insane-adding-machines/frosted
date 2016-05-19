@@ -125,6 +125,9 @@ ifeq ($(USART_6),y)
     CFLAGS+=-DCONFIG_USART_6
 endif
 #UARTs
+ifeq ($(UART_0),y)
+    CFLAGS+=-DCONFIG_UART_1
+endif
 ifeq ($(UART_1),y)
     CFLAGS+=-DCONFIG_UART_1
 endif
