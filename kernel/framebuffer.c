@@ -22,6 +22,7 @@
 #include "device.h"
 #include "framebuffer.h"
 #include <stdint.h>
+#include <sys/ioctl.h>
 
 #ifdef STM32F7
 #   include "libopencm3/stm32/ltdc.h"
@@ -37,6 +38,7 @@ static int fb_write(struct fnode *fno, const void *buf, unsigned int len);
 static int fb_read(struct fnode *fno, void *buf, unsigned int len);
 static int fb_open(const char *path, int flags);
 static int fb_seek(struct fnode *fno, int off, int whence);
+static int fb_ioctl(struct fnode * fno, const uint32_t cmd, void *arg);
 
 static struct module mod_devfb = {
     .family = FAMILY_FILE,
@@ -45,6 +47,7 @@ static struct module mod_devfb = {
     .ops.read = fb_read,
     .ops.write = fb_write,
     .ops.seek = fb_seek,
+    .ops.ioctl = fb_ioctl,
 };
 
 
@@ -142,7 +145,7 @@ static int fb_seek(struct fnode *fno, int off, int whence)
         return -1;
     }
     fno->off = new_off;
-    return 0;
+    return fno->off;
 }
 
 
@@ -161,7 +164,23 @@ static int fb_fno_init(struct fnode *dev, struct fb_info * fb)
     fb->dev->fno->off = 0;
     fb->dev->fno->size = fb->var.yres * fb->var.xres * fb->var.bits_per_pixel;
     return 0;
+}
 
+static int fb_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
+{
+    struct fb_info * fb = (struct fb_info *)FNO_MOD_PRIV(fno, &mod_devfb);
+    if (!fb)
+        return -1;
+
+    (void)arg;
+    if (cmd == IOCTL_FB_GETCMAP) {
+        //return exti_enable(fno, 0);
+        return 0;
+    }
+    if (cmd == IOCTL_FB_PUTCMAP) {
+        return fb->fbops->fb_setcmap((struct fb_cmap *)(arg), fb);
+    }
+    return -1;
 }
 
 void fb_init(struct fnode * dev)

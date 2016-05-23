@@ -1058,7 +1058,7 @@ static int fatfs_seek(struct fnode *fno, int off, int whence)
         return -1;
     }
     fno->off = new_off;
-    return 0;
+    return fno->off;
 }
 
 static int fatfs_close(struct fnode *fno)
