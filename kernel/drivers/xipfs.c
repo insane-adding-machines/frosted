@@ -117,8 +117,13 @@ static void *xipfs_exe(struct fnode *fno, void *arg)
         return NULL;
 
     /* note: xip->init is bFLT load address! */
-    bflt_load((uint8_t*)xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, &vfsi->pic);
-    kprintf("xipfs: GDB: add-symbol-file %s%s.gdb 0x%p -s .data 0x%p -s .bss 0x%p\r\n", GDB_PATH, fno->fname, reloc_text, reloc_data, reloc_bss);
+    if (bflt_load((uint8_t*)xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, (uint32_t *)&vfsi->pic))
+    {
+        kprintf("xipfs: bFLT loading failed.\n");
+        return NULL;
+    }
+
+    kprintf("xipfs: GDB: add-symbol-file %s%s.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n", GDB_PATH, fno->fname, reloc_text, reloc_data, reloc_bss);
 
     vfsi->type = VFS_TYPE_BFLT;
     vfsi->allocated = reloc_data;

@@ -70,6 +70,8 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
 static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
 {
     int nlen;
+    if (!f)
+        return -EINVAL;
     if ((f->flags & FL_LINK) == FL_LINK) {
         f =  _fno_search(f->linkname, &FNO_ROOT, 1);
     }
@@ -80,6 +82,8 @@ static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
         return 0;
     }
     if (!*p) {
+        if (!f->parent)
+            return -EINVAL; // what to do, how is this possible?
         _fno_fullpath(f->parent, dst, p, len);
     }
     nlen = strlen(f->fname);

@@ -19,7 +19,8 @@
 
 #define FB_WIDTH    RK043FN48H_WIDTH
 #define FB_HEIGTH   RK043FN48H_HEIGHT
-#define FB_BPP      (16) /* hardcoded RGB565 - 2 bits per pixel */
+//#define FB_BPP      (16) /* hardcoded RGB565 - 16 bits per pixel */
+#define FB_BPP      (8) /* hardcoded CLUT256 - 8 bit per pixel */
 
 /* Private function prototypes -----------------------------------------------*/
 static void ltdc_config(void); 
@@ -45,7 +46,8 @@ static int ltdc_config_layer(struct fb_info *fb)
   fb->var.xres = FB_WIDTH;
   fb->var.yres = FB_HEIGTH;
   fb->var.bits_per_pixel = FB_BPP;
-  fb->var.pixel_format = FB_PF_RGB565;
+  //fb->var.pixel_format = FB_PF_RGB565;
+  fb->var.pixel_format = FB_PF_CMAP256;
 
   /* Allocate framebuffer memory */
   fb->screen_buffer = f_malloc(MEM_USER, fb->var.xres * fb->var.xres * (fb->var.bits_per_pixel/8));
@@ -158,29 +160,39 @@ static void ltdc_clock(void)
 
 static int ltdc_blank(struct fb_info *fb)
 {
-    /* Fake blank -- will actualy BLUE the display */
-    int x, y;
-    uint16_t * rgb565;
-    uint16_t color = 0x001F;
-    //uint32_t pixels = (fb->var.xres * fb->var.yres * fb->var.bits_per_pixel) / sizeof(uint16_t);
+    uint32_t pixels = (fb->var.xres * fb->var.yres * fb->var.bits_per_pixel);
+    memset((void *)fb->screen_buffer, 0x0, pixels);
+}
 
-    // write stuff to the framebuffer
-    rgb565 = (uint16_t *)fb->screen_buffer;
+void ltdc_enable_clut(void)
+{
+  /* Disable LTDC color lookup table by setting CLUTEN bit */
+  ltdc_layer_ctrl_enable(LTDC_LAYER_2, LTDC_LxCR_CLUT_ENABLE);
 
-    /* height */
-    for (y = 0; y < fb->var.yres; y++)
+  /* Sets the Reload type */
+  ltdc_reload(LTDC_SRCR_IMR);
+}
+
+/* Only L8 CLUTs supported for now */
+void ltdc_config_clut(uint32_t *CLUT, uint32_t size)
+{
+    uint32_t i = 0;
+
+    for(i = 0; (i < size); i++)
     {
-        if (color == 0x001F)
-            color = 0xFFFF;
-        else
-            color = 0x001F;
-        /* width */
-        for (x = 0; x < fb->var.xres; x++)
-        {
-            *(rgb565++) = color;
-        }
+        /* Specifies the C-LUT address and RGB value */
+        LTDC_LxCLUTWR(LTDC_LAYER_2) = ((i << 24) | ((uint32_t)(*CLUT) & 0xFF) | ((uint32_t)(*CLUT) & 0xFF00) | ((uint32_t)(*CLUT) & 0xFF0000));
+        CLUT++;
     }
 }
+
+int ltdc_set_cmap(struct fb_cmap *cmap, struct fb_info *info)
+{
+    ltdc_config_clut((uint32_t *)cmap, 256);
+    ltdc_enable_clut();
+    return 0;
+}
+
 
 static int ltdc_open(struct fb_info *info)
 {
@@ -192,7 +204,8 @@ static int ltdc_open(struct fb_info *info)
 
 static const struct fb_ops  ltdc_fbops = {  .fb_open = ltdc_open,
                                             .fb_destroy = ltdc_destroy,
-                                            .fb_blank = ltdc_blank };
+                                            .fb_blank = ltdc_blank,
+                                            .fb_setcmap = ltdc_set_cmap};
 
 static struct fb_info ltdc_info = { .fbops = (struct fb_ops *)&ltdc_fbops };
 

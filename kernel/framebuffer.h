@@ -38,12 +38,13 @@ struct fb_var_screeninfo {
 
 /* Device independent colormap information. You can get and set the colormap using the FBIOGETCMAP and FBIOPUTCMAP ioctls.  */
 struct fb_cmap {
-    uint32_t start;         /* First entry  */
+    /* For now, entries have to by 32 bits, with AARRGGBB format */
+    uint32_t *start;         /* First entry  */
     uint32_t len;           /* Number of entries */
-    uint16_t *red;          /* Red values   */
-    uint16_t *green;
-    uint16_t *blue;
-    uint16_t *transp;       /* transparency, can be NULL */
+    //uint16_t *red;          /* Red values   */
+    //uint16_t *green;
+    //uint16_t *blue;
+    //uint16_t *transp;       /* transparency, can be NULL */
 };
 
 struct fb_info {
