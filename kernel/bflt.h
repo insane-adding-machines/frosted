@@ -8,6 +8,6 @@
 #define _BFLT_H_
 
 int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_bss,
-              int (**entry_point)(int,char*[]), size_t *stack_size, uint32_t *got_loc);
+              void **entry_point, size_t *stack_size, uint32_t *got_loc);
 
 #endif
