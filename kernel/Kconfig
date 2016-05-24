@@ -339,6 +339,20 @@ menu "Device Drivers"
        bool "STM32F4 Ethernet driver"
        depends on ((ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 ) && PICOTCP)
        default n
+       
+       if DEVF4ETH
+       config ETH_DEFAULT_IP
+       string "Default (boot-up) address for eth0"
+       default 192.168.2.150
+
+       config ETH_DEFAULT_NM
+       string "Default (boot-up) netmask for eth0"
+       default 255.255.255.0
+       
+       config ETH_DEFAULT_GW
+       string "Default (boot-up) gateway for eth0"
+       default 192.168.2.1
+       endif
 
        menuconfig DEVF4I2C
        bool "STM32F4 I2C driver"

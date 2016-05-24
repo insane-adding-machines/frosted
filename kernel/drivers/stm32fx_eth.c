@@ -206,6 +206,15 @@ int stm_eth_init(void)
     int8_t phy_addr;
     uint8_t * descriptors;
     uint32_t clk_div = eth_smi_get_phy_divider();
+    const char ipstr[] = CONFIG_ETH_DEFAULT_IP;
+    const char nmstr[] = CONFIG_ETH_DEFAULT_NM;
+    const char gwstr[] = CONFIG_ETH_DEFAULT_GW;
+    struct pico_ip4 default_ip, default_nm, default_gw, zero;
+
+    pico_string_to_ipv4(ipstr, &default_ip.addr);
+    pico_string_to_ipv4(nmstr, &default_nm.addr);
+    pico_string_to_ipv4(gwstr, &default_gw.addr);
+    
 
     dev_eth_stm = kalloc(sizeof(struct dev_eth));
     if (!dev_eth_stm)
@@ -236,6 +245,11 @@ int stm_eth_init(void)
         kfree(dev_eth_stm);
         return -1;
     }
+    /* Set address/netmask */
+    pico_ipv4_link_add(dev_eth_stm->dev, default_ip, default_nm);
+    /* Set default gateway */
+    if (default_gw.addr)
+        pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
 
     /* Enabling required interrupt sources.*/
     eth_irq_ack_pending(ETH_DMASR);
