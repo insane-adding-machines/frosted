@@ -51,6 +51,7 @@ void SysTick_on(void);
 void SysTick_off(void);
 int SysTick_interval(unsigned long interval);
 void ktimer_init(void);
+int fpb_init(void);
 
 struct ktimer;
 int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg);

@@ -27,6 +27,7 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/systick.o \
 		 kernel/drivers/device.o \
 		 kernel/mpu.o				\
+		 kernel/fpb.o				\
 		 kernel/string.o			\
 		 kernel/sys.o				\
 		 kernel/locks.o				\

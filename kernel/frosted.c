@@ -174,6 +174,8 @@ int frosted_init(void)
     extern void * _k__syscall__;
     int xip_mounted;
 
+    fpb_init();
+
     vfs_init();
     devnull_init(fno_search("/dev"));
 
