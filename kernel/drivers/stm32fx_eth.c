@@ -246,7 +246,7 @@ int stm_eth_init(void)
         return -1;
     }
     /* Set address/netmask */
-    pico_ipv4_link_add(dev_eth_stm->dev, default_ip, default_nm);
+    pico_ipv4_link_add(&dev_eth_stm->dev, default_ip, default_nm);
     /* Set default gateway */
     if (default_gw.addr)
         pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
