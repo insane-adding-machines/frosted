@@ -29,6 +29,7 @@
 
 
 
+#if 0
 void debug_monitor_handler(void)
 {
     kprintf("TRAP!\r\n");
@@ -43,15 +44,18 @@ int fpb_setbrk(void *bpoint)
 {
     FPB_COMP[0] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_BOTH;
 }
+#endif
 
 
 int fpb_init(void)
 {
+#if 0
     /* Enable Debug Monitor Exception */
     DBG_DEMCR = DBG_DEMCR_MON_EN;
     FPB_CTRL = FPB_CTRL_ENABLE | FPB_CTRL_KEY | (1 << FPB_NUM_CODE2_OFF) | (2 << FPB_NUM_LIT_MASK_OFF);
     nvic_enable_irq(DEBUG_MONITOR_IRQ);
 
     fpb_setbrk(fno_unlink);
+#endif
 }
 
