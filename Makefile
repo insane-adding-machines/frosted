@@ -85,6 +85,9 @@ CFLAGS-$(DEVF4I2C)+=-DCONFIG_DEVSTM32F4I2C
 OBJS-$(DEVF4ETH)+= kernel/drivers/stm32fx_eth.o
 CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEVSTMETH
 
+OBJS-$(DEVF7ETH)+= kernel/drivers/stm32fx_eth.o
+CFLAGS-$(DEVF7ETH)+=-DCONFIG_DEVSTMETH
+
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
@@ -128,6 +131,7 @@ OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o 
 OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o 
 OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o kernel/$(BOARD)/stm32f746discovery_sdram.o
+OBJS-$(MACH_STM32F746Nucleo144)+=kernel/$(BOARD)/stm32f746nucleo-144.o
 OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_LPC1679XPRESSO)+=kernel/$(BOARD)/lpc1769xpresso.o
