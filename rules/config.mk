@@ -8,6 +8,17 @@ ifeq ($(ARCH_LPC17XX),y)
 	CFLAGS+=-DLPC17XX -mcpu=cortex-m3
 endif
 
+ifeq ($(ARCH_LPC43XX),y)
+	CPU=cortex-m
+	BOARD=lpc43xx
+	FLASH_ORIGIN=0x80000000
+	RAM_BASE=0x10000000
+	SYS_CLOCK=100000000
+	ARCH=LPC43XX
+	CFLAGS+=-DLPC43XX -mcpu=cortex-m4 -mfloat-abi=soft
+	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
+endif
+
 ifeq ($(ARCH_LM3S),y)
 	CPU=cortex-m
 	BOARD=lm3s
@@ -25,7 +36,7 @@ ifeq ($(ARCH_STM32F4),y)
 	RAM_BASE=0x20000000
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F4
-	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
+	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
 endif
 
 ifeq ($(ARCH_STM32F7),y)
@@ -35,7 +46,7 @@ ifeq ($(ARCH_STM32F7),y)
 	RAM_BASE=0x20000000
 	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F7
-	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
+	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
 endif
 
 ifeq ($(MACH_STM32F405Pyboard),y)
@@ -133,7 +144,7 @@ ifeq ($(UART_1),y)
 endif
 ifeq ($(UART_2),y)
     CFLAGS+=-DCONFIG_UART_2
-endif    
+endif
 ifeq ($(UART_3),y)
     CFLAGS+=-DCONFIG_UART_3
 endif

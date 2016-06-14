@@ -17,7 +17,7 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -39,6 +39,12 @@
 #include <libopencm3/lpc17xx/gpio.h>
 #include <libopencm3/lpc17xx/exti.h>
 #endif
+#ifdef LPC43XX
+#include <libopencm3/lpc43xx/gpio.h>
+#include <libopencm3/lpc43xx/scu.h>
+#include <libopencm3/cm3/common.h>
+#endif
+
 
 #ifdef PYBOARD
 # define LED0 "gpio_1_13"
@@ -60,6 +66,11 @@
 #endif
 # define LED2 "gpio_3_14"
 # define LED3 "gpio_3_15"
+#elif defined (LPC43XX)
+#  define LED0 "gpio_4_1"
+#  define LED1 "gpio_4_2"
+# define LED2 ""
+# define LED3 ""
 #elif defined (LPC17XX)
 #if 0
 /*LPCXpresso 1769 */
@@ -172,6 +183,16 @@ void eint3_isr(void)
 
 #endif
 
+#ifdef LPC43XX
+#define GPIO_CLOCK_ENABLE(C)
+
+#define SET_INPUT(P, D, I)
+
+#define SET_OUTPUT(P, I, O, S)
+
+#define SET_AF(P, M, A, I)
+#endif
+
 static int devgpio_write(struct fnode * fno, const void *buf, unsigned int len)
 {
      struct dev_gpio *gpio;
@@ -200,6 +221,7 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
     if(!gpio)
         return -1;
 
+#ifndef LPC43XX
     if (cmd == IOCTL_GPIO_ENABLE) {
 //        gpio_mode_setup(gpio->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, gpio->pin);
     }
@@ -220,6 +242,7 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
     if (cmd == IOCTL_GPIO_SET_ALT_FUNC) {
          gpio_set_af(gpio->base, *((uint32_t*)arg), gpio->pin);
     }
+#endif
     return 0;
 }
 
@@ -234,7 +257,9 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
         return -1;
 
     /* GPIO: get current value */
+#ifndef LPC43XX
     *((uint8_t*)buf) = gpio_get(gpio->base, gpio->pin) ? '1':'0';
+#endif
     return 1;
 }
 
@@ -303,7 +328,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
             }
         }
 
-
+#ifndef LPC43XX
         GPIO_CLOCK_ENABLE(gpio_addrs[i].base);
 
         switch(gpio_addrs[i].mode)
@@ -328,6 +353,7 @@ void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num
                 gpio_mode_setup(gpio_addrs[i].base, gpio_addrs[i].mode, GPIO_PUPD_NONE, gpio_addrs[i].pin);
                 break;
         }
+#endif
     }
 
     register_module(&mod_devgpio);

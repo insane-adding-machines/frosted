@@ -1,0 +1,13 @@
+if ARCH_LPC43XX
+
+choice
+    prompt "MCU"
+    default ARCH_LPC4330
+config ARCH_LPC4330
+    bool "LPC4330"
+    select FLASH_SIZE_1MB
+    select RAM_SIZE_128KB
+    select CLK_100MHZ
+endchoice
+
+endif

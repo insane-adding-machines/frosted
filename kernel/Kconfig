@@ -14,6 +14,11 @@ choice ARCH
     help
         Enable support for NXP LPC17xx systems
 
+    config ARCH_LPC43XX
+    bool "LPC43XX"
+    help
+        Enable support for NXP LPC43xx systems
+
     config ARCH_STM32F4
     bool "STM32F4"
     help
@@ -29,6 +34,7 @@ endchoice
 source "../kernel/stm32f7/Kconfig"
 source "../kernel/stm32f4/Kconfig"
 source "../kernel/lpc17xx/Kconfig"
+source "../kernel/lpc43xx/Kconfig"
 source "../kernel/lm3s/Kconfig"
 
 config FLASH_SIZE_2MB
@@ -74,6 +80,9 @@ config ARCH_STM32F429
 config ARCH_STM32F746
     bool
 
+config ARCH_LPC4330
+    bool
+
 config DEVSTM32F4DMA
     bool
 
@@ -88,7 +97,7 @@ choice
         depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429 )
     config CLK_100MHZ
         bool "100MHz"
-        depends on ARCH_LPC17XX
+        depends on (ARCH_LPC17XX || ARC_LPC43XX)
     config CLK_120MHZ
         bool "120MHz"
         depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_LPC1769 )
@@ -100,7 +109,7 @@ choice
         depends on (ARCH_STM32F746)
 endchoice
 
-choice 
+choice
     prompt "Board"
     default MACH_STM32F407Discovery
 config MACH_STM32F746Discovery
@@ -139,6 +148,12 @@ config MACH_LPC1679XPRESSO
     bool "LPC1679XPRESSO"
     depends on ARCH_LPC1769
     default y
+
+config MACH_LPC4330RAD1O
+    bool "LPC4330RAD1O"
+    depends on ARCH_LPC4330
+    default y
+
 config MACH_LM3S6965EVB
     bool "lm3s6965evb"
     depends on ARCH_LM3S6965
@@ -149,7 +164,7 @@ endchoice
 endmenu
 
 menu "Kernel Configuration"
- 
+
 config KFLASHMEM_SIZE
     int "Kernel Flash size (KB)"
     default 64
@@ -182,7 +197,7 @@ endmenu
 
 choice
 prompt "Default size for tasks stack memory"
-default TASK_STACK_SIZE_2K 
+default TASK_STACK_SIZE_2K
 
    config TASK_STACK_SIZE_1K
    bool "Tiny stack (1024 Bytes)"
@@ -206,7 +221,7 @@ menu "Filesystems"
        config MEMFS
        bool "MemFS"
        default y
-       
+
        config XIPFS
        bool "Xip FS"
        default y
@@ -219,7 +234,7 @@ menu "Filesystems"
        depends on FATFS
        bool "Fat32 support"
        default n
-       
+
        config FAT16
        depends on FATFS
        bool "Fat16 support"
@@ -303,31 +318,31 @@ menu "Device Drivers"
             depends on ARCH_LPC17XX
 
        endif
-       
+
        config DEV_USB_ETH
        depends on PICOTCP
        bool "Ethernet over USB (CDC-ECM)"
        default n
-    
+
        if DEV_USB_ETH
            config USB_DEFAULT_IP
            string "Default (boot-up) address for usb0"
            default 192.168.6.150
-    
+
            config USB_DEFAULT_NM
            string "Default (boot-up) netmask for usb0"
            default 255.255.255.0
-           
+
            config USB_DEFAULT_GW
            string "Default (boot-up) gateway for usb0"
            default 192.168.6.1
        endif
-    
+
        menuconfig DEVF4EXTI
        bool "STM32F4 EXTI driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
        default n
-       
+
        menuconfig DEVTIM
        bool "System CPU timer on TIM2"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
@@ -338,7 +353,7 @@ menu "Device Drivers"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
        select DEVSTM32F4DMA
        default n
-           
+
 
        menuconfig DEVF4ETH
        bool "STM32F4 Ethernet driver"
@@ -349,20 +364,20 @@ menu "Device Drivers"
        bool "STM32F4 Ethernet driver"
        depends on ((ARCH_STM32F746))
        default n
-       
+
        if DEVF4ETH || DEVF7TH
            config ETH_DEFAULT_IP
            string "Default (boot-up) address for eth0"
            default 192.168.2.150
-    
+
            config ETH_DEFAULT_NM
            string "Default (boot-up) netmask for eth0"
            default 255.255.255.0
-           
+
            config ETH_DEFAULT_GW
            string "Default (boot-up) gateway for eth0"
            default 192.168.2.1
-    
+
        endif
 
        menuconfig DEVF4I2C
@@ -392,7 +407,7 @@ menu "Device Drivers"
        default n
 
 
-       
+
        menuconfig DEVSPI
        bool "Generic SPI driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
@@ -410,7 +425,7 @@ menu "Device Drivers"
        default n
 
        config DEVGPIO
-       depends on (ARCH_STM32F4 || ARCH_STM32F7 || ARCH_LPC17XX)
+       depends on (ARCH_STM32F4 || ARCH_STM32F7 || ARCH_LPC17XX || ARCH_LPC43XX)
        bool "Generic GPIO driver"
        default y
 
@@ -437,6 +452,6 @@ menu "Power Management"
         default n
     endif
     if !DEVTIM
-        comment "Power Management requires CPU Timer support" 
+        comment "Power Management requires CPU Timer support"
     endif
 endmenu
