@@ -22,7 +22,7 @@
 #include <string.h>
 #include "bflt.h"
 #include "kprintf.h"
-#include "xipfs.h"
+#include "sys/fs/xipfs.h"
 #include "vfs.h"
 #define GDB_PATH "frosted-userland/gdb/"
 

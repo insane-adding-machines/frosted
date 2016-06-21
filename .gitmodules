@@ -10,3 +10,6 @@
 [submodule "frosted-userland"]
 	path = frosted-userland
 	url = https://github.com/insane-adding-machines/frosted-userland.git
+[submodule "kernel/frosted-headers"]
+	path = kernel/frosted-headers
+	url = https://github.com/insane-adding-machines/frosted-headers.git

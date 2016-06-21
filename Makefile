@@ -21,6 +21,11 @@ CFLAGS+=-ggdb3
 #optimization
 #CFLAGS+=-Os
 
+
+
+#kernel headers
+CFLAGS+=-Ikernel/frosted-headers/include
+
 # minimal kernel
 OBJS-y:= kernel/frosted.o \
 		 kernel/vfs.o \
@@ -148,7 +153,7 @@ SHELL=/bin/bash
 APPS_START = 0x20000
 PADTO = $$(($(FLASH_ORIGIN)+$(APPS_START)))
 
-all: tools/xipfstool image.bin
+all: image.bin
 
 kernel/syscall_table.c: kernel/syscall_table_gen.py
 	@python2 $^
@@ -158,23 +163,16 @@ $(PREFIX)/lib/libpicotcp.a:
 	$(BUILD_PICO)
 	@pwd
 
-syscall_table.c: kernel/syscall_table.c
-
-syscall_table.h: syscall_table.c
-
 .PHONY: FORCE
-
-tools/xipfstool: tools/xipfs.c
-	@make -C tools
 
 kernel.img: kernel.elf
 	@export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 
-apps.img: $(USERSPACE) tools/xipfstool
+apps.img: $(USERSPACE) 
 	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
 
-image.bin: kernel.img apps.img tools/xipfstool
+image.bin: kernel.img apps.img 
 	cat kernel.img apps.img > $@
 
 kernel/libopencm3/lib/libopencm3_$(BOARD).a:
@@ -222,10 +220,7 @@ clean:
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf *.img
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
-	@rm -f tools/xipfstool
 	@find . |grep "\.o" | xargs -x rm -f
 	@rm -rf build
 	@rm -f tags
 	@rm -f kernel/syscall_table.c
-	@rm -f syscall_table.c
-
