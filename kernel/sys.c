@@ -19,7 +19,7 @@
  */
 
 #include "frosted.h"
-#include "syscall_table.h"
+#include "sys/frosted.h"
 
 struct timeval_kernel
 {

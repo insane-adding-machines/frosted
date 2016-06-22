@@ -18,7 +18,7 @@
  *
  */  
 #include "frosted.h"
-#include "syscall_table.h"
+#include "sys/frosted.h"
 #include "string.h" /* flibc string.h */
 #include "signal.h"
 #include "kprintf.h"
