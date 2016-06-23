@@ -1330,6 +1330,68 @@ child_found:
     return pid;
 }
 
+enum __ptrace_request {
+    PTRACE_TRACEME = 0,
+    PTRACE_PEEKTEXT = 1,
+    PTRACE_PEEKDATA = 2,
+    PTRACE_PEEKUSER = 3,
+    PTRACE_POKETEXT = 4,
+    PTRACE_POKEDATA = 5,
+    PTRACE_POKEUSER = 6,
+    PTRACE_CONT = 7,
+    PTRACE_KILL = 8,
+    PTRACE_SINGLESTEP = 9,
+    PTRACE_GETREGS = 12,
+    PTRACE_SETREGS = 13,
+    PTRACE_ATTACH = 16,
+    PTRACE_DETACH = 17,
+    PTRACE_SYSCALL = 24,
+};
+
+int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+        
+{
+    (void)arg5;
+    enum __ptrace_request request = arg1;
+    uint32_t pid = arg2;
+    void *addr = (void *)arg3;
+    void *data = (void *)arg4;
+
+    switch (request) {
+        case PTRACE_TRACEME:
+            break;
+        case PTRACE_PEEKTEXT:
+            break;
+        case PTRACE_PEEKDATA:
+            break;
+        case PTRACE_PEEKUSER:
+            break;
+        case PTRACE_POKETEXT:
+            break;
+        case PTRACE_POKEDATA:
+            break;
+        case PTRACE_POKEUSER:
+            break;
+        case PTRACE_CONT:
+            break;
+        case PTRACE_KILL:
+            break;
+        case PTRACE_SINGLESTEP:
+            break;
+        case PTRACE_GETREGS:
+            break;
+        case PTRACE_SETREGS:
+            break;
+        case PTRACE_ATTACH:
+            break;
+        case PTRACE_DETACH:
+            break;
+        case PTRACE_SYSCALL:
+            break;
+    }
+    return -1;
+}
+
 
 int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
