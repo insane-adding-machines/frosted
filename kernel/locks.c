@@ -145,9 +145,9 @@ int sys_sem_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 }
 
 /* Mutex: API */
-frosted_mutex_t *frosted_mutex_init()
+mutex_t *mutex_init()
 {
-    frosted_mutex_t *s = kalloc(sizeof(frosted_mutex_t));
+    mutex_t *s = kalloc(sizeof(mutex_t));
     if (s) {
         int i;
         s->value = 1; /* Unlocked. */
@@ -159,14 +159,14 @@ frosted_mutex_t *frosted_mutex_init()
     return s;
 }
 
-void frosted_mutex_destroy(frosted_mutex_t *s)
+void mutex_destroy(mutex_t *s)
 {
     if (s->listener)
         kfree(s->listener);
     kfree(s);
 }
 
-static int frosted_mutex_spinlock(frosted_mutex_t *s)
+static int mutex_spinlock(mutex_t *s)
 {
     if (!s)
         return -EINVAL;
@@ -176,7 +176,7 @@ static int frosted_mutex_spinlock(frosted_mutex_t *s)
     return 0;
 }
 
-int frosted_mutex_trylock(frosted_mutex_t *s)
+int mutex_trylock(mutex_t *s)
 {
     if (!s)
         return -EINVAL;
@@ -185,10 +185,10 @@ int frosted_mutex_trylock(frosted_mutex_t *s)
     return 0;
 }
 
-int frosted_mutex_lock(frosted_mutex_t *s)
+int mutex_lock(mutex_t *s)
 {
     if (scheduler_get_cur_pid() == 0)
-        return frosted_mutex_spinlock(s);
+        return mutex_spinlock(s);
     if (!s)
         return -EINVAL;
     if(_mutex_lock(s) != 0) {
@@ -200,7 +200,7 @@ int frosted_mutex_lock(frosted_mutex_t *s)
     return 0;
 }
 
-int frosted_mutex_unlock(frosted_mutex_t *s)
+int mutex_unlock(mutex_t *s)
 {
     if (!s)
         return -EINVAL;
@@ -221,17 +221,17 @@ int frosted_mutex_unlock(frosted_mutex_t *s)
 /* Mutex: Syscalls */
 int sys_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    return (int)frosted_mutex_init(arg1);
+    return (int)mutex_init(arg1);
 }
 
 int sys_mutex_lock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    return frosted_mutex_lock((frosted_mutex_t *)arg1);
+    return mutex_lock((mutex_t *)arg1);
 }
 
 int sys_mutex_unlock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    return frosted_mutex_unlock((frosted_mutex_t *)arg1);
+    return mutex_unlock((mutex_t *)arg1);
 }
 
 int sys_mutex_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)

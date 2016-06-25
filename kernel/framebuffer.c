@@ -72,7 +72,7 @@ static int fb_write(struct fnode *fno, const void *buf, unsigned int len)
     if (!fb)
         return -1;
 
-    //frosted_mutex_lock(fb->dev->mutex);
+    //mutex_lock(fb->dev->mutex);
     len_left = fno->size - fno->off;
     if (len > len_left)
         len = len_left;
@@ -84,7 +84,7 @@ static int fb_write(struct fnode *fno, const void *buf, unsigned int len)
     memcpy((void *)((uint8_t *)fb->screen_buffer + fno->off) , buf, len); 
     fno->off += len;
 
-    //frosted_mutex_unlock(fb->dev->mutex);
+    //mutex_unlock(fb->dev->mutex);
     return len;
 }
 
@@ -108,13 +108,13 @@ static int fb_read(struct fnode *fno, void *buf, unsigned int len)
     if (!fb)
         return -1;
 
-    // frosted_mutex_lock(fb->dev->mutex);
+    // mutex_lock(fb->dev->mutex);
 
     //XXX: max len = MAX_FB_SIZE;
     memcpy(buf, (void *)((uint8_t *)fb->screen_buffer + fno->off), len);
     fno->off += len;
 
-    //frosted_mutex_unlock(fb->dev->mutex);
+    //mutex_unlock(fb->dev->mutex);
     return len;
 }
 

@@ -83,7 +83,7 @@ static int devadc_read(struct fnode *fno, void *buf, unsigned int len)
     if (!adc)
         return -1;
 
-    frosted_mutex_lock(adc->dev->mutex);
+    mutex_lock(adc->dev->mutex);
 
     if (adc->conversion_done == 0)
     {
@@ -91,7 +91,7 @@ static int devadc_read(struct fnode *fno, void *buf, unsigned int len)
         adc_start_conversion_regular(adc->base);
         adc->dev->pid = scheduler_get_cur_pid();
         task_suspend();
-        frosted_mutex_unlock(adc->dev->mutex);
+        mutex_unlock(adc->dev->mutex);
         return  SYS_CALL_AGAIN;
     }
 
@@ -102,7 +102,7 @@ static int devadc_read(struct fnode *fno, void *buf, unsigned int len)
 
     memcpy(buf, adc->samples, len);
     adc->conversion_done = 0;
-    frosted_mutex_unlock(adc->dev->mutex);
+    mutex_unlock(adc->dev->mutex);
     return len;
 }
 

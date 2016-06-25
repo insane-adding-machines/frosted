@@ -64,7 +64,7 @@ struct f_malloc_stats f_malloc_stats[4] = {};
 /* Mlock is a special lock, so initialization is made static */
 static int _m_listeners[16] = { -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 };
 static struct semaphore _mlock = { .value = 1, .listeners=16, .listener=_m_listeners};
-static frosted_mutex_t *mlock = (frosted_mutex_t *)(&_mlock);
+static mutex_t *mlock = (mutex_t *)(&_mlock);
 
 
 
@@ -302,11 +302,11 @@ void * f_malloc(int flags, size_t size)
     } 
 
     if (scheduler_get_cur_pid() == 0) {
-        if (frosted_mutex_trylock(mlock) < 0) {
+        if (mutex_trylock(mlock) < 0) {
             return NULL;
         }
     } else {
-        frosted_mutex_lock(mlock);
+        mutex_lock(mlock);
     }
 
     /* update stats */
@@ -327,7 +327,7 @@ void * f_malloc(int flags, size_t size)
         /* No first fit found: ask for new memory */
         blk = (struct f_malloc_block *)f_sbrk(flags, size + sizeof(struct f_malloc_block));  // can OS give us more memory?
         if ((long)blk == -1) {
-            frosted_mutex_unlock(mlock);
+            mutex_unlock(mlock);
             return NULL;
         }
 
@@ -356,14 +356,14 @@ void * f_malloc(int flags, size_t size)
     f_malloc_stats[MEMPOOL(flags)].mem_allocated += ((uint32_t)blk->size + sizeof(struct f_malloc_block));
 
     ret = (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
-    frosted_mutex_unlock(mlock);
+    mutex_unlock(mlock);
     return ret;
 }
 
 static void blk_rearrange(void *arg)
 {
     struct f_malloc_block *blk = arg;
-    if (frosted_mutex_trylock(mlock) < 0) {
+    if (mutex_trylock(mlock) < 0) {
         /* Try again later. */
         tasklet_add(blk_rearrange, blk);
         return;
@@ -380,7 +380,7 @@ static void blk_rearrange(void *arg)
     }
     if (!blk->next)
         f_compact(blk);
-    frosted_mutex_unlock(mlock);
+    mutex_unlock(mlock);
 }
 
 
@@ -419,14 +419,14 @@ uint32_t mem_stats_frag(int pool)
     uint32_t frag_size = 0u;
     struct f_malloc_block *blk;
         
-    frosted_mutex_lock(mlock);    
+    mutex_lock(mlock);    
     blk = malloc_entry[pool];
     while (blk) {
         if (!in_use(blk)) 
             frag_size += blk->size + sizeof(struct f_malloc_block); 
         blk = blk->next;
     }
-    frosted_mutex_unlock(mlock);
+    mutex_unlock(mlock);
     return frag_size;
 }
 

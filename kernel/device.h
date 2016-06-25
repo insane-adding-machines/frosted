@@ -5,7 +5,7 @@
 
 struct device {
     struct fnode *fno;
-    frosted_mutex_t * mutex;
+    mutex_t * mutex;
     int pid;
 };
 

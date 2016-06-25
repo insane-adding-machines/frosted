@@ -27,7 +27,7 @@
 static struct fnode *sysfs;
 static struct module mod_sysfs;
 
-static frosted_mutex_t *sysfs_mutex = NULL;
+static mutex_t *sysfs_mutex = NULL;
 
 extern struct mountpoint *MTAB;
 extern struct f_malloc_stats f_malloc_stats[3];
@@ -36,13 +36,13 @@ extern struct f_malloc_stats f_malloc_stats[3];
 void sysfs_lock(void)
 {
     if (sysfs_mutex)
-        frosted_mutex_lock(sysfs_mutex);
+        mutex_lock(sysfs_mutex);
 }
 
 void sysfs_unlock(void)
 {
     if (sysfs_mutex)
-        frosted_mutex_unlock(sysfs_mutex);
+        mutex_unlock(sysfs_mutex);
 }
 
 static int sysfs_read(struct fnode *fno, void *buf, unsigned int len)
@@ -153,7 +153,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     int p_state;
     const char legend[]="pid\tstate\tstack\tname\r\n";
     if (fno->off == 0) {
-        frosted_mutex_lock(sysfs_mutex);
+        mutex_lock(sysfs_mutex);
         task_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!task_txt)
             return -1;
@@ -198,7 +198,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     }
     if (off == fno->off) {
         kfree(task_txt);
-        frosted_mutex_unlock(sysfs_mutex);
+        mutex_unlock(sysfs_mutex);
         return -1;
     }
     if (len > (off - fno->off)) {
@@ -238,7 +238,7 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
         const char mem_banner[] = "\tMemory in use: ";
         const char frags_banner[] = "\tReserved: ";
         int i;
-        frosted_mutex_lock(sysfs_mutex);
+        mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!mem_txt)
             return -1;
@@ -286,7 +286,7 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
     }
     if (off == fno->off) {
         kfree(mem_txt);
-        frosted_mutex_unlock(sysfs_mutex);
+        mutex_unlock(sysfs_mutex);
         return -1;
     }
     if (len > (off - fno->off)) {
@@ -309,7 +309,7 @@ int sysfs_modules_read(struct sysfs_fnode *sfs, void *buf, int len)
     struct module *m = MODS;
     if (fno->off == 0) {
         const char mod_banner[] = "Loaded modules:\r\n";
-        frosted_mutex_lock(sysfs_mutex);
+        mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!mem_txt)
             return -1;
@@ -327,7 +327,7 @@ int sysfs_modules_read(struct sysfs_fnode *sfs, void *buf, int len)
     }
     if (off == fno->off) {
         kfree(mem_txt);
-        frosted_mutex_unlock(sysfs_mutex);
+        mutex_unlock(sysfs_mutex);
         return -1;
     }
     if (len > (off - fno->off)) {
@@ -351,7 +351,7 @@ int sysfs_mtab_read(struct sysfs_fnode *sfs, void *buf, int len)
     int l = 0;
     if (fno->off == 0) {
         const char mtab_banner[] = "Mountpoint\tDriver\t\tInfo\r\n--------------------------------------\r\n";
-        frosted_mutex_lock(sysfs_mutex);
+        mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!mem_txt)
             return -1;
@@ -393,7 +393,7 @@ int sysfs_mtab_read(struct sysfs_fnode *sfs, void *buf, int len)
     }
     if (off == fno->off) {
         kfree(mem_txt);
-        frosted_mutex_unlock(sysfs_mutex);
+        mutex_unlock(sysfs_mutex);
         return -1;
     }
     if (len > (off - fno->off)) {
@@ -477,5 +477,5 @@ void sysfs_init(void)
     sysfs = fno_search("/sys");
     register_module(&mod_sysfs);
     fno_mkdir(&mod_sysfs, "net", sysfs);
-    sysfs_mutex = frosted_mutex_init();
+    sysfs_mutex = mutex_init();
 }

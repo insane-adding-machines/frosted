@@ -65,7 +65,7 @@ static void spi1_rx_dma_complete(struct dev_spi *spi)
     dma_disable_transfer_complete_interrupt(spi->rx_dma_setup->base, spi->rx_dma_setup->stream);
     spi_disable(spi->base);
     tasklet_add(spi->completion_fn, spi->completion_arg);
-    frosted_mutex_unlock(spi->dev->mutex);
+    mutex_unlock(spi->dev->mutex);
 }
 
 
@@ -88,7 +88,7 @@ int devspi_xfer(struct fnode *fno, spi_completion completion_fn, void * completi
     if (spi == NULL)
         return -1;
 
-    frosted_mutex_lock(spi->dev->mutex);
+    mutex_lock(spi->dev->mutex);
 
     spi->completion_fn = completion_fn;
     spi->completion_arg = completion_arg;

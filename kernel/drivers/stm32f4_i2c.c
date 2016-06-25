@@ -309,7 +309,7 @@ int i2c_read(struct fnode *fno, i2c_completion completion_fn, void * completion_
     if (i2c == NULL)
         return -1;
 
-    frosted_mutex_lock(i2c->dev->mutex);
+    mutex_lock(i2c->dev->mutex);
 
     i2c->dirn = 1;
     i2c->slv_address = address;
@@ -337,7 +337,7 @@ int i2c_write(struct fnode *fno, i2c_completion completion_fn, void * completion
     if (i2c == NULL)
         return -1;
 
-    frosted_mutex_lock(i2c->dev->mutex);
+    mutex_lock(i2c->dev->mutex);
 
     i2c->dirn = 0;
     i2c->slv_address = address;

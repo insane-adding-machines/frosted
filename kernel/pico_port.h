@@ -13,19 +13,19 @@ int kprintf(const char *format, ...);
 #define pico_zalloc(x) f_calloc(MEM_TCPIP, x, 1)
 
 static void *pico_mutex_init(void) {
-    return frosted_mutex_init();
+    return mutex_init();
 }
 
 static void pico_mutex_lock(void *m) {
-    frosted_mutex_lock((frosted_mutex_t *)m);
+    mutex_lock((mutex_t *)m);
 }
 
 static void pico_mutex_unlock(void *m) {
-    frosted_mutex_unlock((frosted_mutex_t *)m);
+    mutex_unlock((mutex_t *)m);
 }
 
 static void pico_mutex_deinit(void *m) {
-    frosted_mutex_destroy((frosted_mutex_t *)m);
+    mutex_destroy((mutex_t *)m);
 }
 
 #define dbg kprintf

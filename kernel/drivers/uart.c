@@ -96,7 +96,7 @@ void uart_isr(struct dev_uart *uart)
         usart_clear_tx_interrupt(uart->base);
 
         if (scheduler_get_cur_pid() != 0) /* cannot spinlock in ISR! */
-            frosted_mutex_lock(uart->dev->mutex);
+            mutex_lock(uart->dev->mutex);
 
         /* Are there bytes left to be written? */
         if (cirbuf_bytesinuse(uart->outbuf))
@@ -110,7 +110,7 @@ void uart_isr(struct dev_uart *uart)
             if (uart->dev->pid > 0)
                 task_resume(uart->dev->pid);
         }
-        frosted_mutex_unlock(uart->dev->mutex);
+        mutex_unlock(uart->dev->mutex);
     }
 
     /* RX interrupt */
@@ -205,7 +205,7 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     if (!uart)
         return -1;
         
-    frosted_mutex_lock(uart->dev->mutex);
+    mutex_lock(uart->dev->mutex);
     if (cirbuf_bytesinuse(uart->outbuf) && usart_is_send_ready(uart->base)) {
         char c;
         cirbuf_readbyte(uart->outbuf, &c);
@@ -214,7 +214,7 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     }
 
     if (!cirbuf_bytesfree(uart->outbuf)) {
-        frosted_mutex_unlock(uart->dev->mutex);
+        mutex_unlock(uart->dev->mutex);
         task_preempt();
         return SYS_CALL_AGAIN;
     }
@@ -240,7 +240,7 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     }
 
     if (cirbuf_bytesinuse(uart->outbuf) == 0) {
-        frosted_mutex_unlock(uart->dev->mutex);
+        mutex_unlock(uart->dev->mutex);
         usart_disable_tx_interrupt(uart->base);
         uart->w_start = NULL;
         uart->w_end = NULL;
@@ -251,12 +251,12 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     if (uart->w_start < uart->w_end)
     {
         uart->dev->pid = scheduler_get_cur_pid();
-        frosted_mutex_unlock(uart->dev->mutex);
+        mutex_unlock(uart->dev->mutex);
         task_suspend();
         return SYS_CALL_AGAIN;
     }
 
-    frosted_mutex_unlock(uart->dev->mutex);
+    mutex_unlock(uart->dev->mutex);
     uart->w_start = NULL;
     uart->w_end = NULL;
     return len;
@@ -277,13 +277,13 @@ static int devuart_read(struct fnode *fno, void *buf, unsigned int len)
     if (!uart)
         return -1;
 
-    frosted_mutex_lock(uart->dev->mutex);
+    mutex_lock(uart->dev->mutex);
     usart_disable_rx_interrupt(uart->base);
     len_available =  cirbuf_bytesinuse(uart->inbuf);
     if (len_available <= 0) {
         uart->dev->pid = scheduler_get_cur_pid();
         task_suspend();
-        frosted_mutex_unlock(uart->dev->mutex);
+        mutex_unlock(uart->dev->mutex);
         out = SYS_CALL_AGAIN;
         goto again;
     }
@@ -300,7 +300,7 @@ static int devuart_read(struct fnode *fno, void *buf, unsigned int len)
 
 again:
     usart_enable_rx_interrupt(uart->base);
-    frosted_mutex_unlock(uart->dev->mutex);
+    mutex_unlock(uart->dev->mutex);
     return out;
 }
 
@@ -315,7 +315,7 @@ static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
         return -1;
 
     uart->dev->pid = scheduler_get_cur_pid();
-    frosted_mutex_lock(uart->dev->mutex);
+    mutex_lock(uart->dev->mutex);
     usart_disable_rx_interrupt(uart->base);
     *revents = 0;
     if ((events & POLLOUT) && (cirbuf_bytesfree(uart->outbuf) > 0)) {
@@ -327,7 +327,7 @@ static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
         ret = 1;
     }
     usart_enable_rx_interrupt(uart->base);
-    frosted_mutex_unlock(uart->dev->mutex);
+    mutex_unlock(uart->dev->mutex);
     return ret;
 }
 

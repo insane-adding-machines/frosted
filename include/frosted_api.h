@@ -47,7 +47,7 @@ typedef void DIR;
 /* semaphore */
 struct semaphore;
 typedef struct semaphore sem_t;
-typedef struct semaphore frosted_mutex_t;
+typedef struct semaphore mutex_t;
 
 #define MAX_FILE 64
 struct dirent {

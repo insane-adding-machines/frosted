@@ -255,18 +255,18 @@ out:
     return pc;
 }
 
-static frosted_mutex_t *klog_lock;
+static mutex_t *klog_lock;
 
 int kprintf(const char *format, ...)
 {
     va_list args;
     int ret;
     if (cirbuf_bytesfree(klog.buf)) {
-        if (frosted_mutex_trylock(klog_lock) < 0)
+        if (mutex_trylock(klog_lock) < 0)
             return 0;
         va_start(args, format);
         ret = print(0, format, args);
-        frosted_mutex_unlock(klog_lock);
+        mutex_unlock(klog_lock);
         return ret;
     }
     return 0;
@@ -289,7 +289,7 @@ int klog_init(void)
     klog.buf = cirbuf_create(CONFIG_KLOG_SIZE);
 	klog.used = 0;
     klog.pid = 0;
-    klog_lock = frosted_mutex_init();
+    klog_lock = mutex_init();
     return 0;
 #else
     return -1;

@@ -41,6 +41,6 @@ struct device *  device_fno_init(struct module * mod, const char * name, struct 
         device->fno->flags |= flags;
     }
     device->pid = 0;
-    device->mutex = frosted_mutex_init();
+    device->mutex = mutex_init();
     return device;
 }
