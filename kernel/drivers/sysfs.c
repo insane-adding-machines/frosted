@@ -151,7 +151,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     int stack_used;
     char *name;
     int p_state;
-    const char legend[]="pid\tstate\tstack\tname\r\n";
+    const char legend[]="pid\tstate\tstack\theap\tname\r\n";
     if (fno->off == 0) {
         mutex_lock(sysfs_mutex);
         task_txt = kalloc(MAX_SYSFS_BUFFER);
@@ -182,6 +182,10 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
 
                 task_txt[off++] = '\t';
                 stack_used = scheduler_stack_used(i);
+                off += ul_to_str(stack_used, task_txt + off);
+                
+                task_txt[off++] = '\t';
+                stack_used = f_proc_heap_count(i);
                 off += ul_to_str(stack_used, task_txt + off);
 
                 task_txt[off++] = '\t';

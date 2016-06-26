@@ -282,7 +282,7 @@ void kernel_task_init(void);
 #define krealloc(x,y) f_realloc(MEM_KERNEL,x,y)
 #define kfree  f_free
 #define task_space_free f_free
-#define F_MALLOC_OVERHEAD 20
+#define F_MALLOC_OVERHEAD 24
 uint32_t mem_stats_frag(int pool);
 
 /* Helper defined by sysfs.c */

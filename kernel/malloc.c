@@ -39,6 +39,7 @@
 
 #define F_IN_USE 0x20
 #define in_use(x) (((x->flags) & F_IN_USE) == F_IN_USE)
+#define block_valid(b) ((b) && (b->magic == F_MALLOC_MAGIC))
 #define MEMPOOL(x) ((((x) & MEM_OWNER_MASK) < 4)?(x):(3))
 
 /*------------------*/
@@ -50,6 +51,7 @@ struct f_malloc_block {
     struct f_malloc_block * next;   /* next, or last block? */
     size_t size;                    /* malloc size excluding this block - next block is adjacent, if !last_block */
     uint32_t flags; 
+    int pid;
 };
 
 
@@ -108,7 +110,7 @@ static struct f_malloc_block * split_block(struct f_malloc_block * blk, size_t s
     struct f_malloc_block * free_blk;
   
     /* does it fit? */
-    if (blk->size - sizeof(struct f_malloc_block) < size)
+    if ((blk->size - sizeof(struct f_malloc_block)) < size)
         return NULL;
   
     /* shrink the block to requested size */
@@ -119,7 +121,7 @@ static struct f_malloc_block * split_block(struct f_malloc_block * blk, size_t s
     free_blk->prev = blk;
     free_blk->next = blk->next;
     blk->next = free_blk;
-    free_blk->magic = 0xDECEA5ED;
+    free_blk->magic = F_MALLOC_MAGIC;
     free_blk->size = free_size;
     free_blk->flags = 0u;
     return free_blk;
@@ -156,6 +158,9 @@ static struct f_malloc_block * f_find_best_fit(int flags, size_t size, struct f_
             if ((!found) || (blk->size < found->size))
                 found = blk;
         }
+        if ((blk->next) && (!block_valid(blk->next)))
+            blk->next = NULL;
+
         /* travel next block */
         blk = blk->next;
     }
@@ -265,7 +270,7 @@ void* f_realloc(int flags, void* ptr, size_t size)
         /* f ptr is not valid, act as regular malloc() */
         out = f_malloc(flags, size);
     }
-    else if (blk->magic == 0xDECEA5ED)
+    else if (block_valid(blk))
     {
         /* copy over old block, if valid pointer */
         size_t new_size, copy_size;
@@ -291,6 +296,32 @@ realloc_free:
     if (ptr)
         f_free(ptr);
     return out;
+}
+
+void f_proc_heap_free(int pid)
+{
+    struct f_malloc_block *blk = malloc_entry[MEM_USER];
+    while (blk)
+    {
+        if ((blk->pid == pid) && in_use(blk)) {
+            f_free(blk);
+        }
+        blk = blk->next;
+    }
+}
+
+uint32_t f_proc_heap_count(int pid)
+{
+    struct f_malloc_block *blk = malloc_entry[MEM_USER];
+    uint32_t size = 0;
+    while (blk)
+    {
+        if ((blk->pid == pid) && in_use(blk)) {
+            size += blk->size;
+        }
+        blk = blk->next;
+    }
+    return size;
 }
 
 void * f_malloc(int flags, size_t size)
@@ -350,6 +381,10 @@ void * f_malloc(int flags, size_t size)
 
     /* destination found, fill in  meta-data */
     blk->flags = F_IN_USE | flags;
+    if (flags & MEM_USER)
+        blk->pid = scheduler_get_cur_pid();
+    else
+        blk->pid = 0;
 
     /* update stats */
     f_malloc_stats[MEMPOOL(flags)].objects_allocated++;
@@ -395,7 +430,7 @@ void f_free(void * ptr)
     }
 
     blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
-    if (blk->magic == F_MALLOC_MAGIC)
+    if (block_valid(blk))
     {
         if ((blk->flags & F_IN_USE) == 0) {
             task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);

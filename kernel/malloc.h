@@ -29,4 +29,10 @@ void * f_calloc(int flags, size_t num, size_t size);
 void* f_realloc(int flags, void* ptr, size_t size);
 void f_free(void * ptr);
 
+/* Free up heap of a specific pid */
+void f_proc_heap_free(int pid);
+
+/* Get heap usage for specific pid */
+uint32_t f_proc_heap_count(int pid);
+
 #endif /* _FROSTED_MALLOC_H */

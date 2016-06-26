@@ -318,6 +318,7 @@ static void task_destroy(struct task *t)
         f_free(t->tb.vfsi);
     }
     f_free(t->tb.arg);
+    f_proc_heap_free(t->tb.pid);
     task_space_free(t);
     number_of_tasks--;
 }
