@@ -177,6 +177,8 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
                     task_txt[off++] = 'F';
                 if (p_state == TASK_ZOMBIE)
                     task_txt[off++] = 'Z';
+                if (p_state == TASK_STOPPED)
+                    task_txt[off++] = 'S';
 
                 task_txt[off++] = '\t';
                 stack_used = scheduler_stack_used(i);

@@ -637,10 +637,15 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         }
     } else {
         /* Handler not present: SIG_DFL */
-        if (signo != SIGCHLD) {
-            task_terminate(t->tb.pid);
-        } else {
+        if (signo == SIGSTOP) {
+            task_stop(t->tb.pid);
+        } else if (signo == SIGCHLD) {
             task_resume(t->tb.pid);
+        } else if (signo == SIGCONT) {
+            /* If not in stopped state, SIGCONT is ignored. */
+            task_continue(t->tb.pid);
+        } else {
+            task_terminate(t->tb.pid);
         }
     }
     return 0;
@@ -1179,6 +1184,21 @@ void task_suspend(void) {
     return task_suspend_to(TASK_WAITING);
 }
 
+void task_stop(int pid) {
+    struct task *t = tasklist_get(&tasks_idling, pid);
+    if (!t) {
+        t = tasklist_get(&tasks_running, pid);
+        running_to_idling(pid);
+    }
+    if (!t)
+        return;
+    if (t->tb.state == TASK_RUNNABLE || t->tb.state == TASK_RUNNING) {
+        t->tb.timeslice = 0;
+    }
+    t->tb.state = TASK_STOPPED;
+    schedule();
+}
+
 void task_preempt(void) {
     _cur_task->tb.timeslice = 0;
     schedule();
@@ -1201,7 +1221,16 @@ void task_preempt_all(void)
 void task_resume(int pid)
 {
     struct task *t = tasklist_get(&tasks_idling, pid);
-    if ((t) && t->tb.state == TASK_WAITING) {
+    if ((t) && (t->tb.state == TASK_WAITING)) {
+        idling_to_running(t);
+        t->tb.state = TASK_RUNNABLE;
+    }
+}
+
+void task_continue(int pid)
+{
+    struct task *t = tasklist_get(&tasks_idling, pid);
+    if ((t) && (t->tb.state == TASK_STOPPED)) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
     }

@@ -15,6 +15,7 @@
 #define TASK_RUNNING    2
 #define TASK_WAITING    3
 #define TASK_FORKED     4
+#define TASK_STOPPED    5
 #define TASK_ZOMBIE     0x66
 #define TASK_OVER       0xFF
 
