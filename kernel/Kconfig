@@ -100,7 +100,7 @@ choice
         depends on (ARCH_STM32F746)
 endchoice
 
-choice 
+choice
     prompt "Board"
     default MACH_STM32F407Discovery
 config MACH_STM32F746Discovery
@@ -149,14 +149,14 @@ endchoice
 endmenu
 
 menu "Kernel Configuration"
- 
+
 config KFLASHMEM_SIZE
     int "Kernel Flash size (KB)"
     default 64
 
 config KRAMMEM_SIZE
     int "Kernel RAM size (KB)"
-    default 32
+    default 64
 
 menu "Debugging options"
 
@@ -182,7 +182,7 @@ endmenu
 
 choice
 prompt "Default size for tasks stack memory"
-default TASK_STACK_SIZE_2K 
+default TASK_STACK_SIZE_2K
 
    config TASK_STACK_SIZE_1K
    bool "Tiny stack (1024 Bytes)"
@@ -206,7 +206,7 @@ menu "Filesystems"
        config MEMFS
        bool "MemFS"
        default y
-       
+
        config XIPFS
        bool "Xip FS"
        default y
@@ -219,7 +219,7 @@ menu "Filesystems"
        depends on FATFS
        bool "Fat32 support"
        default n
-       
+
        config FAT16
        depends on FATFS
        bool "Fat16 support"
@@ -303,31 +303,31 @@ menu "Device Drivers"
             depends on ARCH_LPC17XX
 
        endif
-       
+
        config DEV_USB_ETH
        depends on PICOTCP
        bool "Ethernet over USB (CDC-ECM)"
        default n
-    
+
        if DEV_USB_ETH
            config USB_DEFAULT_IP
            string "Default (boot-up) address for usb0"
            default 192.168.6.150
-    
+
            config USB_DEFAULT_NM
            string "Default (boot-up) netmask for usb0"
            default 255.255.255.0
-           
+
            config USB_DEFAULT_GW
            string "Default (boot-up) gateway for usb0"
            default 192.168.6.1
        endif
-    
+
        menuconfig DEVF4EXTI
        bool "STM32F4 EXTI driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
        default n
-       
+
        menuconfig DEVTIM
        bool "System CPU timer on TIM2"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
@@ -338,7 +338,7 @@ menu "Device Drivers"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
        select DEVSTM32F4DMA
        default n
-           
+
 
        menuconfig DEVF4ETH
        bool "STM32F4 Ethernet driver"
@@ -349,20 +349,20 @@ menu "Device Drivers"
        bool "STM32F4 Ethernet driver"
        depends on ((ARCH_STM32F746))
        default n
-       
+
        if DEVF4ETH || DEVF7TH
            config ETH_DEFAULT_IP
            string "Default (boot-up) address for eth0"
            default 192.168.2.150
-    
+
            config ETH_DEFAULT_NM
            string "Default (boot-up) netmask for eth0"
            default 255.255.255.0
-           
+
            config ETH_DEFAULT_GW
            string "Default (boot-up) gateway for eth0"
            default 192.168.2.1
-    
+
        endif
 
        menuconfig DEVF4I2C
@@ -392,7 +392,7 @@ menu "Device Drivers"
        default n
 
 
-       
+
        menuconfig DEVSPI
        bool "Generic SPI driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
@@ -437,6 +437,6 @@ menu "Power Management"
         default n
     endif
     if !DEVTIM
-        comment "Power Management requires CPU Timer support" 
+        comment "Power Management requires CPU Timer support"
     endif
 endmenu
