@@ -25,10 +25,10 @@
 #include "stm32f4_dma.h"
 #include "stm32f4_adc.h"
 #ifdef STM32F4
-#include <libopencm3/cm3/nvic.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/adc.h>
-#include <libopencm3/stm32/dma.h>
+#include <unicore-mx/cm3/nvic.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/adc.h>
+#include <unicore-mx/stm32/dma.h>
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #endif
 

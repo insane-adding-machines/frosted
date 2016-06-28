@@ -18,15 +18,15 @@
  *
  */  
 #include "frosted.h"
-#include "libopencm3/cm3/systick.h"
-#include <libopencm3/lpc17xx/clock.h>
+#include "unicore-mx/cm3/systick.h"
+#include <unicore-mx/lpc17xx/clock.h>
 #ifdef CONFIG_DEVUART
 #include "uart.h"
 #endif
 
 #ifdef CONFIG_DEVGPIO
-#include <libopencm3/lpc17xx/gpio.h>
-#include <libopencm3/lpc17xx/exti.h>
+#include <unicore-mx/lpc17xx/gpio.h>
+#include <unicore-mx/lpc17xx/exti.h>
 #include "gpio.h"
 #endif
 

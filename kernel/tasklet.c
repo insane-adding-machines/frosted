@@ -18,7 +18,7 @@
  *
  */  
 #include "frosted.h"
-#include "libopencm3/cm3/systick.h"
+#include "unicore-mx/cm3/systick.h"
 
 struct tasklet {
     void (*exe)(void *);

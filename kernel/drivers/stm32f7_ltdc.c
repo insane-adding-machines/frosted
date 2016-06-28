@@ -2,9 +2,9 @@
 #include <string.h>
 #include "malloc.h"
 #include "framebuffer.h"
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/ltdc.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/stm32/ltdc.h>
 
 /* STM32F7-Discovery screen ... */
 #define  RK043FN48H_WIDTH               ((uint16_t)480)  /* LCD PIXEL WIDTH            */

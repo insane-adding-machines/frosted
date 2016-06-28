@@ -18,18 +18,18 @@
  *
  */  
 #include "frosted.h"
-#include "libopencm3/cm3/systick.h"
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/usart.h>
-#include <libopencm3/cm3/nvic.h>
-#include <libopencm3/stm32/f7/usart.h>
+#include "unicore-mx/cm3/systick.h"
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/usart.h>
+#include <unicore-mx/cm3/nvic.h>
+#include <unicore-mx/stm32/f7/usart.h>
 
 #ifdef CONFIG_DEVUART
 #include "uart.h"
 #endif
 
 #ifdef CONFIG_DEVGPIO
-#include <libopencm3/stm32/gpio.h>
+#include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
 #endif
 

@@ -25,7 +25,7 @@
 #include <sys/ioctl.h>
 
 #ifdef STM32F7
-#   include "libopencm3/stm32/ltdc.h"
+#   include "unicore-mx/stm32/ltdc.h"
 #endif
 
 

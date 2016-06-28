@@ -23,12 +23,12 @@
 #include "gpio.h"
 
 #include <pico_device.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/syscfg.h>
-#include <libopencm3/ethernet/mac.h>
-#include <libopencm3/ethernet/phy.h>
-#include "libopencm3/cm3/nvic.h"
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/stm32/syscfg.h>
+#include <unicore-mx/ethernet/mac.h>
+#include <unicore-mx/ethernet/phy.h>
+#include "unicore-mx/cm3/nvic.h"
 
 #define dbg(...)
 

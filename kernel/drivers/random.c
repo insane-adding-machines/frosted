@@ -25,22 +25,22 @@
 #include "random.h"
 
 #ifdef LM3S
-#   include "libopencm3/lm3s/rng.h"
+#   include "unicore-mx/lm3s/rng.h"
 #   define CLOCK_ENABLE(C) 
 #endif
 #if defined(STM32F4) || defined( STM32F7)
-#include <libopencm3/cm3/common.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
+#include <unicore-mx/cm3/common.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/gpio.h>
 #   ifdef STM32F4
-#       include <libopencm3/stm32/f4/rng.h>
+#       include <unicore-mx/stm32/f4/rng.h>
 #   elif defined(STM32F7)
-#       include <libopencm3/stm32/f7/rng.h>
+#       include <unicore-mx/stm32/f7/rng.h>
 #   endif
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #endif
 #ifdef LPC17XX
-#   include "libopencm3/lpc17xx/rng.h"
+#   include "unicore-mx/lpc17xx/rng.h"
 #   define CLOCK_ENABLE(C) 
 #endif
 

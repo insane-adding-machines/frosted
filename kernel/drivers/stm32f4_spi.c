@@ -24,20 +24,20 @@
 #include "cirbuf.h"
 #include "stm32f4_dma.h"
 #include "stm32f4_spi.h"
-#include <libopencm3/cm3/nvic.h>
+#include <unicore-mx/cm3/nvic.h>
 
 #ifdef LM3S
-#   include "libopencm3/lm3s/spi.h"
+#   include "unicore-mx/lm3s/spi.h"
 #   define CLOCK_ENABLE(C)
 #endif
 #ifdef STM32F4
-#   include <libopencm3/stm32/rcc.h>
-#   include <libopencm3/stm32/dma.h>
-#   include "libopencm3/stm32/spi.h"
+#   include <unicore-mx/stm32/rcc.h>
+#   include <unicore-mx/stm32/dma.h>
+#   include "unicore-mx/stm32/spi.h"
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #endif
 #ifdef LPC17XX
-#   include "libopencm3/lpc17xx/spi.h"
+#   include "unicore-mx/lpc17xx/spi.h"
 #   define CLOCK_ENABLE(C)
 #endif
 

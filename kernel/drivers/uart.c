@@ -26,30 +26,30 @@
 #include "uart.h"
 #include "poll.h"
 
-#include "libopencm3/cm3/nvic.h"
+#include "unicore-mx/cm3/nvic.h"
 
 #ifdef LM3S
-#   include "libopencm3/lm3s/usart.h"
+#   include "unicore-mx/lm3s/usart.h"
 #   define CLOCK_ENABLE(C)
 #   define USART_SR_RXNE  USART_IC_RX
 #   define USART_SR_TXE   USART_IC_TX
 #endif
 #ifdef STM32F4
-#   include "libopencm3/stm32/usart.h"
-#   include "libopencm3/stm32/rcc.h"
+#   include "unicore-mx/stm32/usart.h"
+#   include "unicore-mx/stm32/rcc.h"
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
 #ifdef STM32F7
-#   include "libopencm3/stm32/usart.h"
-#   include "libopencm3/stm32/rcc.h"
+#   include "unicore-mx/stm32/usart.h"
+#   include "unicore-mx/stm32/rcc.h"
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 #endif
 #ifdef LPC17XX
-#   include "libopencm3/lpc17xx/uart.h"
+#   include "unicore-mx/lpc17xx/uart.h"
 #   define CLOCK_ENABLE(C)
 #endif
 

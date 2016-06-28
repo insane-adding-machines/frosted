@@ -21,12 +21,12 @@
  */
 
 #include "frosted.h"
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/usb/usbd.h>
-#include <libopencm3/usb/cdc.h>
-#include <libopencm3/cm3/scb.h>
-#include <libopencm3/cm3/nvic.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/usb/usbd.h>
+#include <unicore-mx/usb/cdc.h>
+#include <unicore-mx/cm3/scb.h>
+#include <unicore-mx/cm3/nvic.h>
 #include <pico_stack.h>
 #include <pico_device.h>
 #include <pico_ipv4.h>

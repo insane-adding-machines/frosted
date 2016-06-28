@@ -149,7 +149,7 @@ OBJS-$(MACH_LM3S6965EVB)+=kernel/$(BOARD)/lm3s6965evb.o
 
 LIB-y:=
 LIB-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a
-LIB-y+=kernel/libopencm3/lib/libopencm3_$(BOARD).a
+LIB-y+=kernel/unicore-mx/lib/libucmx_$(BOARD).a
 
 CFLAGS+=$(CFLAGS-y)
 
@@ -179,8 +179,8 @@ apps.img: $(USERSPACE)
 image.bin: kernel.img apps.img 
 	cat kernel.img apps.img > $@
 
-kernel/libopencm3/lib/libopencm3_$(BOARD).a:
-	make -C kernel/libopencm3 FP_FLAGS="-mfloat-abi=soft" PREFIX=arm-frosted-eabi V=1
+kernel/unicore-mx/lib/libucmx_$(BOARD).a:
+	make -C kernel/unicore-mx FP_FLAGS="-mfloat-abi=soft" PREFIX=arm-frosted-eabi V=1
 
 kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
@@ -215,7 +215,7 @@ malloc_test:
 	@gcc -o malloc.test kernel/malloc.c -DCONFIG_KRAM_SIZE=4
 
 libclean:
-	@make -C kernel/libopencm3 clean
+	@make -C kernel/unicore-mx clean
 
 clean:
 	@rm -f malloc.test

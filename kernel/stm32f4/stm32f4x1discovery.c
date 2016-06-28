@@ -18,23 +18,23 @@
  *
  */  
 #include "frosted.h"
-#include "libopencm3/cm3/systick.h"
-#include <libopencm3/stm32/rcc.h>
-#include "libopencm3/cm3/nvic.h"
-#include <libopencm3/stm32/dma.h>
+#include "unicore-mx/cm3/systick.h"
+#include <unicore-mx/stm32/rcc.h>
+#include "unicore-mx/cm3/nvic.h"
+#include <unicore-mx/stm32/dma.h>
 
 #ifdef CONFIG_DEVUART
-#include "libopencm3/stm32/usart.h"
+#include "unicore-mx/stm32/usart.h"
 #include "uart.h"
 #endif
 
 #ifdef CONFIG_DEVGPIO
-#include <libopencm3/stm32/gpio.h>
+#include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
 #endif
 
 #ifdef CONFIG_DEVSTM32F4EXTI
-#include <libopencm3/stm32/exti.h>
+#include <unicore-mx/stm32/exti.h>
 #include "stm32f4_exti.h"
 #endif
 
@@ -43,7 +43,7 @@
 #endif
 
 #ifdef CONFIG_DEVSTM32F4SPI
-#include <libopencm3/stm32/spi.h>
+#include <unicore-mx/stm32/spi.h>
 #include "stm32f4_spi.h"
 #endif
 
@@ -52,7 +52,7 @@
 #endif
 
 #ifdef CONFIG_DEVSTM32F4I2C
-#include <libopencm3/stm32/i2c.h>
+#include <unicore-mx/stm32/i2c.h>
 #include "stm32f4_i2c.h"
 #endif
 
@@ -61,7 +61,7 @@
 #endif
 
 #ifdef CONFIG_DEVSTM32F4ADC
-#include <libopencm3/stm32/adc.h>
+#include <unicore-mx/stm32/adc.h>
 #include "stm32f4_adc.h"
 #endif
 

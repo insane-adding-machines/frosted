@@ -21,7 +21,7 @@
 #include "flat.h"
 #include "kprintf.h"
 #include "libopencmsis/core_cm3.h"
-#include "libopencm3/cm3/systick.h"
+#include "unicore-mx/cm3/systick.h"
 
 /*************************
  * bFLT start 

@@ -25,19 +25,19 @@
 #include "poll.h"
 
 #if defined(STM32F4) || defined(STM32F7)
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/cm3/nvic.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/cm3/nvic.h>
 #endif
 #ifdef STM32F7
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/cm3/nvic.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/cm3/nvic.h>
 #endif
 #ifdef LPC17XX
-#include <libopencm3/lpc17xx/nvic.h>
-#include <libopencm3/lpc17xx/gpio.h>
-#include <libopencm3/lpc17xx/exti.h>
+#include <unicore-mx/lpc17xx/nvic.h>
+#include <unicore-mx/lpc17xx/gpio.h>
+#include <unicore-mx/lpc17xx/exti.h>
 #endif
 
 #ifdef PYBOARD

@@ -18,16 +18,16 @@
  *
  */  
 #include "frosted.h"
-#include "libopencm3/cm3/systick.h"
-#include <libopencm3/lpc17xx/clock.h>
-#include <libopencm3/lpc17xx/nvic.h>
+#include "unicore-mx/cm3/systick.h"
+#include <unicore-mx/lpc17xx/clock.h>
+#include <unicore-mx/lpc17xx/nvic.h>
 #ifdef CONFIG_DEVUART
-#include <libopencm3/lpc17xx/uart.h>
+#include <unicore-mx/lpc17xx/uart.h>
 #include "uart.h"
 #endif
 
 #ifdef CONFIG_DEVGPIO
-#include <libopencm3/lpc17xx/gpio.h>
+#include <unicore-mx/lpc17xx/gpio.h>
 #include "gpio.h"
 #endif
 
@@ -60,7 +60,7 @@ static const struct gpio_addr gpio_addrs[] = {
 #endif
 
 #ifdef CONFIG_DEVUART
-/* TODO: Move to libopencm3 when implemented */
+/* TODO: Move to unicore-mx when implemented */
 
 
 

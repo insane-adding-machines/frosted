@@ -21,9 +21,9 @@
 #include "frosted.h"
 #include "device.h"
 #ifdef STM32F4
-#include <libopencm3/cm3/nvic.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/usb/usbd.h>
+#include <unicore-mx/cm3/nvic.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/usb/usbd.h>
 #endif
 #include "stm32f4_usb.h"
 

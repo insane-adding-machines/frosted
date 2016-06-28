@@ -18,14 +18,14 @@
  *
  */
 #include "frosted.h"
-#include "libopencm3/lm3s/usart.h"
-#include "libopencm3/lm3s/nvic.h"
+#include "unicore-mx/lm3s/usart.h"
+#include "unicore-mx/lm3s/nvic.h"
 
 #ifdef CONFIG_DEVUART
 #include "uart.h"
 #endif
 
-/* TODO: Move to libopencm3 when implemented */
+/* TODO: Move to unicore-mx when implemented */
 
 
 

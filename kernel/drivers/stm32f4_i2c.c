@@ -24,12 +24,12 @@
 #include "cirbuf.h"
 #include "stm32f4_dma.h"
 #include "stm32f4_i2c.h"
-#include <libopencm3/cm3/nvic.h>
+#include <unicore-mx/cm3/nvic.h>
 
-#include <libopencm3/stm32/dma.h>
-#include "libopencm3/stm32/i2c.h"
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
+#include <unicore-mx/stm32/dma.h>
+#include "unicore-mx/stm32/i2c.h"
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/gpio.h>
 
 typedef enum
 {

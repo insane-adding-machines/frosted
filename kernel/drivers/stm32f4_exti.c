@@ -23,10 +23,10 @@
 #include <stdint.h>
 #include "ioctl.h"
 
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/exti.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/cm3/nvic.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/stm32/exti.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/cm3/nvic.h>
 
 #include "gpio.h"
 #include "stm32f4_exti.h"

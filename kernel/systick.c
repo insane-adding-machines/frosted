@@ -19,8 +19,8 @@
  */  
 #include "frosted.h"
 #include "heap.h"
-#include "libopencm3/cm3/nvic.h"
-#include "libopencm3/cm3/systick.h"
+#include "unicore-mx/cm3/nvic.h"
+#include "unicore-mx/cm3/systick.h"
 volatile unsigned int jiffies = 0u;
 volatile unsigned int _n_int = 0u;
 int clock_interval = 1;

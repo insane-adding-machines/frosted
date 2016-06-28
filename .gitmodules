@@ -13,3 +13,6 @@
 [submodule "kernel/frosted-headers"]
 	path = kernel/frosted-headers
 	url = https://github.com/insane-adding-machines/frosted-headers.git
+[submodule "kernel/unicore-mx"]
+	path = kernel/unicore-mx
+	url = https://github.com/insane-adding-machines/unicore-mx.git

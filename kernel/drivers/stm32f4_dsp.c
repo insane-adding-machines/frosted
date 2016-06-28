@@ -24,12 +24,12 @@
 #include "cirbuf.h"
 #include "stm32f4_dma.h"
 #include "cirbuf.h"
-#include <libopencm3/cm3/nvic.h>
-#include <libopencm3/stm32/dma.h>
-#include <libopencm3/stm32/dac.h>
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/timer.h>
+#include <unicore-mx/cm3/nvic.h>
+#include <unicore-mx/stm32/dma.h>
+#include <unicore-mx/stm32/dac.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/stm32/rcc.h>
+#include <unicore-mx/stm32/timer.h>
 
 #define DSP_BUFSIZ 512
 
