@@ -31,7 +31,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/timer.h>
 
-#define DSP_BUFSIZ 256
+#define DSP_BUFSIZ 512
 
 #define DSP_IDLE 0
 #define DSP_BUSY 1
@@ -39,10 +39,11 @@
 /* Single device supported in this driver. */
 struct dev_dsp {
     struct device *dev;
-    uint8_t outb[DSP_BUFSIZ];
-    int written;
+    volatile int written;
     int transfer_size;
+    int chunk_size;
     int state;
+    uint8_t *outb;
 } Dsp;
 
 
@@ -65,6 +66,25 @@ int dsp_read(struct fnode *fno, void *buf, unsigned int len)
     return -EBUSY;
 }
 
+static void dsp_xmit(void)
+{
+    uint32_t size = DSP_BUFSIZ;
+    Dsp.state = DSP_BUSY;
+    if ((Dsp.transfer_size - Dsp.written ) < size)
+        size = Dsp.transfer_size - Dsp.written;
+    Dsp.chunk_size = size;
+
+    /* Start DMA transfer of waveform */
+    dac_trigger_enable(CHANNEL_1);
+    dac_set_trigger_source(DAC_CR_TSEL1_T2);
+    dac_dma_enable(CHANNEL_1);
+    dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) (Dsp.outb + Dsp.written));
+    dma_set_number_of_data(DMA1, DMA_STREAM5, size);
+    dma_enable_transfer_complete_interrupt(DMA1, DMA_STREAM5);
+    dma_channel_select(DMA1, DMA_STREAM5, DMA_SxCR_CHSEL_7);
+    dma_enable_stream(DMA1, DMA_STREAM5);
+}
+
 int dsp_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     struct dev_dsp *dsp;
@@ -76,35 +96,27 @@ int dsp_write(struct fnode *fno, const void *buf, unsigned int len)
         return -1;
 
     mutex_lock(dsp->dev->mutex);
-    while (dsp->written < len) {
-        if (dsp->state == DSP_BUSY) {
-            dsp->dev->pid = scheduler_get_cur_pid();
-            mutex_unlock(dsp->dev->mutex);
-            task_suspend();
-            return SYS_CALL_AGAIN;
-        }
 
-        space = DSP_BUFSIZ;
-        if (space > (len - dsp->written)) {
-            space = (len - dsp->written);
+    if (!dsp->outb) {
+        dsp->outb = kalloc(len);
+        if (!dsp->outb) {
+            return -ENOMEM;
         }
-        memcpy(dsp->outb, buf + dsp->written, space);
-        dsp->state = DSP_BUSY;
-        dsp->transfer_size = space;
-
-        /* Start DMA transfer of waveform */
-        dac_trigger_enable(CHANNEL_1);
-        dac_set_trigger_source(DAC_CR_TSEL1_T2);
-        dac_dma_enable(CHANNEL_1);
-        dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) dsp->outb);
-        dma_set_number_of_data(DMA1, DMA_STREAM5, space);
-        dma_enable_transfer_complete_interrupt(DMA1, DMA_STREAM5);
-        dma_channel_select(DMA1, DMA_STREAM5, DMA_SxCR_CHSEL_7);
-        dma_enable_stream(DMA1, DMA_STREAM5);
+        dsp->written = 0;
+        dsp->transfer_size = len;
+        memcpy(dsp->outb, buf, len);
+        dsp_xmit();
     }
-    dsp->written = 0;
+    if (dsp->written < len) {
+        dsp->dev->pid = scheduler_get_cur_pid();
+        mutex_unlock(dsp->dev->mutex);
+        task_suspend();
+        return SYS_CALL_AGAIN;
+    }
+    kfree(dsp->outb);
+    dsp->outb = NULL;
     mutex_unlock(dsp->dev->mutex);
-    return len;
+    return dsp->written;
 }
 
 
@@ -112,20 +124,26 @@ int dsp_write(struct fnode *fno, const void *buf, unsigned int len)
 void dma1_stream5_isr(void)
 {
     if (dma_get_interrupt_flag(DMA1, DMA_STREAM5, DMA_TCIF)) {
-        Dsp.written += Dsp.transfer_size;
-        Dsp.state = DSP_IDLE;
-        if (Dsp.dev->pid)
-            task_resume(Dsp.dev->pid);
+        if (Dsp.written < Dsp.transfer_size)
+            Dsp.written += Dsp.chunk_size;
+
         dma_clear_interrupt_flags(DMA1, DMA_STREAM5, DMA_TCIF);
+        dma_disable_stream(DMA1, DMA_STREAM5);
         dac_trigger_disable(CHANNEL_1);
         dac_dma_disable(CHANNEL_1);
+        if (Dsp.written >= Dsp.transfer_size) {
+            if (Dsp.dev->pid)
+                task_resume(Dsp.dev->pid);
+        } else {
+            dsp_xmit();
+        }
     }
 }
 
 
 /* Initialization functions */
 
-#define PERIOD 1152
+#define PERIOD (1800)
 static void timer_setup(void)
 {
     /* Enable TIM2 clock. */
