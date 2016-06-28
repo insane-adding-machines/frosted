@@ -22,6 +22,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include "libopencm3/stm32/usart.h"
 #include "libopencm3/cm3/nvic.h"
+#include "drivers/stm32f4_dsp.h"
 #include "drivers/stm32_sdio.h"
      
 #ifdef CONFIG_DEVUART
@@ -225,6 +226,9 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_DEVSTM32SDIO
     stm32_sdio_rcc_init();
     stm32_sdio_init(dev);
+#endif
+#ifdef CONFIG_DSP
+    dsp_init(dev);
 #endif
 
 #ifdef CONFIG_DEVSTMETH

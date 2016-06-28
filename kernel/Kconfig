@@ -304,6 +304,12 @@ menu "Device Drivers"
 
        endif
 
+       menuconfig DEVF4DSP
+       bool "STM32F4 Sound driver"
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       select DEVSTM32F4DMA
+       default n
+       
        config DEV_USB_ETH
        depends on PICOTCP
        bool "Ethernet over USB (CDC-ECM)"

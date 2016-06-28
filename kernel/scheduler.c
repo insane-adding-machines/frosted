@@ -293,8 +293,9 @@ static void running_to_idling(volatile struct task *t)
 }
 
 static int task_filedesc_del_from_task(volatile struct task *t, int fd);
-static void task_destroy(struct task *t)
+static void task_destroy(void *arg)
 {
+    struct task *t = arg;
     int i;
     for (i = 0; i < t->tb.n_files; i++) {
         task_filedesc_del_from_task(t, i);
@@ -566,6 +567,9 @@ volatile struct extra_stack_frame *tramp_extra;
 volatile struct nvic_stack_frame *tramp_nvic; 
 volatile struct extra_stack_frame *extra_usr;  
 
+void task_resume(int pid);
+void task_stop(int pid);
+void task_continue(int pid);
 static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo)
 {
     cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
@@ -595,6 +599,7 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
     t->tb.flags |= TASK_FLAG_SIGNALED;
     task_resume(t->tb.pid);
 }
+
 
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
 {
@@ -1189,7 +1194,7 @@ void task_stop(int pid) {
     struct task *t = tasklist_get(&tasks_idling, pid);
     if (!t) {
         t = tasklist_get(&tasks_running, pid);
-        running_to_idling(pid);
+        running_to_idling(t);
     }
     if (!t)
         return;
@@ -1355,8 +1360,8 @@ child_found:
         *((int *)arg2) = t->tb.exitval;
     }
     pid = t->tb.pid;
-    t->tb.state = TASK_OVER;
     task_destroy(t);
+    t->tb.state = TASK_OVER;
     return pid;
 }
 
