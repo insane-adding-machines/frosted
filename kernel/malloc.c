@@ -110,7 +110,7 @@ static struct f_malloc_block * split_block(struct f_malloc_block * blk, size_t s
     struct f_malloc_block * free_blk;
   
     /* does it fit? */
-    if ((blk->size - sizeof(struct f_malloc_block)) < size)
+    if ((blk->size - sizeof(struct f_malloc_block)) <= size)
         return NULL;
   
     /* shrink the block to requested size */
@@ -132,6 +132,9 @@ static int block_fits(struct f_malloc_block *blk, size_t size, int flags)
     uint32_t baddr = (uint32_t)blk;
     uint32_t reqsize = size + sizeof(struct f_malloc_block);
     if (!blk)
+        return 0;
+
+    if (!block_valid(blk))
         return 0;
 
     if (in_use(blk))
@@ -303,6 +306,8 @@ void f_proc_heap_free(int pid)
     struct f_malloc_block *blk = malloc_entry[MEM_USER];
     while (blk)
     {
+        if (!block_valid(blk))
+            while(1); /* corrupt block! */
         if ((blk->pid == pid) && in_use(blk)) {
             f_free(blk);
         }
@@ -349,7 +354,7 @@ void * f_malloc(int flags, size_t size)
     {
         dbg_malloc("Found best fit!\n");
         /* first fit found, now split it if it's much bigger than needed */
-        if (size + (2*sizeof(struct f_malloc_block)) < blk->size)
+        if (2 * (size + sizeof(struct f_malloc_block)) < blk->size)
         {
             dbg_malloc("Splitting blocks, since requested size [%d] << best fit block size [%d]!\n", size, blk->size);
             split_block(blk, size);
@@ -398,11 +403,6 @@ void * f_malloc(int flags, size_t size)
 static void blk_rearrange(void *arg)
 {
     struct f_malloc_block *blk = arg;
-    if (mutex_trylock(mlock) < 0) {
-        /* Try again later. */
-        tasklet_add(blk_rearrange, blk);
-        return;
-    }
 
     /* Merge adjecent free blocks (consecutive blocks are always adjacent) */
     if ((blk->prev) && (!in_use(blk->prev)))
@@ -415,7 +415,6 @@ static void blk_rearrange(void *arg)
     }
     if (!blk->next)
         f_compact(blk);
-    mutex_unlock(mlock);
 }
 
 
@@ -432,6 +431,12 @@ void f_free(void * ptr)
     blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
     if (block_valid(blk))
     {
+        if (mutex_trylock(mlock) < 0) {
+            /* Try again later. */
+            tasklet_add(f_free, ptr);
+            return;
+        }
+
         if ((blk->flags & F_IN_USE) == 0) {
             task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
         }
@@ -442,6 +447,8 @@ void f_free(void * ptr)
         f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
         f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
         blk_rearrange(blk);
+
+        mutex_unlock(mlock);
     } else {
         dbg_malloc("FREE ERR: %p is not a valid allocated pointer!\n", blk);
     }
