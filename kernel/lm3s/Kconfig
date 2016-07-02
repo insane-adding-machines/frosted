@@ -7,6 +7,10 @@ config ARCH_LM3S6965
     bool "LM3S6965"
     select FLASH_SIZE_256KB
     select RAM_SIZE_64KB
+config ARCH_LM3SVIRT
+    bool "LM3S-VIRTUAL"
+    select FLASH_SIZE_1MB
+    select RAM_SIZE_256KB
 endchoice
 
 endif

@@ -143,6 +143,10 @@ config MACH_LM3S6965EVB
     bool "lm3s6965evb"
     depends on ARCH_LM3S6965
     default y
+config MACH_LM3SVIRT
+    bool "lm3s-qemu"
+    depends on ARCH_LM3SVIRT
+    default y
 
 endchoice
 
@@ -268,15 +272,15 @@ menu "Device Drivers"
 
             config USART_0
             bool "USART 0"
-            depends on ARCH_LM3S6965
+            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT)
 
             config USART_1
             bool "USART 1"
-            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 ||  ARCH_STM32F746)
+            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 ||  ARCH_STM32F746)
 
             config USART_2
             bool "USART 2"
-            depends on (ARCH_LM3S6965 ||ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407 || ARCH_STM32F746)
+            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407 || ARCH_STM32F746)
 
             config USART_3
             bool "USART 3"
