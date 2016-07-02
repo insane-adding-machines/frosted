@@ -201,10 +201,10 @@ kernel.elf: $(LIB-y) $(OBJS-y) kernel/$(BOARD)/$(BOARD).ld
 
 	
 qemu: image.bin
-	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
+	qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
 
 qemu2: image.bin
-	qemu-system-arm -semihosting -M lm3s6965evb --kernel image.bin -serial stdio
+	qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio
 
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
