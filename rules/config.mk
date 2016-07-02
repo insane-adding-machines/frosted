@@ -105,6 +105,9 @@ endif
 ifeq ($(CLK_168MHZ),y)
 	SYS_CLOCK=168000000
 endif
+ifeq ($(CLK_180MHZ),y)
+	SYS_CLOCK=180000000
+endif
 ifeq ($(CLK_216MHZ),y)
         SYS_CLOCK=216000000
 endif

@@ -71,6 +71,8 @@ config ARCH_STM32F411
     bool
 config ARCH_STM32F429
     bool
+config ARCH_STM32F446
+    bool
 config ARCH_STM32F746
     bool
 
@@ -95,6 +97,9 @@ choice
     config CLK_168MHZ
         bool "168MHz"
         depends on (ARCH_STM32F407 ||  ARCH_STM32F405 || ARCH_STM32F429)
+    config CLK_180MHZ
+        bool "180MHz"
+        depends on (ARCH_STM32F446)
     config CLK_216MHZ
         bool "216MHZ"
         depends on (ARCH_STM32F746)
@@ -126,6 +131,10 @@ config MACH_STM32F4x1Discovery
 config MACH_STM32F429Discovery
     bool "STM32F429Discovery"
     depends on (ARCH_STM32F429)
+    default y
+config MACH_STM32F446Nucleo
+    bool "STM32F446 Nucleo"
+    depends on (ARCH_STM32F446)
     default y
 
 config MACH_LPC1768MBED
@@ -276,11 +285,11 @@ menu "Device Drivers"
 
             config USART_1
             bool "USART 1"
-            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 ||  ARCH_STM32F746)
+            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 ||  ARCH_STM32F746 || ARCH_STM32F446)
 
             config USART_2
             bool "USART 2"
-            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407 || ARCH_STM32F746)
+            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407 || ARCH_STM32F746 || ARCH_STM32F446)
 
             config USART_3
             bool "USART 3"
@@ -288,7 +297,7 @@ menu "Device Drivers"
 
             config USART_6
             bool "USART 6"
-            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F746)
+            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F746 || ARCH_STM32F446)
 
             config UART_0
             bool "UART 0"
@@ -310,7 +319,7 @@ menu "Device Drivers"
 
        menuconfig DEVF4DSP
        bool "STM32F4 Sound driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
        select DEVSTM32F4DMA
        default n
        
@@ -335,24 +344,24 @@ menu "Device Drivers"
 
        menuconfig DEVF4EXTI
        bool "STM32F4 EXTI driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
        default n
 
        menuconfig DEVTIM
        bool "System CPU timer on TIM2"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
        default n
 
        menuconfig DEVADC
        bool "Generic ADC driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
        select DEVSTM32F4DMA
        default n
 
 
        menuconfig DEVF4ETH
        bool "STM32F4 Ethernet driver"
-       depends on ((ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 ) && PICOTCP)
+       depends on ((ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446) && PICOTCP)
        default n
 
        menuconfig DEVF7ETH
@@ -377,13 +386,13 @@ menu "Device Drivers"
 
        menuconfig DEVF4I2C
        bool "STM32F4 I2C driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
        select DEVSTM32F4DMA
        default n
 
        menuconfig DEVSTM32SDIO
        bool "STM32F4 SD I/O driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F7)
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F7|| ARCH_STM32F446)
        default n
 
        if DEVF4I2C
@@ -405,7 +414,7 @@ menu "Device Drivers"
 
        menuconfig DEVSPI
        bool "Generic SPI driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 )
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
        select DEVSTM32F4DMA
        default n
 

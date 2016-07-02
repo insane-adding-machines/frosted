@@ -73,6 +73,11 @@ config ARCH_STM32F429_XI
     select FLASH_SIZE_2MB
     select RAM_SIZE_256KB
     select ARCH_STM32F429
+config ARCH_STM32F446_ZE
+    bool "STM32F446ZE 512KB"
+    select FLASH_SIZE_512KB
+    select RAM_SIZE_128KB
+    select ARCH_STM32F446
 endchoice
 
 endif
