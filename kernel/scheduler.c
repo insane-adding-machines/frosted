@@ -326,6 +326,7 @@ static void task_destroy(void *arg)
 }
 
 volatile struct task *_cur_task = NULL;
+static struct task *forced_task = NULL;
 
 
 static int next_pid(void)
@@ -569,6 +570,7 @@ volatile struct nvic_stack_frame *tramp_nvic;
 volatile struct extra_stack_frame *extra_usr;  
 
 void task_resume(int pid);
+void task_resume_lock(int pid);
 void task_stop(int pid);
 void task_continue(int pid);
 static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo)
@@ -769,6 +771,11 @@ static __inl void task_switch(void)
 {
     int i, pid = _cur_task->tb.pid;
     volatile struct task *t = _cur_task;
+    if (forced_task) {
+        _cur_task = forced_task;
+        forced_task = NULL;
+        return;
+    }
 
     if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
         t = tasks_running;
@@ -1231,13 +1238,29 @@ void task_preempt_all(void)
 }
 
 
-void task_resume(int pid)
+static void task_resume_real(int pid, int lock)
 {
     struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && (t->tb.state == TASK_WAITING)) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
     }
+    if (!lock && (t->tb.nice == NICE_RT)) {
+        forced_task = t;
+        task_preempt_all();
+    }
+}
+
+
+void task_resume_lock(int pid)
+{
+    task_resume_real(pid, 1);
+}
+
+
+void task_resume(int pid)
+{
+    task_resume_real(pid, 0);
 }
 
 void task_continue(int pid)
@@ -1447,6 +1470,38 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     return -1;
 }
 
+
+int sys_setpriority_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    int pid = arg2;
+    int nice = (int)arg3;
+    struct task *t = tasklist_get(&tasks_idling, pid);
+    if (!t) 
+        t = tasklist_get(&tasks_running, pid);
+
+    if (arg1 != 0)  /* ONLY PRIO_PROCESS IS VALID */
+        return -EINVAL;
+    if (!t)
+        return -ESRCH;
+
+    t->tb.nice = nice;
+    return 0;
+}
+
+int sys_getpriority_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    int pid = arg2;
+    struct task *t = tasklist_get(&tasks_idling, pid);
+    if (!t) 
+        t = tasklist_get(&tasks_running, pid);
+
+    if (arg1 != 0)  /* ONLY PRIO_PROCESS IS VALID */
+        return -EINVAL;
+    if (!t)
+        return -ESRCH;
+
+    return (int)t->tb.nice;
+}
 
 int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {

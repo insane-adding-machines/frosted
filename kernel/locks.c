@@ -93,7 +93,7 @@ int sem_post(sem_t *s)
         for(i = 0; i < s->listeners; i++) {
             int pid = s->listener[i];
             if (pid > 0) {
-                task_resume(pid);
+                task_resume_lock(pid);
             }
         }
     }
@@ -209,7 +209,7 @@ int mutex_unlock(mutex_t *s)
         for(i = 0; i < s->listeners; i++) {
             int pid = s->listener[i];
             if (pid > 0) {
-                task_resume(pid);
+                task_resume_lock(pid);
             }
         }
         return 0;

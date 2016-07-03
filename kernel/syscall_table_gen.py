@@ -82,7 +82,10 @@ syscalls = [
     ["readlink", 3, "sys_readlink_hdlr"],
     ["fcntl", 3, "sys_fcntl_hdlr"],
     ["setsid", 0, "sys_setsid_hdlr"],
-    ["ptrace", 4, "sys_ptrace_hdlr"]
+    ["ptrace", 4, "sys_ptrace_hdlr"],
+    ["reboot", 0, "sys_reboot_hdlr"],
+    ["getpriority", 2, "sys_getpriority_hdlr"],
+    ["setpriority", 3, "sys_setpriority_hdlr"]
 
 ]
 

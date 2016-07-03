@@ -90,6 +90,7 @@ int task_fd_writable(int fd);
 int task_filedesc_del(int fd);
 void task_suspend(void);
 void task_resume(int pid);
+void task_resume_lock(int pid);
 int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio);
 int task_kill(int pid, int signal);
 
