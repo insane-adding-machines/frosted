@@ -69,6 +69,10 @@ void sysfs_init(void);
 
 
 /* Scheduler */
+#define NICE_DEFAULT (0)
+#define NICE_RT (0 - 20)
+#define NICE_MAX (20)
+
 void frosted_scheduler_on(void);
 char * scheduler_task_name(int pid);
 uint16_t scheduler_get_cur_pid(void);
@@ -94,6 +98,8 @@ void task_preempt_all(void);
 
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
+
+int scheduler_get_nice(int pid);
 
 int sem_wait(sem_t *s);
 int sem_trywait(sem_t *s);

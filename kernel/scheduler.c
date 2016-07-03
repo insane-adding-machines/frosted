@@ -114,7 +114,8 @@ int sys_register_handler(uint32_t n, int(*_sys_c)(uint32_t arg1, uint32_t arg2, 
 
 #define MAX_TASKS 16
 #define BASE_TIMESLICE (20)
-#define TIMESLICE(x) ((BASE_TIMESLICE) + ((x)->tb.prio << 2))
+
+#define TIMESLICE(x) ((BASE_TIMESLICE) - ((x)->tb.nice >> 1))
 #define SCHEDULER_STACK_SIZE ((CONFIG_TASK_STACK_SIZE - sizeof(struct task_block)) - F_MALLOC_OVERHEAD)
 #define INIT_SCHEDULER_STACK_SIZE (256)
 
@@ -194,9 +195,9 @@ struct __attribute__((packed)) task_block {
 
     uint8_t state;
     uint8_t flags;
-    uint16_t prio;
+    int8_t nice;
 
-    uint16_t timeslice;
+    uint8_t timeslice;
     uint16_t pid;
 
     uint16_t ppid;
@@ -890,11 +891,17 @@ static void *task_pass_args(void *_args)
     return new;
 }
 
-static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int prio)
+static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int nice)
 {
     struct nvic_stack_frame *nvic_frame;
     struct extra_stack_frame *extra_frame;
     uint8_t *sp;
+
+    if (nice < NICE_RT)
+        nice = NICE_RT;
+
+    if (nice > NICE_MAX)
+        nice = NICE_MAX;
 
     new->tb.start = init;
     new->tb.arg = task_pass_args(arg);
@@ -934,7 +941,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     new->tb.sp = (uint32_t *)sp;
 } 
 
-int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio)
+int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
 {
     struct task *new;
     int i;
@@ -946,7 +953,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio)
     }
     new->tb.pid = next_pid();
     new->tb.ppid = scheduler_get_cur_pid();
-    new->tb.prio = prio;
+    new->tb.nice = nice;
     new->tb.filedesc = NULL;
     new->tb.n_files = 0;
     new->tb.flags = 0;
@@ -966,7 +973,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio)
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
-    task_create_real(new, vfsi->init, arg, prio);
+    task_create_real(new, vfsi->init, arg, nice);
     new->tb.state = TASK_RUNNABLE;
     irq_on();
     return new->tb.pid;
@@ -977,7 +984,7 @@ int scheduler_exec(struct vfs_info *vfsi, void *args)
     volatile struct task *t = _cur_task;
     
     t->tb.vfsi = vfsi;
-    task_create_real(t, vfsi->init, (void *)args, t->tb.prio);
+    task_create_real(t, vfsi->init, (void *)args, t->tb.nice);
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
     t->tb.state = TASK_RUNNING;
     mpu_task_on((void *)(((uint32_t)t->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
@@ -1001,7 +1008,7 @@ int sys_vfork_hdlr(void)
     vpid = next_pid();
     new->tb.pid = vpid;
     new->tb.ppid = scheduler_get_cur_pid();
-    new->tb.prio = _cur_task->tb.prio;
+    new->tb.nice = _cur_task->tb.nice;
     new->tb.filedesc = NULL;
     new->tb.n_files = 0;
     new->tb.flags = TASK_FLAG_VFORK;
@@ -1155,7 +1162,7 @@ void kernel_task_init(void)
     kernel->tb.sp = msp_read(); // SP needs to be current SP
     kernel->tb.pid = next_pid();
     kernel->tb.ppid = scheduler_get_cur_pid();
-    kernel->tb.prio = 0;
+    kernel->tb.nice = NICE_DEFAULT;
     kernel->tb.start = NULL;
     kernel->tb.arg = NULL;
     kernel->tb.filedesc = NULL;
@@ -1279,6 +1286,19 @@ void task_terminate(int pid)
             task_preempt();
         }
     }
+}
+
+
+int scheduler_get_nice(int pid)
+{
+    struct task *t;
+    t = tasklist_get(&tasks_running, pid);
+    if (!t)
+        t = tasklist_get(&tasks_idling, pid);
+
+    if (!t)
+        return 0;
+    return (int)t->tb.nice;
 }
 
 static void sleepy_task_wakeup(uint32_t now, void *arg)

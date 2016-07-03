@@ -124,7 +124,43 @@ int ul_to_str(unsigned long n, char *s)
         q /= 10;
     }
     return maxlen;
+}
 
+
+int nice_to_str(int8_t n, char *s)
+{
+    int i = 0;
+    if (n == 0) {
+        s[0] = '0';
+        s[1] = '\n';
+        return 1;
+    }
+
+    if (n == NICE_RT) {
+        s[0] = 'R';
+        s[1] = 'T';
+        s[2] = '\0';
+        return 2;
+    }
+
+    if (n < 0) {
+        s[i++] = '-';
+        n = 0 - n;
+    }
+    if (n > 20) {
+        s[0] = 'E';
+        s[1] = 'R';
+        s[2] = 'R';
+        s[3] = '\0';
+        return 3;
+    }
+
+    if (n >= 10) {
+        s[i++] = (n / 10) + '0';
+    }
+    s[i++] = (n % 10) + '0';
+    s[i++] = '\0';
+    return (i - 1);
 }
 
 int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
@@ -151,7 +187,8 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     int stack_used;
     char *name;
     int p_state;
-    const char legend[]="pid\tstate\tstack\theap\tname\r\n";
+    int nice;
+    const char legend[]="pid\tstate\tstack\theap\tnice\tname\r\n";
     if (fno->off == 0) {
         mutex_lock(sysfs_mutex);
         task_txt = kalloc(MAX_SYSFS_BUFFER);
@@ -187,6 +224,10 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
                 task_txt[off++] = '\t';
                 stack_used = f_proc_heap_count(i);
                 off += ul_to_str(stack_used, task_txt + off);
+                
+                task_txt[off++] = '\t';
+                nice = scheduler_get_nice(i);
+                off += nice_to_str(nice, task_txt + off);
 
                 task_txt[off++] = '\t';
                 name = scheduler_task_name(i);
