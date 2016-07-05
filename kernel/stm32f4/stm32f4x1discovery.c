@@ -354,8 +354,6 @@ static const struct adc_addr adc_addrs[] = {
 #define NUM_ADC (sizeof(adc_addrs)/sizeof(struct adc_addr))
 #endif
 
-#include "stm32f4_usbdef.h"
-
 void machine_init(struct fnode * dev)
 {
         /* 401 & 411 run 84 and 100 MHz max respectively */
