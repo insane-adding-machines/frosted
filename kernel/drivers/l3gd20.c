@@ -215,6 +215,6 @@ void l3gd20_init(struct fnode * dev, const struct l3gd20_addr l3gd20_addr)
     int i;
     l3gd20_fno_init(dev, i, &l3gd20_addr);
     exti_register(l3gd20_addr.pio1_base, l3gd20_addr.pio1_pin, EXTI_TRIGGER_RISING, int1_callback, NULL);
-    exti_register(l3gd20_addr.pio2_base, l3gd20_addr.pio2_pin, EXTI_TRIGGER_RISING, int2_callback);
+    exti_register(l3gd20_addr.pio2_base, l3gd20_addr.pio2_pin, EXTI_TRIGGER_RISING, int2_callback, NULL);
     register_module(&mod_devl3gd20);
 }
