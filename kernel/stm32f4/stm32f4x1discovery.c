@@ -47,18 +47,12 @@
 #include "stm32f4_spi.h"
 #endif
 
-#ifdef CONFIG_DEVL3GD20
-#include "l3gd20.h"
-#endif
 
 #ifdef CONFIG_DEVSTM32F4I2C
 #include <unicore-mx/stm32/i2c.h>
 #include "stm32f4_i2c.h"
 #endif
 
-#ifdef CONFIG_DEVLSM303DLHC
-#include "lsm303dlhc.h"
-#endif
 
 #ifdef CONFIG_DEVSTM32F4ADC
 #include <unicore-mx/stm32/adc.h>
@@ -176,7 +170,7 @@ static const struct uart_addr uart_addrs[] = {
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
 #endif
 
-#ifdef CONFIG_DEVF4EXTI
+#ifdef CONFIG_DEVF4EXTI_OLD
 static const struct exti_addr exti_addrs[] = { 
 #ifdef CONFIG_DEVL3GD20
             /* INT1 - PE0 INT2 - PE1 */
@@ -243,19 +237,6 @@ static const struct spi_addr spi_addrs[] = {
 #endif
 };
 #define NUM_SPIS (sizeof(spi_addrs) / sizeof(struct spi_addr))
-
-#ifdef CONFIG_DEVL3GD20
-static const struct l3gd20_addr l3gd20_addrs[] = { 
-        {
-            .name = "l3gd20",
-            .spi_name = "/dev/spi1",
-            .spi_cs_name = "/dev/l3gd20_cs",
-            .int_1_name = "/dev/l3gd20_i1",
-            .int_2_name = "/dev/l3gd20_i2",
-        }
-};
-#define NUM_L3GD20 (sizeof(l3gd20_addrs)/sizeof(struct l3gd20_addr))
-#endif
 #endif
 
 
@@ -302,28 +283,6 @@ static const struct i2c_addr i2c_addrs[] = {
 #endif
 };
 #define NUM_I2CS (sizeof(i2c_addrs) / sizeof(struct i2c_addr))
-
-#ifdef CONFIG_DEVLSM303DLHC
-static const struct lsm303dlhc_addr lsm303dlhc_addrs[] = {
-        {
-            .name = "lsm303acc",
-            .i2c_name = "/dev/i2c1",
-            .int_1_name = "/dev/lsm303_i1",
-            .int_2_name = "/dev/lsm303_i2",
-            .drdy_name = NULL,
-            .address = 0x32,
-        },
-        {
-            .name = "lsm303mag",
-            .i2c_name = "/dev/i2c1",
-            .int_1_name = NULL,
-            .int_2_name = NULL,
-            .drdy_name = "/dev/lsm303_drdy",
-            .address = 0x3C,
-        },
-};
-#define NUM_LSM303DLHC (sizeof(lsm303dlhc_addrs)/sizeof(struct lsm303dlhc_addr))
-#endif
 #endif
 
 
@@ -352,6 +311,35 @@ static const struct adc_addr adc_addrs[] = {
         }
 };
 #define NUM_ADC (sizeof(adc_addrs)/sizeof(struct adc_addr))
+#endif
+
+#ifdef CONFIG_DEVLSM303DLHC
+#include "drivers/lsm303dlhc.h"
+static const struct lsm303dlhc_addr lsm303dlhc_addr = {
+    .name = "l3gd20",
+    .i2c_name = "/dev/i2c1",
+    .pio1_base = GPIOE,
+    .pio2_base = GPIOE,
+    .drdy_base = GPIOE,
+    .pio1_pin = 4,
+    .pio2_pin = 5,
+    .drdy_pin = 2,
+    .address = 0x32,
+    .drdy_address = 0x3C
+};
+#endif
+#ifdef CONFIG_DEVL3GD20
+#include "drivers/l3gd20.h"
+static const struct l3gd20_addr l3gd20_addr = {
+    .name = "l3gd20",
+    .spi_name = "/dev/spi1",
+    .spi_cs_name = "/dev/l3gd20_cs",
+    .pio1_base = GPIOE,
+    .pio2_base = GPIOE,
+    .pio1_pin = 0,
+    .pio2_pin = 1,
+
+};
 #endif
 
 void machine_init(struct fnode * dev)
@@ -386,8 +374,17 @@ void machine_init(struct fnode * dev)
     lsm303dlhc_init(dev, lsm303dlhc_addrs, NUM_LSM303DLHC);
 #endif
 #endif
+
 #ifdef CONFIG_DEVADC
     adc_init(dev, adc_addrs, NUM_ADC);
+#endif
+
+#ifdef CONFIG_DEVLSM303DLHC
+    lsm303dlhc_init(dev, lsm303dlhc_addr);
+#endif
+
+#ifdef CONFIG_DEVL3GD20
+    l3gd20_init(dev, l3gd20_addr);
 #endif
 }
 

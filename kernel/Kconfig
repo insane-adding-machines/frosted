@@ -342,9 +342,9 @@ menu "Device Drivers"
            default 192.168.6.1
        endif
 
-       menuconfig DEVF4EXTI
-       bool "STM32F4 EXTI driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
+       menuconfig DEVSTM32EXTI
+       bool "STM32 EXTI driver"
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || ARCH_STM32F746)
        default n
 
        menuconfig DEVTIM

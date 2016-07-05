@@ -25,9 +25,9 @@
 #include "lsm303dlhc.h"
 #include "lsm303dlhc_ioctl.h"
 #include "gpio.h"
-#include "stm32f4_exti.h"
+#include "stm32_exti.h"
 #include "stm32f4_dma.h"
-#include "i2c.h"
+#include "stm32f4_i2c.h"
 
 typedef enum
 {
@@ -72,22 +72,16 @@ static void completion(void * arg)
 }
 
 
-static void int1_callback(void * arg)
+static void int1_callback()
 {
-    const struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
-
 }
 
-static void int2_callback(void * arg)
+static void int2_callback()
 {
-    const struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
-
 }
 
-static void drdy_callback(void * arg)
+static void drdy_callback()
 {
-    const struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
-
 }
 
 
@@ -156,28 +150,22 @@ static int devlsm303dlhc_close(struct fnode *fno)
 }
 
 
-static void lsm303dlhc_fno_init(struct fnode *dev, uint32_t n, const struct lsm303dlhc_addr * addr)
+static void lsm303dlhc_fno_init(struct fnode *dev, const struct lsm303dlhc_addr *addr)
 {
-    struct dev_lsm303dlhc *l = &DEV_LSM303DLHC[n];
+    struct dev_lsm303dlhc *l = &DEV_LSM303DLHC[0];
     l->dev = device_fno_init(&mod_devlsm303dlhc, addr->name, dev, FL_RDWR, l);
     l->i2c_fnode = fno_search(addr->i2c_name);
-    (addr->int_1_name) ? l->int_1_fnode = fno_search(addr->int_1_name) : NULL;
-    (addr->int_2_name) ? l->int_2_fnode = fno_search(addr->int_2_name) : NULL;
-    (addr->drdy_name) ? l->drdy_fnode = fno_search(addr->drdy_name) : NULL;
     l->address = addr->address;
     l->mode = LSM303DLHC_IDLE;
-
-    if(l->int_1_fnode)exti_register_callback(l->int_1_fnode, int1_callback, l);
-    if(l->int_2_fnode)exti_register_callback(l->int_2_fnode, int2_callback, l);
-    if(l->drdy_fnode)exti_register_callback(l->drdy_fnode, drdy_callback, l);
 }
 
-void lsm303dlhc_init(struct fnode *dev, const struct lsm303dlhc_addr lsm303dlhc_addrs[], int num_lsm303dlhc)
+void lsm303dlhc_init(struct fnode *dev, const struct lsm303dlhc_addr addr)
 {
     int i;
-    for (i = 0; i < num_lsm303dlhc; i++)
-    {
-        lsm303dlhc_fno_init(dev, i, &lsm303dlhc_addrs[i]);
-    }
+    exti_register(addr.pio1_base, addr.pio1_pin, EXTI_TRIGGER_RISING, int1_callback);
+    exti_register(addr.pio2_base, addr.pio2_pin, EXTI_TRIGGER_RISING, int2_callback);
+    exti_register(addr.drdy_base, addr.drdy_pin, EXTI_TRIGGER_RISING, drdy_callback); 
+
+    lsm303dlhc_fno_init(dev, &addr);
     register_module(&mod_devlsm303dlhc);
 }
