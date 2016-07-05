@@ -170,24 +170,6 @@ static const struct uart_addr uart_addrs[] = {
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
 #endif
 
-#ifdef CONFIG_DEVF4EXTI_OLD
-static const struct exti_addr exti_addrs[] = { 
-#ifdef CONFIG_DEVL3GD20
-            /* INT1 - PE0 INT2 - PE1 */
-            {.base=GPIOE, .pin=GPIO0, .trigger=EXTI_TRIGGER_RISING, .name="l3gd20_i1"},
-            {.base=GPIOE, .pin=GPIO1, .trigger=EXTI_TRIGGER_RISING, .name="l3gd20_i2"},
-#else
-            {.base=GPIOA, .pin=GPIO0, .trigger=EXTI_TRIGGER_FALLING, .name="user_pb"},
-#endif
-#ifdef CONFIG_DEVLSM303DLHC
-            {.base=GPIOE, .pin=GPIO2, .trigger=EXTI_TRIGGER_RISING, .name="lsm303_drdy"},
-            {.base=GPIOE, .pin=GPIO4, .trigger=EXTI_TRIGGER_RISING, .name="lsm303_i1"},
-            {.base=GPIOE, .pin=GPIO5, .trigger=EXTI_TRIGGER_RISING, .name="lsm303_i2"},
-#endif
-};
-#define NUM_EXTIS (sizeof(exti_addrs) / sizeof(struct exti_addr))
-#endif
-
 #ifdef CONFIG_DEVSPI
 static const struct spi_addr spi_addrs[] = { 
 #ifdef CONFIG_SPI_1
@@ -321,9 +303,9 @@ static const struct lsm303dlhc_addr lsm303dlhc_addr = {
     .pio1_base = GPIOE,
     .pio2_base = GPIOE,
     .drdy_base = GPIOE,
-    .pio1_pin = 4,
-    .pio2_pin = 5,
-    .drdy_pin = 2,
+    .pio1_pin = GPIO4,
+    .pio2_pin = GPIO5,
+    .drdy_pin = GPIO2,
     .address = 0x32,
     .drdy_address = 0x3C
 };
@@ -336,9 +318,8 @@ static const struct l3gd20_addr l3gd20_addr = {
     .spi_cs_name = "/dev/l3gd20_cs",
     .pio1_base = GPIOE,
     .pio2_base = GPIOE,
-    .pio1_pin = 0,
-    .pio2_pin = 1,
-
+    .pio1_pin = GPIO0,
+    .pio2_pin = GPIO1,
 };
 #endif
 

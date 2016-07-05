@@ -36,7 +36,8 @@ struct dev_exti {
     uint32_t base;                          /* GPIO base */
     uint16_t pin;                           /* GPIO pin */
     uint8_t trigger;                        /* EXTI trigger type */
-    void (* exti_isr)(void);                /* ISR */
+    void (* exti_isr)(void *);                /* ISR */
+    void *exti_isr_arg;
 };
 
 #define MAX_EXTIS   24
@@ -48,7 +49,7 @@ void exti_isr(uint32_t exti_base, uint32_t exti_idx)
     struct dev_exti *dev = DEV_EXTI[exti_idx];
     exti_reset_request(exti_base);
     if (dev && dev->exti_isr) {
-        dev->exti_isr();
+        dev->exti_isr(dev->exti_isr_arg);
     }
 }
 
@@ -107,95 +108,98 @@ void exti15_10_isr(void)
         exti_isr(EXTI15, 15);
 }
 
-static uint32_t exti_base(int idx)
+static uint32_t exti_base(uint16_t pin)
 {
-    switch(idx)
+    switch(pin)
     {
-        case 0:
+        case GPIO0:
             return EXTI0;
-        case 1:
+        case GPIO1:
             return EXTI1;
-        case 2:
+        case GPIO2:
             return EXTI2;
-        case 3:
+        case GPIO3:
             return EXTI3;
-        case 4:
+        case GPIO4:
             return EXTI4;
-        case 5:
+        case GPIO5:
             return EXTI5;
-        case 6:
+        case GPIO6:
             return EXTI6;
-        case 7:
+        case GPIO7:
             return EXTI7;
-        case 8:
+        case GPIO8:
             return EXTI8;
-        case 9:
+        case GPIO9:
             return EXTI9;
-        case 10:
+        case GPIO10:
             return EXTI10;
-        case 11:
+        case GPIO11:
             return EXTI11;
-        case 12:
+        case GPIO12:
             return EXTI12;
-        case 13:
+        case GPIO13:
             return EXTI13;
-        case 14:
+        case GPIO14:
             return EXTI14;
-        case 15:
+        case GPIO15:
             return EXTI15;
     }
     return (uint32_t)(-1);
 }
 
 
-static uint32_t gpio_base(int idx)
+static int gpio_id(uint16_t pin)
 {
-    switch(idx)
+    switch(pin)
     {
-        case 0:
-            return GPIO0;
-        case 1:
-            return GPIO1;
-        case 2:
-            return GPIO2;
-        case 3:
-            return GPIO3;
-        case 4:
-            return GPIO4;
-        case 5:
-            return GPIO5;
-        case 6:
-            return GPIO6;
-        case 7:
-            return GPIO7;
-        case 8:
-            return GPIO8;
-        case 9:
-            return GPIO9;
-        case 10:
-            return GPIO10;
-        case 11:
-            return GPIO11;
-        case 12:
-            return GPIO12;
-        case 13:
-            return GPIO13;
-        case 14:
-            return GPIO14;
-        case 15:
-            return GPIO15;
+        case GPIO0:
+            return 0;
+        case GPIO1:
+            return 1;
+        case GPIO2:
+            return 2;
+        case GPIO3:
+            return 3;
+        case GPIO4:
+            return 4;
+        case GPIO5:
+            return 5;
+        case GPIO6:
+            return 6;
+        case GPIO7:
+            return 7;
+        case GPIO8:
+            return 8;
+        case GPIO9:
+            return 9;
+        case GPIO10:
+            return 10;
+        case GPIO11:
+            return 11;
+        case GPIO12:
+            return 12;
+        case GPIO13:
+            return 13;
+        case GPIO14:
+            return 14;
+        case GPIO15:
+            return 15;
     }
-    return (uint32_t)(-1);
+    return -1;
 }
 
-int exti_register(uint32_t base, uint16_t pin, uint8_t trigger, void (*isr)(void))
+int exti_register(uint32_t base, uint16_t pin, uint8_t trigger, void (*isr)(void *), void *isr_arg)
 {
 
     uint32_t exti = exti_base(pin);
-    uint32_t gpio = gpio_base(pin);
     struct dev_exti *e;
+    int idx = gpio_id(pin);
 
-    if (DEV_EXTI[pin] != NULL)
+    if (idx < 0)
+        return -EINVAL;
+
+    if (DEV_EXTI[idx] != NULL)
         return -EEXIST;
 
     e = kalloc(sizeof(struct dev_exti));
@@ -206,17 +210,18 @@ int exti_register(uint32_t base, uint16_t pin, uint8_t trigger, void (*isr)(void
     e->pin = pin;
     e->trigger = trigger;
     e->exti_isr = isr;
+    e->exti_isr_arg = isr_arg;
     exti_select_source(exti, base);
     exti_set_trigger(exti, trigger);
-    DEV_EXTI[pin] = e;
-    return pin;
+    DEV_EXTI[idx] = e;
+    return idx;
 }
 
-void exti_unregister(int pin)
+void exti_unregister(int idx)
 {
-    if(DEV_EXTI[pin]) {
-        kfree(DEV_EXTI[pin]);
-        DEV_EXTI[pin] = NULL;
+    if(DEV_EXTI[idx]) {
+        kfree(DEV_EXTI[idx]);
+        DEV_EXTI[idx] = NULL;
     }
 }
 

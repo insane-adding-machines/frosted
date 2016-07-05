@@ -24,11 +24,18 @@
 #include "ioctl.h"
 #include "poll.h"
 
+
+#include "sys/frosted-io.h"
+
 #if defined(STM32F4) || defined(STM32F7)
 #include <unicore-mx/stm32/gpio.h>
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/cm3/nvic.h>
+#   ifdef CONFIG_DEVSTM32EXTI
+#       include "stm32_exti.h"
+#   endif
 #endif
+
 #ifdef STM32F7
 #include <unicore-mx/stm32/gpio.h>
 #include <unicore-mx/stm32/rcc.h>
@@ -39,6 +46,8 @@
 #include <unicore-mx/lpc17xx/gpio.h>
 #include <unicore-mx/lpc17xx/exti.h>
 #endif
+
+
 
 #ifdef PYBOARD
 # define LED0 "gpio_1_13"
@@ -86,6 +95,9 @@ struct dev_gpio {
     struct device * dev;
     uint32_t base;
     uint16_t pin;
+    uint8_t trigger;
+    int exti_idx;
+    int trigger_waiting;
 };
 
 #define MAX_GPIOS   32      /* FIX THIS! */
@@ -172,6 +184,27 @@ void eint3_isr(void)
 
 #endif
 
+
+#ifdef CONFIG_DEVSTM32EXTI
+static void gpio_isr(void *arg)
+{
+    struct dev_gpio *gpio = arg;
+    exti_enable(gpio->exti_idx, 0);
+    if (gpio->dev->pid > 0) {
+        task_resume(gpio->dev->pid);
+    }
+}
+
+static int gpio_set_trigger(struct dev_gpio *gpio, uint32_t trigger)
+{
+    gpio->trigger = (uint8_t) trigger;
+    gpio->trigger_waiting = -1;
+    return exti_register(gpio->base, gpio->pin, gpio->trigger, gpio_isr, gpio);
+}
+
+#endif
+
+
 static int devgpio_write(struct fnode * fno, const void *buf, unsigned int len)
 {
      struct dev_gpio *gpio;
@@ -202,25 +235,42 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 
     if (cmd == IOCTL_GPIO_ENABLE) {
 //        gpio_mode_setup(gpio->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, gpio->pin);
+        return 0;
     }
     if (cmd == IOCTL_GPIO_DISABLE) {
 //        gpio_mode_setup(gpio->port, GPIO_MODE_INPUT,GPIO_PUPD_NONE, gpio->pin);
+        return 0;
     }
     if (cmd == IOCTL_GPIO_SET_INPUT) {
         /* user land commanded input defaults to no pull up/down*/
         SET_INPUT(gpio->base, GPIO_PUPD_NONE, gpio->pin);
+        return 0;
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
 //        SET_OUTPUT(gpio->port, gpio->pin, gpio->optype, gpio->speed)
+        return 0;
     }
     if (cmd == IOCTL_GPIO_SET_PULLUPDOWN) {
         /* Setting pullup/down implies an input */
         SET_INPUT(gpio->base, *((uint32_t*)arg), gpio->pin);
+        return 0;
     }
     if (cmd == IOCTL_GPIO_SET_ALT_FUNC) {
-         gpio_set_af(gpio->base, *((uint32_t*)arg), gpio->pin);
+        gpio_set_af(gpio->base, *((uint32_t*)arg), gpio->pin);
+        return 0;
     }
-    return 0;
+#   ifdef CONFIG_DEVSTM32EXTI
+    if (cmd == IOCTL_GPIO_SET_TRIGGER) {
+        uint32_t trigger = *((uint32_t *)arg);
+        if (trigger > GPIO_TRIGGER_TOGGLE) {
+            gpio->trigger = 0;
+            return -EINVAL;
+        }
+        gpio->exti_idx = gpio_set_trigger(gpio, trigger);
+        return 0;
+    }
+#endif
+    return -EINVAL;
 }
 
 static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
@@ -228,14 +278,39 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
     int out;
     struct dev_gpio *gpio;
     char *ptr = (char *)buf;
+    uint8_t val = 0;
 
     gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
     if(!gpio)
         return -1;
 
     /* GPIO: get current value */
-    *((uint8_t*)buf) = gpio_get(gpio->base, gpio->pin) ? '1':'0';
+    val = gpio_get(gpio->base, gpio->pin);
+
+#   ifdef CONFIG_DEVSTM32EXTI
+    /* Unlock immediately */
+    if ((gpio->trigger == GPIO_TRIGGER_NONE) || 
+            (val && (gpio->trigger == GPIO_TRIGGER_RAISE)) || (!val && (gpio->trigger == GPIO_TRIGGER_FALL))) {
+        *((uint8_t*)buf) = val ? '1':'0';
+        return 1;
+    } 
+
+    else if (gpio->trigger == GPIO_TRIGGER_TOGGLE) {
+        if (gpio->trigger_waiting == -1) {
+            gpio->trigger_waiting = !val;
+            exti_enable(gpio->exti_idx, 1);
+            return SYS_CALL_AGAIN;
+        } else if (gpio->trigger_waiting == val) {
+            *((uint8_t*)buf) = val ? '1':'0';
+            return 1;
+        }
+    }
+    exti_enable(gpio->exti_idx, 1);
+    return SYS_CALL_AGAIN;
+#   else
+    *((uint8_t*)buf) = val ? '1':'0';
     return 1;
+#   endif
 }
 
 
@@ -266,8 +341,6 @@ static void gpio_fno_init(struct fnode *dev, uint32_t n, const struct gpio_addr 
 void gpio_init(struct fnode * dev,  const struct gpio_addr gpio_addrs[], int num_gpios)
 {
     int i;
-    uint32_t exti,exti_irq;
-
     for(i=0;i<num_gpios;i++)
     {
         if(gpio_addrs[i].base == 0)

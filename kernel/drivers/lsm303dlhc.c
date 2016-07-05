@@ -72,16 +72,19 @@ static void completion(void * arg)
 }
 
 
-static void int1_callback()
+static void int1_callback(void *arg)
 {
+    (void*)arg;
 }
 
-static void int2_callback()
+static void int2_callback(void *arg)
 {
+    (void*)arg;
 }
 
-static void drdy_callback()
+static void drdy_callback(void *arg)
 {
+    (void*)arg;
 }
 
 
@@ -162,9 +165,9 @@ static void lsm303dlhc_fno_init(struct fnode *dev, const struct lsm303dlhc_addr 
 void lsm303dlhc_init(struct fnode *dev, const struct lsm303dlhc_addr addr)
 {
     int i;
-    exti_register(addr.pio1_base, addr.pio1_pin, EXTI_TRIGGER_RISING, int1_callback);
-    exti_register(addr.pio2_base, addr.pio2_pin, EXTI_TRIGGER_RISING, int2_callback);
-    exti_register(addr.drdy_base, addr.drdy_pin, EXTI_TRIGGER_RISING, drdy_callback); 
+    exti_register(addr.pio1_base, addr.pio1_pin, EXTI_TRIGGER_RISING, int1_callback, NULL);
+    exti_register(addr.pio2_base, addr.pio2_pin, EXTI_TRIGGER_RISING, int2_callback, NULL);
+    exti_register(addr.drdy_base, addr.drdy_pin, EXTI_TRIGGER_RISING, drdy_callback, NULL); 
 
     lsm303dlhc_fno_init(dev, &addr);
     register_module(&mod_devlsm303dlhc);
