@@ -25,7 +25,8 @@
 #include "l3gd20.h"
 #include "l3gd20_ioctl.h"
 #include "gpio.h"
-#include "stm32f4_exti.h"
+#include "stm32_exti.h"
+#include <unicore-mx/stm32/f4/exti.h>
 #include "stm32f4_dma.h"
 #include "stm32f4_spi.h"
 
@@ -49,7 +50,8 @@ struct dev_l3gd20 {
 
 #define MAX_L3GD20S 1
 
-static struct dev_l3gd20 DEV_L3GD20S[MAX_L3GD20S];
+static struct dev_l3gd20 dev_l3gd20 = { };
+
 
 static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len);
 static int devl3gd20_ioctl(struct fnode * fno, const uint32_t cmd, void *arg);
@@ -66,27 +68,24 @@ static struct module mod_devl3gd20 = {
 
 static void completion(void * arg)
 {
-    const struct dev_l3gd20 *l3gd20 = (struct dev_l3gd20 *) arg;
-    l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
+    dev_l3gd20.cs_fnode->owner->ops.write(dev_l3gd20.cs_fnode, "1", 1);
 
-    if (l3gd20->dev->pid > 0)
-        task_resume(l3gd20->dev->pid);
+    if (dev_l3gd20.dev->pid > 0)
+        task_resume(dev_l3gd20.dev->pid);
 }
 
-static void int1_callback(void * arg)
+static void int1_callback(void)
 {
-    const struct dev_l3gd20 *l3gd20 = (struct dev_l3gd20 *) arg;
 
 }
 
 
-static void int2_callback(void * arg)
+static void int2_callback(void)
 {
-    const struct dev_l3gd20 *l3gd20 = (struct dev_l3gd20 *) arg;
-    l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "1", 1);
+    dev_l3gd20.cs_fnode->owner->ops.write(dev_l3gd20.cs_fnode, "1", 1);
 
-    if (l3gd20->dev->pid > 0)
-        task_resume(l3gd20->dev->pid);
+    if (dev_l3gd20.dev->pid > 0)
+        task_resume(dev_l3gd20.dev->pid);
 }
 
 
@@ -151,7 +150,7 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
     /* First read is a fake just to get the DRDY IRQ going - what a bloody awful gyro*/
     if(l3gd20->mode == L3GD20_IDLE)
     {
-        exti_enable(l3gd20->int_2_fnode, 1);
+        exti_enable(1, 1);
 
         l3gd20->mode = L3GD20_PENDING;
         rd_obuffer[0] = 0xE8;
@@ -179,7 +178,7 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
     {
         if(len > 6)
             len = 6;
-        exti_enable(l3gd20->int_2_fnode, 0);
+        exti_enable(1, 0);
         memcpy(buf, &rd_ibuffer[1], len);
         l3gd20->mode = L3GD20_PENDING;
     }
@@ -194,33 +193,27 @@ static int devl3gd20_close(struct fnode *fno)
         return -1;
     l3gd20->mode = L3GD20_IDLE;
 
-    exti_enable(l3gd20->int_2_fnode , 0);
+    exti_enable(1, 0);
     return 0;
 }
 
 static void l3gd20_fno_init(struct fnode *dev, uint32_t n, const struct l3gd20_addr * addr)
 {
-    struct dev_l3gd20 *l = &DEV_L3GD20S[n];
-    l->dev = device_fno_init(&mod_devl3gd20, addr->name, dev, FL_RDWR, l);
+    struct dev_l3gd20 *l = &dev_l3gd20;
+
+    l->dev = device_fno_init(&mod_devl3gd20, "/dev/gyro", dev, FL_RDWR, l);
     l->spi_fnode = fno_search(addr->spi_name);
     l->cs_fnode = fno_search(addr->spi_cs_name);
-    l->int_1_fnode = fno_search(addr->int_1_name);
-    l->int_2_fnode = fno_search(addr->int_2_name);
-
-    if(l->int_1_fnode)exti_register_callback(l->int_1_fnode, int1_callback, l);
-    if(l->int_2_fnode)exti_register_callback(l->int_2_fnode, int2_callback, l);
-
     l->cs_fnode->owner->ops.write(l->cs_fnode, "1", 1);
     l->mode = L3GD20_IDLE;
 }
 
 
-void l3gd20_init(struct fnode * dev, const struct l3gd20_addr l3gd20_addrs[], int num_l3gd20s)
+void l3gd20_init(struct fnode * dev, const struct l3gd20_addr l3gd20_addr)
 {
     int i;
-    for (i = 0; i < num_l3gd20s; i++)
-    {
-        l3gd20_fno_init(dev, i, &l3gd20_addrs[i]);
-    }
+    l3gd20_fno_init(dev, i, &l3gd20_addr);
+    exti_register(l3gd20_addr.pio1_base, l3gd20_addr.pio1_pin, EXTI_TRIGGER_RISING, int1_callback);
+    exti_register(l3gd20_addr.pio2_base, l3gd20_addr.pio2_pin, EXTI_TRIGGER_RISING, int2_callback);
     register_module(&mod_devl3gd20);
 }
