@@ -26,22 +26,20 @@
 
 #ifdef LM3S
 #   include "unicore-mx/lm3s/rng.h"
-#   define CLOCK_ENABLE(C) 
+#   define CLOCK_ENABLE(C)
 #endif
 #if defined(STM32F4) || defined( STM32F7)
 #include <unicore-mx/cm3/common.h>
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/stm32/gpio.h>
-#   ifdef STM32F4
-#       include <unicore-mx/stm32/f4/rng.h>
-#   elif defined(STM32F7)
-#       include <unicore-mx/stm32/f7/rng.h>
-#   endif
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
+#endif
+#if defined(STM32F2) || defined( STM32F4) || defined( STM32F7)
+#   include <unicore-mx/stm32/rng.h>
 #endif
 #ifdef LPC17XX
 #   include "unicore-mx/lpc17xx/rng.h"
-#   define CLOCK_ENABLE(C) 
+#   define CLOCK_ENABLE(C)
 #endif
 
 struct dev_rng {
@@ -69,24 +67,36 @@ static struct module mod_devrng = {
 static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 {
 	int out;
+	uint32_t value;
+	struct dev_rng *rng;
 
-	static uint32_t last_value;
-	static uint32_t new_value;
+	if (len <= 0)
+		return len;
 
+	rng = (struct dev_rng *)FNO_MOD_PRIV(fno, &mod_devrng);
+
+	if (!rng)
+		return -1;
+
+	mutex_lock(rng->dev->mutex);
+
+	/* need to sort this out */
 	uint32_t error_bits = 0;
 	error_bits = RNG_SR_SEIS | RNG_SR_CEIS;
-	while (new_value == last_value) {
-		/* Check for error flags and if data is ready. */
-		if (((RNG_SR & error_bits) == 0) &&
-		    ((RNG_SR & RNG_SR_DRDY) == 1)) {
-			new_value = RNG_DR;
-		}
+
+	if (((RNG_SR & error_bits) != 0) ||
+		    ((RNG_SR & RNG_SR_DRDY) != 1)) {
+        	rng->dev->pid = scheduler_get_cur_pid();
+        	task_suspend();
+        	mutex_unlock(rng->dev->mutex);
+        	return  SYS_CALL_AGAIN;
 	}
-	last_value = new_value;
 
-	*((uint32_t *) buf) = new_value;
+	rng_get_random((uint32_t *) buf);
+
+	//*((uint32_t *) buf) = value;
 	out = 4;
-
+	mutex_unlock(rng->dev->mutex);
 	return out;
 }
 
@@ -100,7 +110,7 @@ static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr * 
 void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rngs)
 {
 	int i;
-	for (i = 0; i < num_rngs; i++) 
+	for (i = 0; i < num_rngs; i++)
 	{
 		if (rng_addrs[i].base == 0)
 			continue;
@@ -108,14 +118,7 @@ void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rn
 		rng_fno_init(dev, i, &rng_addrs[i]);
 		CLOCK_ENABLE(rng_addrs[i].rcc);
 
-		/* Enable interupt */
-		/* Set the IE bit in the RNG_CR register. */
-		RNG_CR |= RNG_CR_IE;
-		/* Enable the random number generation by setting the RNGEN bit in
-		   the RNG_CR register. This activates the analog part, the RNG_LFSR
-		   and the error detector.
-		*/
-		RNG_CR |= RNG_CR_RNGEN;
+		rng_enable();
 	}
 	register_module(&mod_devrng);
 }
