@@ -769,13 +769,15 @@ static __inl void * psp_read(void)
 
 static __inl void task_switch(void)
 {
-    int i, pid = _cur_task->tb.pid;
-    volatile struct task *t = _cur_task;
+    int i, pid;
+    volatile struct task *t;
     if (forced_task) {
         _cur_task = forced_task;
         forced_task = NULL;
         return;
     }
+    pid = _cur_task->tb.pid;
+    t = _cur_task;
 
     if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
         t = tasks_running;
