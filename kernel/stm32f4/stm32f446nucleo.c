@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "unicore-mx/cm3/systick.h"
 #include <unicore-mx/stm32/rcc.h>
@@ -24,18 +24,18 @@
 #include "unicore-mx/cm3/nvic.h"
 #include "drivers/stm32f4_dsp.h"
 #include "drivers/stm32_sdio.h"
-     
+
 #ifdef CONFIG_DEVUART
 #include "uart.h"
 #endif
-     
+
 #ifdef CONFIG_DEVGPIO
 #include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
 #endif
-     
+
 #ifdef CONFIG_DEVGPIO
-static const struct gpio_addr gpio_addrs[] = { 
+static const struct gpio_addr gpio_addrs[] = {
     {.base=GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
     {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
     {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
@@ -80,14 +80,14 @@ static const struct gpio_addr gpio_addrs[] = {
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
 #endif
-     
+
 #ifdef CONFIG_DEVUART
-     static const struct uart_addr uart_addrs[] = { 
+     static const struct uart_addr uart_addrs[] = {
 #ifdef CONFIG_USART_1
              {   .devidx = 1,
-                 .base = USART1, 
-                 .irq = NVIC_USART1_IRQ, 
-                 .rcc = RCC_USART1, 
+                 .base = USART1,
+                 .irq = NVIC_USART1_IRQ,
+                 .rcc = RCC_USART1,
                  .baudrate = 115200,
                  .stop_bits = USART_STOPBITS_1,
                  .data_bits = 8,
@@ -96,11 +96,11 @@ static const struct gpio_addr gpio_addrs[] = {
              },
 #endif
 #ifdef CONFIG_USART_2
-             { 
+             {
                  .devidx = 2,
-                 .base = USART2, 
-                 .irq = NVIC_USART2_IRQ, 
-                 .rcc = RCC_USART2, 
+                 .base = USART2,
+                 .irq = NVIC_USART2_IRQ,
+                 .rcc = RCC_USART2,
                  .baudrate = 115200,
                  .stop_bits = USART_STOPBITS_1,
                  .data_bits = 8,
@@ -109,11 +109,11 @@ static const struct gpio_addr gpio_addrs[] = {
              },
 #endif
 #ifdef CONFIG_USART_3
-             { 
+             {
                  .devidx = 3,
-                 .base = USART3, 
-                 .irq = NVIC_USART3_IRQ, 
-                 .rcc = RCC_USART3, 
+                 .base = USART3,
+                 .irq = NVIC_USART3_IRQ,
+                 .rcc = RCC_USART3,
                  .baudrate = 115200,
                  .stop_bits = USART_STOPBITS_1,
                  .data_bits = 8,
@@ -122,11 +122,11 @@ static const struct gpio_addr gpio_addrs[] = {
              },
 #endif
 #ifdef CONFIG_USART_6
-             { 
+             {
                  .devidx = 6,
-                 .base = USART6, 
-                 .irq = NVIC_USART6_IRQ, 
-                 .rcc = RCC_USART6, 
+                 .base = USART6,
+                 .irq = NVIC_USART6_IRQ,
+                 .rcc = RCC_USART6,
                  .baudrate = 115200,
                  .stop_bits = USART_STOPBITS_1,
                  .data_bits = 8,
@@ -139,7 +139,7 @@ static const struct gpio_addr gpio_addrs[] = {
 #endif
 
 #ifdef CONFIG_RNG
-#include "random.h"
+#include "stm32_rng.h"
 static const struct rng_addr rng_addrs[] = {
             {
                 .devidx = 1,

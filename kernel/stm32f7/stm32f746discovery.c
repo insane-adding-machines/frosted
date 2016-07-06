@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "unicore-mx/cm3/systick.h"
 #include <unicore-mx/stm32/rcc.h>
@@ -113,13 +113,13 @@ static const struct gpio_addr gpio_addrs[] = { {.base=GPIOI, .pin=GPIO1,.mode=GP
 #endif
 
 #ifdef CONFIG_DEVUART
-static const struct uart_addr uart_addrs[] = { 
+static const struct uart_addr uart_addrs[] = {
 #ifdef CONFIG_USART_1
-            { 
+            {
                 .devidx = 1,
-                .base = USART1, 
-                .irq = NVIC_USART1_IRQ, 
-                .rcc = RCC_USART1, 
+                .base = USART1,
+                .irq = NVIC_USART1_IRQ,
+                .rcc = RCC_USART1,
                 .baudrate = 115200,
                 .stop_bits = USART_STOPBITS_1,
                 .data_bits = 8,
@@ -128,11 +128,11 @@ static const struct uart_addr uart_addrs[] = {
             },
 #endif
 #ifdef CONFIG_USART_2
-        { 
+        {
             .devidx = 2,
-            .base = USART2, 
-            .irq = NVIC_USART2_IRQ, 
-            .rcc = RCC_USART2, 
+            .base = USART2,
+            .irq = NVIC_USART2_IRQ,
+            .rcc = RCC_USART2,
             .baudrate = 115200,
             .stop_bits = USART_STOPBITS_1,
             .data_bits = 8,
@@ -141,11 +141,11 @@ static const struct uart_addr uart_addrs[] = {
         },
 #endif
 #ifdef CONFIG_USART_6
-        { 
+        {
             .devidx = 6,
-            .base = USART6, 
-            .irq = NVIC_USART6_IRQ, 
-            .rcc = RCC_USART6, 
+            .base = USART6,
+            .irq = NVIC_USART6_IRQ,
+            .rcc = RCC_USART6,
             .baudrate = 115200,
             .stop_bits = USART_STOPBITS_1,
             .data_bits = 8,
@@ -158,7 +158,7 @@ static const struct uart_addr uart_addrs[] = {
 #endif
 
 #ifdef CONFIG_RNG
-#include "random.h"
+#include "stm32_rng.h"
 static const struct rng_addr rng_addrs[] = {
             {
                 .devidx = 1,
@@ -213,7 +213,7 @@ void lcd_pinmux(void)
     gpio_mode_setup(GPIOK, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
     gpio_set_output_options(GPIOK, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
     gpio_set_af(GPIOK, GPIO_AF14, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-  
+
     /* LCD_DISP GPIO configuration */
     gpio_mode_setup(GPIOI, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12);
     gpio_set_output_options(GPIOI, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO12);
