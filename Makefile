@@ -51,7 +51,7 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/kprintf.o			\
 		 kernel/pipe.o
 
-# device drivers 
+# device drivers
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
 OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
@@ -107,8 +107,8 @@ CFLAGS-$(DEVGPIO)+=-DCONFIG_DEVGPIO
 
 OBJS-$(DEVSTM32F4DMA)+=kernel/drivers/stm32f4_dma.o
 CFLAGS-$(DEVSTM32F4DMA)+=-DCONFIG_DEVSTM32F4DMA
-		 
-OBJS-$(DEVSTM32SDIO)+=kernel/drivers/stm32_sdio.o 
+
+OBJS-$(DEVSTM32SDIO)+=kernel/drivers/stm32_sdio.o
 CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_DEVSTM32SDIO
 
 OBJS-$(DEVSTM32EXTI)+=kernel/drivers/stm32_exti.o
@@ -120,7 +120,7 @@ CFLAGS-$(DEVADC)+=-DCONFIG_DEVSTM32F4ADC
 OBJS-$(DEVTIM)+=kernel/drivers/stm32f4_tim.o
 CFLAGS-$(DEVTIM)+=-DCONFIG_DEVSTM32F4TIM
 
-OBJS-$(DEVRNG)+=kernel/drivers/random.o
+OBJS-$(DEVRNG)+=kernel/drivers/stm32_rng.o
 CFLAGS-$(DEVRNG)+=-DCONFIG_RNG
 
 
@@ -135,11 +135,11 @@ CFLAGS-$(DEVF4ETH)+=-DCONFIG_ETH_DEFAULT_IP=\"$(ETH_DEFAULT_IP)\"
 CFLAGS-$(DEVF4ETH)+=-DCONFIG_ETH_DEFAULT_NM=\"$(ETH_DEFAULT_NM)\"
 CFLAGS-$(DEVF4ETH)+=-DCONFIG_ETH_DEFAULT_GW=\"$(ETH_DEFAULT_GW)\"
 
-OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o 
-OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o 
-OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o 
-OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o 
-OBJS-$(MACH_STM32F446Nucleo)+=kernel/$(BOARD)/stm32f446nucleo.o 
+OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o
+OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o
+OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o
+OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o
+OBJS-$(MACH_STM32F446Nucleo)+=kernel/$(BOARD)/stm32f446nucleo.o
 OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o kernel/$(BOARD)/stm32f746discovery_sdram.o
 OBJS-$(MACH_STM32F746Nucleo144)+=kernel/$(BOARD)/stm32f746nucleo-144.o
 OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
@@ -175,10 +175,10 @@ kernel.img: kernel.elf
 	@export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 
-apps.img: $(USERSPACE) 
+apps.img: $(USERSPACE)
 	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
 
-image.bin: kernel.img apps.img 
+image.bin: kernel.img apps.img
 	cat kernel.img apps.img > $@
 
 kernel/unicore-mx/lib/libucmx_$(BOARD).a:
@@ -200,7 +200,7 @@ kernel.elf: $(LIB-y) $(OBJS-y) kernel/$(BOARD)/$(BOARD).ld
 		-Wl,-Map,kernel.map  $(LDFLAGS) $(CFLAGS) $(EXTRA_CFLAGS)
 
 
-	
+
 qemu: image.bin
 	qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
 

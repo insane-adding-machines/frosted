@@ -94,7 +94,7 @@ static const struct uart_addr uart_addrs[] = {
 #endif
 
 #ifdef CONFIG_RNG
-#include "random.h"
+#include "stm32_rng.h"
 static const struct rng_addr rng_addrs[] = {
             {
                 .devidx = 1,

@@ -21,34 +21,17 @@
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
-#include "cirbuf.h"
-#include "random.h"
+#include "stm32_rng.h"
 
-#ifdef LM3S
-#   include "unicore-mx/lm3s/rng.h"
-#   define CLOCK_ENABLE(C)
-#endif
-#if defined(STM32F4) || defined( STM32F7)
 #include <unicore-mx/cm3/common.h>
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/stm32/gpio.h>
-#   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
-#endif
-#if defined(STM32F2) || defined( STM32F4) || defined( STM32F7)
-#   include <unicore-mx/stm32/rng.h>
-#endif
-#ifdef LPC17XX
-#   include "unicore-mx/lpc17xx/rng.h"
-#   define CLOCK_ENABLE(C)
-#endif
+#include <unicore-mx/stm32/rng.h>
+#define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 
 struct dev_rng {
 	struct device * dev;
 	uint32_t base;
-	//struct cirbuf *inbuf;
-	//struct cirbuf *outbuf;
-	uint8_t *w_start;
-	uint8_t *w_end;
 };
 
 #define MAX_RNGS 1
@@ -66,11 +49,9 @@ static struct module mod_devrng = {
 
 static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 {
-	int out;
-	uint32_t value;
 	struct dev_rng *rng;
 
-	if (len <= 0)
+	if (len == 0)
 		return len;
 
 	rng = (struct dev_rng *)FNO_MOD_PRIV(fno, &mod_devrng);
@@ -89,15 +70,13 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
         	rng->dev->pid = scheduler_get_cur_pid();
         	task_suspend();
         	mutex_unlock(rng->dev->mutex);
-        	return  SYS_CALL_AGAIN;
+        	return SYS_CALL_AGAIN;
 	}
 
 	rng_get_random((uint32_t *) buf);
 
-	//*((uint32_t *) buf) = value;
-	out = 4;
 	mutex_unlock(rng->dev->mutex);
-	return out;
+	return 4;
 }
 
 static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr * addr)
