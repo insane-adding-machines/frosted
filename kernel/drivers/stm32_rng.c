@@ -32,6 +32,7 @@
 struct dev_rng {
 	struct device * dev;
 	uint32_t base;
+	uint32_t *random;
 };
 
 #define MAX_RNGS 1
@@ -63,13 +64,15 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 
 	/* need to sort this out */
 	uint32_t error_bits = 0;
-	error_bits = RNG_SR_SEIS | RNG_SR_CEIS;
+	error_bits = RNG_SR_SEIS | RNG_SR_CEIS | RNG_SR_SECS | RNG_SR_CECS;
 
 	if (((RNG_SR & error_bits) != 0) ||
 		    ((RNG_SR & RNG_SR_DRDY) != 1)) {
+		rng->random = (uint32_t *)buf;
+		rng_enable_interrupt();
         	rng->dev->pid = scheduler_get_cur_pid();
-        	task_suspend();
         	mutex_unlock(rng->dev->mutex);
+        	task_suspend();
         	return SYS_CALL_AGAIN;
 	}
 
@@ -78,6 +81,35 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 	mutex_unlock(rng->dev->mutex);
 	return 4;
 }
+
+
+void rng_isr(void)
+{
+	struct dev_rng *rng = &DEV_RNG[0];
+	uint32_t error_bits = 0;
+	error_bits = RNG_SR_SEIS | RNG_SR_CEIS | RNG_SR_SECS | RNG_SR_CECS;
+	if ((RNG_SR & RNG_SR_SEIS) != 0) {
+		if ((RNG_SR & RNG_SR_DRDY) == 1) {
+			uint32_t dummy;
+			rng_get_random(&dummy);
+		}
+		rng_disable();
+		rng_enable();
+		RNG_SR &= ~RNG_SR_SEIS;
+	}
+	if ((RNG_SR & RNG_SR_CEIS) != 0) {
+		rcc_periph_reset_pulse(RST_RNG);
+		rng_disable();
+		rng_enable();
+		RNG_SR &= ~RNG_SR_CEIS;
+	}
+	if (((RNG_SR & error_bits) == 0) && ((RNG_SR & RNG_SR_DRDY) == 1)) {
+		rng_get_random(rng->random);
+		rng_disable_interrupt();
+		task_resume(rng->dev->pid);
+	}
+}
+
 
 static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr * addr)
 {
