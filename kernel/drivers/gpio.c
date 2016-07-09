@@ -531,6 +531,7 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
     gpio->speed = gpio_config->speed;
     gpio->optype = gpio_config->optype;
     gpio->pullupdown = gpio_config->pullupdown;
+    gpio->trigger = GPIO_TRIGGER_NONE;
     if (gpio_config->name) {
         gpio_fno_init(gpio, gpio_config->name);
     }
