@@ -234,7 +234,7 @@ int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
     char *name;
     int p_state;
     int nice;
-    const char legend[]="Base\tPin\tMode\tDrive\tSpeed\tTrigger\tOwner\\r\n";
+    const char legend[]="Base\tPin\tMode\tDrive\tSpeed\tTrigger\tOwner\r\n";
     struct dev_gpio *g =  Gpio_list;
     uint32_t pin_n = 0;
     if (fno->off == 0) {
