@@ -26,7 +26,6 @@
 #include "null.h"
 #include "xipfs.h"
 #include "vfs.h"
-#include "framebuffer.h"
 #include "gpio.h"
 #include "uart.h"
 #include "rng.h"
@@ -204,6 +203,7 @@ int frosted_init(void)
     fatfs_init();
 
 #ifdef CONFIG_DEVFRAMEBUFFER
+    extern void fb_init(struct fnode *);
     fb_init(fno_search("/dev"));
 #endif
 

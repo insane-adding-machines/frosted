@@ -195,5 +195,6 @@ struct timezone {
 
 void pico_lock(void);
 void pico_unlock(void);
+void socket_in_init(void);
 
 #endif /* PICO_BSD_SOCKETS_H_ */

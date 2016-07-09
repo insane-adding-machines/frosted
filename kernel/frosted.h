@@ -217,6 +217,7 @@ struct fnode *fno_search(const char *path);
 int vfs_symlink(char *file, char *link);
 
 /* Modules (for files/sockets) */
+int register_addr_family(struct module *m, uint16_t family);
 
 
 #define FAMILY_UNIX 0x0001

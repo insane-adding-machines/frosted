@@ -285,7 +285,7 @@ int machine_init(void)
     }
     rng_create(1, RCC_RNG);
     
-#ifdef CONFIG_FRAMEBUFFER /* TODO: move initialization to its own module */
+#ifdef CONFIG_DEVFRAMEBUFFER /* TODO: move initialization to its own module */
     lcd_pinmux();
     stm32f7_ltdc_init();
 #endif
