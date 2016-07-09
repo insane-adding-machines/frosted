@@ -134,18 +134,6 @@ static const struct uart_config uart_configs[] = {
 };
 #define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
-#ifdef CONFIG_RNG
-#include "stm32_rng.h"
-static const struct rng_addr rng_addrs[] = {
-            {
-                .devidx = 1,
-                .base = 1,
-                .rcc = RCC_RNG,
-            },
-};
-#define NUM_RNGS (sizeof(rng_addrs) / sizeof(struct rng_addr))
-#endif
-
 
 #ifdef CONFIG_DEVFRAMEBUFFER
 void lcd_pinmux(void)

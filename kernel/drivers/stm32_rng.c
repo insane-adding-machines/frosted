@@ -21,7 +21,7 @@
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
-#include "stm32_rng.h"
+#include "rng.h"
 
 #include <unicore-mx/cm3/common.h>
 #include <unicore-mx/stm32/rcc.h>
@@ -80,17 +80,19 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 }
 
 
-int rng_create(uint32_t base)
+int rng_create(uint32_t base, uint32_t rcc)
 {
     static uint32_t id = 0;
 	struct dev_rng *r = &DEV_RNG[id];
     struct fnode *devfs;
+    CLOCK_ENABLE(rcc);
 
     devfs = fno_search("/dev");
     if (!devfs)
         return -ENOENT;
 	r->dev = device_fno_init(&mod_devrng, mod_devrng.name, devfs, FL_RDONLY, r);
-	r->base = addr->base;
+	r->base = base;
+    rng_enable();
     return id++;
 }
 
