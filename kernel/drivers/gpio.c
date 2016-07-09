@@ -48,6 +48,16 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
             return GPIOE;
         case 6:
             return GPIOF;
+        case 7:
+            return GPIOG;
+        case 8:
+            return GPIOH;
+        case 9:
+            return GPIOI;
+        case 10:
+            return GPIOJ;
+        case 11:
+            return GPIOK;
         default:
             return 0;
     }
@@ -134,8 +144,6 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
 #include "gpio.h"
 
 struct dev_gpio *Gpio_list = NULL;
-
-
 
 static void gpio_list_add(struct dev_gpio *pio)
 {
@@ -518,6 +526,11 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
     memset(gpio, 0, sizeof(struct gpio_config));
     gpio->base = gpio_config->base;
     gpio->pin = gpio_config->pin;
+    gpio->mode = gpio_config->mode;
+    gpio->af = gpio_config->af;
+    gpio->speed = gpio_config->speed;
+    gpio->optype = gpio_config->optype;
+    gpio->pullupdown = gpio_config->pullupdown;
     if (gpio_config->name) {
         gpio_fno_init(gpio, gpio_config->name);
     }

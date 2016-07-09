@@ -1,7 +1,13 @@
 #ifndef INC_GPIO
 #define INC_GPIO
+#include "frosted.h"
+#include "sys/frosted-io.h"
 
 
+
+#if defined(STM32F4) || defined(STM32F7)
+#include <unicore-mx/stm32/gpio.h>
+#endif
 
 
 struct gpio_config {
@@ -25,6 +31,8 @@ struct gpio_config {
 struct dev_gpio {
     struct device *dev;
     struct module *owner;  /* Module that registered the gpio */
+    uint32_t mode;
+    uint32_t af;
     uint32_t base;
     uint32_t pin;
     uint8_t trigger;
@@ -32,6 +40,7 @@ struct dev_gpio {
     unsigned int flags;
     uint32_t optype;
     uint32_t speed;
+    uint8_t pullupdown;
     struct dev_gpio *next;
 };
 

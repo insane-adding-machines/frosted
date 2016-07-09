@@ -22,7 +22,6 @@
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/stm32/usart.h>
 #include <unicore-mx/cm3/nvic.h>
-#include <unicore-mx/stm32/gpio.h>
 #include <unicore-mx/stm32/f7/usart.h>
 
 #if CONFIG_SYS_CLOCK == 216000000
