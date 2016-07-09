@@ -50,6 +50,7 @@
 #include "stm32_sdio.h"
 #include "frosted.h"
 #include "device.h"
+#include "sdio.h"
 
 /* Frosted device driver hook */
 static struct module mod_sdio;
@@ -331,12 +332,9 @@ stm32_sdio_command(uint32_t cmd, uint32_t arg)
             break;
     }
     /* If a data transaction is in progress, wait for it to finish */
-#if 0
-    if ((cmd != 12) && (SDIO_STA & (SDIO_STA_RXACT | SDIO_STA_TXACT))) {
-        // XXX: This should be an error, we don't have multithread
-        tmp_val |= SDIO_CMD_WAITPEND;
-    }
-#endif
+
+    while ((cmd != 12) &  (SDIO_STA & (SDIO_STA_RXACT | SDIO_STA_TXACT)));;
+
 
     /*
      * EXECUTE:
@@ -820,7 +818,7 @@ stm32_sdio_open(void) {
     return (err == 0) ? res : NULL;
 }
 
-void stm32_sdio_card_detect(void *arg)
+static void stm32_sdio_card_detect(void *arg)
 {
     struct fnode *dev = arg;
     char name[4] = "sd0";
@@ -832,17 +830,49 @@ void stm32_sdio_card_detect(void *arg)
     kprintf("Found SD card in microSD slot.\r\n");
     SdCard[0].dev = device_fno_init(&mod_sdio, name, dev, FL_BLK, &SdCard[0]);
 }
+
+/*
+ * Set up the GPIO pins and peripheral clocks for the SDIO
+ * system. The code should probably take an option card detect
+ * pin, at the moment it uses the one used by the Embest board.
+ */
+static void sdio_hw_init(struct sdio_config *conf)
+{
+    /* Enable clocks for SDIO and DMA2 */
+    gpio_create(&mod_sdio, &conf->pio_dat0);
+    gpio_create(&mod_sdio, &conf->pio_dat1);
+    gpio_create(&mod_sdio, &conf->pio_dat2);
+    gpio_create(&mod_sdio, &conf->pio_dat3);
+    gpio_create(&mod_sdio, &conf->pio_clk);
+    gpio_create(&mod_sdio, &conf->pio_cmd);
+    if (conf->card_detect_supported)
+        gpio_create(&mod_sdio, &conf->pio_cd);
+    rcc_peripheral_enable_clock(conf->rcc_reg, conf->rcc_en);
+}
+
     
-void stm32_sdio_init(struct fnode * dev)
+int sdio_init(struct sdio_config *conf)
 {
     SDIO_CARD card;
+    struct fnode *devfs;
+
+    /* Initialize sdio RCC and pins */
+    sdio_hw_init(conf);
+
+    devfs = fno_search("/dev");
+    if (!devfs)
+        return -ENOENT;
     memset(&mod_sdio, 0, sizeof(mod_sdio));
     kprintf("Successfully initialized SDIO module.\r\n");
     strcpy(mod_sdio.name,"sdio");
+
 
     //mod_sdio.ops.close = sdio_close;
     mod_sdio.ops.block_read = sdio_block_read;
 
     register_module(&mod_sdio);
-    tasklet_add(stm32_sdio_card_detect, dev);
+    tasklet_add(stm32_sdio_card_detect, devfs);
+    return 0;
 }
+
+

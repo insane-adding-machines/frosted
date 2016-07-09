@@ -44,6 +44,9 @@ typedef uint32_t sigset_t;
 volatile unsigned int jiffies;
 volatile int _syscall_retval;
 
+/* Mach-specific initialization */
+int machine_init(void);
+
 /* Systick & co. */
 int _clock_interval;
 void SysTick_Hook(void);

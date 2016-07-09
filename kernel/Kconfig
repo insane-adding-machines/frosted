@@ -23,8 +23,8 @@ choice ARCH
     bool "STM32F7"
     help
         Enable support for ST STM32F7 systems
-
 endchoice
+
 
 source "../kernel/stm32f7/Kconfig"
 source "../kernel/stm32f4/Kconfig"
@@ -158,6 +158,11 @@ config MACH_LM3SVIRT
     default y
 
 endchoice
+
+config STM32F7_SDRAM
+depends on ARCH_STM32F7
+bool "Enable external SDRAM"
+default y
 
 endmenu
 

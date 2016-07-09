@@ -27,6 +27,13 @@
 #include "xipfs.h"
 #include "vfs.h"
 #include "framebuffer.h"
+#include "gpio.h"
+#include "uart.h"
+#include "rng.h"
+#include "sdram.h"
+#include "socket_in.h"
+#include "fatfs.h"
+
 
 #ifdef CONFIG_PICOTCP
 # include "pico_stack.h"
@@ -161,11 +168,13 @@ void usage_fault_handler(void)
     while(1);
 }
 
-void machine_init(struct fnode * dev);
-
 static void hw_init(void)
 {
-    machine_init(fno_search("/dev"));
+    gpio_init();
+    uart_init();
+    rng_init();
+    sdram_init();
+    machine_init();
     SysTick_Config(CONFIG_SYS_CLOCK / 1000);
 }
 

@@ -26,6 +26,9 @@ CFLAGS+=-ggdb3
 #kernel headers
 CFLAGS+=-Ikernel/frosted-headers/include
 
+#drivers headers
+CFLAGS+=-Ikernel/drivers
+
 # minimal kernel
 OBJS-y:= kernel/frosted.o \
 		 kernel/vfs.o \
@@ -57,6 +60,7 @@ OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
 
 OBJS-$(FATFS)+= kernel/fatfs.o
+CFLAGS-$(FATFS)+=-DCONFIG_FATFS
 CFLAGS-$(FAT32)+=-DCONFIG_FAT32
 CFLAGS-$(FAT16)+=-DCONFIG_FAT16
 
@@ -109,7 +113,7 @@ OBJS-$(DEVSTM32F4DMA)+=kernel/drivers/stm32f4_dma.o
 CFLAGS-$(DEVSTM32F4DMA)+=-DCONFIG_DEVSTM32F4DMA
 
 OBJS-$(DEVSTM32SDIO)+=kernel/drivers/stm32_sdio.o
-CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_DEVSTM32SDIO
+CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_SDIO
 
 OBJS-$(DEVSTM32EXTI)+=kernel/drivers/stm32_exti.o
 CFLAGS-$(DEVSTM32EXTI)+=-DCONFIG_DEVSTM32EXTI
@@ -122,6 +126,9 @@ CFLAGS-$(DEVTIM)+=-DCONFIG_DEVSTM32F4TIM
 
 OBJS-$(DEVRNG)+=kernel/drivers/stm32_rng.o
 CFLAGS-$(DEVRNG)+=-DCONFIG_RNG
+
+OBJS-$(STM32F7_SDRAM)+=kernel/drivers/stm32f7_sdram.o
+CFLAGS-$(STM32F7_SDRAM)+=-DCONFIG_SDRAM
 
 
 OBJS-$(DEV_USB_ETH)+=kernel/drivers/usb_ethernet.o
@@ -140,7 +147,7 @@ OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o
 OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o
 OBJS-$(MACH_STM32F446Nucleo)+=kernel/$(BOARD)/stm32f446nucleo.o
-OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o kernel/$(BOARD)/stm32f746discovery_sdram.o
+OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o 
 OBJS-$(MACH_STM32F746Nucleo144)+=kernel/$(BOARD)/stm32f746nucleo-144.o
 OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
