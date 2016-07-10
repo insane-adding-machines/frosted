@@ -268,6 +268,8 @@ void* f_realloc(int flags, void* ptr, size_t size)
     
     blk = (struct f_malloc_block *)(((uint8_t*)ptr) - sizeof(struct f_malloc_block));
 
+
+
     if (!ptr)
     {
         /* f ptr is not valid, act as regular malloc() */
@@ -275,18 +277,22 @@ void* f_realloc(int flags, void* ptr, size_t size)
     }
     else if (block_valid(blk))
     {
-        /* copy over old block, if valid pointer */
         size_t new_size, copy_size;
         if ((blk->flags & F_IN_USE) == 0) {
             task_segfault((uint32_t)ptr, 0, MEMFAULT_ACCESS);
         }
-        if (size > blk->size)
+
+        /* If requested size is the same as current, do nothing. */
+        if (blk->size == size)
+            return ptr;
+        else if (size > blk->size)
         {
+            /* Grow to requested size by copying the content */
             new_size = size;
             copy_size = blk->size;
         } else {
-            new_size = blk->size;
-            copy_size = size;
+            /* Shrink  (Ignore for now) */
+            return ptr;
         }
         out = f_malloc(flags, size);
         if (!out)  {
