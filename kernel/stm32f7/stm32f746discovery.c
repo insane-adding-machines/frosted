@@ -136,9 +136,6 @@ static const struct uart_config uart_configs[] = {
 #define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
 
-
-
-
 /* Setup GPIO Pins for SDIO:
    PC8 - PC11 - DAT0 thru DAT3
    PC12 - CLK
@@ -199,8 +196,7 @@ struct sdio_config sdio_conf = {
         .speed=GPIO_OSPEED_100MHZ, 
         .optype=GPIO_OTYPE_PP, 
         .pullupdown=GPIO_PUPD_PULLUP
-    }
-#ifdef SDIO_HAS_CARD_DETECT
+    },
     .card_detect_supported = 1,
     /* STM37 has an additional card-detect pin on PC13 */
     .pio_cd = {
@@ -209,13 +205,11 @@ struct sdio_config sdio_conf = {
         .mode=GPIO_MODE_INPUT,
         .pullupdown=GPIO_PUPD_PULLUP
     }
-#endif
 };
 
 
 
 
-#define SDIO_HAS_CARD_DETECT
 
 
 int machine_init(void)
