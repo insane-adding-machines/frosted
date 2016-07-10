@@ -32,6 +32,8 @@
 #include "sdram.h"
 #include "socket_in.h"
 #include "fatfs.h"
+#include "framebuffer.h"
+#include "ltdc.h"
 
 
 #ifdef CONFIG_PICOTCP
@@ -202,10 +204,8 @@ int frosted_init(void)
     sysfs_init();
     fatfs_init();
 
-#ifdef CONFIG_DEVFRAMEBUFFER
-    extern void fb_init(struct fnode *);
-    fb_init(fno_search("/dev"));
-#endif
+    ltdc_init();
+    fb_init();
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);

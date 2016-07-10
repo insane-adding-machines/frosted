@@ -35,6 +35,7 @@
 #include "sdram.h"
 #include "sdio.h"
 #include "framebuffer.h"
+#include "ltdc.h"
 
 static const struct gpio_config gpio_led0 = {
     .base=GPIOI, 
@@ -135,64 +136,6 @@ static const struct uart_config uart_configs[] = {
 #define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
 
-#ifdef CONFIG_DEVFRAMEBUFFER
-void lcd_pinmux(void)
-{
-    /* Enable the LTDC Clock */
-    rcc_periph_clock_enable(RCC_LTDC);
-
-    /* Enable GPIOs clock */
-    rcc_periph_clock_enable(RCC_GPIOE);
-    rcc_periph_clock_enable(RCC_GPIOG);
-    rcc_periph_clock_enable(RCC_GPIOI);
-    rcc_periph_clock_enable(RCC_GPIOJ);
-    rcc_periph_clock_enable(RCC_GPIOK);
-
-    /*** LTDC Pins configuration ***/
-    gpio_mode_setup(GPIOE, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO4);
-    gpio_set_output_options(GPIOE, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO4);
-    gpio_set_af(GPIOE, GPIO_AF14, GPIO4);
-
-    /* GPIOG configuration */
-    gpio_mode_setup(GPIOG, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO12);
-    gpio_set_output_options(GPIOG, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO12);
-    gpio_set_af(GPIOG, GPIO_AF9, GPIO12);
-
-    /* GPIOI LTDC alternate configuration */
-    gpio_mode_setup(GPIOI, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8 | GPIO9 | GPIO10 | GPIO14 | GPIO15);
-    gpio_set_output_options(GPIOI, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO8 | GPIO9 | GPIO10 | GPIO14 | GPIO15);
-    gpio_set_af(GPIOI, GPIO_AF14, GPIO8 | GPIO9 | GPIO10 | GPIO14 | GPIO15);
-
-    /* GPIOJ configuration */
-    gpio_mode_setup(GPIOJ, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 |
-                                                         GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
-                                                         GPIO10 | GPIO11 | GPIO13 | GPIO14 | GPIO15);
-    gpio_set_output_options(GPIOJ, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 |
-                                                         GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
-                                                         GPIO10 | GPIO11 | GPIO13 | GPIO14 | GPIO15);
-    gpio_set_af(GPIOJ, GPIO_AF14, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 |
-                                                         GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
-                                                         GPIO10 | GPIO11 | GPIO13 | GPIO14 | GPIO15);
-
-    /* GPIOK configuration */
-    gpio_mode_setup(GPIOK, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-    gpio_set_output_options(GPIOK, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-    gpio_set_af(GPIOK, GPIO_AF14, GPIO0 | GPIO1 | GPIO2 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-
-    /* LCD_DISP GPIO configuration */
-    gpio_mode_setup(GPIOI, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12);
-    gpio_set_output_options(GPIOI, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO12);
-
-    /* LCD_BL_CTRL GPIO configuration */
-    gpio_mode_setup(GPIOK, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO3);
-    gpio_set_output_options(GPIOK, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO3);
-    /* Assert display enable LCD_DISP pin */
-    gpio_set(GPIOI, GPIO12);
-    /* Assert backlight LCD_BL_CTRL pin */
-    gpio_set(GPIOK, GPIO3);
-}
-#endif
-
 
 
 
@@ -284,12 +227,6 @@ int machine_init(void)
         uart_create(&uart_configs[i]);
     }
     rng_create(1, RCC_RNG);
-    
-#ifdef CONFIG_DEVFRAMEBUFFER /* TODO: move initialization to its own module */
-    lcd_pinmux();
-    stm32f7_ltdc_init();
-#endif
-
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
     sdio_conf.rcc_en  = RCC_APB2ENR_SDMMC1EN;
     sdio_init(&sdio_conf);

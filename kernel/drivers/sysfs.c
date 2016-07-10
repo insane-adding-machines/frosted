@@ -23,7 +23,7 @@
 #include "scheduler.h"
 #include "gpio.h"
 
-#define MAX_SYSFS_BUFFER 512
+#define MAX_SYSFS_BUFFER 1024
 
 static struct fnode *sysfs;
 static struct module mod_sysfs;

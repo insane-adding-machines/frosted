@@ -144,11 +144,18 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
 #include "gpio.h"
 
 struct dev_gpio *Gpio_list = NULL;
+struct dev_gpio *Gpio_list_tail = NULL;
 
 static void gpio_list_add(struct dev_gpio *pio)
 {
-    pio->next = Gpio_list;
-    Gpio_list = pio;
+    pio->next = NULL;
+    if (!Gpio_list) {
+        Gpio_list = pio;
+        Gpio_list_tail = pio;
+    } else {
+        Gpio_list_tail->next = pio;
+        Gpio_list_tail = pio;
+    }
 }
 
 static struct dev_gpio *gpio_list_find(uint32_t base, uint32_t pin)
@@ -172,6 +179,8 @@ static void gpio_list_del(struct dev_gpio *old)
                 Gpio_list = cur->next;
             else
                 last->next = cur->next;
+            if (Gpio_list_tail == cur)
+                Gpio_list_tail = last;
             return;
         }
         last = cur;
