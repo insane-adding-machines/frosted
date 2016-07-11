@@ -201,11 +201,15 @@ static void dsp_hw_init(data_channel c)
     dac_enable(c);
 }
 
-void dsp_init(struct fnode *devdir)
+int dsp_init(void)
 {
     int i;
+    struct fnode *devdir = fno_search("/dev");
+    if (!devdir)
+        return -ENOENT;
     memset(&Dsp, 0, sizeof(struct dev_dsp));
     Dsp.dev = device_fno_init(&mod_devdsp, "dsp", devdir, 0, &Dsp);
     dsp_hw_init(CHANNEL_1);
     dsp_dma_setup();
+    return 0;
 }

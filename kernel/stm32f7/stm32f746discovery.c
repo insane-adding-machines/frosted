@@ -207,9 +207,12 @@ struct sdio_config sdio_conf = {
     }
 };
 
-
-
-
+#if 0 /* TODO USB */
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
+    gpio_set_af(GPIOA, GPIO_AF10, GPIO11 | GPIO12);
+    gpio_set_af(GPIOA, GPIO_AF10, GPIO9);
+#endif
 
 
 int machine_init(void)

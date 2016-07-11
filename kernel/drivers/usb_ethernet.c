@@ -21,15 +21,11 @@
  */
 
 #include "frosted.h"
-#include <unicore-mx/stm32/rcc.h>
-#include <unicore-mx/stm32/gpio.h>
-#include <unicore-mx/usb/usbd.h>
-#include <unicore-mx/usb/cdc.h>
-#include <unicore-mx/cm3/scb.h>
-#include <unicore-mx/cm3/nvic.h>
 #include <pico_stack.h>
 #include <pico_device.h>
 #include <pico_ipv4.h>
+
+#include "usb.h"
 
 #define USBETH_MAX_FRAME 1514
 struct pico_dev_usbeth {
@@ -39,7 +35,7 @@ struct pico_dev_usbeth {
 };
 
 static struct pico_dev_usbeth *pico_usbeth = NULL;
-static const struct usb_device_descriptor usbdev_desc= {
+static const struct usb_device_descriptor cdc_ecm_dev = {
     .bLength = USB_DT_DEVICE_SIZE,
     .bDescriptorType = USB_DT_DEVICE,
     .bcdUSB = 0x0200,
@@ -152,7 +148,7 @@ static const struct usb_interface ifaces[] = {
     }
 };
 
-static const struct usb_config_descriptor config = {
+static const struct usb_config_descriptor cdc_ecm_config = {
     .bLength = USB_DT_CONFIGURATION_SIZE,
     .bDescriptorType = USB_DT_CONFIGURATION,
     .wTotalLength = 71,
@@ -165,10 +161,10 @@ static const struct usb_config_descriptor config = {
     .interface = ifaces,
 };
 
-const char usb_string_manuf[] = "Insane adding machines";
-const char usb_string_name[] = "Frosted Eth gadget";
-const char usb_serialn[] = "01";
-const char usb_macaddr[] = "005af341b4c9";
+static const char usb_string_manuf[] = "Insane adding machines";
+static const char usb_string_name[] = "Frosted Eth gadget";
+static const char usb_serialn[] = "01";
+static const char usb_macaddr[] = "005af341b4c9";
 
 
 static const char *usb_strings[4] = {
@@ -203,6 +199,26 @@ static int cdcecm_control_request(usbd_device *usbd_dev,
     return 0;
 }
 
+
+
+
+/***************************
+ *                         *
+ *  USB Device Definition  *
+ *                         *
+ ***************************
+ *
+ *
+ */
+static void cdcecm_control_callback(usbd_device *usbd_dev, uint16_t wValue);
+
+static struct devusb_config devusb_cdc_ecm = {
+    .conf_desc = &cdc_ecm_config,
+    .dev_desc = &cdc_ecm_dev,
+    .strings = usb_strings,
+    .n_strings = 4,
+    .callback = cdcecm_control_callback
+};
 
 struct usbeth_rx_buffer {
     uint16_t size;
@@ -304,7 +320,7 @@ static void cdcecm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
     }
 }
 
-static void cdcecm_set_config(usbd_device *usbd_dev, uint16_t wValue)
+static void cdcecm_control_callback(usbd_device *usbd_dev, uint16_t wValue)
 {
     (void)wValue;
 
@@ -361,13 +377,6 @@ static void pico_usbeth_destroy(struct pico_device *dev)
     pico_usbeth = NULL;
 }
 
-void otg_fs_isr(void)
-{
-    if (pico_usbeth)
-        usbd_poll(pico_usbeth->usbd_dev);
-}
-
-
 int usb_ethernet_init(void)
 {
     struct pico_dev_usbeth *usb = kalloc(sizeof(struct pico_dev_usbeth));;
@@ -377,27 +386,13 @@ int usb_ethernet_init(void)
     const char nmstr[] = CONFIG_USB_DEFAULT_NM;
     const char gwstr[] = CONFIG_USB_DEFAULT_GW;
 
-
-    memset(&zero, 0, sizeof(zero));
-
-
-    if (!usb)
-        return -ENOMEM;
-
-    usb_buf = kalloc(128);
-    if (!usb_buf) {
-        kfree(usb);
-        return -ENOMEM;
-    }
+    if (usbdev_start(&devusb_cdc_ecm) < 0) 
+        return -EBUSY;
 
     pico_string_to_ipv4(ipstr, &default_ip.addr);
     pico_string_to_ipv4(nmstr, &default_nm.addr);
     pico_string_to_ipv4(gwstr, &default_gw.addr);
-
-
     memset(usb, 0, sizeof(struct pico_dev_usbeth));
-    rcc_periph_clock_enable(RCC_GPIOA);
-    rcc_periph_clock_enable(RCC_OTGFS);
 
     usb->dev.overhead = 0;
     usb->dev.send = pico_usbeth_send;
@@ -411,32 +406,11 @@ int usb_ethernet_init(void)
         return -1;
     }
 
-#ifdef STM32F4
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE,
-            GPIO9 | GPIO11 | GPIO12);
-    gpio_set_af(GPIOA, GPIO_AF10, GPIO9 | GPIO11 | GPIO12);
-#endif
-
-#ifdef STM32F7
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
-    gpio_set_af(GPIOA, GPIO_AF10, GPIO11 | GPIO12);
-    gpio_set_af(GPIOA, GPIO_AF10, GPIO9);
-#endif
-
-
-    /* USB init */
-    usb->usbd_dev = usbd_init(&otgfs_usb_driver, &usbdev_desc, &config,
-            usb_strings, 4,
-            usb_buf, 128);
-    usbd_register_set_config_callback(usb->usbd_dev, cdcecm_set_config);
     pico_usbeth = usb;
-
     /* Set address/netmask */
     pico_ipv4_link_add(&usb->dev, default_ip, default_nm);
     /* Set default gateway */
     pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
-    nvic_enable_irq(NVIC_OTG_FS_IRQ);
     pico_usbeth->tx_busy = 0;
     return 0;
 }
