@@ -14,7 +14,7 @@
  *      You should have received a copy of the GNU General Public License
  *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
  *
- *      Authors: Alexander Wood, brabo
+ *      Authors: brabo
  *
  */
 
@@ -22,6 +22,7 @@
 #include "device.h"
 #include "frand.h"
 #include "frand_fortuna.h"
+#include "stm32_rng.h"
 #include <stdint.h>
 #include <sys/ioctl.h>
 
@@ -30,6 +31,8 @@
 #endif
 
 #define MAX_FRANDS         (1)
+
+extern uint32_t req;
 
 static struct frand_info *frand[MAX_FRANDS] = { 0 };
 
@@ -67,6 +70,8 @@ static int frand_read(struct fnode *fno, void *buf, unsigned int len)
 	// mutex_lock(fb->dev->mutex);
 
 	frand_get_bytes(buf, len);
+	req += len;
+	rng_enable_interrupt();
 
 	//mutex_unlock(fb->dev->mutex);
 	return len;
