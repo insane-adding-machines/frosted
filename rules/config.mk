@@ -25,7 +25,7 @@ ifeq ($(ARCH_STM32F4),y)
 	RAM_BASE=0x20000000
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F4
-	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
+	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
 endif
 
 ifeq ($(ARCH_STM32F7),y)
@@ -35,7 +35,7 @@ ifeq ($(ARCH_STM32F7),y)
 	RAM_BASE=0x20000000
 	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F7
-	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft" 
+	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
 endif
 
 ifeq ($(MACH_STM32F405Pyboard),y)
@@ -136,7 +136,7 @@ ifeq ($(UART_1),y)
 endif
 ifeq ($(UART_2),y)
     CFLAGS+=-DCONFIG_UART_2
-endif    
+endif
 ifeq ($(UART_3),y)
     CFLAGS+=-DCONFIG_UART_3
 endif
@@ -168,6 +168,12 @@ endif
 ifeq ($(DEVRNG),y)
     CFLAGS+=-DCONFIG_RNG
 endif
+
+#FRAND
+ifeq ($(DEVFRAND),y)
+    CFLAGS+=-DCONFIG_FRAND
+endif
+
 
 #I2Cs
 ifeq ($(I2C_1),y)

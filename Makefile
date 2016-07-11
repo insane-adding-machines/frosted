@@ -49,13 +49,8 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/bflt.o				\
 		 kernel/getaddrinfo.o		\
 		 kernel/kprintf.o			\
-		 kernel/pipe.o				\
-		 kernel/frand_misc.o			\
-		 kernel/frand_sha256.o			\
-		 kernel/frand_aes.o			\
-		 kernel/frand_types.o			\
-		 kernel/frand_fortuna.o			\
-		 kernel/frand.o
+		 kernel/pipe.o
+
 
 # device drivers
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
@@ -129,6 +124,14 @@ CFLAGS-$(DEVTIM)+=-DCONFIG_DEVSTM32F4TIM
 OBJS-$(DEVRNG)+=kernel/drivers/stm32_rng.o
 CFLAGS-$(DEVRNG)+=-DCONFIG_RNG
 
+OBJS-$(DEVFRAND)+=kernel/drivers/stm32_rng.o		\
+		 kernel/frand_misc.o			\
+		 kernel/frand_sha256.o			\
+		 kernel/frand_aes.o			\
+		 kernel/frand_types.o			\
+		 kernel/frand_fortuna.o			\
+		 kernel/frand.o
+CFLAGS-$(DEVFRAND)+=-DCONFIG_FRAND
 
 OBJS-$(DEV_USB_ETH)+=kernel/drivers/usb_ethernet.o
 CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_DEV_USB_ETH

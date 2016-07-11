@@ -197,7 +197,9 @@ int frosted_init(void)
 #ifdef CONFIG_DEVFRAMEBUFFER
     fb_init(fno_search("/dev"));
 #endif
+#if defined(CONFIG_FRAND)
     frand_init(fno_search("/dev"));
+#endif
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);

@@ -20,9 +20,11 @@
 
 #include "frosted.h"
 #include "device.h"
-#include "frand.h"
-#include "frand_fortuna.h"
-#include "frand_sha256.h"
+#if defined(CONFIG_FRAND)
+#  include "frand.h"
+#  include "frand_fortuna.h"
+#  include "frand_sha256.h"
+#endif
 #include <stdint.h>
 #include "stm32_rng.h"
 
@@ -40,19 +42,26 @@ struct dev_rng {
 
 #define MAX_RNGS 1
 
+#if defined(CONFIG_FRAND)
 uint32_t req;
+#endif
 
 static struct dev_rng DEV_RNG[MAX_RNGS];
 
+#if defined(CONFIG_RNG)
 static int devrng_read(struct fnode *fno, void *buf, unsigned int len);
+#endif
 
 static struct module mod_devrng = {
 	.family = FAMILY_FILE,
+#if defined(CONFIG_RNG)
 	.name = "random",
 	.ops.open = device_open,
 	.ops.read = devrng_read,
+#endif
 };
 
+#if defined(CONFIG_RNG)
 static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 {
 	struct dev_rng *rng;
@@ -85,11 +94,13 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 	mutex_unlock(rng->dev->mutex);
 	return 4;
 }
-
+#endif
 
 void rng_isr(void)
 {
+#if defined(CONFIG_FRAND)
 	static int pool = 0;
+#endif
 	struct dev_rng *rng = &DEV_RNG[0];
 	uint32_t error_bits = 0;
 	error_bits = RNG_SR_SEIS | RNG_SR_CEIS | RNG_SR_SECS | RNG_SR_CECS;
@@ -111,6 +122,7 @@ void rng_isr(void)
 	if (((RNG_SR & error_bits) == 0) && ((RNG_SR & RNG_SR_DRDY) == 1)) {
 		uint32_t random;
 		rng_get_random(&random);
+#if defined(CONFIG_FRAND)
 		frand_accu(0, pool, (uint8_t *)&random, 4);
 		pool++;
 		if (pool >= FRAND_POOL_COUNT) {
@@ -121,22 +133,28 @@ void rng_isr(void)
 		} else {
 			req--;
 		}
-		//rng_disable_interrupt();
-		//task_resume(rng->dev->pid);
+#else
+		memcpy(rng->random, &random, 4);
+		rng_disable_interrupt();
+		task_resume(rng->dev->pid);
+#endif
 	}
 }
 
-
+#if defined(CONFIG_RNG)
 static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr *addr)
 {
 	struct dev_rng *r = &DEV_RNG[n];
 	r->dev = device_fno_init(&mod_devrng, mod_devrng.name, dev, FL_RDONLY, r);
 	r->base = addr->base;
 }
+#endif
 
+#if defined(CONFIG_FRAND)
 static const struct frand_ops rng_frandops = {  };
 
 static struct frand_info rng_info = { .frandops = (struct frand_ops *)&rng_frandops };
+#endif
 
 void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rngs)
 {
@@ -146,23 +164,19 @@ void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rn
 		if (rng_addrs[i].base == 0)
 			continue;
 
+#if defined(CONFIG_RNG)
 		rng_fno_init(dev, i, &rng_addrs[i]);
+#endif
 		CLOCK_ENABLE(rng_addrs[i].rcc);
 
 		rng_enable();
 	}
 	register_module(&mod_devrng);
+#if defined(CONFIG_FRAND)
 	register_frand(&rng_info);
 	req = FRAND_ENCRYPT_KEY_SIZE * (FRAND_POOL_COUNT * (SHA256_DIGEST_SIZE / sizeof(word32)) * (SHA256_BLOCK_SIZE / sizeof(word32)));
 	rng_enable_interrupt();
-}
-
-
-/* DRIVER INIT */
-void stm32_rng_init(void)
-{
-    register_frand(&rng_info);
-    rng_enable_interrupt();
+#endif
 }
 
 

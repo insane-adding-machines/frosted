@@ -32,8 +32,6 @@
 #include "gpio.h"
 #endif
 
-#include "frand.h"
-
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { {.base=GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
                                                                             {.base=GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
@@ -95,7 +93,7 @@ static const struct uart_addr uart_addrs[] = {
 #define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
 #endif
 
-#ifdef CONFIG_RNG
+#if defined(CONFIG_RNG) || defined(CONFIG_FRAND)
 #include "stm32_rng.h"
 static const struct rng_addr rng_addrs[] = {
             {
@@ -106,6 +104,10 @@ static const struct rng_addr rng_addrs[] = {
 };
 #define NUM_RNGS (sizeof(rng_addrs) / sizeof(struct rng_addr))
 #endif
+#if defined(CONFIG_FRAND)
+#  include "frand.h"
+#endif
+
 
 void machine_init(struct fnode * dev)
 {
@@ -125,7 +127,7 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_DEVUART
     uart_init(dev, uart_addrs, NUM_UARTS);
 #endif
-#ifdef CONFIG_RNG
+#if defined(CONFIG_RNG) || defined(CONFIG_FRAND)
     rng_init(dev, rng_addrs, NUM_RNGS);
     //stm32_rng_init();
 #endif

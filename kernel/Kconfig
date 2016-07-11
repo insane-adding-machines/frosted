@@ -433,10 +433,21 @@ menu "Device Drivers"
        bool "Generic GPIO driver"
        default y
 
-       config DEVRNG
+       config DEV_RANDOM
        depends on (ARCH_STM32F4 || ARCH_STM32F7)
-       bool "STM32F2/F4/F7 RNG driver"
-       default y
+       bool "STM32F2/F4/F7 Random devices"
+       default n
+
+       if DEV_RANDOM
+          choice
+            prompt "Random device selection"
+            config DEVRNG
+            bool "Hardware TRNG driver"
+
+            config DEVFRAND
+            bool "Fortuna PRNG device"
+          endchoice
+       endif
 
        menuconfig DEVFRAMEBUFFER
        depends on (ARCH_STM32F7)
