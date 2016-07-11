@@ -67,7 +67,6 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 
 	mutex_lock(rng->dev->mutex);
 
-	/* need to sort this out */
 	uint32_t error_bits = 0;
 	error_bits = RNG_SR_SEIS | RNG_SR_CEIS | RNG_SR_SECS | RNG_SR_CECS;
 
@@ -110,8 +109,9 @@ void rng_isr(void)
 		RNG_SR &= ~RNG_SR_CEIS;
 	}
 	if (((RNG_SR & error_bits) == 0) && ((RNG_SR & RNG_SR_DRDY) == 1)) {
-		rng_get_random(rng->random);
-		frand_accu(0, pool, (uint8_t *)rng->random, 4);
+		uint32_t random;
+		rng_get_random(&random);
+		frand_accu(0, pool, (uint8_t *)&random, 4);
 		pool++;
 		if (pool >= FRAND_POOL_COUNT) {
 			pool = 0;
