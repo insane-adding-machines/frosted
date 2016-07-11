@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include <sys/vfs.h>
 #include "libopencmsis/core_cm3.h"
@@ -64,7 +64,7 @@ void simple_hard_fault_handler(void)
     while(1);
 }
 
-#ifdef CONFIG_HARDFAULT_DBG 
+#ifdef CONFIG_HARDFAULT_DBG
 
 volatile unsigned long stacked_r0 ;
 volatile unsigned long stacked_r1 ;
@@ -93,7 +93,7 @@ void hardfault_handler_dbg(unsigned long *hardfault_args){
 
     // Configurable Fault Status Register
     // Consists of MMSR, BFSR and UFSR
-    _CFSR = (*((volatile unsigned long *)(0xE000ED28))) ;   
+    _CFSR = (*((volatile unsigned long *)(0xE000ED28))) ;
 
 
 
@@ -186,7 +186,7 @@ int frosted_init(void)
 
     hw_init();
     mpu_init();
-            
+
     syscalls_init();
 
     memfs_init();
@@ -197,6 +197,7 @@ int frosted_init(void)
 #ifdef CONFIG_DEVFRAMEBUFFER
     fb_init(fno_search("/dev"));
 #endif
+    frand_init(fno_search("/dev"));
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);
@@ -206,7 +207,7 @@ int frosted_init(void)
     kernel_task_init();
 
 
-#ifdef UNIX    
+#ifdef UNIX
     socket_un_init();
 #endif
 
@@ -254,7 +255,7 @@ static void ktimer_tcpip(uint32_t time, void *arg)
     tasklet_add(tasklet_tcpip, NULL);
 #endif
 }
-    
+
 #ifdef CONFIG_LOWPOWER
 void frosted_tcpip_wakeup(void)
 {
@@ -314,7 +315,7 @@ void frosted_kernel(int xipfs_mounted)
 }
 
 /* OS entry point */
-void main(void) 
+void main(void)
 {
     int xipfs_mounted;
     xipfs_mounted = frosted_init();

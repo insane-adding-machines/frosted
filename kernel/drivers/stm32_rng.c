@@ -20,6 +20,8 @@
 
 #include "frosted.h"
 #include "device.h"
+#include "frand.h"
+#include "frand_fortuna.h"
 #include <stdint.h>
 #include "stm32_rng.h"
 
@@ -30,7 +32,7 @@
 #define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 
 struct dev_rng {
-	struct device * dev;
+	struct device *dev;
 	uint32_t base;
 	uint32_t *random;
 };
@@ -105,18 +107,23 @@ void rng_isr(void)
 	}
 	if (((RNG_SR & error_bits) == 0) && ((RNG_SR & RNG_SR_DRDY) == 1)) {
 		rng_get_random(rng->random);
-		rng_disable_interrupt();
+		frand_accu(0, 1, (uint8_t *)rng->random, 4);
+		//rng_disable_interrupt();
 		task_resume(rng->dev->pid);
 	}
 }
 
 
-static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr * addr)
+static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr *addr)
 {
 	struct dev_rng *r = &DEV_RNG[n];
 	r->dev = device_fno_init(&mod_devrng, mod_devrng.name, dev, FL_RDONLY, r);
 	r->base = addr->base;
 }
+
+static const struct frand_ops rng_frandops = {  };
+
+static struct frand_info rng_info = { .frandops = (struct frand_ops *)&rng_frandops };
 
 void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rngs)
 {
@@ -132,5 +139,16 @@ void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rn
 		rng_enable();
 	}
 	register_module(&mod_devrng);
+	register_frand(&rng_info);
+	rng_enable_interrupt();
 }
+
+
+/* DRIVER INIT */
+void stm32_rng_init(void)
+{
+    register_frand(&rng_info);
+    rng_enable_interrupt();
+}
+
 

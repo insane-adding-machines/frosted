@@ -49,7 +49,13 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/bflt.o				\
 		 kernel/getaddrinfo.o		\
 		 kernel/kprintf.o			\
-		 kernel/pipe.o
+		 kernel/pipe.o				\
+		 kernel/frand_misc.o			\
+		 kernel/frand_sha256.o			\
+		 kernel/frand_aes.o			\
+		 kernel/frand_types.o			\
+		 kernel/frand_fortuna.o			\
+		 kernel/frand.o
 
 # device drivers
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o

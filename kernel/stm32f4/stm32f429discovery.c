@@ -32,6 +32,8 @@
 #include "gpio.h"
 #endif
 
+#include "frand.h"
+
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = { {.base=GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
                                                                             {.base=GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
@@ -125,5 +127,6 @@ void machine_init(struct fnode * dev)
 #endif
 #ifdef CONFIG_RNG
     rng_init(dev, rng_addrs, NUM_RNGS);
+    //stm32_rng_init();
 #endif
 }
