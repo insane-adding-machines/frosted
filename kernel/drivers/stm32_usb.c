@@ -48,12 +48,12 @@ int usbdev_start(struct devusb_config *d)
     if (dev_usb)
         return -EBUSY;
 
-    dev_usb = d;
-    usbd_register_set_config_callback(dev_usb->usbd_dev, dev_usb->callback);
     rcc_periph_clock_enable(RCC_OTGFS);
+    dev_usb = d;
     dev_usb->usbd_dev = usbd_init(&otgfs_usb_driver, dev_usb->dev_desc, dev_usb->conf_desc,
             dev_usb->strings, 4,
             dev_usb->buffer, 128);
+    usbd_register_set_config_callback(dev_usb->usbd_dev, dev_usb->callback);
     nvic_enable_irq(NVIC_OTG_FS_IRQ);
 }
 

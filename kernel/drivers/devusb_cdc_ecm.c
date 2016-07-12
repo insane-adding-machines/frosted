@@ -30,7 +30,6 @@
 #define USBETH_MAX_FRAME 1514
 struct pico_dev_usbeth {
     struct pico_device dev;
-    usbd_device *usbd_dev;
     int tx_busy;
 };
 
@@ -256,7 +255,7 @@ static void cdcecm_data_tx_complete_cb(usbd_device *usbd_dev, uint8_t ep)
     if (len > 64)
         len = 64;
 
-    tx_frame.off += usbd_ep_write_packet(pico_usbeth->usbd_dev, 0x81, tx_frame.base + tx_frame.off, len);
+    tx_frame.off += usbd_ep_write_packet(usbd_dev, 0x81, tx_frame.base + tx_frame.off, len);
     if (tx_frame.off == tx_frame.size)
         pico_usbeth->tx_busy = 0;
 #ifdef CONFIG_LOWPOWER
@@ -292,7 +291,7 @@ static void cdcecm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
         buf[3] = 0;
 
         notified_link_up++;
-        usbd_ep_write_packet(pico_usbeth->usbd_dev, 0x82, buf, 8);
+        usbd_ep_write_packet(usbd_dev, 0x82, buf, 8);
     }
     if (!rx_buffer) {
         rx_buffer = kalloc(USBETH_MAX_FRAME);
@@ -350,11 +349,11 @@ static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
     }
 
     if (len <= 64)
-        return usbd_ep_write_packet(usbeth->usbd_dev, 0x81, buf, len);
+        return usbd_ep_write_packet(devusb_cdc_ecm.usbd_dev, 0x81, buf, len);
 
     tx_frame.base = buf;
     tx_frame.size = len;
-    tx_frame.off = usbd_ep_write_packet(usbeth->usbd_dev, 0x81, buf, 64);
+    tx_frame.off = usbd_ep_write_packet(devusb_cdc_ecm.usbd_dev, 0x81, buf, 64);
     pico_usbeth->tx_busy++;
     return 0;
 }
@@ -386,8 +385,6 @@ int usb_ethernet_init(void)
     const char nmstr[] = CONFIG_USB_DEFAULT_NM;
     const char gwstr[] = CONFIG_USB_DEFAULT_GW;
 
-    if (usbdev_start(&devusb_cdc_ecm) < 0) 
-        return -EBUSY;
 
     pico_string_to_ipv4(ipstr, &default_ip.addr);
     pico_string_to_ipv4(nmstr, &default_nm.addr);
@@ -412,5 +409,7 @@ int usb_ethernet_init(void)
     /* Set default gateway */
     pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
     pico_usbeth->tx_busy = 0;
+    if (usbdev_start(&devusb_cdc_ecm) < 0) 
+        return -EBUSY;
     return 0;
 }
