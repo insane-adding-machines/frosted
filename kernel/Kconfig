@@ -379,7 +379,7 @@ menu "Device Drivers"
        depends on ((ARCH_STM32F746))
        default n
 
-       if DEVF4ETH || DEVF7TH
+       if DEVF4ETH || DEVF7ETH
            config ETH_DEFAULT_IP
            string "Default (boot-up) address for eth0"
            default 192.168.2.150

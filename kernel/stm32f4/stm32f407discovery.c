@@ -135,14 +135,6 @@ static const struct eth_config eth_config = {
     },
 };
 
-#if 0 /* TODO */
-#ifdef CONFIG_STM32F4USB
-#endif
-
-#ifdef CONFIG_DEVSTMETH
-#endif
-#endif
-
 static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_1
     {   .devidx = 1,
@@ -355,9 +347,5 @@ int machine_init(void)
     sdio_init(&sdio_conf);
     usb_init(&usb_guest);
     ethernet_init(&eth_config);
-
-#if 0/* TODO */
-    gpio_clear(GPIOE,GPIO2);    /* Clear ETH nRESET pin */
-    gpio_set(GPIOE,GPIO2);      /* Set ETH nRESET pin */
-#endif
+    return 0;
 }

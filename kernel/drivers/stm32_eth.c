@@ -69,7 +69,11 @@ static uint32_t eth_smi_get_phy_divider(void)
 {
     uint32_t hclk = rcc_ahb_frequency;
 
-#ifdef STM32F4
+#if defined(STM32F4) || defined(STM32F7)
+    /* CSR Clock above 200 MHz */ 
+    if (hclk >= 200000000)
+        return ETH_MACMIIAR_CR_HCLK_DIV_124;    
+    
     /* CSR Clock between 150-168 MHz */ 
     if (hclk >= 150000000)
         return ETH_MACMIIAR_CR_HCLK_DIV_102;    

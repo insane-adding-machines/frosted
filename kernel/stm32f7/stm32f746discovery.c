@@ -36,6 +36,8 @@
 #include "sdio.h"
 #include "framebuffer.h"
 #include "ltdc.h"
+#include "usb.h"
+#include "eth.h"
 
 static const struct gpio_config gpio_led0 = {
     .base=GPIOI, 
@@ -207,18 +209,60 @@ struct sdio_config sdio_conf = {
     }
 };
 
-#if 0 /* TODO USB */
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
-    gpio_set_af(GPIOA, GPIO_AF10, GPIO11 | GPIO12);
-    gpio_set_af(GPIOA, GPIO_AF10, GPIO9);
-#endif
+const struct gpio_config stm32eth_mii_pins[] = {
+    {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII REF CLK
+    {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDIO
+    {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII CRS DV
+    {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXER
+    {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXEN
+    {.base=GPIOB, .pin=GPIO12,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD0
+    {.base=GPIOB, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD1
+    {.base=GPIOC, .pin=GPIO1, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDC
+    {.base=GPIOC, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD0
+    {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD1
+};
 
+static const struct eth_config eth_config = {
+    .pio_mii = stm32eth_mii_pins,
+    .n_pio_mii = 10,
+    .pio_phy_reset = {
+        .base=GPIOE, 
+        .pin=GPIO2, 
+        .mode=GPIO_MODE_OUTPUT, 
+        .optype=GPIO_OTYPE_PP, 
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+};
+
+static struct usb_config usb_guest = {
+    .otg_mode = USB_MODE_GUEST,
+    .pio_vbus = {
+        .base=GPIOA,
+        .pin=GPIO8,
+        .mode=GPIO_MODE_AF,
+        .af=GPIO_AF10, 
+        .pullupdown=GPIO_PUPD_NONE,
+    },
+    .pio_dm =   {
+        .base=GPIOA, 
+        .pin=GPIO11,
+        .mode=GPIO_MODE_AF,
+        .af=GPIO_AF10, 
+        .pullupdown=GPIO_PUPD_NONE, 
+    },
+    .pio_dp =   {
+        .base=GPIOA, 
+        .pin=GPIO12,
+        .mode=GPIO_MODE_AF,
+        .af=GPIO_AF10, 
+        .pullupdown=GPIO_PUPD_NONE, 
+    }
+};
 
 int machine_init(void)
 {
     int i = 0;
-    rcc_clock_setup_hse_3v3(&hse_25mhz_3v3[CLOCK_3V3_216MHZ]);
+    rcc_clock_setup_hse_3v3(&hse_25mhz_3v3[RCC_CLOCK_3V3_216MHZ]);
     gpio_create(NULL, &gpio_led0);
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
@@ -227,7 +271,8 @@ int machine_init(void)
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
     sdio_conf.rcc_en  = RCC_APB2ENR_SDMMC1EN;
     sdio_init(&sdio_conf);
+    usb_init(&usb_guest);
+    ethernet_init(&eth_config);
     return 0;
-
 }
 
