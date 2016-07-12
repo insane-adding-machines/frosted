@@ -22,108 +22,116 @@
 #include <unicore-mx/stm32/rcc.h>
 #include "unicore-mx/stm32/usart.h"
 #include "unicore-mx/cm3/nvic.h"
-
-#ifdef CONFIG_DEVUART
-#include "uart.h"
-#endif
-
-#ifdef CONFIG_DEVGPIO
 #include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
+#include "uart.h"
+
+
+
+
+#if CONFIG_SYS_CLOCK == 48000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_48MHZ
+#elif CONFIG_SYS_CLOCK == 84000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_84MHZ
+#elif CONFIG_SYS_CLOCK == 120000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_120MHZ
+#elif CONFIG_SYS_CLOCK == 168000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_168MHZ
+#else
+#   error No valid clock speed selected
 #endif
 
-#ifdef CONFIG_DEVGPIO
-static const struct gpio_addr gpio_addrs[] = { {.base=GPIOG, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_13"},
-                                                                            {.base=GPIOG, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_6_14"},
-#ifdef CONFIG_DEVUART
-#ifdef CONFIG_USART_1
-                                                                            {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
-#endif
-#ifdef CONFIG_USART_2
-                                                                            {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-                                                                            {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
-#endif
-#ifdef CONFIG_USART_3
-#endif
-#ifdef CONFIG_UART_4
-#endif
-#ifdef CONFIG_UART_5
-#endif
-#ifdef CONFIG_USART_6
-#endif
-#ifdef CONFIG_UART_7
-#endif
-#ifdef CONFIG_UART_8
-#endif
-#endif
+static const struct gpio_config Led0 = {
+    .base=GPIOG, 
+    .pin=GPIO13,
+    .mode=GPIO_MODE_OUTPUT, 
+    .optype=GPIO_OTYPE_PP, 
+    .name="led0"
 };
-#define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
-#endif
+static const struct gpio_config Led1 = {
+    .base=GPIOG, 
+    .pin=GPIO14,
+    .mode=GPIO_MODE_OUTPUT, 
+    .optype=GPIO_OTYPE_PP, 
+    .name="led1"
+};
 
-#ifdef CONFIG_DEVUART
-static const struct uart_addr uart_addrs[] = {
+
+
+static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_1
-            {
-                .devidx = 1,
-                .base = USART1,
-                .irq = NVIC_USART1_IRQ,
-                .rcc = RCC_USART1,
-                .baudrate = 115200,
-                .stop_bits = USART_STOPBITS_1,
-                .data_bits = 8,
-                .parity = USART_PARITY_NONE,
-                .flow = USART_FLOWCONTROL_NONE,
-            },
-#endif
-#ifdef CONFIG_USART_2
-        {
-            .devidx = 2,
-            .base = USART2,
-            .irq = NVIC_USART2_IRQ,
-            .rcc = RCC_USART2,
-            .baudrate = 115200,
-            .stop_bits = USART_STOPBITS_1,
-            .data_bits = 8,
-            .parity = USART_PARITY_NONE,
-            .flow = USART_FLOWCONTROL_NONE,
+    {
+        .devidx = 1,
+        .base = USART1,
+        .irq = NVIC_USART1_IRQ,
+        .rcc = RCC_USART1,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+
+        .pio_rx = {
+            .base=GPIOA, 
+            .pin=GPIO9,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7, 
+            .pullupdown=GPIO_PUPD_NONE, 
         },
+
+        .pio_tx = {
+            .base=GPIOA, 
+            .pin=GPIO10,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7, 
+            .speed=GPIO_OSPEED_25MHZ, 
+            .optype=GPIO_OTYPE_PP, 
+        },
+    },
+#endif
+#ifdef CONFIG_USART_2
+    {
+        .devidx = 2,
+        .base = USART2,
+        .irq = NVIC_USART2_IRQ,
+        .rcc = RCC_USART2,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+        .pio_rx = {
+            .base=GPIOA, 
+            .pin=GPIO2,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7, 
+            .pullupdown=GPIO_PUPD_NONE, 
+        },
+
+        .pio_tx = {
+            .base=GPIOA, 
+            .pin=GPIO3,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7, 
+            .speed=GPIO_OSPEED_25MHZ, 
+            .optype=GPIO_OTYPE_PP, 
+        },
+    },
 #endif
 };
-#define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
-#endif
+#define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
-#ifdef CONFIG_RNG
-#include "stm32_rng.h"
-static const struct rng_addr rng_addrs[] = {
-            {
-                .devidx = 1,
-                .base = 1,
-                .rcc = RCC_RNG,
-            },
-};
-#define NUM_RNGS (sizeof(rng_addrs) / sizeof(struct rng_addr))
-#endif
 
-void machine_init(struct fnode * dev)
+int machine_init(void)
 {
-#       if CONFIG_SYS_CLOCK == 168000000
-            rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
-#       elif CONFIG_SYS_CLOCK == 84000000
-            rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_84MHZ]);
-#       elif CONFIG_SYS_CLOCK == 48000000
-            rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_48MHZ]);
-#       else
-#error No valid clock speed selected for STM32F429 Discovery
-#endif
-
-#ifdef CONFIG_DEVGPIO
-    gpio_init(dev, gpio_addrs, NUM_GPIOS);
-#endif
-#ifdef CONFIG_DEVUART
-    uart_init(dev, uart_addrs, NUM_UARTS);
-#endif
-#ifdef CONFIG_RNG
-    rng_init(dev, rng_addrs, NUM_RNGS);
-#endif
+    int i;
+    rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[STM32_CLOCK]);
+    gpio_create(NULL, &Led0);
+    gpio_create(NULL, &Led1);
+    /* Uarts */
+    for (i = 0; i < NUM_UARTS; i++) {
+        uart_create(&uart_configs[i]);
+    }
+    rng_create(1, RCC_RNG);
+    return 0;
 }
