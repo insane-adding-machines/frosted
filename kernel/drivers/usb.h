@@ -38,7 +38,7 @@ struct devusb_config {
 #endif
 
 
-#ifdef CONFIG_DEVUSB_ETH
+#ifdef CONFIG_DEV_USBETH
     int usb_ethernet_init(void);
 #else
 #  define usb_ethernet_init() ((-ENOENT))
