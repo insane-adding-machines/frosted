@@ -83,8 +83,7 @@ void usart_disable(uint32_t usart)
 
 
 
-#ifdef CONFIG_DEVUART
- static const struct uart_addr uart_addrs[] = { 
+ static const struct uart_config uart_configs[] = { 
 #ifdef CONFIG_USART_0
          {   
              .base = USART0_BASE, 
@@ -105,16 +104,17 @@ void usart_disable(uint32_t usart)
 #endif         
  };
  
-#define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
- #endif
+#define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
- void machine_init(struct fnode * dev)
- {
-     rcc_clock_setup_in_xtal_8mhz_out_50mhz();
-#ifdef CONFIG_DEVUART
-     uart_init(dev, uart_addrs, NUM_UARTS);
-#endif
+int machine_init(void)
+{
+    int i;
+    rcc_clock_setup_in_xtal_8mhz_out_50mhz();
 
- }
+    for (i = 0; i < NUM_UARTS; i++) 
+        uart_create(&(uart_configs[i]));
+
+    return 0;
+}
 
 

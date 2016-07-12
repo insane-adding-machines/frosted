@@ -223,6 +223,7 @@ static int gpio_basename(const uint32_t base, char *name)
     }
 }
 
+#if defined(STM32F4) || defined(STM32F7)
 int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
@@ -386,6 +387,7 @@ int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
     fno->off += len;
     return len;
 }
+#endif
 
 int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
@@ -716,7 +718,9 @@ static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
     sysfs_register("mem", "/sys", sysfs_mem_read, sysfs_no_write);
     sysfs_register("modules", "/sys", sysfs_modules_read, sysfs_no_write);
     sysfs_register("mtab", "/sys", sysfs_mtab_read, sysfs_no_write);
+#if defined(STM32F4) || defined(STM32F7)
     sysfs_register("pins", "/sys", sysfs_pins_read, sysfs_no_write);
+#endif
     return 0;
 }
 
