@@ -48,9 +48,11 @@ extern struct dev_gpio *Gpio_list;
 
 #ifdef CONFIG_DEVGPIO
 int gpio_init(void);
+int gpio_list_len(void);
 int gpio_create(struct module *mod, const struct gpio_config *gpio_config);
 #else
 #  define gpio_init() ((-ENOENT))
 #  define gpio_create(...) ((-ENOENT))
+#  define gpio_list_len() (0)
 #endif
 #endif

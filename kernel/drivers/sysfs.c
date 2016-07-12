@@ -240,7 +240,7 @@ int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
     uint32_t pin_n = 0;
     if (fno->off == 0) {
         mutex_lock(sysfs_mutex);
-        txt = kalloc(MAX_SYSFS_BUFFER);
+        txt = kalloc((1 + gpio_list_len()) * 80);
         if (!txt)
             return -1;
         off = 0;

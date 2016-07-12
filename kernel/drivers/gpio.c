@@ -188,6 +188,18 @@ static void gpio_list_del(struct dev_gpio *old)
     }
 }
 
+int gpio_list_len(void)
+{
+    int len = 0;
+    struct dev_gpio *l = Gpio_list;
+
+    while(l) {
+        len++;
+        l = l->next;
+    }
+    return l;
+}
+
 int gpio_read_list_entry(void **last__, char *buf, int len)
 {
     struct dev_gpio **last = (struct dev_gpio **)last__;
