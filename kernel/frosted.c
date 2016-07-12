@@ -34,6 +34,8 @@
 #include "fatfs.h"
 #include "framebuffer.h"
 #include "ltdc.h"
+#include "usb.h"
+#include "eth.h"
 
 
 #ifdef CONFIG_PICOTCP
@@ -305,13 +307,9 @@ void frosted_kernel(int xipfs_mounted)
     pico_loop_create();
     socket_in_init();
 
-#ifdef CONFIG_DEVSTMETH
-    stm_eth_init();
-#endif
-
-#ifdef CONFIG_DEV_USB_ETH
+    /* Network devices initialization */
     usb_ethernet_init();
-#endif
+    pico_eth_start();
 
     while(1) {
         check_tasklets();

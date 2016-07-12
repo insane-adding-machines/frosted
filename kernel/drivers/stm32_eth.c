@@ -14,13 +14,14 @@
  *      You should have received a copy of the GNU General Public License
  *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
  *
- *      Authors:
+ *      Authors: Maxime Vincent
  *
  */
  
 #include <stdint.h>
 #include "frosted.h"
 #include "gpio.h"
+#include "eth.h"
 
 #include <pico_device.h>
 #include <unicore-mx/stm32/rcc.h>
@@ -54,6 +55,11 @@ struct dev_eth {
     uint32_t rx_cons;
     uint8_t mac_addr[6];
     uint8_t phy_addr;
+};
+
+static struct module mod_eth = {
+    .family = FAMILY_DEV,
+    .name = "ethernet",
 };
 
 static struct dev_eth * dev_eth_stm = NULL;
@@ -201,7 +207,7 @@ static int mac_init(uint8_t * phy_addr, uint32_t clk_div)
     return 0;
 }
 
-int stm_eth_init(void)
+int pico_eth_start(void)
 {
     int8_t phy_addr;
     uint8_t * descriptors;
@@ -259,17 +265,30 @@ int stm_eth_init(void)
     nvic_enable_irq(NVIC_ETH_IRQ);
 
     eth_start();
+    return 0;
 
+}
+
+/* HW initialization */
+int ethernet_init(struct eth_config *conf)
+{
+    unsigned int i;
+    /* Create PHY reset pin */
+    gpio_create(&mod_eth, &conf->pio_phy_reset);
+    /* Create MII pins */
+    for (i = 0; i < conf->n_pio_mii; i++)
+        gpio_create(&mod_eth, &(conf->pio_mii[i]));
+    /* Reset PHY */
+    gpio_clear(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
+    gpio_set(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
     return 0;
 }
 
 void eth_isr(void)
 {
     uint32_t bits = ETH_DMASR;
-
     /* Clear all bits */
     eth_irq_ack_pending(ETH_DMASR);
-
     if (bits & ETH_DMASR_RS)
     {
         /* Receive Status bit set */

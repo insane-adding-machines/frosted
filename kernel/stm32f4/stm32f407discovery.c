@@ -33,6 +33,7 @@
 #include "dsp.h"
 #include "rng.h"
 #include "usb.h"
+#include "eth.h"
 
 #if CONFIG_SYS_CLOCK == 48000000
 #    define STM32_CLOCK RCC_CLOCK_3V3_48MHZ
@@ -83,7 +84,7 @@ static const struct gpio_config Button = {
 };
 
 
-static const struct usb_config usb_guest = {
+static struct usb_config usb_guest = {
     .otg_mode = USB_MODE_GUEST,
     .pio_vbus = {
         .base=GPIOA,
@@ -107,23 +108,38 @@ static const struct usb_config usb_guest = {
         .pullupdown=GPIO_PUPD_NONE, 
     }
 };
+    
+
+const struct gpio_config stm32eth_mii_pins[] = {
+    {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDIO
+    {.base=GPIOC, .pin=GPIO1, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDC
+    {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII REF CLK
+    {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII CRS DV
+    {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXER
+    {.base=GPIOC, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD0
+    {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD1
+    {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXEN
+    {.base=GPIOB, .pin=GPIO12,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD0
+    {.base=GPIOB, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD1
+};
+
+static const struct eth_config eth_config = {
+    .pio_mii = stm32eth_mii_pins,
+    .n_pio_mii = 10,
+    .pio_phy_reset = {
+        .base=GPIOE, 
+        .pin=GPIO2, 
+        .mode=GPIO_MODE_OUTPUT, 
+        .optype=GPIO_OTYPE_PP, 
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+};
 
 #if 0 /* TODO */
 #ifdef CONFIG_STM32F4USB
 #endif
 
 #ifdef CONFIG_DEVSTMETH
-    {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // MDIO
-    {.base=GPIOC, .pin=GPIO1, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // MDC
-    {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII REF CLK
-    {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII CRS DV
-    {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXER
-    {.base=GPIOC, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXD0
-    {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXD1
-    {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXEN
-    {.base=GPIOB, .pin=GPIO12,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXD0
-    {.base=GPIOB, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXD1
-    {.base=GPIOE, .pin=GPIO2, .mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name=NULL, .pullupdown=GPIO_PUPD_PULLUP},            // PHY RESET
 #endif
 #endif
 
@@ -338,6 +354,7 @@ int machine_init(void)
     sdio_conf.rcc_en  = RCC_APB2ENR_SDIOEN;
     sdio_init(&sdio_conf);
     usb_init(&usb_guest);
+    ethernet_init(&eth_config);
 
 #if 0/* TODO */
     gpio_clear(GPIOE,GPIO2);    /* Clear ETH nRESET pin */
