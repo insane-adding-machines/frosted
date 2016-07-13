@@ -19,39 +19,35 @@
  */
 
 #include "frosted.h"
-#include "frand_misc.h"
+#include "crypto/misc.h"
 
-word32 min(word32 a, word32 b)
-{
-	return a > b ? b : a;
-}
 
-word32 rotl_fixed(word32 x, word32 y)
+word32 rotlFixed(word32 x, word32 y)
 {
 	return (x << y) | (x >> (sizeof(y) * 8 - y));
 }
 
-word32 rotr_fixed(word32 x, word32 y)
+word32 rotrFixed(word32 x, word32 y)
 {
 	return (x >> y) | (x << (sizeof(y) * 8 - y));
 }
 
-word32 byte_rev_word32(word32 value)
+word32 ByteReverseWord32(word32 value)
 {
 	/* 6 instructions with rotate instruction, 8 without */
 	value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
-	return rotl_fixed(value, 16U);
+	return rotlFixed(value, 16U);
 }
 
-void byte_rev_words(word32 *out, const word32 *in, word32 byte_count)
+void ByteReverseWords(word32 *out, const word32 *in, word32 byte_count)
 {
 	word32 count = byte_count/(word32)sizeof(word32), i;
 
 	for (i = 0; i < count; i++)
-		out[i] = byte_rev_word32(in[i]);
+		out[i] = ByteReverseWord32(in[i]);
 }
 
-void xor_words(word32 *r, const word32 *a, word32 n)
+static void XorWords(word32 *r, const word32 *a, word32 n)
 {
 	word32 i;
 
@@ -61,7 +57,7 @@ void xor_words(word32 *r, const word32 *a, word32 n)
 void xorbuf(void *buf, const void *mask, word32 count)
 {
 	if ((((word32)buf | (word32)mask | count) % sizeof(word32)) == 0)
-		xor_words((word32 *)buf, (const word32 *)mask, (count / sizeof(word32)));
+		XorWords((word32 *)buf, (const word32 *)mask, (count / sizeof(word32)));
 	else {
 		word32 i;
 		byte *b = (byte *)buf;

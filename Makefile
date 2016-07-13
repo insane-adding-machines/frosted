@@ -125,12 +125,11 @@ OBJS-$(DEVRNG)+=kernel/drivers/stm32_rng.o
 CFLAGS-$(DEVRNG)+=-DCONFIG_RNG
 
 OBJS-$(DEVFRAND)+=kernel/drivers/stm32_rng.o		\
-		 kernel/frand_misc.o			\
-		 kernel/frand_sha256.o			\
-		 kernel/frand_aes.o			\
-		 kernel/frand_types.o			\
-		 kernel/frand_fortuna.o			\
-		 kernel/frand.o
+		 kernel/crypto/misc.o			\
+		 kernel/crypto/sha256.o			\
+		 kernel/crypto/aes.o			\
+		 kernel/drivers/fortuna.o		\
+		 kernel/drivers/frand.o
 CFLAGS-$(DEVFRAND)+=-DCONFIG_FRAND
 
 OBJS-$(DEV_USB_ETH)+=kernel/drivers/usb_ethernet.o

@@ -1,5 +1,5 @@
-#ifndef FRAND_MISC_H_
-#define FRAND_MISC_H_
+#ifndef CRYPTO_MISC_H_
+#define CRYPTO_MISC_H_
 
 #define XMEMCPY(d,s,l)    memcpy((d),(s),(l))
 #define XMEMSET(b,c,l)    memset((b),(c),(l))
@@ -13,12 +13,10 @@
 typedef unsigned short word16;
 typedef unsigned int   word32;
 
-word32 min(word32 a, word32 b);
-word32 rotl_fixed(word32 x, word32 y);
-word32 rotr_fixed(word32 x, word32 y);
-word32 byte_rev_word32(word32 value);
-void byte_rev_words(word32 *out, const word32 *in, word32 byte_count);
-void xor_words(word32 *r, const word32 *a, word32 n);
+word32 rotlFixed(word32 x, word32 y);
+word32 rotrFixed(word32 x, word32 y);
+word32 ByteReverseWord32(word32 value);
+void ByteReverseWords(word32 *out, const word32 *in, word32 byte_count);
 void xorbuf(void *buf, const void *mask, word32 count);
 
-#endif /* FRAND_MISC_H_ */
+#endif /* CRYPTO_MISC_H_ */

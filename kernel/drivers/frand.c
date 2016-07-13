@@ -21,7 +21,7 @@
 #include "frosted.h"
 #include "device.h"
 #include "frand.h"
-#include "frand_fortuna.h"
+#include "fortuna.h"
 #include "stm32_rng.h"
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -69,7 +69,7 @@ static int frand_read(struct fnode *fno, void *buf, unsigned int len)
 
 	// mutex_lock(fb->dev->mutex);
 
-	frand_get_bytes(buf, len);
+	fortuna_get_bytes(buf, len);
 	req += len;
 	rng_enable_interrupt();
 
@@ -114,7 +114,7 @@ int register_frand(struct frand_info *frand_info)
 	frand[0] = frand_info;
 
 	register_module(&mod_devfrand);
-	frand_fortuna_init();
+	fortuna_init();
 
 	return 0;
 }

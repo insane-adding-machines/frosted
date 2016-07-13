@@ -22,8 +22,8 @@
 #include "device.h"
 #if defined(CONFIG_FRAND)
 #  include "frand.h"
-#  include "frand_fortuna.h"
-#  include "frand_sha256.h"
+#  include "fortuna.h"
+#  include "crypto/sha256.h"
 #endif
 #include <stdint.h>
 #include "stm32_rng.h"
@@ -98,9 +98,6 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 
 void rng_isr(void)
 {
-#if defined(CONFIG_FRAND)
-	static int pool = 0;
-#endif
 	struct dev_rng *rng = &DEV_RNG[0];
 	uint32_t error_bits = 0;
 	error_bits = RNG_SR_SEIS | RNG_SR_CEIS | RNG_SR_SECS | RNG_SR_CECS;
@@ -123,11 +120,7 @@ void rng_isr(void)
 		uint32_t random;
 		rng_get_random(&random);
 #if defined(CONFIG_FRAND)
-		frand_accu(0, pool, (uint8_t *)&random, 4);
-		pool++;
-		if (pool >= FRAND_POOL_COUNT) {
-			pool = 0;
-		}
+		fortuna_accu(0, 0, (uint8_t *)&random, 4);
 		if (req == 0) {
 			rng_disable_interrupt();
 		} else {
@@ -174,7 +167,7 @@ void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rn
 	register_module(&mod_devrng);
 #if defined(CONFIG_FRAND)
 	register_frand(&rng_info);
-	req = FRAND_ENCRYPT_KEY_SIZE * (FRAND_POOL_COUNT * (SHA256_DIGEST_SIZE / sizeof(word32)) * (SHA256_BLOCK_SIZE / sizeof(word32)));
+	req = FORTUNA_ENCRYPT_KEY_SIZE * ((SHA256_DIGEST_SIZE / sizeof(word32)) * (SHA256_BLOCK_SIZE / sizeof(word32)));
 	rng_enable_interrupt();
 #endif
 }
