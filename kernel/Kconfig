@@ -23,8 +23,8 @@ choice ARCH
     bool "STM32F7"
     help
         Enable support for ST STM32F7 systems
-
 endchoice
+
 
 source "../kernel/stm32f7/Kconfig"
 source "../kernel/stm32f4/Kconfig"
@@ -158,6 +158,11 @@ config MACH_LM3SVIRT
     default y
 
 endchoice
+
+config STM32F7_SDRAM
+depends on ARCH_STM32F7
+bool "Enable external SDRAM"
+default y
 
 endmenu
 
@@ -323,8 +328,13 @@ menu "Device Drivers"
        select DEVSTM32F4DMA
        default n
 
+       config DEVSTM32USB 
+       bool "Support for USB OTG guest"
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || ARCH_STM32F746)
+       default n
+
        config DEV_USB_ETH
-       depends on PICOTCP
+       depends on PICOTCP && DEVSTM32USB
        bool "Ethernet over USB (CDC-ECM)"
        default n
 
@@ -369,7 +379,7 @@ menu "Device Drivers"
        depends on ((ARCH_STM32F746))
        default n
 
-       if DEVF4ETH || DEVF7TH
+       if DEVF4ETH || DEVF7ETH
            config ETH_DEFAULT_IP
            string "Default (boot-up) address for eth0"
            default 192.168.2.150

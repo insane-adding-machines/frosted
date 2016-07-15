@@ -21,7 +21,7 @@
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
-#include "stm32_rng.h"
+#include "rng.h"
 
 #include <unicore-mx/cm3/common.h>
 #include <unicore-mx/stm32/rcc.h>
@@ -79,26 +79,26 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 	return 4;
 }
 
-static void rng_fno_init(struct fnode *dev, uint32_t n, const struct rng_addr * addr)
+
+int rng_create(uint32_t base, uint32_t rcc)
 {
-	struct dev_rng *r = &DEV_RNG[n];
-	r->dev = device_fno_init(&mod_devrng, mod_devrng.name, dev, FL_RDONLY, r);
-	r->base = addr->base;
+    static uint32_t id = 0;
+	struct dev_rng *r = &DEV_RNG[id];
+    struct fnode *devfs;
+    CLOCK_ENABLE(rcc);
+
+    devfs = fno_search("/dev");
+    if (!devfs)
+        return -ENOENT;
+	r->dev = device_fno_init(&mod_devrng, mod_devrng.name, devfs, FL_RDONLY, r);
+	r->base = base;
+    rng_enable();
+    return id++;
 }
 
-void rng_init(struct fnode * dev,  const struct rng_addr rng_addrs[], int num_rngs)
+int rng_init(void)
 {
-	int i;
-	for (i = 0; i < num_rngs; i++)
-	{
-		if (rng_addrs[i].base == 0)
-			continue;
-
-		rng_fno_init(dev, i, &rng_addrs[i]);
-		CLOCK_ENABLE(rng_addrs[i].rcc);
-
-		rng_enable();
-	}
 	register_module(&mod_devrng);
+    return 0;
 }
 

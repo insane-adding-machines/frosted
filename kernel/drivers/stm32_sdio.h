@@ -35,7 +35,7 @@ typedef struct SDIO_CARD_DATA {
 
 
 int stm32_sdio_bus(int bits, enum SDIO_CLOCK_DIV freq);
-void stm32_sdio_init(struct fnode * dev);
+int stm32_sdio_init(void);
 void stm32_sdio_reset(enum SDIO_POWER_STATE state);
 SDIO_CARD stm32_sdio_open(void);
 int stm32_sdio_command(uint32_t cmd, uint32_t arg);

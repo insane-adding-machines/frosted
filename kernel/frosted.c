@@ -26,7 +26,17 @@
 #include "null.h"
 #include "xipfs.h"
 #include "vfs.h"
+#include "gpio.h"
+#include "uart.h"
+#include "rng.h"
+#include "sdram.h"
+#include "socket_in.h"
+#include "fatfs.h"
 #include "framebuffer.h"
+#include "ltdc.h"
+#include "usb.h"
+#include "eth.h"
+
 
 #ifdef CONFIG_PICOTCP
 # include "pico_stack.h"
@@ -161,11 +171,13 @@ void usage_fault_handler(void)
     while(1);
 }
 
-void machine_init(struct fnode * dev);
-
 static void hw_init(void)
 {
-    machine_init(fno_search("/dev"));
+    gpio_init();
+    uart_init();
+    rng_init();
+    sdram_init();
+    machine_init();
     SysTick_Config(CONFIG_SYS_CLOCK / 1000);
 }
 
@@ -194,9 +206,8 @@ int frosted_init(void)
     sysfs_init();
     fatfs_init();
 
-#ifdef CONFIG_DEVFRAMEBUFFER
-    fb_init(fno_search("/dev"));
-#endif
+    ltdc_init();
+    fb_init();
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);
@@ -296,13 +307,9 @@ void frosted_kernel(int xipfs_mounted)
     pico_loop_create();
     socket_in_init();
 
-#ifdef CONFIG_DEVSTMETH
-    stm_eth_init();
-#endif
-
-#ifdef CONFIG_DEV_USB_ETH
+    /* Network devices initialization */
     usb_ethernet_init();
-#endif
+    pico_eth_start();
 
     while(1) {
         check_tasklets();

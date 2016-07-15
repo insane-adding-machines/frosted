@@ -18,221 +18,336 @@
  *
  */
 #include "frosted.h"
-#include "unicore-mx/cm3/systick.h"
+#include <unicore-mx/cm3/systick.h>
 #include <unicore-mx/stm32/rcc.h>
-#include "unicore-mx/stm32/usart.h"
-#include "unicore-mx/cm3/nvic.h"
+#include <unicore-mx/stm32/usart.h>
+#include <unicore-mx/stm32/gpio.h>
+#include <unicore-mx/cm3/nvic.h>
+#include <unicore-mx/stm32/sdio.h>
 #include "drivers/stm32f4_dsp.h"
 #include "drivers/stm32_sdio.h"
 
-#ifdef CONFIG_DEVUART
 #include "uart.h"
-#endif
-
-#ifdef CONFIG_DEVGPIO
-#include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
+#include "sdio.h"
+#include "dsp.h"
+#include "rng.h"
+#include "usb.h"
+#include "eth.h"
+
+#if CONFIG_SYS_CLOCK == 48000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_48MHZ
+#elif CONFIG_SYS_CLOCK == 84000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_84MHZ
+#elif CONFIG_SYS_CLOCK == 120000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_120MHZ
+#elif CONFIG_SYS_CLOCK == 168000000
+#    define STM32_CLOCK RCC_CLOCK_3V3_168MHZ
+#else
+#   error No valid clock speed selected
 #endif
 
-#ifdef CONFIG_DEVGPIO
-static const struct gpio_addr gpio_addrs[] = {
-    {.base=GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
-    {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
-    {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
-    {.base=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
-    {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .optype=GPIO_OTYPE_PP, .pullupdown=GPIO_PUPD_NONE, .name="gpio_0_0"},
-#ifdef CONFIG_DEVUART
+static const struct gpio_config Led[4] = {
+    {
+        .base=GPIOD,
+        .pin=GPIO12,.mode=GPIO_MODE_OUTPUT,
+        .optype=GPIO_OTYPE_PP,
+        .name="led0"
+    },
+    {
+        .base=GPIOD,
+        .pin=GPIO13,.mode=GPIO_MODE_OUTPUT,
+        .optype=GPIO_OTYPE_PP,
+        .name="led1"
+    },
+    {
+        .base=GPIOD,
+        .pin=GPIO14,.mode=GPIO_MODE_OUTPUT,
+        .optype=GPIO_OTYPE_PP,
+        .name="led2"
+    },
+    {
+        .base=GPIOD,
+        .pin=GPIO15,.mode=GPIO_MODE_OUTPUT,
+        .optype=GPIO_OTYPE_PP,
+        .name="led3"
+    },
+};
+
+static const struct gpio_config Button = {
+    .base=GPIOA,
+    .pin=GPIO0,
+    .mode=GPIO_MODE_INPUT,
+    .optype=GPIO_OTYPE_PP,
+    .pullupdown=GPIO_PUPD_NONE,
+    .name="button"
+};
+
+
+static struct usb_config usb_guest = {
+    .otg_mode = USB_MODE_GUEST,
+    .pio_vbus = {
+        .base=GPIOA,
+        .pin=GPIO9,
+        .mode=GPIO_MODE_AF,
+        .af=GPIO_AF10,
+        .pullupdown=GPIO_PUPD_NONE,
+    },
+    .pio_dm =   {
+        .base=GPIOA,
+        .pin=GPIO11,
+        .mode=GPIO_MODE_AF,
+        .af=GPIO_AF10,
+        .pullupdown=GPIO_PUPD_NONE,
+    },
+    .pio_dp =   {
+        .base=GPIOA,
+        .pin=GPIO12,
+        .mode=GPIO_MODE_AF,
+        .af=GPIO_AF10,
+        .pullupdown=GPIO_PUPD_NONE,
+    }
+};
+
+
+const struct gpio_config stm32eth_mii_pins[] = {
+    {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDIO
+    {.base=GPIOC, .pin=GPIO1, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDC
+    {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII REF CLK
+    {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII CRS DV
+    {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXER
+    {.base=GPIOC, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD0
+    {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD1
+    {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXEN
+    {.base=GPIOB, .pin=GPIO12,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD0
+    {.base=GPIOB, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD1
+};
+
+static const struct eth_config eth_config = {
+    .pio_mii = stm32eth_mii_pins,
+    .n_pio_mii = 10,
+    .pio_phy_reset = {
+        .base=GPIOE,
+        .pin=GPIO2,
+        .mode=GPIO_MODE_OUTPUT,
+        .optype=GPIO_OTYPE_PP,
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+};
+
+static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_1
-    {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-    {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+    {   .devidx = 1,
+        .base = USART1,
+        .irq = NVIC_USART1_IRQ,
+        .rcc = RCC_USART1,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+
+        .pio_rx = {
+            .base=GPIOA,
+            .pin=GPIO9,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .pullupdown=GPIO_PUPD_NONE,
+        },
+
+        .pio_tx = {
+            .base=GPIOA,
+            .pin=GPIO10,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
+        },
+    },
 #endif
 #ifdef CONFIG_USART_2
-    {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-    {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+    {
+        .devidx = 2,
+        .base = USART2,
+        .irq = NVIC_USART2_IRQ,
+        .rcc = RCC_USART2,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+
+        .pio_rx = {
+            .base=GPIOA,
+            .pin=GPIO2,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .pullupdown=GPIO_PUPD_NONE,
+        },
+
+        .pio_tx = {
+            .base=GPIOA,
+            .pin=GPIO3,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
+        },
+    },
 #endif
 #ifdef CONFIG_USART_3
-    {.base=GPIOD, .pin=GPIO8,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-    {.base=GPIOD, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+    {
+        .devidx = 3,
+        .base = USART3,
+        .irq = NVIC_USART3_IRQ,
+        .rcc = RCC_USART3,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+        .pio_rx = {
+            .base=GPIOD,
+            .pin=GPIO8,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .pullupdown=GPIO_PUPD_NONE,
+        },
+        .pio_tx = {
+            .base=GPIOD,
+            .pin=GPIO9,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
+        },
+    },
 #endif
 #ifdef CONFIG_USART_6
-    {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-    {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
-#endif
-#endif
-#ifdef CONFIG_STM32F4USB
-    {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
-    {.base=GPIOA, .pin=GPIO11,.mode=GPIO_MODE_AF,.af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
-    {.base=GPIOA, .pin=GPIO12,.mode=GPIO_MODE_AF,.af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
-#endif
-#ifdef CONFIG_DEVSTMETH
-    {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // MDIO
-    {.base=GPIOC, .pin=GPIO1, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // MDC
-    {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII REF CLK
-    {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII CRS DV
-    {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXER
-    {.base=GPIOC, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXD0
-    {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11, .name=NULL},                        // RMII RXD1
-    {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXEN
-    {.base=GPIOB, .pin=GPIO12,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXD0
-    {.base=GPIOB, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11, .name=NULL}, // RMII TXD1
-    {.base=GPIOE, .pin=GPIO2, .mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name=NULL, .pullupdown=GPIO_PUPD_PULLUP},            // PHY RESET
+    {
+        .devidx = 6,
+        .base = USART6,
+        .irq = NVIC_USART6_IRQ,
+        .rcc = RCC_USART6,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+
+        .pio_rx = {
+            .base=GPIOC,
+            .pin=GPIO6,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF8,
+            .pullupdown=GPIO_PUPD_NONE,
+        },
+        .pio_tx = {
+            .base=GPIOC,
+            .pin=GPIO7,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF8,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
+        },
+    },
 #endif
 };
-#define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
-#endif
+#define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
-#ifdef CONFIG_DEVUART
-     static const struct uart_addr uart_addrs[] = {
-#ifdef CONFIG_USART_1
-             {   .devidx = 1,
-                 .base = USART1,
-                 .irq = NVIC_USART1_IRQ,
-                 .rcc = RCC_USART1,
-                 .baudrate = 115200,
-                 .stop_bits = USART_STOPBITS_1,
-                 .data_bits = 8,
-                 .parity = USART_PARITY_NONE,
-                 .flow = USART_FLOWCONTROL_NONE,
-             },
-#endif
-#ifdef CONFIG_USART_2
-             {
-                 .devidx = 2,
-                 .base = USART2,
-                 .irq = NVIC_USART2_IRQ,
-                 .rcc = RCC_USART2,
-                 .baudrate = 115200,
-                 .stop_bits = USART_STOPBITS_1,
-                 .data_bits = 8,
-                 .parity = USART_PARITY_NONE,
-                 .flow = USART_FLOWCONTROL_NONE,
-             },
-#endif
-#ifdef CONFIG_USART_3
-             {
-                 .devidx = 3,
-                 .base = USART3,
-                 .irq = NVIC_USART3_IRQ,
-                 .rcc = RCC_USART3,
-                 .baudrate = 115200,
-                 .stop_bits = USART_STOPBITS_1,
-                 .data_bits = 8,
-                 .parity = USART_PARITY_NONE,
-                 .flow = USART_FLOWCONTROL_NONE,
-             },
-#endif
-#ifdef CONFIG_USART_6
-             {
-                 .devidx = 6,
-                 .base = USART6,
-                 .irq = NVIC_USART6_IRQ,
-                 .rcc = RCC_USART6,
-                 .baudrate = 115200,
-                 .stop_bits = USART_STOPBITS_1,
-                 .data_bits = 8,
-                 .parity = USART_PARITY_NONE,
-                 .flow = USART_FLOWCONTROL_NONE,
-             },
-#endif
-     };
-#define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
-#endif
+/* Setup GPIO Pins for SDIO:
+   PC8 - PC11 - DAT0 thru DAT3
+   PC12 - CLK
+   PD2 - CMD
+*/
+struct sdio_config sdio_conf = {
+    .pio_dat0 = {
+        .base=GPIOC,
+        .pin=GPIO8,
+        .mode=GPIO_MODE_AF,
+        .speed=GPIO_OSPEED_100MHZ,
+        .af = GPIO_AF12,
+        .optype=GPIO_OTYPE_PP,
+        .pullupdown=GPIO_PUPD_PULLUP
 
-#ifdef CONFIG_RNG
-#include "stm32_rng.h"
-static const struct rng_addr rng_addrs[] = {
-            {
-                .devidx = 1,
-                .base = 1,
-                .rcc = RCC_RNG,
-            },
+    },
+    .pio_dat1 = {
+        .base=GPIOC,
+        .pin=GPIO9,
+        .mode=GPIO_MODE_AF,
+        .af = GPIO_AF12,
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+    .pio_dat2 = {
+        .base=GPIOC,
+        .pin=GPIO10,
+        .af = GPIO_AF12,
+        .mode=GPIO_MODE_AF,
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+    .pio_dat3 = {
+        .base=GPIOC,
+        .pin=GPIO11,
+        .af = GPIO_AF12,
+        .mode=GPIO_MODE_AF,
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+    .pio_clk = {
+        .base=GPIOC,
+        .pin=GPIO12,
+        .mode=GPIO_MODE_AF,
+        .af = GPIO_AF12,
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+    .pio_cmd = {
+        .base=GPIOD,
+        .pin=GPIO2,
+        .mode=GPIO_MODE_AF,
+        .af = GPIO_AF12,
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
+        .pullupdown=GPIO_PUPD_PULLUP
+    },
+    .card_detect_supported = 1,
+    /* STM37 has an additional card-detect pin on PC13 */
+    .pio_cd = {
+        .base=GPIOC,
+        .pin=GPIO13,
+        .mode=GPIO_MODE_INPUT,
+        .pullupdown=GPIO_PUPD_PULLUP
+    }
 };
-#define NUM_RNGS (sizeof(rng_addrs) / sizeof(struct rng_addr))
-#endif
 
-
-#ifdef CONFIG_DEVSTM32SDIO
-/*
- * The Embest board ties PB15 to 'card detect' which is useful
- * for aborting early, and detecting card swap. Needs porting
- * for other implementations.
- */
-#define SDIO_HAS_CARD_DETECT
-
-/*
- * Set up the GPIO pins and peripheral clocks for the SDIO
- * system. The code should probably take an option card detect
- * pin, at the moment it uses the one used by the Embest board.
- */
-static void stm32_sdio_rcc_init(void)
+int machine_init(void)
 {
-    /* Enable clocks for SDIO and DMA2 */
-	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_SDIOEN);
+    int i;
+    /* Clock */
+    rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[STM32_CLOCK]);
 
-#ifdef WITH_DMA2
-    rcc_peripheral_enable_clock(&RCC_AHB1ENR, RCC_AHB1ENR_DMA2EN);
-#endif
+    /* Leds */
+    for (i = 0; i < 4; i++) {
+        gpio_create(NULL, &Led[i]);
+    }
 
-
-    /* Setup GPIO Pins for SDIO:
-        PC8 - PC11 - DAT0 thru DAT3
-              PC12 - CLK
-               PD2 - CMD
-    */
-	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO12 );                          // All SDIO lines are push-pull, 25Mhz
-	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO8 | GPIO9 | GPIO10 | GPIO11 ); // All SDIO lines are push-pull, 25Mhz
-	gpio_mode_setup(GPIOC, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO8 | GPIO9 | GPIO10 | GPIO11);            // D0 - D3 enable pullups (bi-directional)
-	gpio_mode_setup(GPIOC, GPIO_MODE_AF, GPIO_PUPD_NONE,  GPIO12);                                      // CLK line no pullup
-	gpio_set_af(GPIOC, GPIO_AF12, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12);
-
-	gpio_set_output_options(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO2);
-	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12 | GPIO15);
-	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO2);
-    gpio_set_af(GPIOD, GPIO_AF12, GPIO2);
-
-#ifdef SDIO_HAS_CARD_DETECT
-    /* SDIO Card Detect pin on the Embest Baseboard */
-    /*     PB15 as a hacked Card Detect (active LOW for card present) */
-    gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO15);
-#endif
-}
-
-#endif /* CONFIG_DEVSTM32SDIO */
-
-
-void machine_init(struct fnode * dev)
-{
-#       if CONFIG_SYS_CLOCK == 48000000
-        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_48MHZ]);
-#       elif CONFIG_SYS_CLOCK == 84000000
-        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_84MHZ]);
-#       elif CONFIG_SYS_CLOCK == 120000000
-        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_120MHZ]);
-#       elif CONFIG_SYS_CLOCK == 168000000
-        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
-#       else
-#error No valid clock speed selected
-#endif
-
-#ifdef CONFIG_DEVGPIO
-    gpio_init(dev, gpio_addrs, NUM_GPIOS);
-#endif
-#ifdef CONFIG_DEVUART
-    uart_init(dev, uart_addrs, NUM_UARTS);
-#endif
+    /* Uarts */
+    for (i = 0; i < NUM_UARTS; i++) {
+        uart_create(&uart_configs[i]);
+    }
 #ifdef CONFIG_RNG
-    rng_init(dev, rng_addrs, NUM_RNGS);
+    rng_create(1, RCC_RNG);
 #endif
-#ifdef CONFIG_DEVSTM32SDIO
-    stm32_sdio_rcc_init();
-    stm32_sdio_init(dev);
-#endif
-#ifdef CONFIG_DSP
-    dsp_init(dev);
-#endif
-
-#ifdef CONFIG_DEVSTMETH
-    gpio_clear(GPIOE,GPIO2);    /* Clear ETH nRESET pin */
-    gpio_set(GPIOE,GPIO2);      /* Set ETH nRESET pin */
-#endif
+    sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
+    sdio_conf.rcc_en  = RCC_APB2ENR_SDIOEN;
+    sdio_init(&sdio_conf);
+    usb_init(&usb_guest);
+    ethernet_init(&eth_config);
+    return 0;
 }

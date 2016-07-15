@@ -44,6 +44,9 @@ typedef uint32_t sigset_t;
 volatile unsigned int jiffies;
 volatile int _syscall_retval;
 
+/* Mach-specific initialization */
+int machine_init(void);
+
 /* Systick & co. */
 int _clock_interval;
 void SysTick_Hook(void);
@@ -214,6 +217,7 @@ struct fnode *fno_search(const char *path);
 int vfs_symlink(char *file, char *link);
 
 /* Modules (for files/sockets) */
+int register_addr_family(struct module *m, uint16_t family);
 
 
 #define FAMILY_UNIX 0x0001

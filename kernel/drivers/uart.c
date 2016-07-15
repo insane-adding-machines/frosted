@@ -64,8 +64,7 @@ struct dev_uart {
 };
 
 #define MAX_UARTS 8
-
-static struct dev_uart DEV_UART[MAX_UARTS];
+static struct dev_uart *DEV_UART[MAX_UARTS] = { };
 
 static int devuart_write(struct fnode *fno, const void *buf, unsigned int len);
 static int devuart_read(struct fnode *fno, void *buf, unsigned int len);
@@ -140,48 +139,48 @@ void uart_isr(struct dev_uart *uart)
 
 void uart0_isr(void)
 {
-    uart_isr(&DEV_UART[0]);
+    uart_isr(DEV_UART[0]);
 }
 
 void uart1_isr(void)
 {
-    uart_isr(&DEV_UART[1]);
+    uart_isr(DEV_UART[1]);
 }
 
 void uart2_isr(void)
 {
-    uart_isr(&DEV_UART[2]);
+    uart_isr(DEV_UART[2]);
 }
 
 #ifdef USART0
 void usart0_isr(void)
 {
-    uart_isr(&DEV_UART[0]);
+    uart_isr(DEV_UART[0]);
 }
 #endif
 
 #ifdef USART1
 void usart1_isr(void)
 {
-    uart_isr(&DEV_UART[1]);
+    uart_isr(DEV_UART[1]);
 }
 #endif
 #ifdef USART2
 void usart2_isr(void)
 {
-    uart_isr(&DEV_UART[2]);
+    uart_isr(DEV_UART[2]);
 }
 #endif
 #ifdef USART3
 void usart3_isr(void)
 {
-    uart_isr(&DEV_UART[3]);
+    uart_isr(DEV_UART[3]);
 }
 #endif
 #ifdef USART6
 void usart6_isr(void)
 {
-    uart_isr(&DEV_UART[6]);
+    uart_isr(DEV_UART[6]);
 }
 #endif
 
@@ -331,45 +330,55 @@ static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     return ret;
 }
 
-static int uart_fno_init(struct fnode *dev, uint32_t n, const struct uart_addr * addr)
+static int uart_fno_init(const struct uart_config * addr)
 {
-    struct dev_uart *u = &DEV_UART[n];
     static int num_ttys = 0;
-
     char name[6] = "ttyS";
-    name[4] =  '0' + num_ttys++;
+    struct fnode *devfs = fno_search("/dev");
+    struct dev_uart *u;
+    if (!devfs)
+        return -ENOENT;
 
+    u = kalloc(sizeof(struct dev_uart));
+    if (!u)
+        return -ENOMEM;
+    memset(u, 0, sizeof(struct dev_uart));
+
+    name[4] =  '0' + num_ttys++;
     u->base = addr->base;
-    u->dev = device_fno_init(&mod_devuart, name, dev, FL_TTY, u);
+    u->dev = device_fno_init(&mod_devuart, name, devfs, FL_TTY, u);
     u->inbuf = cirbuf_create(256);
     u->outbuf = cirbuf_create(256);
     u->dev->pid = -1;
+    DEV_UART[addr->devidx] = u;
     return 0;
 
 }
 
-void uart_init(struct fnode * dev, const struct uart_addr uart_addrs[], int num_uarts)
+int uart_create(const struct uart_config *uart)
 {
-    int i,j;
+    if (uart->base == 0)
+        return -EINVAL;
 
-    for (i = 0; i < num_uarts; i++)
-    {
-        if (uart_addrs[i].base == 0)
-            continue;
+    gpio_create(&mod_devuart, &uart->pio_rx);
+    gpio_create(&mod_devuart, &uart->pio_tx);
 
-        uart_fno_init(dev, uart_addrs[i].devidx, &uart_addrs[i]);
-        CLOCK_ENABLE(uart_addrs[i].rcc);
-        usart_enable_rx_interrupt(uart_addrs[i].base);
-        usart_set_baudrate(uart_addrs[i].base, uart_addrs[i].baudrate);
-        usart_set_databits(uart_addrs[i].base, uart_addrs[i].data_bits);
-        usart_set_stopbits(uart_addrs[i].base, uart_addrs[i].stop_bits);
-        usart_set_mode(uart_addrs[i].base, USART_MODE_TX_RX);
-        usart_set_parity(uart_addrs[i].base, uart_addrs[i].parity);
-        usart_set_flow_control(uart_addrs[i].base, uart_addrs[i].flow);
-        usart_enable_rx_interrupt(uart_addrs[i].base);
+    uart_fno_init(uart);
+    CLOCK_ENABLE(uart->rcc);
+    usart_enable_rx_interrupt(uart->base);
+    usart_set_baudrate(uart->base, uart->baudrate);
+    usart_set_databits(uart->base, uart->data_bits);
+    usart_set_stopbits(uart->base, uart->stop_bits);
+    usart_set_mode(uart->base, USART_MODE_TX_RX);
+    usart_set_parity(uart->base, uart->parity);
+    usart_set_flow_control(uart->base, uart->flow);
+    usart_enable_rx_interrupt(uart->base);
+    nvic_enable_irq(uart->irq);
+    usart_enable(uart->base);
+}
 
-        nvic_enable_irq(uart_addrs[i].irq);
-        usart_enable(uart_addrs[i].base);
-    }
+int uart_init(void)
+{
     register_module(&mod_devuart);
+    return 0;
 }
