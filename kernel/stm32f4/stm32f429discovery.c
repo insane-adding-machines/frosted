@@ -25,6 +25,7 @@
 #include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
 #include "uart.h"
+#include "rng.h"
 
 
 
@@ -132,8 +133,6 @@ int machine_init(void)
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
     }
-#ifdef CONFIG_RNG
     rng_create(1, RCC_RNG);
-#endif
     return 0;
 }

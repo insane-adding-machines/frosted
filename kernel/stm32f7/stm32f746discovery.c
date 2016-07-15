@@ -276,9 +276,7 @@ int machine_init(void)
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
     }
-#ifdef CONFIG_RNG
     rng_create(1, RCC_RNG);
-#endif
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
     sdio_conf.rcc_en  = RCC_APB2ENR_SDMMC1EN;
     sdio_init(&sdio_conf);
