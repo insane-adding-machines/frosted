@@ -47,6 +47,15 @@ static const struct gpio_config gpio_led0 = {
     .name="led0"
 };
 
+static const struct gpio_config gpio_button = {
+    .base=GPIOI, 
+    .pin=GPIO11,
+    .mode=GPIO_MODE_INPUT, 
+    .optype=GPIO_OTYPE_PP, 
+    .pullupdown=GPIO_PUPD_PULLUP,
+    .name="button"
+};
+
 static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_DEVUART
 #ifdef CONFIG_USART_1
@@ -209,7 +218,7 @@ struct sdio_config sdio_conf = {
     }
 };
 
-const struct gpio_config stm32eth_mii_pins[] = {
+struct gpio_config stm32eth_mii_pins[] = {
     {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII REF CLK
     {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDIO
     {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII CRS DV
@@ -222,7 +231,7 @@ const struct gpio_config stm32eth_mii_pins[] = {
     {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD1
 };
 
-static const struct eth_config eth_config = {
+static struct eth_config eth_config = {
     .pio_mii = stm32eth_mii_pins,
     .n_pio_mii = 10,
     .pio_phy_reset = {
@@ -230,7 +239,6 @@ static const struct eth_config eth_config = {
         .pin=GPIO2, 
         .mode=GPIO_MODE_OUTPUT, 
         .optype=GPIO_OTYPE_PP, 
-        .pullupdown=GPIO_PUPD_PULLUP
     },
 };
 
@@ -264,6 +272,7 @@ int machine_init(void)
     int i = 0;
     rcc_clock_setup_hse_3v3(&hse_25mhz_3v3[RCC_CLOCK_3V3_216MHZ]);
     gpio_create(NULL, &gpio_led0);
+    gpio_create(NULL, &gpio_button);
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
     }

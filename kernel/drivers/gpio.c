@@ -63,8 +63,8 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
     }
 }
 #define ARCH_GPIO_PIN(X) (1 << X)
-#define ARCH_GPIO_BASE_MAX 6
-#define ARCH_GPIO_PIN_MAX 16
+#define ARCH_GPIO_BASE_MAX 31
+#define ARCH_GPIO_PIN_MAX 15
 
 
 #include "stm32_exti.h"
@@ -197,7 +197,7 @@ int gpio_list_len(void)
         len++;
         l = l->next;
     }
-    return l;
+    return len;
 }
 
 int gpio_read_list_entry(void **last__, char *buf, int len)
@@ -356,11 +356,13 @@ static int devgpiomx_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 
     addr.base = ARCH_GPIO_BASE(req->base);
     addr.pin = ARCH_GPIO_PIN(req->pin);
+    addr.pullupdown = GPIO_PUPD_NONE;
 
     if (cmd == IOCTL_GPIOMX_CREATE) {
         if (gpio_list_find(addr.base, addr.pin))
             return -EEXIST;
-        gpio_create(&mod_devgpio_mx, &addr );
+        addr.name = req->name;
+        gpio_create(&mod_devgpio, &addr );
         return 0;
     }
     if (cmd == IOCTL_GPIOMX_DESTROY) {
@@ -372,7 +374,7 @@ static int devgpiomx_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 
 static int devgpio_write(struct fnode * fno, const void *buf, unsigned int len)
 {
-     struct dev_gpio *gpio;
+    struct dev_gpio *gpio;
     char *arg = (char *)buf;
 
     gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
@@ -426,8 +428,8 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         gpio_set_af(gpio->base, *((uint32_t*)arg), gpio->pin);
         return 0;
     }
-#   ifdef CONFIG_DEVSTM32EXTI
     if (cmd == IOCTL_GPIO_SET_TRIGGER) {
+#   ifdef CONFIG_DEVSTM32EXTI
         uint32_t trigger = *((uint32_t *)arg);
         if (trigger > GPIO_TRIGGER_TOGGLE) {
             gpio->trigger = 0;
@@ -435,8 +437,10 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         }
         gpio->exti_idx = gpio_set_trigger(gpio, trigger);
         return 0;
-    }
+#else
+        return -ENOSYS;
 #endif
+    }
     return -EINVAL;
 }
 
@@ -557,14 +561,16 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
         gpio_fno_init(gpio, gpio_config->name);
     }
 
-    if (mod != &mod_devgpio_mx) {
-        gpio->flags |= GPIO_FL_PROTECTED;
-    }
-
     if (mod)
         gpio->owner = mod;
     else
         gpio->owner = &mod_devgpio;
+    
+    if (mod != &mod_devgpio) {
+        gpio->flags |= GPIO_FL_PROTECTED;
+    } else {
+        gpio->flags &= ~GPIO_FL_PROTECTED;
+    }
     
     GPIO_CLOCK_ENABLE(gpio_config->base);
 
