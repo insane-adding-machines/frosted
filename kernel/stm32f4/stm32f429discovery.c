@@ -42,17 +42,17 @@
 #endif
 
 static const struct gpio_config Led0 = {
-    .base=GPIOG, 
+    .base=GPIOG,
     .pin=GPIO13,
-    .mode=GPIO_MODE_OUTPUT, 
-    .optype=GPIO_OTYPE_PP, 
+    .mode=GPIO_MODE_OUTPUT,
+    .optype=GPIO_OTYPE_PP,
     .name="led0"
 };
 static const struct gpio_config Led1 = {
-    .base=GPIOG, 
+    .base=GPIOG,
     .pin=GPIO14,
-    .mode=GPIO_MODE_OUTPUT, 
-    .optype=GPIO_OTYPE_PP, 
+    .mode=GPIO_MODE_OUTPUT,
+    .optype=GPIO_OTYPE_PP,
     .name="led1"
 };
 
@@ -72,20 +72,20 @@ static const struct uart_config uart_configs[] = {
         .flow = USART_FLOWCONTROL_NONE,
 
         .pio_rx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO9,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
-            .pullupdown=GPIO_PUPD_NONE, 
+            .af=GPIO_AF7,
+            .pullupdown=GPIO_PUPD_NONE,
         },
 
         .pio_tx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO10,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
-            .speed=GPIO_OSPEED_25MHZ, 
-            .optype=GPIO_OTYPE_PP, 
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
         },
     },
 #endif
@@ -101,20 +101,20 @@ static const struct uart_config uart_configs[] = {
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
         .pio_rx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO2,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
-            .pullupdown=GPIO_PUPD_NONE, 
+            .af=GPIO_AF7,
+            .pullupdown=GPIO_PUPD_NONE,
         },
 
         .pio_tx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO3,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
-            .speed=GPIO_OSPEED_25MHZ, 
-            .optype=GPIO_OTYPE_PP, 
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
         },
     },
 #endif
@@ -132,6 +132,8 @@ int machine_init(void)
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
     }
+#ifdef CONFIG_RNG
     rng_create(1, RCC_RNG);
+#endif
     return 0;
 }

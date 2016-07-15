@@ -40,18 +40,18 @@
 #include "eth.h"
 
 static const struct gpio_config gpio_led0 = {
-    .base=GPIOI, 
+    .base=GPIOI,
     .pin=GPIO1,
-    .mode=GPIO_MODE_OUTPUT, 
-    .optype=GPIO_OTYPE_PP, 
+    .mode=GPIO_MODE_OUTPUT,
+    .optype=GPIO_OTYPE_PP,
     .name="led0"
 };
 
 static const struct gpio_config gpio_button = {
-    .base=GPIOI, 
+    .base=GPIOI,
     .pin=GPIO11,
-    .mode=GPIO_MODE_INPUT, 
-    .optype=GPIO_OTYPE_PP, 
+    .mode=GPIO_MODE_INPUT,
+    .optype=GPIO_OTYPE_PP,
     .pullupdown=GPIO_PUPD_PULLUP,
     .name="button"
 };
@@ -70,18 +70,18 @@ static const struct uart_config uart_configs[] = {
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
         .pio_tx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO10,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
-            .speed=GPIO_OSPEED_25MHZ, 
-            .optype=GPIO_OTYPE_PP, 
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
         },
         .pio_rx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO9,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
+            .af=GPIO_AF7,
             .pullupdown=GPIO_PUPD_NONE
         },
     },
@@ -98,18 +98,18 @@ static const struct uart_config uart_configs[] = {
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
         .pio_tx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO3,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
-            .speed=GPIO_OSPEED_25MHZ, 
-            .optype=GPIO_OTYPE_PP, 
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
         },
         .pio_rx = {
-            .base=GPIOA, 
+            .base=GPIOA,
             .pin=GPIO2,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7, 
+            .af=GPIO_AF7,
             .pullupdown=GPIO_PUPD_NONE
         },
     },
@@ -126,18 +126,18 @@ static const struct uart_config uart_configs[] = {
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
         .pio_tx = {
-            .base=GPIOC, 
+            .base=GPIOC,
             .pin=GPIO6,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF8, 
-            .speed=GPIO_OSPEED_25MHZ, 
-            .optype=GPIO_OTYPE_PP, 
+            .af=GPIO_AF8,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
         },
         .pio_rx = {
-            .base=GPIOC, 
+            .base=GPIOC,
             .pin=GPIO7,
             .mode=GPIO_MODE_AF,
-            .af=GPIO_AF8, 
+            .af=GPIO_AF8,
             .pullupdown=GPIO_PUPD_NONE
         },
     },
@@ -154,40 +154,40 @@ static const struct uart_config uart_configs[] = {
 */
 struct sdio_config sdio_conf = {
     .pio_dat0 = {
-        .base=GPIOC, 
+        .base=GPIOC,
         .pin=GPIO8,
         .mode=GPIO_MODE_AF,
-        .speed=GPIO_OSPEED_100MHZ, 
+        .speed=GPIO_OSPEED_100MHZ,
         .af = GPIO_AF12,
-        .optype=GPIO_OTYPE_PP, 
+        .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
 
     },
     .pio_dat1 = {
-        .base=GPIOC, 
+        .base=GPIOC,
         .pin=GPIO9,
         .mode=GPIO_MODE_AF,
         .af = GPIO_AF12,
-        .speed=GPIO_OSPEED_100MHZ, 
+        .speed=GPIO_OSPEED_100MHZ,
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
     .pio_dat2 = {
-        .base=GPIOC, 
+        .base=GPIOC,
         .pin=GPIO10,
         .af = GPIO_AF12,
         .mode=GPIO_MODE_AF,
-        .speed=GPIO_OSPEED_100MHZ, 
+        .speed=GPIO_OSPEED_100MHZ,
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
     .pio_dat3 = {
-        .base=GPIOC, 
+        .base=GPIOC,
         .pin=GPIO11,
         .af = GPIO_AF12,
         .mode=GPIO_MODE_AF,
-        .speed=GPIO_OSPEED_100MHZ, 
-        .optype=GPIO_OTYPE_PP, 
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
     .pio_clk = {
@@ -195,8 +195,8 @@ struct sdio_config sdio_conf = {
         .pin=GPIO12,
         .mode=GPIO_MODE_AF,
         .af = GPIO_AF12,
-        .speed=GPIO_OSPEED_100MHZ, 
-        .optype=GPIO_OTYPE_PP, 
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
     .pio_cmd = {
@@ -204,8 +204,8 @@ struct sdio_config sdio_conf = {
         .pin=GPIO2,
         .mode=GPIO_MODE_AF,
         .af = GPIO_AF12,
-        .speed=GPIO_OSPEED_100MHZ, 
-        .optype=GPIO_OTYPE_PP, 
+        .speed=GPIO_OSPEED_100MHZ,
+        .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
     .card_detect_supported = 1,
@@ -235,10 +235,10 @@ static struct eth_config eth_config = {
     .pio_mii = stm32eth_mii_pins,
     .n_pio_mii = 10,
     .pio_phy_reset = {
-        .base=GPIOE, 
-        .pin=GPIO2, 
-        .mode=GPIO_MODE_OUTPUT, 
-        .optype=GPIO_OTYPE_PP, 
+        .base=GPIOE,
+        .pin=GPIO2,
+        .mode=GPIO_MODE_OUTPUT,
+        .optype=GPIO_OTYPE_PP,
     },
 };
 
@@ -248,22 +248,22 @@ static struct usb_config usb_guest = {
         .base=GPIOA,
         .pin=GPIO8,
         .mode=GPIO_MODE_AF,
-        .af=GPIO_AF10, 
+        .af=GPIO_AF10,
         .pullupdown=GPIO_PUPD_NONE,
     },
     .pio_dm =   {
-        .base=GPIOA, 
+        .base=GPIOA,
         .pin=GPIO11,
         .mode=GPIO_MODE_AF,
-        .af=GPIO_AF10, 
-        .pullupdown=GPIO_PUPD_NONE, 
+        .af=GPIO_AF10,
+        .pullupdown=GPIO_PUPD_NONE,
     },
     .pio_dp =   {
-        .base=GPIOA, 
+        .base=GPIOA,
         .pin=GPIO12,
         .mode=GPIO_MODE_AF,
-        .af=GPIO_AF10, 
-        .pullupdown=GPIO_PUPD_NONE, 
+        .af=GPIO_AF10,
+        .pullupdown=GPIO_PUPD_NONE,
     }
 };
 
@@ -276,7 +276,9 @@ int machine_init(void)
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
     }
+#ifdef CONFIG_RNG
     rng_create(1, RCC_RNG);
+#endif
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
     sdio_conf.rcc_en  = RCC_APB2ENR_SDMMC1EN;
     sdio_init(&sdio_conf);
