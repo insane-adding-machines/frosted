@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "malloc.h"
+#include "scheduler.h"
 #include "frosted.h"
 #include "locks.h"
 
@@ -479,6 +480,35 @@ uint32_t mem_stats_frag(int pool)
 }
 
 
+int fmalloc_owner(void *_ptr)
+{
+    struct f_malloc_block *blk;
+    uint8_t *ptr = (uint8_t *)_ptr;
+    blk = malloc_entry[MEM_USER];
+
+    while(blk) {
+        uint8_t *mem_start = (uint8_t *)blk + sizeof(struct f_malloc_block);
+        uint8_t *mem_end   = mem_start + blk->size;
+
+
+        if ( (ptr >= mem_start) && (ptr < mem_end) ) {
+            if (block_valid(blk) && in_use(blk)) 
+                return blk->pid;
+            else 
+                return -1;
+        }
+        blk = blk->next;
+    }
+    return -1;
+}
+
+int fmalloc_chown(void *ptr, uint16_t pid)
+{
+    struct f_malloc_block *blk = (struct f_malloc_block *) ( ((uint8_t *)ptr)  - sizeof(struct f_malloc_block));
+    if (block_valid(blk))
+        blk->pid = pid;
+}
+
 /* Syscalls back-end (for userspace memory call handling) */
 int sys_malloc_hdlr(int size)
 {
@@ -498,6 +528,8 @@ int sys_calloc_hdlr(int n, int size)
 
 int sys_realloc_hdlr(int addr, int size)
 {
+    if (task_ptr_valid((void *)addr))
+        return -EACCES;
     return (int)f_realloc(MEM_USER, (void *)addr, size);
 }
 

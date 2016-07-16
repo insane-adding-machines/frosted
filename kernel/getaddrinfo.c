@@ -266,11 +266,15 @@ static int pico_freeaddrinfo(struct addrinfo *res)
 
 int sys_getaddrinfo_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4)
 {
+    if (task_ptr_valid(arg1) || task_ptr_valid(arg2) || task_ptr_valid(arg3) || task_ptr_valid(arg4))
+        return -EACCES;
     return pico_getaddrinfo((const char *)arg1, (const char *)arg2, (struct addrinfo *)arg3, (struct addrinfo **)arg4);
 }
 
 int sys_freeaddrinfo_hdlr(uint32_t arg1)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return pico_freeaddrinfo((struct addrinfo *)arg1);
 }
 

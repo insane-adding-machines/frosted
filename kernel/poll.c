@@ -28,6 +28,8 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     uint32_t timeout = jiffies + arg3;
     int ret = 0;
     struct fnode *f;
+    if (task_ptr_valid(arg1))
+        return -EACCES;
 
     /* TODO: Set process wakeup timer */
 

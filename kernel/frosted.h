@@ -213,7 +213,7 @@ struct fnode *fno_create_rdonly(struct module *owner, const char *name, struct f
 struct fnode *fno_create_wronly(struct module *owner, const char *name, struct fnode *parent);
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent);
 void fno_unlink(struct fnode *fno);
-struct fnode *fno_search(const char *path);
+struct fnode *fno_search(char *path);
 int vfs_symlink(char *file, char *link);
 
 /* Modules (for files/sockets) */
@@ -295,6 +295,8 @@ void kernel_task_init(void);
 #define task_space_free f_free
 #define F_MALLOC_OVERHEAD 24
 uint32_t mem_stats_frag(int pool);
+int fmalloc_owner(void *ptr);
+int fmalloc_chown(void *ptr, uint16_t pid);
 
 /* Helper defined by sysfs.c */
 int ul_to_str(unsigned long n, char *s);

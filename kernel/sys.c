@@ -101,6 +101,8 @@ int sys_uname_hdlr( uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     struct utsname *uts = (struct utsname *)arg1;
     if (!arg1)
         return -EFAULT;
+    if (task_ptr_valid(uts))
+        return -EACCES;
     memcpy(uts, &uts_frosted, sizeof(struct utsname));
     return 0;
 }

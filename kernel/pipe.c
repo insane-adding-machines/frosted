@@ -47,6 +47,11 @@ int sys_pipe2_hdlr(int paddr, int flags)
     int *pfd = (int*)paddr;
     struct fnode *rd, *wr;
     struct pipe_priv *pp;
+
+
+    if (task_ptr_valid(pfd))
+        return -EACCES;
+
     pp = kalloc(sizeof (struct pipe_priv));
     if (!pp) {
         return -ENOMEM;

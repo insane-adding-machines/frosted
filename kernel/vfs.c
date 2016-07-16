@@ -288,8 +288,11 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
     check = path_check(path, dir->fname);
 
     /* Does not match, try another item */
-    if (check == 0)
+    if (check == 0) {
+        if (!dir->next)
+            return NULL;
         return _fno_search(path, dir->next, follow);
+    }
 
     /* Item is found! */
     if (check == 2) {
@@ -311,8 +314,22 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
     return _fno_search(path_walk(path), dir->children, follow);
 }
 
-struct fnode *fno_search(const char *path)
+struct fnode *fno_search(char *path)
 {
+    int i;
+    if (!path)
+        return NULL;
+
+    i = strlen(path) - 1;
+    while (i > 0) {
+        if (path[i] == '/')
+            path[i] = '\0';
+        else
+            break;
+    }
+    if (strlen(path) == 0)
+        return NULL;
+    
     return _fno_search(path, &FNO_ROOT, 1);
 }
 
@@ -428,7 +445,9 @@ int sys_readlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4
     char abs_p[MAX_FILE];
     struct fnode *fno;
     if(!buf)
-        return -1;
+        return -EINVAL;
+    if (task_ptr_valid(buf) || task_ptr_valid(path))
+        return -EACCES;
     path_abs(path, abs_p, MAX_FILE);
     fno = fno_search_nofollow(abs_p);
     if(!fno)
@@ -446,9 +465,11 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     char *path = (char *)arg1;
     char *arg = (char *)arg2;
     struct fnode *f;
-    f = fno_search(path);
     struct vfs_info *vfsi = NULL;
+    if (task_ptr_valid(arg) || task_ptr_valid(path))
+        return -EACCES;
 
+    f = fno_search(path);
     if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exe) {
         vfsi = (struct vfs_info *)f->owner->ops.exe(f, arg);
         scheduler_exec(vfsi, arg);
@@ -463,6 +484,8 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     uint32_t flags = arg2;
     char path[MAX_FILE];
     int ret;
+    if (task_ptr_valid(rel_path))
+        return -EACCES;
 
     path_abs(rel_path, path, MAX_FILE);
     f = fno_search(path);
@@ -542,6 +565,8 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     struct fnode *fno = task_filedesc_get(arg1);
     if (!fno)
         return -EINVAL;
+    if (task_ptr_valid(arg3))
+        return -EACCES;
     if (fno->owner->ops.ioctl) {
         fno->owner->ops.ioctl(fno, (uint32_t)arg2, (void *)arg3);
     } else return -EOPNOTSUPP;
@@ -549,7 +574,10 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 
 int sys_link_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    struct fnode *fno = fno_link((char*)arg1, (char *)arg2);
+    struct fnode *fno; 
+    if (task_ptr_valid(arg1) || task_ptr_valid(arg2))
+        return -EACCES;
+    fno = fno_link((char*)arg1, (char *)arg2);
     if (fno)
         return 0;
     else return -EINVAL;
@@ -561,6 +589,8 @@ int sys_mkdir_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     char *path = (char *)arg1;
     char abs_p[MAX_FILE];
     struct fnode *f;
+    if (task_ptr_valid(path))
+        return -EACCES;
     path_abs(path, abs_p, MAX_FILE);
     if (fno_create_dir(abs_p, arg2))
         return 0;
@@ -572,6 +602,8 @@ int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     char *path = (char *)arg1;
     char abs_p[MAX_FILE];
     struct fnode *f;
+    if (task_ptr_valid(path))
+        return -EACCES;
     path_abs(path, abs_p, MAX_FILE);
     f = fno_search_nofollow(abs_p); /* Don't follow symlink */
     if (f) {
@@ -583,7 +615,10 @@ int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 
 int sys_opendir_hdlr(uint32_t arg1)
 {
-    struct fnode *fno = fno_search((char *)arg1);
+    struct fnode *fno; 
+    if (task_ptr_valid(arg1))
+        return -EACCES;
+    fno = fno_search((char *)arg1);
     if (fno && (fno->flags & FL_DIR)) {
         if (fno->flags & FL_INUSE)
             return (int)NULL; /* XXX EBUSY */
@@ -598,9 +633,16 @@ int sys_opendir_hdlr(uint32_t arg1)
 
 int sys_readdir_hdlr(uint32_t arg1, uint32_t arg2)
 {
-    struct fnode *fno = (struct fnode *)arg1;
-    struct fnode *next = (struct fnode *)fno->off;
-    struct dirent *ep = (struct dirent *)arg2;
+    struct fnode *fno; 
+    struct fnode *next;
+    struct dirent *ep;
+
+    fno = (struct fnode *)arg1;
+    ep = (struct dirent *)arg2;
+    if (task_ptr_valid(ep))
+       return  -EACCES;
+
+    next = (struct fnode *)fno->off;
     if (!fno || !ep)
         return -ENOENT;
     if (!next) {
@@ -621,10 +663,8 @@ int sys_closedir_hdlr(uint32_t arg1)
 }
 
 
-int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
+static int stat_hdlr(char *path, struct stat *st)
 {
-    char *path = (char *)arg1;
-    struct stat *st = (struct stat *)arg2;
     char abs_p[MAX_FILE];
     struct fnode *fno;
     path_abs(path, abs_p, MAX_FILE);
@@ -635,7 +675,7 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
         st->st_mode = S_IFDIR;
         st->st_size = 0;
     } else if (fno->flags & FL_LINK) {
-        return sys_stat_hdlr((uint32_t)fno->linkname, arg2); /* Stat follows symlink */
+        return stat_hdlr(fno->linkname, st); /* Stat follows symlink */
     } else {
         st->st_mode = S_IFREG;
         st->st_size = fno->size;
@@ -647,19 +687,28 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     return 0;
 }
 
+int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
+{
+    char *path = (char *)arg1;
+    struct stat *st = (struct stat *)arg2;
+    if (task_ptr_valid(path) || task_ptr_valid(st))
+       return  -EACCES;
+
+}
+
 int sys_fstat_hdlr(uint32_t arg1, uint32_t arg2)
 {
     struct stat *st = (struct stat *)arg2;
     struct fnode *fno = task_filedesc_get(arg1);
     if (!fno)
-        return -EINVAL;
-    if (!fno)
         return -ENOENT;
+    if (task_ptr_valid(st))
+       return  -EACCES;
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
         st->st_size = 0;
     } else if (fno->flags & FL_LINK) {
-        return sys_stat_hdlr((uint32_t)fno->linkname, arg2); /* Stat follows symlink */
+        return stat_hdlr(fno->linkname, st); /* Stat follows symlink */
     } else {
         st->st_mode = S_IFREG;
         st->st_size = fno->size;
@@ -677,6 +726,8 @@ int sys_lstat_hdlr(uint32_t arg1, uint32_t arg2)
     struct stat *st = (struct stat *)arg2;
     char abs_p[MAX_FILE];
     struct fnode *fno;
+    if (task_ptr_valid(st) || task_ptr_valid(path))
+       return  -EACCES;
     path_abs(path, abs_p, MAX_FILE);
     fno = fno_search_nofollow(abs_p);
     if (!fno)
@@ -704,6 +755,8 @@ int sys_chdir_hdlr(uint32_t arg1)
     char *path = (char *)arg1;
     char abs_p[MAX_FILE];
     struct fnode *f;
+    if (task_ptr_valid(path))
+       return  -EACCES;
     path_abs(path, abs_p, MAX_FILE);
 
     f = fno_search(abs_p);
@@ -724,6 +777,8 @@ int sys_isatty_hdlr(uint32_t arg1)
 int sys_ttyname_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
     struct fnode *f = task_filedesc_get(arg1);
+    if (task_ptr_valid(arg2))
+       return  -EACCES;
     if (f && f->flags & FL_TTY) {
         strncpy((char *)arg2, f->fname, arg3);
         return 0;
@@ -735,6 +790,8 @@ int sys_getcwd_hdlr(uint32_t arg1, uint32_t arg2)
 {
     char *path = (char *)arg1;
     int len = (int)arg2;
+    if (task_ptr_valid(path))
+       return  -EACCES;
     if (fno_fullpath(task_getcwd(), path, len) > 0)
         return arg1;
     return 0;
@@ -839,11 +896,15 @@ int sys_mount_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     char *module = (char *)arg3;
     uint32_t flags = arg4;
     void *args = (void*)arg5;
+    if (task_ptr_valid(arg1) || task_ptr_valid(arg2)|| task_ptr_valid(arg3)|| (arg5 && task_ptr_valid(arg5)))
+       return  -EACCES;
     return vfs_mount(source, target, module, flags, args);
 }
 
 int sys_umount_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     char *target = (char *)arg1;
     uint32_t flags = arg2;
     return vfs_umount(target, flags);

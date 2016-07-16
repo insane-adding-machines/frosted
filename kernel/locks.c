@@ -126,21 +126,29 @@ sem_t *sem_init(int val)
 /* Semaphore: Syscalls */
 int sys_sem_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return (int)sem_init(arg1);
 }
 
 int sys_sem_post_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return sem_post((sem_t *)arg1);
 }
 
 int sys_sem_wait_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return sem_wait((sem_t *)arg1);
 }
 
 int sys_sem_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return sem_destroy((sem_t *)arg1);
 }
 
@@ -221,21 +229,29 @@ int mutex_unlock(mutex_t *s)
 /* Mutex: Syscalls */
 int sys_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return (int)mutex_init(arg1);
 }
 
 int sys_mutex_lock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return mutex_lock((mutex_t *)arg1);
 }
 
 int sys_mutex_unlock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return mutex_unlock((mutex_t *)arg1);
 }
 
 int sys_mutex_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1))
+        return -EACCES;
     return sem_destroy((sem_t *)arg1); /* Same as semaphore */
 }
 
