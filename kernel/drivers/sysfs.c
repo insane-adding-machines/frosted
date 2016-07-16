@@ -21,8 +21,9 @@
 #include "frosted.h"
 #include "string.h"
 #include "scheduler.h"
+#include "gpio.h"
 
-#define MAX_SYSFS_BUFFER 512
+#define MAX_SYSFS_BUFFER 1024
 
 static struct fnode *sysfs;
 static struct module mod_sysfs;
@@ -177,6 +178,217 @@ int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
     return fno->off;
 }
 
+
+static int gpio_basename(const uint32_t base, char *name)
+{
+    switch(base) {
+#if defined(STM32F4) || defined(STM32F7)
+        case GPIOA: 
+            strcpy(name,"GPIOA");
+            return 5;
+        case GPIOB: 
+            strcpy(name,"GPIOB");
+            return 5;
+        case GPIOC: 
+            strcpy(name,"GPIOC");
+            return 5;
+        case GPIOD: 
+            strcpy(name,"GPIOD");
+            return 5;
+        case GPIOE: 
+            strcpy(name,"GPIOE");
+            return 5;
+        case GPIOF: 
+            strcpy(name,"GPIOF");
+            return 5;
+        case GPIOG: 
+            strcpy(name,"GPIOG");
+            return 5;
+        case GPIOH: 
+            strcpy(name,"GPIOH");
+            return 5;
+        case GPIOI: 
+            strcpy(name,"GPIOI");
+            return 5;
+        case GPIOJ: 
+            strcpy(name,"GPIOJ");
+            return 5;
+        case GPIOK: 
+            strcpy(name,"GPIOK");
+            return 5;
+#endif
+        default:
+            strcpy(name,"N/A");
+            return 3;
+    }
+}
+
+#if defined(STM32F4) || defined(STM32F7)
+int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    char *res = (char *)buf;
+    struct fnode *fno = sfs->fnode;
+    static char *txt;
+    static int off;
+    int i;
+    int stack_used;
+    char *name;
+    int p_state;
+    int nice;
+    const char legend[]="Base\tPin\tMode\tDrive\tSpeed\tTrigger\tOwner\r\n";
+    struct dev_gpio *g =  Gpio_list;
+    uint32_t pin_n = 0;
+    if (fno->off == 0) {
+        mutex_lock(sysfs_mutex);
+        txt = kalloc((1 + gpio_list_len()) * 80);
+        if (!txt)
+            return -1;
+        off = 0;
+
+        strcpy(txt, legend);
+        off += strlen(legend);
+        while (g) {
+
+            /* Base */
+            off += gpio_basename(g->base, txt + off);
+            txt[off++] = '\t';
+            
+            /* Pin */
+            pin_n = 0;
+            while ((1 << pin_n) != g->pin)
+                pin_n ++;
+            off += ul_to_str(pin_n, txt + off);
+            txt[off++] = '\t';
+
+            /* Mode */
+            switch (g->mode) {
+                case GPIO_MODE_OUTPUT:
+                    txt[off++] = 'O';
+                    txt[off++] = 'U';
+                    txt[off++] = 'T';
+                    break;
+                case GPIO_MODE_INPUT:
+                    txt[off++] = 'I';
+                    txt[off++] = 'N';
+                    break;
+                case GPIO_MODE_ANALOG:
+                    txt[off++] = 'A';
+                    txt[off++] = 'N';
+                    txt[off++] = 'A';
+                    txt[off++] = 'L';
+                    txt[off++] = 'O';
+                    txt[off++] = 'G';
+                    break;
+                case GPIO_MODE_AF:
+                    txt[off++] = 'A';
+                    txt[off++] = 'L';
+                    txt[off++] = 'T';
+                    off += ul_to_str(g->af, txt + off);
+                    break;
+            }
+            txt[off++] = '\t';
+
+            /* Drive */
+            if (g->optype == GPIO_OTYPE_OD) {
+                txt[off++] = 'O';
+                txt[off++] = 'D';
+                txt[off++] = 'r';
+                txt[off++] = 'a';
+                txt[off++] = 'i';
+                txt[off++] = 'n';
+            } else {
+                switch(g->pullupdown) {
+                    case GPIO_PUPD_PULLUP:
+                        txt[off++] = 'P';
+                        txt[off++] = 'u';
+                        txt[off++] = 'l';
+                        txt[off++] = 'l';
+                        txt[off++] = 'U';
+                        txt[off++] = 'p';
+                        break;
+                    case GPIO_PUPD_PULLDOWN:
+                        txt[off++] = 'P';
+                        txt[off++] = 'u';
+                        txt[off++] = 'l';
+                        txt[off++] = 'l';
+                        txt[off++] = 'D';
+                        txt[off++] = 'w';
+                        break;
+                    default:
+                        txt[off++] = 'N';
+                        txt[off++] = 'o';
+                        txt[off++] = 'n';
+                        txt[off++] = 'e';
+                        break;
+                }
+            } 
+            txt[off++] = '\t';
+
+
+            /* Speed */
+            /* FIXME: if you want to see output speed. */
+            txt[off++] = '-';
+            txt[off++] = '\t';
+
+            /* Trigger */
+            switch (g->trigger) {
+
+                case GPIO_TRIGGER_RAISE:
+                    txt[off++] = 'R';
+                    txt[off++] = 'a';
+                    txt[off++] = 'i';
+                    txt[off++] = 's';
+                    txt[off++] = 'e';
+                    break;
+
+                case GPIO_TRIGGER_FALL:
+                    txt[off++] = 'F';
+                    txt[off++] = 'a';
+                    txt[off++] = 'l';
+                    txt[off++] = 'l';
+                    break;
+
+                case GPIO_TRIGGER_TOGGLE:
+                    txt[off++] = 'T';
+                    txt[off++] = 'o';
+                    txt[off++] = 'g';
+                    txt[off++] = 'g';
+                    txt[off++] = 'l';
+                    txt[off++] = 'e';
+                    break;
+
+                default:
+                    txt[off++] = 'N';
+                    txt[off++] = 'o';
+                    txt[off++] = 'n';
+                    txt[off++] = 'e';
+                    break;
+            }
+            txt[off++] = '\t';
+
+            /* Owner's name */
+            strcpy(txt + off, g->owner->name);
+            off += strlen(g->owner->name);
+            txt[off++] = '\r';
+            txt[off++] = '\n';
+            g = g->next;
+        }
+        txt[off++] = '\0';
+    }
+    if (off == fno->off) {
+        kfree(txt);
+        mutex_unlock(sysfs_mutex);
+        return -1;
+    }
+    if (len > (off - fno->off)) {
+       len = off - fno->off;
+    }
+    memcpy(res, txt + fno->off, len);
+    fno->off += len;
+    return len;
+}
+#endif
+
 int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
@@ -199,7 +411,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
         strcpy(task_txt, legend);
         off += strlen(legend);
 
-        for (i = 1; i < MAX_SYSFS_BUFFER; i++) {
+        for (i = 1; i <= 0xFFFF; i++) {
             p_state = scheduler_task_state(i);
             if ((p_state != TASK_IDLE) && (p_state != TASK_OVER)) {
                 off += ul_to_str(i, task_txt + off);
@@ -506,6 +718,9 @@ static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
     sysfs_register("mem", "/sys", sysfs_mem_read, sysfs_no_write);
     sysfs_register("modules", "/sys", sysfs_modules_read, sysfs_no_write);
     sysfs_register("mtab", "/sys", sysfs_mtab_read, sysfs_no_write);
+#if defined(STM32F4) || defined(STM32F7)
+    sysfs_register("pins", "/sys", sysfs_pins_read, sysfs_no_write);
+#endif
     return 0;
 }
 

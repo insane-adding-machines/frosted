@@ -86,6 +86,8 @@ int sys_read_hdlr(int fd, void *buf, int len)
     struct fnode *fno = task_filedesc_get(fd);
     if (!task_fd_readable(fd))
         return -EPERM;
+    if (task_ptr_valid(buf))
+        return -EACCES;
     if (fno && fno->owner->ops.read) {
         return fno->owner->ops.read(fno, buf, len);
     } else if (fno->owner && fno->owner->ops.recvfrom) {
@@ -99,6 +101,8 @@ int sys_write_hdlr(int fd, void *buf, int len)
     struct fnode *fno = task_filedesc_get(fd);
     if (!task_fd_writable(fd))
         return -EPERM;
+    if (task_ptr_valid(buf))
+        return -EACCES;
     if (!fno)
         return -ENOENT;
     if (fno->owner && fno->owner->ops.write) {
@@ -124,6 +128,8 @@ int sys_socket_hdlr(int family, int type, int proto)
 int sys_bind_hdlr(int sd, struct sockaddr_env *se)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(se))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.bind) {
         return fno->owner->ops.bind(sd, se->se_addr, se->se_len);
     }
@@ -142,6 +148,8 @@ int sys_listen_hdlr(int sd, unsigned int backlog)
 int sys_connect_hdlr(int sd, struct sockaddr_env *se)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(se))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.connect) {
         return fno->owner->ops.connect(sd, se->se_addr, se->se_len);
     }
@@ -151,6 +159,8 @@ int sys_connect_hdlr(int sd, struct sockaddr_env *se)
 int sys_accept_hdlr(int sd, struct sockaddr_env *se)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(se))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.accept) {
         if (se)
             return fno->owner->ops.accept(sd, se->se_addr, &(se->se_len));
@@ -164,10 +174,14 @@ int sys_accept_hdlr(int sd, struct sockaddr_env *se)
 int sys_recvfrom_hdlr(int sd, void *buf, int len, int flags, struct sockaddr_env *se)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(buf))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.recvfrom) {
-        if (se)
+        if (se) {
+            if (task_ptr_valid(se))
+                return -EACCES;
             return fno->owner->ops.recvfrom(sd, buf, len, flags, se->se_addr, &(se->se_len));
-        else
+        } else
             return fno->owner->ops.recvfrom(sd, buf, len, flags, NULL, NULL);
     }
     return -EINVAL;
@@ -177,9 +191,11 @@ int sys_sendto_hdlr(int sd, const void *buf, int len, int flags, struct sockaddr
 {
     struct fnode *fno = task_filedesc_get(sd);
     if (fno && fno->owner && fno->owner->ops.sendto) {
-        if (se)
+        if (se) {
+            if (task_ptr_valid(buf))
+                return -EACCES;
             return fno->owner->ops.sendto(sd, buf, len, flags, se->se_addr, se->se_len);
-        else
+        } else
             return fno->owner->ops.sendto(sd, buf, len, flags, NULL, 0);
     }
     return -EINVAL;
@@ -197,6 +213,8 @@ int sys_shutdown_hdlr(int sd, int how)
 int sys_setsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned int optlen)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(optval))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.setsockopt) {
         return fno->owner->ops.setsockopt(sd, level, optname, optval, optlen);
     }
@@ -206,6 +224,10 @@ int sys_setsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned i
 int sys_getsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned int *optlen)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(optval))
+        return -EACCES;
+    if (task_ptr_valid(optlen))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.getsockopt) {
         return fno->owner->ops.getsockopt(sd, level, optname, optval, optlen);
     }
@@ -215,6 +237,8 @@ int sys_getsockopt_hdlr(int sd, int level, int optname, void *optval, unsigned i
 int sys_getsockname_hdlr(int sd, struct sockaddr_env *se)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(se))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.getsockname) {
         return fno->owner->ops.getsockname(sd, se->se_addr, &(se->se_len));
     }
@@ -224,6 +248,8 @@ int sys_getsockname_hdlr(int sd, struct sockaddr_env *se)
 int sys_getpeername_hdlr(int sd, struct sockaddr_env *se)
 {
     struct fnode *fno = task_filedesc_get(sd);
+    if (task_ptr_valid(se))
+        return -EACCES;
     if (fno && fno->owner && fno->owner->ops.getpeername) {
         return fno->owner->ops.getpeername(sd, se->se_addr, &(se->se_len));
     }

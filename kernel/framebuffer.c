@@ -183,10 +183,14 @@ static int fb_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
     return -1;
 }
 
-void fb_init(struct fnode * dev)
+int fb_init(void)
 {
+    struct fnode *devfs = fno_search("/dev");
+    if (!devfs)
+        return -ENOENT;
     /* Ony one FB supported for now */
-    fb_fno_init(dev, fb[0]);
+    fb_fno_init(devfs, fb[0]);
+    return 0;
 }
 
 /* Register a low-level framebuffer driver */

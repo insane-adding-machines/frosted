@@ -676,6 +676,10 @@ int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     struct sigaction *sa = (struct sigaction *)arg2;
     struct sigaction *sa_old = (struct sigaction *)arg3;
+    if (task_ptr_valid(sa))
+        return -EACCES;
+    if (sa_old && task_ptr_valid(sa_old))
+        return -EACCES;
     
     if (_cur_task->tb.pid < 1)
         return -EINVAL;
@@ -700,10 +704,15 @@ int sys_sigprocmask_hdlr(int how, const sigset_t *set, sigset_t *oldset)
     if (!set && !oldset)
         return -EINVAL;
 
-    if (oldset)
+    if (oldset) {
+        if (task_ptr_valid(oldset))
+            return -EACCES;
         *oldset = _cur_task->tb.sigmask;
+    }
 
     if (set) {
+        if (task_ptr_valid(set))
+            return -EACCES;
         if (how == SIG_SETMASK)
             _cur_task->tb.sigmask = *set;
         else if (how == SIG_BLOCK)
@@ -720,6 +729,8 @@ int sys_sigsuspend_hdlr(const sigset_t *mask)
     uint32_t orig_mask = _cur_task->tb.sigmask;
     if (!mask)
         return -EINVAL;
+    if (task_ptr_valid(mask))
+        return -EACCES;
 
     _cur_task->tb.sigmask = ~(*mask);
     task_suspend();
@@ -769,13 +780,15 @@ static __inl void * psp_read(void)
 
 static __inl void task_switch(void)
 {
-    int i, pid = _cur_task->tb.pid;
-    volatile struct task *t = _cur_task;
+    int i, pid;
+    volatile struct task *t;
     if (forced_task) {
         _cur_task = forced_task;
         forced_task = NULL;
         return;
     }
+    pid = _cur_task->tb.pid;
+    t = _cur_task;
 
     if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
         t = tasks_running;
@@ -869,6 +882,9 @@ void task_end(void)
 
 static void task_resume_vfork(int pid);
 
+
+/* Duplicate exec() args into the new process address space. 
+ */
 static void *task_pass_args(void *_args)
 {
     char **args = (char **)_args;
@@ -898,7 +914,7 @@ static void *task_pass_args(void *_args)
     return new;
 }
 
-static void task_create_real(volatile struct task *new, void (*init)(void *), void *arg, unsigned int nice)
+static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, void *arg, unsigned int nice)
 {
     struct nvic_stack_frame *nvic_frame;
     struct extra_stack_frame *extra_frame;
@@ -910,7 +926,7 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     if (nice > NICE_MAX)
         nice = NICE_MAX;
 
-    new->tb.start = init;
+    new->tb.start = vfsi->init;
     new->tb.arg = task_pass_args(arg);
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
@@ -934,6 +950,9 @@ static void task_create_real(volatile struct task *new, void (*init)(void *), vo
     /* stack memory */
     sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
     new->tb.cur_stack = &new->stack;
+
+    /* Change relocated section ownership */
+    fmalloc_chown(vfsi->pic, new->tb.pid);
 
     /* Stack frame is at the end of the stack space */
     nvic_frame = (struct nvic_stack_frame *) sp;
@@ -980,7 +999,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
     tasklist_add(&tasks_running, new);
 
     number_of_tasks++;
-    task_create_real(new, vfsi->init, arg, nice);
+    task_create_real(new, vfsi, arg, nice);
     new->tb.state = TASK_RUNNABLE;
     irq_on();
     return new->tb.pid;
@@ -991,7 +1010,7 @@ int scheduler_exec(struct vfs_info *vfsi, void *args)
     volatile struct task *t = _cur_task;
     
     t->tb.vfsi = vfsi;
-    task_create_real(t, vfsi->init, (void *)args, t->tb.nice);
+    task_create_real(t, vfsi, (void *)args, t->tb.nice);
     asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
     t->tb.state = TASK_RUNNING;
     mpu_task_on((void *)(((uint32_t)t->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
@@ -1354,6 +1373,8 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     struct task *t = NULL;
     int pid = (int)arg1;
     int options = (int) arg3;
+    if (status && task_ptr_valid(status))
+        return -EACCES;
     if (pid == 0)
         return -EINVAL;
 
@@ -1434,6 +1455,13 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     uint32_t pid = arg2;
     void *addr = (void *)arg3;
     void *data = (void *)arg4;
+
+    if (addr && task_ptr_valid(addr))
+        return -EACCES;
+
+    if (data && task_ptr_valid(data))
+        return -EACCES;
+
 
     switch (request) {
         case PTRACE_TRACEME:
@@ -1564,6 +1592,29 @@ int task_segfault(uint32_t address, uint32_t instruction, int flags)
     }
     task_terminate(_cur_task->tb.pid);
     return 0;
+}
+
+int task_ptr_valid(void *ptr)
+{
+    struct task *t;
+    uint8_t *stack_start = (uint8_t *)_cur_task->tb.cur_stack;
+    uint8_t *stack_end   = stack_start + SCHEDULER_STACK_SIZE;
+
+    if (_cur_task->tb.pid == 0)
+        return 0; /* Kernel mode */
+    if ( (ptr >= stack_start) && (ptr < stack_end) )
+        return 0; /* In the process own's  stack */
+    if (fmalloc_owner(ptr) == _cur_task->tb.pid)
+        return 0; /* In the process own's  heap */
+
+
+    t = tasklist_get(&tasks_idling, _cur_task->tb.ppid);
+    if (t && (t->tb.state == TASK_FORKED)) {
+        /* execution after fork(), parent memory allowed. */
+        if (fmalloc_owner(ptr) == _cur_task->tb.ppid)
+            return 0; /* In the process parent's  heap */
+    }
+    return -1;
 }
 
 static uint32_t *a4 = NULL;

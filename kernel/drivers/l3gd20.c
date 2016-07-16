@@ -23,7 +23,6 @@
 #include <stdint.h>
 #include "ioctl.h"
 #include "l3gd20.h"
-#include "l3gd20_ioctl.h"
 #include "gpio.h"
 #include "stm32_exti.h"
 #include <unicore-mx/stm32/f4/exti.h>
@@ -47,6 +46,13 @@ struct dev_l3gd20 {
     struct fnode *int_2_fnode;
     L3GD20_MODE mode;
 };
+
+struct l3gd20_ctrl_reg
+{
+    uint8_t reg;
+    uint8_t data;
+};
+
 
 #define MAX_L3GD20S 1
 

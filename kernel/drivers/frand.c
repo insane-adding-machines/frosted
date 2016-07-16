@@ -22,7 +22,7 @@
 #include "device.h"
 #include "frand.h"
 #include "fortuna.h"
-#include "stm32_rng.h"
+#include "rng.h"
 #include <stdint.h>
 #include <sys/ioctl.h>
 

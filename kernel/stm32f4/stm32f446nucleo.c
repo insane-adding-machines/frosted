@@ -33,6 +33,7 @@
 #include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
 #endif
+#include "rng.h"
 
 #ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = {
@@ -222,9 +223,7 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_DEVUART
     uart_init(dev, uart_addrs, NUM_UARTS);
 #endif
-#ifdef CONFIG_RNG
     rng_init(dev, rng_addrs, NUM_RNGS);
-#endif
 #ifdef CONFIG_DEVSTM32SDIO
     stm32_sdio_rcc_init();
     stm32_sdio_init(dev);

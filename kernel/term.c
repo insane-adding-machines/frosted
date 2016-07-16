@@ -33,6 +33,8 @@ int sys_tcgetattr_hdlr(int arg1, int arg2)
 {
     struct termios *t = (struct termios *)arg2;
     struct module *m;
+    if (task_ptr_valid(t))
+        return -EACCES;
     m = get_term_mod(arg1);
     if (m && m->ops.tcgetattr)
         return m->ops.tcgetattr(arg1, t);
@@ -44,6 +46,8 @@ int sys_tcsetattr_hdlr(int arg1, int arg2, int arg3)
 {
     const struct termios *t = (const struct termios *)arg3;
     struct module *m;
+    if (task_ptr_valid(t))
+        return -EACCES;
     m = get_term_mod(arg1);
     if (m && m->ops.tcsetattr)
         return m->ops.tcsetattr(arg1, arg2, t);

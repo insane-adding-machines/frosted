@@ -26,6 +26,9 @@ CFLAGS+=-ggdb3
 #kernel headers
 CFLAGS+=-Ikernel/frosted-headers/include
 
+#drivers headers
+CFLAGS+=-Ikernel/drivers
+
 # minimal kernel
 OBJS-y:= kernel/frosted.o \
 		 kernel/vfs.o \
@@ -58,6 +61,7 @@ OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
 
 OBJS-$(FATFS)+= kernel/fatfs.o
+CFLAGS-$(FATFS)+=-DCONFIG_FATFS
 CFLAGS-$(FAT32)+=-DCONFIG_FAT32
 CFLAGS-$(FAT16)+=-DCONFIG_FAT16
 
@@ -91,11 +95,11 @@ CFLAGS-$(DEVF4I2C)+=-DCONFIG_DEVSTM32F4I2C
 OBJS-$(DEVF4DSP)+=kernel/drivers/stm32f4_dsp.o
 CFLAGS-$(DEVF4DSP)+=-DCONFIG_DSP
 
-OBJS-$(DEVF4ETH)+= kernel/drivers/stm32fx_eth.o
-CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEVSTMETH
+OBJS-$(DEVF4ETH)+= kernel/drivers/stm32_eth.o
+CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEVETH
 
-OBJS-$(DEVF7ETH)+= kernel/drivers/stm32fx_eth.o
-CFLAGS-$(DEVF7ETH)+=-DCONFIG_DEVSTMETH
+OBJS-$(DEVF7ETH)+= kernel/drivers/stm32_eth.o
+CFLAGS-$(DEVF7ETH)+=-DCONFIG_DEVETH
 
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
@@ -109,8 +113,11 @@ CFLAGS-$(DEVGPIO)+=-DCONFIG_DEVGPIO
 OBJS-$(DEVSTM32F4DMA)+=kernel/drivers/stm32f4_dma.o
 CFLAGS-$(DEVSTM32F4DMA)+=-DCONFIG_DEVSTM32F4DMA
 
+CFLAGS-$(DEVSTM32USB)+=-DCONFIG_DEVUSB
+OBJS-$(DEVSTM32USB)+=kernel/drivers/stm32_usb.o
+
 OBJS-$(DEVSTM32SDIO)+=kernel/drivers/stm32_sdio.o
-CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_DEVSTM32SDIO
+CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_SDIO
 
 OBJS-$(DEVSTM32EXTI)+=kernel/drivers/stm32_exti.o
 CFLAGS-$(DEVSTM32EXTI)+=-DCONFIG_DEVSTM32EXTI
@@ -130,10 +137,12 @@ OBJS-$(DEVFRAND)+=kernel/drivers/stm32_rng.o		\
 		 kernel/crypto/aes.o			\
 		 kernel/drivers/fortuna.o		\
 		 kernel/drivers/frand.o
-CFLAGS-$(DEVFRAND)+=-DCONFIG_FRAND
+CFLAGS-$(DEVFRAND)+=-DCONFIG_FRAND -DCONFIG_RNG
+OBJS-$(STM32F7_SDRAM)+=kernel/drivers/stm32f7_sdram.o
+CFLAGS-$(STM32F7_SDRAM)+=-DCONFIG_SDRAM
 
-OBJS-$(DEV_USB_ETH)+=kernel/drivers/usb_ethernet.o
-CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_DEV_USB_ETH
+OBJS-$(DEV_USB_ETH)+=kernel/drivers/devusb_cdc_ecm.o
+CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_DEV_USBETH
 CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_USB_DEFAULT_IP=\"$(USB_DEFAULT_IP)\"
 CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_USB_DEFAULT_NM=\"$(USB_DEFAULT_NM)\"
 CFLAGS-$(DEV_USB_ETH)+=-DCONFIG_USB_DEFAULT_GW=\"$(USB_DEFAULT_GW)\"
@@ -142,13 +151,17 @@ CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEV_ETH
 CFLAGS-$(DEVF4ETH)+=-DCONFIG_ETH_DEFAULT_IP=\"$(ETH_DEFAULT_IP)\"
 CFLAGS-$(DEVF4ETH)+=-DCONFIG_ETH_DEFAULT_NM=\"$(ETH_DEFAULT_NM)\"
 CFLAGS-$(DEVF4ETH)+=-DCONFIG_ETH_DEFAULT_GW=\"$(ETH_DEFAULT_GW)\"
+CFLAGS-$(DEVF7ETH)+=-DCONFIG_DEV_ETH
+CFLAGS-$(DEVF7ETH)+=-DCONFIG_ETH_DEFAULT_IP=\"$(ETH_DEFAULT_IP)\"
+CFLAGS-$(DEVF7ETH)+=-DCONFIG_ETH_DEFAULT_NM=\"$(ETH_DEFAULT_NM)\"
+CFLAGS-$(DEVF7ETH)+=-DCONFIG_ETH_DEFAULT_GW=\"$(ETH_DEFAULT_GW)\"
 
 OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o
 OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o
 OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o
 OBJS-$(MACH_STM32F446Nucleo)+=kernel/$(BOARD)/stm32f446nucleo.o
-OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o kernel/$(BOARD)/stm32f746discovery_sdram.o
+OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o 
 OBJS-$(MACH_STM32F746Nucleo144)+=kernel/$(BOARD)/stm32f746nucleo-144.o
 OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o

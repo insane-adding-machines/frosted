@@ -5,6 +5,7 @@
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/stm32/gpio.h>
 #include <unicore-mx/stm32/ltdc.h>
+#include "gpio.h"
 
 /* STM32F7-Discovery screen ... */
 #define  RK043FN48H_WIDTH               ((uint16_t)480)  /* LCD PIXEL WIDTH            */
@@ -27,6 +28,11 @@ static void ltdc_config(void);
 static void ltdc_pinmux(void); 
 static void ltdc_clock(void); 
 static int ltdc_config_layer(struct fb_info *fb);
+
+static struct module mod_ltdc = {
+    .family = FAMILY_FILE,
+    .name = "lcd-controller",
+};
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -209,9 +215,93 @@ static const struct fb_ops  ltdc_fbops = {  .fb_open = ltdc_open,
 
 static struct fb_info ltdc_info = { .fbops = (struct fb_ops *)&ltdc_fbops };
 
-/* DRIVER INIT */
-void stm32f7_ltdc_init(void)
+
+
+static void lcd_pinmux(void)
 {
+    int i;
+    struct gpio_config g = { 
+            .mode=GPIO_MODE_AF,
+            .speed=GPIO_OSPEED_100MHZ, 
+            .optype=GPIO_OTYPE_PP, 
+            .pullupdown = GPIO_PUPD_NONE
+    };
+
+    /* Enable the LTDC Clock */
+    rcc_periph_clock_enable(RCC_LTDC);
+
+    /* PE4 */
+    g.base = GPIOE;
+    g.pin = GPIO4;
+    g.af = GPIO_AF14;
+    gpio_create(&mod_ltdc, &g);
+
+    /* PG12 */
+    g.base = GPIOG;
+    g.pin = GPIO12;
+    g.af = GPIO_AF9;
+    gpio_create(&mod_ltdc, &g);
+
+    /* LTDC PI8:PI10*/
+    for (i = 8; i < 11; i++) {
+        g.base = GPIOI;
+        g.pin = (1 << i);
+        g.af = GPIO_AF14;
+        gpio_create(&mod_ltdc, &g);
+    }
+
+    /* LTDC PI14:PI15 */
+    for (i = 14; i < 16; i++) {
+        g.base = GPIOI;
+        g.pin = (1 << i);
+        g.af = GPIO_AF14;
+        gpio_create(&mod_ltdc, &g);
+    }
+
+    /* LTDC PJ0:PJ15 (excl. PJ12) */
+    for (i = 0; i < 16; i++) {
+        if (i != 12) {
+            g.base = GPIOJ;
+            g.pin = (1 << i);
+            g.af = GPIO_AF14;
+            gpio_create(&mod_ltdc, &g);
+        }
+    }
+    
+    /* LTDC PK0:PK7 (excl. PK3) */
+    for (i = 0; i < 8; i++) {
+        if (i != 3) {
+            g.base = GPIOK;
+            g.pin = (1 << i);
+            g.af = GPIO_AF14;
+            gpio_create(&mod_ltdc, &g);
+        }
+    }
+    
+    /* LCD_DISP control PI12 (output) */
+    g.base = GPIOI;
+    g.pin = GPIO12;
+    g.mode = GPIO_MODE_OUTPUT;
+    gpio_create(&mod_ltdc, &g);
+
+    /* LCD_BL control PK3 (output) */
+    g.base = GPIOK;
+    g.pin = GPIO3;
+    g.mode = GPIO_MODE_OUTPUT;
+    gpio_create(&mod_ltdc, &g);
+
+    /* Assert display enable LCD_DISP pin */
+    gpio_set(GPIOI, GPIO12);
+    /* Assert backlight LCD_BL_CTRL pin */
+    gpio_set(GPIOK, GPIO3);
+}
+
+
+/* DRIVER INIT */
+void ltdc_init(void)
+{
+    lcd_pinmux();
     register_framebuffer(&ltdc_info);
+    register_module(&mod_ltdc);
 }
 

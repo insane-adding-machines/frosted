@@ -1280,7 +1280,7 @@ int fatfs_lseek (struct fatfs_disk *f,
 }
 #endif
 
-void fatfs_init(void)
+int fatfs_init(void)
 {
     mod_fatfs.family = FAMILY_FILE;
     strcpy(mod_fatfs.name,"fatfs");
@@ -1298,4 +1298,5 @@ void fatfs_init(void)
     mod_fatfs.ops.exe = fatfs_exe;
     */
     register_module(&mod_fatfs);
+    return 0;
 }

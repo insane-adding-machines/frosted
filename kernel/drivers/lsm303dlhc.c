@@ -23,7 +23,6 @@
 #include <stdint.h>
 #include "ioctl.h"
 #include "lsm303dlhc.h"
-#include "lsm303dlhc_ioctl.h"
 #include "gpio.h"
 #include "stm32_exti.h"
 #include "stm32f4_dma.h"
@@ -44,6 +43,12 @@ struct dev_lsm303dlhc {
     struct fnode *drdy_fnode;
     uint8_t address;
     LSM303DLHC_MODE mode;
+};
+
+struct lsm303dlhc_ctrl_reg
+{
+    uint8_t reg;
+    uint8_t data;
 };
 
 #define MAX_LSM303DLHC 2

@@ -98,10 +98,16 @@ struct fb_ops {
         void (*fb_destroy)(struct fb_info *info);
 };
 
+
+#ifdef CONFIG_DEVFRAMEBUFFER
 /* low-level drivers must call this register function first */
 int register_framebuffer(struct fb_info *fb_info);
 
 /* kernel init */
-void fb_init(struct fnode * dev);
+int fb_init(void);
+#else
+#  define register_framebuffer(...) ((-ENOENT))
+#  define fb_init() ((-ENOENT))
+#endif
 
 #endif
