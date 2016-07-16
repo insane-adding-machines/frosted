@@ -693,7 +693,7 @@ int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
     struct stat *st = (struct stat *)arg2;
     if (task_ptr_valid(path) || task_ptr_valid(st))
        return  -EACCES;
-
+    return stat_hdlr(path, st);
 }
 
 int sys_fstat_hdlr(uint32_t arg1, uint32_t arg2)
