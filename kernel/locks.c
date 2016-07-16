@@ -31,6 +31,7 @@ static void _add_listener(sem_t *s)
             return;
         if (s->listener[i] == -1) {
             s->listener[i] = pid;
+            break;
         }
     }
 }

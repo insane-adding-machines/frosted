@@ -1037,6 +1037,8 @@ int sys_vfork_hdlr(void)
     new->tb.nice = _cur_task->tb.nice;
     new->tb.filedesc = NULL;
     new->tb.n_files = 0;
+    new->tb.arg = NULL;
+    new->tb.vfsi = NULL;
     new->tb.flags = TASK_FLAG_VFORK;
     new->tb.cwd = task_getcwd();
 
@@ -1300,6 +1302,12 @@ static void task_resume_vfork(int pid)
     }
 }
 
+void task_deliver_sigchld(void *arg)
+{
+    int pid = (int)arg;
+    task_kill(pid, SIGCHLD);
+}
+
 void task_terminate(int pid)
 {
     struct task *t = tasklist_get(&tasks_running, pid);
@@ -1324,7 +1332,7 @@ void task_terminate(int pid)
                 }
                 task_resume_vfork(t->tb.ppid);
             }
-            task_kill(t->tb.ppid, SIGCHLD);
+            tasklet_add(task_deliver_sigchld, (void *)t->tb.ppid);
             task_preempt();
         }
     }
@@ -1424,7 +1432,7 @@ child_found:
         *((int *)arg2) = t->tb.exitval;
     }
     pid = t->tb.pid;
-    task_destroy(t);
+    tasklet_add(task_destroy, t);
     t->tb.state = TASK_OVER;
     return pid;
 }
