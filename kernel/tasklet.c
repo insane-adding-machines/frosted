@@ -20,53 +20,47 @@
 #include "frosted.h"
 #include "unicore-mx/cm3/systick.h"
 
+#define MAX_TASKLETS 64
+
 struct tasklet {
     void (*exe)(void *);
     void *arg;
-    struct tasklet *next;
 };
 
-struct tasklet *tasklet_list_head = NULL;
-struct tasklet *tasklet_list_tail = NULL;
+static struct tasklet tasklet_array[MAX_TASKLETS];
+uint32_t n_tasklets = 0;
 
 
 void tasklet_add(void (*exe)(void*), void *arg)
 {
-    struct tasklet *t, *x;
+    int i;
     irq_off();
-    t = kalloc(sizeof(struct tasklet));
-    x = tasklet_list_tail;
-    if  (!t)
-        return;
-    t->exe = exe;
-    t->arg = arg;
-    t->next = NULL;
-    if (!x) {
-        tasklet_list_head = t;
-        tasklet_list_tail = t;
-    } else {
-        x->next = t;
-        tasklet_list_tail = t;
+    for (i = 0; i < MAX_TASKLETS; i++) {
+        if (!tasklet_array[i].exe) {
+            tasklet_array[i].exe = exe;
+            tasklet_array[i].arg = arg;
+            n_tasklets++;
+            irq_on();
+            return;
+        }
     }
-    systick_counter_enable();
-    irq_on();
+    while(1) { /* Too many tasklets. */; }
+
 }
 
 void check_tasklets(void)
 {
-    struct tasklet *t, *n;
+    int i;
+    if (n_tasklets == 0)
+        return;
     irq_off();
-    t = tasklet_list_head;
-    tasklet_list_head = NULL;
-    tasklet_list_tail = NULL;
-    irq_on();
-    while(t) {
-        n = t->next;
-        if (t->exe) {
-            t->exe(t->arg);
+    for (i = 0; i < MAX_TASKLETS; i++) {
+        if (tasklet_array[i].exe) {
+            tasklet_array[i].exe(tasklet_array[i].arg);
+            tasklet_array[i].exe = NULL;
+            tasklet_array[i].arg = NULL;
+            n_tasklets--;
         }
-        //memset(t, 0x0a, sizeof(struct tasklet)); /* For testing... */
-        kfree(t);
-        t = n;
     }
+    irq_on();
 }

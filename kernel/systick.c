@@ -23,6 +23,7 @@
 #include "unicore-mx/cm3/systick.h"
 volatile unsigned int jiffies = 0u;
 volatile unsigned int _n_int = 0u;
+volatile int ktimer_check_pending = 0;
 int clock_interval = 1;
 static int _sched_active = 0;
 
@@ -108,6 +109,8 @@ static void ktimers_check_tasklet(void *arg)
         next_t = (t->expire_time - jiffies);
     }
 
+    ktimer_check_pending = 0;
+
 #ifdef CONFIG_LOWPOWER
     if (next_t < 0 || next_t > 1000){
         next_t = 1000; /* Wake up every second if timer is too long, or if no timers */
@@ -144,7 +147,10 @@ void sys_tick_handler(void)
     _n_int++;
 
     if (ktimer_expired()) {
-        tasklet_add(ktimers_check_tasklet, NULL);
+        if (!ktimer_check_pending) {
+            ktimer_check_pending++;
+            tasklet_add(ktimers_check_tasklet, NULL);
+        }
         task_preempt_all();
         return;
     }

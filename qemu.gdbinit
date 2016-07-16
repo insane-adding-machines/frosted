@@ -1,5 +1,5 @@
  tar ext :3333
  layout src
- file image.elf
+ file kernel.elf
  stepi
  focus c
