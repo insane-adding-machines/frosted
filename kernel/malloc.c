@@ -118,7 +118,7 @@ static struct f_malloc_block * split_block(struct f_malloc_block * blk, size_t s
     free_size = blk->size - sizeof(struct f_malloc_block) - size;
     blk->size = size;
     /* create new block */
-    free_blk = (struct f_malloc_block *)(((uint8_t *)blk) + sizeof(struct f_malloc_block) + (uint8_t)blk->size);
+    free_blk = (struct f_malloc_block *)(((uint8_t *)blk) + sizeof(struct f_malloc_block) + blk->size);
     free_blk->prev = blk;
     free_blk->next = blk->next;
     blk->next = free_blk;
@@ -360,6 +360,10 @@ void * f_malloc(int flags, size_t size)
     if (blk)
     {
         dbg_malloc("Found best fit!\n");
+        /*
+         * if ((flags & MEM_USER) && blk->next && ((uint8_t *)blk + 24 + blk->size != (uint8_t *)blk->next))
+         *      while(1);;
+         */
         /* first fit found, now split it if it's much bigger than needed */
         if (2 * (size + sizeof(struct f_malloc_block)) < blk->size)
         {
@@ -411,6 +415,7 @@ static void blk_rearrange(void *arg)
 {
     struct f_malloc_block *blk = arg;
 
+
     /* Merge adjecent free blocks (consecutive blocks are always adjacent) */
     if ((blk->prev) && (!in_use(blk->prev)))
     {
@@ -428,8 +433,6 @@ static void blk_rearrange(void *arg)
 void f_free(void * ptr)
 {
     struct f_malloc_block * blk;
-
-    /* stats */
 
     if (!ptr) {
         return;
@@ -453,7 +456,8 @@ void f_free(void * ptr)
         f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
         f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
         f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
-        blk_rearrange(blk);
+        if ((blk->flags & MEM_TASK) == 0)
+            blk_rearrange(blk);
 
         mutex_unlock(mlock);
     } else {

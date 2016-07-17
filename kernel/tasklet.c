@@ -29,6 +29,7 @@ struct tasklet {
 
 static struct tasklet tasklet_array[MAX_TASKLETS];
 uint32_t n_tasklets = 0;
+uint32_t max_tasklets = 0;
 
 
 void tasklet_add(void (*exe)(void*), void *arg)
@@ -40,6 +41,8 @@ void tasklet_add(void (*exe)(void*), void *arg)
             tasklet_array[i].exe = exe;
             tasklet_array[i].arg = arg;
             n_tasklets++;
+            if (n_tasklets > max_tasklets)
+                max_tasklets = n_tasklets;
             irq_on();
             return;
         }
