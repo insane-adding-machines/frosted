@@ -1,7 +1,9 @@
 # Frosted
+ * Kernel build status:       [![Build   Status](http://trexotech.com:8080/buildStatus/icon?job=frosted-master&style=plastic)] (http://trexotech.com:8080/job/frosted-master/)
+
+ * Toolchain build status:    [![Toolchain Status](http://trexotech.com:8080/buildStatus/icon?job=arm-frosted-eabi-from-source&style=plastic)] (http://trexotech.com:8080/job/arm-frosted-eabi-from-source/?style=plastic)
 
 ### Introduction
-
 frosted is an acronym that means "Free Operating Systems for Tiny Embedded Devices"
 
 The goal of this project is to provide a Free (as in Freedom) kernel for embedded systems,
