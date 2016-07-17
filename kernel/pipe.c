@@ -19,6 +19,7 @@
  */
 
 #include "frosted.h"
+#include "scheduler.h"
 #include "cirbuf.h"
 #include "string.h"
 #include "sys/termios.h"
@@ -183,9 +184,13 @@ static int pipe_read(struct fnode *f, void *buf, unsigned int len)
 
     len_available =  cirbuf_bytesinuse(pp->cb);
     if (len_available <= 0) {
-        pp->pid_r = scheduler_get_cur_pid();
-        task_suspend();
-        return SYS_CALL_AGAIN;
+        if (FNO_BLOCKING(f)) {
+            pp->pid_r = scheduler_get_cur_pid();
+            task_suspend();
+            return SYS_CALL_AGAIN;
+        } else {
+            return -EWOULDBLOCK;
+        }
     }
 
     for(out = 0; out < len; out++) {
@@ -226,12 +231,16 @@ static int pipe_write(struct fnode *f, const void *buf, unsigned int len)
     }
 
     if (out < len) {
-        pp->pid_w = scheduler_get_cur_pid();
-        pp->w_off = out;
-        task_suspend();
-        return SYS_CALL_AGAIN;
+        if (FNO_BLOCKING(f)) {
+            pp->pid_w = scheduler_get_cur_pid();
+            pp->w_off = out;
+            task_suspend();
+            return SYS_CALL_AGAIN;
+        } else {
+            if (out == 0)
+                return -EWOULDBLOCK;
+        }
     }
-
     pp->w_off = 0;
     pp->pid_w = 0;
     return out;
