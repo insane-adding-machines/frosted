@@ -101,6 +101,9 @@ CFLAGS-$(DEVF4ETH)+=-DCONFIG_DEVETH
 OBJS-$(DEVF7ETH)+= kernel/drivers/stm32_eth.o
 CFLAGS-$(DEVF7ETH)+=-DCONFIG_DEVETH
 
+OBJS-$(DEVLM3SETH)+= kernel/drivers/lm3s_eth.o
+CFLAGS-$(DEVLM3SETH)+=-DCONFIG_DEVETH
+
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
@@ -155,6 +158,10 @@ CFLAGS-$(DEVF7ETH)+=-DCONFIG_DEV_ETH
 CFLAGS-$(DEVF7ETH)+=-DCONFIG_ETH_DEFAULT_IP=\"$(ETH_DEFAULT_IP)\"
 CFLAGS-$(DEVF7ETH)+=-DCONFIG_ETH_DEFAULT_NM=\"$(ETH_DEFAULT_NM)\"
 CFLAGS-$(DEVF7ETH)+=-DCONFIG_ETH_DEFAULT_GW=\"$(ETH_DEFAULT_GW)\"
+CFLAGS-$(DEVLM3SETH)+=-DCONFIG_DEV_ETH
+CFLAGS-$(DEVLM3SETH)+=-DCONFIG_ETH_DEFAULT_IP=\"$(ETH_DEFAULT_IP)\"
+CFLAGS-$(DEVLM3SETH)+=-DCONFIG_ETH_DEFAULT_NM=\"$(ETH_DEFAULT_NM)\"
+CFLAGS-$(DEVLM3SETH)+=-DCONFIG_ETH_DEFAULT_GW=\"$(ETH_DEFAULT_GW)\"
 
 OBJS-$(MACH_STM32F407Discovery)+=kernel/$(BOARD)/stm32f407discovery.o
 OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o
@@ -227,6 +234,12 @@ qemu: image.bin
 
 qemu2: image.bin
 	qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio
+
+qemunetdbg:
+	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333 -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
+
+qemunet:
+	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
 
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted

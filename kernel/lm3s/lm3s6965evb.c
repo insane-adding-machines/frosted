@@ -20,6 +20,7 @@
 #include "frosted.h"
 #include "unicore-mx/lm3s/usart.h"
 #include "unicore-mx/lm3s/nvic.h"
+#include "eth.h"
 
 #ifdef CONFIG_DEVUART
 #include "uart.h"
@@ -113,6 +114,8 @@ int machine_init(void)
 
     for (i = 0; i < NUM_UARTS; i++) 
         uart_create(&(uart_configs[i]));
+
+    ethernet_init(NULL);
 
     return 0;
 }
