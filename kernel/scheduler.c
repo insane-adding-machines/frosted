@@ -471,7 +471,11 @@ int sys_dup_hdlr(int fd)
     int newfd = -1;
     if (!f)
         return -1;
-    return task_filedesc_add(f);
+    newfd = task_filedesc_add(f);
+    if (newfd >= 0)
+        _cur_task->tb.filedesc[newfd].mask = 
+            _cur_task->tb.filedesc[fd].mask;
+    return newfd;
 }
 
 int sys_dup2_hdlr(int fd, int newfd)
@@ -484,6 +488,8 @@ int sys_dup2_hdlr(int fd, int newfd)
         return -1;
     if (!f)
         return -1;
+
+    /* TODO: create empty fnodes up until newfd */
     if (newfd >= t->tb.n_files)
         return -1;
     if (t->tb.filedesc[newfd].fno != NULL)
