@@ -321,6 +321,7 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
     if ((cli == NULL) && (pico_err != PICO_ERR_EAGAIN))
         return 0 - pico_err;
 
+    l->revents &= (~PICO_SOCK_EV_CONN);
     if (cli) {
         s = inet_socket_new(0);
         if (!s) {
@@ -338,7 +339,6 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
             task_fd_setmask(s->fd, O_RDWR);
         return s->fd;
     } else {
-        l->revents &= (~PICO_SOCK_EV_CONN);
         if (SOCK_BLOCKING(l)) {
             l->pid = scheduler_get_cur_pid();
             task_suspend();

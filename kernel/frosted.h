@@ -148,6 +148,7 @@ int task_is_interrupted(void);
 /* VFS */
 void vfs_init(void);
 int fno_fullpath(struct fnode *f, char *dst, int len);
+void fno_use(struct fnode *f);
 
 #define FL_RDONLY 0x01
 #define FL_WRONLY 0x02
@@ -195,7 +196,7 @@ struct fnode {
     void *priv;
     uint32_t size;
     uint32_t off;
-    uint32_t usage;
+    int32_t usage_count;
     struct fnode *next;
 };
 

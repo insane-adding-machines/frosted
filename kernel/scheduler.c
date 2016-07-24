@@ -358,8 +358,8 @@ static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
         return -EINVAL;
     for (i = 0; i < t->tb.n_files; i++) {
         if (t->tb.filedesc[i].fno == NULL) {
+            f->usage_count++;
             t->tb.filedesc[i].fno = f;
-            f->usage++;
             return i;
         }
     }
@@ -376,7 +376,7 @@ static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
             mod->ops.tty_attach(f, t->tb.pid);
         }
     }
-    f->usage++;
+    f->usage_count++;
     return t->tb.n_files - 1;
 }
 
@@ -394,13 +394,21 @@ static int task_filedesc_del_from_task(volatile struct task *t, int fd)
     fno = t->tb.filedesc[fd].fno;
     if (!fno)
         return -ENOENT;
+
+    /* Reattach controlling tty to parent task */
     if ((fno->flags & FL_TTY) && ((t->tb.filedesc[fd].mask & O_NOCTTY) == 0)) {
         struct module *mod = fno->owner;
         if (mod && mod->ops.tty_attach) {
             mod->ops.tty_attach(fno, t->tb.ppid);
         }
     }
-    fno->usage--;
+
+    /* If this was the last user of the file, close it. */
+    fno->usage_count--;
+    if (fno->usage_count <= 0) {
+        if (fno->owner && fno->owner->ops.close)
+            fno->owner->ops.close(fno);
+    }
     t->tb.filedesc[fd].fno = NULL;
 }
 

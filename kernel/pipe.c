@@ -147,14 +147,14 @@ static int pipe_close(struct fnode *f)
         return -EINVAL;
 
 
-    if ((f == pp->fno_r) && (f->usage == 1)) {
+    if (f == pp->fno_r) {
         pp->fno_r = NULL;
         fno_unlink(f);
         if ((pp->pid_w != pid) && (pp->pid_w > 0)) {
             task_resume(pp->pid_w);
         }
     }
-    if ((f == pp->fno_w) && (f->usage == 1)) {
+    if (f == pp->fno_w) {
         pp->fno_w = NULL;
         fno_unlink(f);
         if ((pp->pid_r != pid) && (pp->pid_r > 0)) {

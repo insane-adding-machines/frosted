@@ -236,7 +236,7 @@ qemu2: image.bin
 	qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio
 
 qemunetdbg:
-	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333 -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
+	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333 -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
 
 qemunet:
 	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
