@@ -1,7 +1,6 @@
 -include kconfig/.config
 FROSTED:=$(PWD)
 FLASH_ORIGIN?=0x0
-FLASH_SIZE?=256K
 CFLAGS+=-DFLASH_ORIGIN=$(FLASH_ORIGIN)
 
 ifneq ($(V),1)
@@ -184,9 +183,6 @@ LIB-y+=kernel/unicore-mx/lib/libucmx_$(BOARD).a
 CFLAGS+=$(CFLAGS-y)
 
 SHELL=/bin/bash
-APPS_START = 0x20000
-PADTO = $$(($(FLASH_ORIGIN)+$(APPS_START)))
-
 all: image.bin
 
 kernel/syscall_table.c: kernel/syscall_table_gen.py
@@ -229,23 +225,29 @@ kernel.elf: $(LIB-y) $(OBJS-y) kernel/$(BOARD)/$(BOARD).ld
 
 
 
-qemu: image.bin
-	qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -S -gdb tcp::3333
+qemudbg: image.bin
+	qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333
 
-qemu2: image.bin
-	qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio
+qemu: image.bin
+	qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic
+
+qemu2: qemu 
 
 qemunetdbg:
 	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333 -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
 
 qemunet:
-	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -serial stdio -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
+	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
 
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
 
 config:
 	@$(MAKE) -C kconfig/ config -f Makefile.frosted
+
+defconfig: FORCE
+	@test $(TARGET) || (echo "ERROR: you must define a target" && false)
+	@cp -i defconfig/$(TARGET).config kconfig/.config
 
 malloc_test:
 	@gcc -o malloc.test kernel/malloc.c -DCONFIG_KRAM_SIZE=4

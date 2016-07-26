@@ -376,15 +376,15 @@ menu "Device Drivers"
 
        menuconfig DEVF7ETH
        bool "STM32F7 Ethernet driver"
-       depends on ((ARCH_STM32F746))
+       depends on ((ARCH_STM32F746) && PICOTCP)
        default n
        
        menuconfig DEVLM3SETH
        bool "LM3S Ethernet driver"
-       depends on ((ARCH_LM3S))
+       depends on ((ARCH_LM3S) && PICOTCP)
        default n
 
-       if DEVF4ETH || DEVF7ETH || ARCH_LM3S
+       if DEVF4ETH || DEVF7ETH || DEVLM3SETH
            config ETH_DEFAULT_IP
            string "Default (boot-up) address for eth0"
            default 192.168.2.150
