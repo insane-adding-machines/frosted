@@ -1,5 +1,5 @@
 # Frosted
- * Kernel build status:       [![Build   Status](http://trexotech.com:8080/buildStatus/icon?job=frosted-master&style=plastic)] (http://trexotech.com:8080/job/frosted-master/)
+ * Kernel build status:       [![Build   Status](http://trexotech.com:8080/buildStatus/icon?job=frosted-multi&style=plastic)] (http://trexotech.com:8080/job/frosted-multi/)
 
  * Toolchain build status:    [![Toolchain Status](http://trexotech.com:8080/buildStatus/icon?job=arm-frosted-eabi-from-source&style=plastic)] (http://trexotech.com:8080/job/arm-frosted-eabi-from-source/?style=plastic)
 
