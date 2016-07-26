@@ -6,6 +6,7 @@ ifeq ($(ARCH_LPC17XX),y)
 	RAM_BASE=0x10000000
 	ARCH=LPC17XX
 	CFLAGS+=-DLPC17XX -mcpu=cortex-m3
+	UNICOREMX_TARGET=lpc17xx
 endif
 
 ifeq ($(ARCH_LM3S),y)
@@ -16,6 +17,7 @@ ifeq ($(ARCH_LM3S),y)
 	SYS_CLOCK=50000000
 	ARCH=LM3S
 	CFLAGS+=-DLM3S -mcpu=cortex-m3
+	UNICOREMX_TARGET=lm3s
 endif
 
 ifeq ($(ARCH_STM32F4),y)
@@ -26,6 +28,7 @@ ifeq ($(ARCH_STM32F4),y)
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F4
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
+	UNICOREMX_TARGET=stm32/f4
 endif
 
 ifeq ($(ARCH_STM32F7),y)
@@ -36,6 +39,7 @@ ifeq ($(ARCH_STM32F7),y)
 	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F7
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
+	UNICOREMX_TARGET=stm32/f7
 endif
 
 ifeq ($(MACH_STM32F405Pyboard),y)
