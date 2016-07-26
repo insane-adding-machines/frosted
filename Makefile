@@ -206,11 +206,6 @@ image.bin: kernel.img apps.img
 	cat kernel.img apps.img > $@
 
 kernel/unicore-mx/lib/libucmx_$(BOARD).a:
-	echo
-	echo
-	echo
-	echo
-	echo
 	make -C kernel/unicore-mx FP_FLAGS="-mfloat-abi=soft" PREFIX=arm-frosted-eabi TARGETS=$(UNICOREMX_TARGET)
 
 kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
