@@ -2,7 +2,7 @@
 #define INC_USB
 #include "frosted.h"
 #include "gpio.h"
-#include <unicore-mx/usb/usbd.h>
+#include <unicore-mx/usbd/usbd.h>
 #include <unicore-mx/usb/cdc.h>
 #include <unicore-mx/cm3/scb.h>
 #include <unicore-mx/cm3/nvic.h>

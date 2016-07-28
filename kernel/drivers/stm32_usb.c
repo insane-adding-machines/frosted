@@ -22,7 +22,7 @@
 #include "device.h"
 #include <unicore-mx/cm3/nvic.h>
 #include <unicore-mx/stm32/rcc.h>
-#include <unicore-mx/usb/usbd.h>
+#include <unicore-mx/usbd/usbd.h>
 #include "usb.h"
 #include "gpio.h"
 
