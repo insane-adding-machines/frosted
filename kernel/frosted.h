@@ -251,6 +251,7 @@ struct module {
         int (*seek)(struct fnode *fno, int offset, int whence);
         int (*creat)(struct fnode *fno);
         int (*unlink)(struct fnode *fno);
+        int (*truncate)(struct fnode *fno, unsigned int size);
         void * (*exe)(struct fnode *fno, void *arg);
 
         /* Sockets only (NULL == file) */

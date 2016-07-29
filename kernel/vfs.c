@@ -685,18 +685,18 @@ static int stat_hdlr(char *path, struct stat *st)
     return 0;
 }
 
-int sys_stat_hdlr(uint32_t arg1, uint32_t arg2)
+int sys_stat_hdlr(char *arg1, struct stat *arg2)
 {
-    char *path = (char *)arg1;
-    struct stat *st = (struct stat *)arg2;
+    char *path = arg1;
+    struct stat *st = arg2;
     if (task_ptr_valid(path) || task_ptr_valid(st))
        return  -EACCES;
     return stat_hdlr(path, st);
 }
 
-int sys_fstat_hdlr(uint32_t arg1, uint32_t arg2)
+int sys_fstat_hdlr(uint32_t arg1, struct stat *arg2)
 {
-    struct stat *st = (struct stat *)arg2;
+    struct stat *st = arg2;
     struct fnode *fno = task_filedesc_get(arg1);
     if (!fno)
         return -ENOENT;
@@ -718,10 +718,10 @@ int sys_fstat_hdlr(uint32_t arg1, uint32_t arg2)
     return 0;
 }
 
-int sys_lstat_hdlr(uint32_t arg1, uint32_t arg2)
+int sys_lstat_hdlr(char *arg1, struct stat *arg2)
 {
-    char *path = (char *)arg1;
-    struct stat *st = (struct stat *)arg2;
+    char *path = arg1;
+    struct stat *st = arg2;
     char abs_p[MAX_FILE];
     struct fnode *fno;
     if (task_ptr_valid(st) || task_ptr_valid(path))
@@ -747,10 +747,37 @@ int sys_lstat_hdlr(uint32_t arg1, uint32_t arg2)
     return 0;
 }
 
-
-int sys_chdir_hdlr(uint32_t arg1)
+int vfs_truncate(struct fnode *fno, unsigned size)
 {
-    char *path = (char *)arg1;
+    if (!fno)
+        return -ENOENT;
+    if ((fno->flags & FL_WRONLY) == 0)
+        return -EPERM;
+    if (!fno->owner ||  !fno->owner->ops.truncate)
+        return -EOPNOTSUPP;
+    return fno->owner->ops.truncate(fno, size);
+}
+
+int sys_ftruncate_hdlr(uint32_t arg1, unsigned arg2)
+{
+    struct fnode *fno = task_filedesc_get(arg1);
+    return vfs_truncate(fno, arg2);
+}
+
+int sys_truncate_hdlr(char *arg1, unsigned arg2)
+{
+    char abs_p[MAX_FILE];
+    struct fnode *fno;
+    if (task_ptr_valid(arg1))
+        return -EACCES;
+    path_abs(arg1, abs_p, MAX_FILE);
+    fno = fno_search(abs_p);
+    return vfs_truncate(fno, arg2);
+}
+
+int sys_chdir_hdlr(char *arg1)
+{
+    char *path = arg1;
     char abs_p[MAX_FILE];
     struct fnode *f;
     if (task_ptr_valid(path))

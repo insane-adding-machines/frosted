@@ -138,12 +138,35 @@ static int memfs_unlink(struct fnode *fno)
 {
     struct memfs_fnode *mfno;
     if (!fno)
-        return -1;
+        return -ENOENT;
     mfno = fno->priv;
     if (mfno && mfno->content)
         kfree(mfno->content);
     kfree(mfno);
     return 0;
+}
+
+static int memfs_truncate(struct fnode *fno, unsigned int newsize)
+{
+    struct memfs_fnode *mfno;
+    if (!fno)
+        return -ENOENT;
+    mfno = fno->priv;
+    if (mfno) {
+        if (fno->size <= newsize) {
+            /* Nothing to do here. */
+            return -EFBIG;
+        }
+        if (newsize == 0) {
+            fno->size = 0;
+            kfree(mfno->content);
+        } else {
+            mfno->content = krealloc(mfno->content, newsize);
+            fno->size = newsize;
+        }
+        return 0;
+    }
+    return -EFAULT;
 }
 
 static int memfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
@@ -187,5 +210,6 @@ void memfs_init(void)
     mod_memfs.ops.creat = memfs_creat;
     mod_memfs.ops.unlink = memfs_unlink;
     mod_memfs.ops.close = memfs_close;
+    mod_memfs.ops.truncate = memfs_truncate;
     register_module(&mod_memfs);
 }

@@ -85,7 +85,9 @@ syscalls = [
     ["ptrace", 4, "sys_ptrace_hdlr"],
     ["reboot", 0, "sys_reboot_hdlr"],
     ["getpriority", 2, "sys_getpriority_hdlr"],
-    ["setpriority", 3, "sys_setpriority_hdlr"]
+    ["setpriority", 3, "sys_setpriority_hdlr"],
+    ["ftruncate", 2, "sys_ftruncate_hdlr"],
+    ["truncate", 2, "sys_truncate_hdlr"]
 
 ]
 
