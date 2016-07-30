@@ -50,7 +50,8 @@
 #endif
 #ifdef LPC17XX
 #   include "unicore-mx/lpc17xx/uart.h"
-#   define CLOCK_ENABLE(C)
+#   include "unicore-mx/lpc17xx/pwr.h"
+#   define CLOCK_ENABLE(C) pwr_enable_peripherals(C)
 #endif
 
 struct dev_uart {

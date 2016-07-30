@@ -21,6 +21,7 @@
 #include "unicore-mx/cm3/systick.h"
 #include <unicore-mx/lpc17xx/clock.h>
 #include <unicore-mx/lpc17xx/nvic.h>
+#include <unicore-mx/lpc17xx/pwr.h>
 #include <unicore-mx/lpc17xx/uart.h>
 #include <unicore-mx/lpc17xx/gpio.h>
 #include "gpio.h"
@@ -43,42 +44,43 @@ static const struct gpio_config Leds[] = {
 
 static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_0
-    {   .devidx = 0,
-        .base = USART0,
-        .irq = NVIC_USART1_IRQ,
-        .rcc = RCC_USART1,
+    {
+        .devidx = 0,
+        .base = UART0_BASE,
+        .irq = NVIC_UART0_IRQ,
+        .rcc = PWR_PCONP_UART0,
         .baudrate = 115200,
         .stop_bits = USART_STOPBITS_1,
         .data_bits = 8,
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
-
         .pio_rx = {.base=GPIO0, .pin=GPIOPIN3,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
         .pio_tx = {.base=GPIO0, .pin=GPIOPIN2,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .name=NULL,},
+
     },
 #endif
 #ifdef CONFIG_USART_1
     {
         .devidx = 1,
-        .base = USART1,
-        .irq = NVIC_USART2_IRQ,
-        .rcc = RCC_USART2,
+        .base = UART1_BASE,
+        .irq = NVIC_UART1_IRQ,
+        .rcc = PWR_PCONP_UART1,
         .baudrate = 115200,
         .stop_bits = USART_STOPBITS_1,
         .data_bits = 8,
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
-        .pio_rx = {.base=GPIO0, .pin=GPIOPIN16,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-        .pio_tx = {.base=GPIO0, .pin=GPIOPIN15,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .name=NULL,},
+        .pio_rx = {.base=GPIO2, .pin=GPIOPIN1,.mode=GPIO_MODE_AF,.af=GPIO_AF2, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+        .pio_tx = {.base=GPIO2, .pin=GPIOPIN0,.mode=GPIO_MODE_AF,.af=GPIO_AF2, .name=NULL,},
 
     },
 #endif
 #ifdef CONFIG_USART_2
     {
         .devidx = 2,
-        .base = UART2,
-        .irq = NVIC_USART3_IRQ,
-        .rcc = RCC_USART3,
+        .base = UART2_BASE,
+        .irq = NVIC_UART2_IRQ,
+        .rcc = PWR_PCONP_UART2,
         .baudrate = 115200,
         .stop_bits = USART_STOPBITS_1,
         .data_bits = 8,
@@ -91,17 +93,16 @@ static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_3
     {
         .devidx = 3,
-        .base = UART3,
-        .irq = NVIC_USART6_IRQ,
-        .rcc = RCC_USART6,
+        .base = UART3_BASE,
+        .irq = NVIC_UART3_IRQ,
+        .rcc = PWR_PCONP_UART3,
         .baudrate = 115200,
         .stop_bits = USART_STOPBITS_1,
         .data_bits = 8,
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
-        .pio_rx = {.base=GPIO0, .pin=GPIO1,.mode=GPIO_MODE_AF,.af=GPIO_AF2, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-        .pio_tx = {.base=GPIO0, .pin=GPIO0,.mode=GPIO_MODE_AF,.af=GPIO_AF2, .name=NULL,},
-
+        .pio_rx = {.base=GPIO0, .pin=GPIOPIN26,.mode=GPIO_MODE_AF,.af=GPIO_AF3, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+        .pio_tx = {.base=GPIO0, .pin=GPIOPIN25,.mode=GPIO_MODE_AF,.af=GPIO_AF3, .name=NULL,},
     },
 #endif
 };

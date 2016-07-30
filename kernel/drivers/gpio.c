@@ -77,6 +77,7 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
 #endif
 #ifdef LPC17XX
 #include <unicore-mx/lpc17xx/nvic.h>
+#include <unicore-mx/lpc17xx/pwr.h>
 #include <unicore-mx/lpc17xx/gpio.h>
 #include <unicore-mx/lpc17xx/exti.h>
 static inline uint32_t ARCH_GPIO_BASE(int x)
@@ -278,7 +279,7 @@ static struct module mod_devgpio_mx = {
 
 /* LPC */
 #ifdef LPC17XX
-#define GPIO_CLOCK_ENABLE(C)
+#define GPIO_CLOCK_ENABLE(C)                pwr_enable_peripherals(PWR_PCONP_GPIO);
 
 #define SET_INPUT(P, D, I)                  gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);    \
                                                                gpio_set_af(P, GPIO_AF0, I);
