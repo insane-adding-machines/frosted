@@ -25,6 +25,7 @@
 #include "sys/termios.h"
 #include "poll.h"
 
+#ifdef CONFIG_PIPE
 #define PIPE_BUFSIZE 64
 
 static struct module mod_pipe;
@@ -258,3 +259,9 @@ void sys_pipe_init(void)
 
     register_module(&mod_pipe);
 }
+#else
+#   define sys_pipe_init()  do{}while(0)
+int sys_pipe2_hdlr(int paddr, int flags) {
+    return -ENOSYS;
+}
+#endif

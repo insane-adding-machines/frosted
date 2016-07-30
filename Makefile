@@ -14,14 +14,6 @@ include  rules/arch.mk
 include  rules/picotcp.mk
 include  rules/userspace.mk
 
-#debugging
-CFLAGS+=-ggdb3
-
-#optimization
-#CFLAGS+=-Os
-
-
-
 #kernel headers
 CFLAGS+=-Ikernel/frosted-headers/include
 
@@ -50,7 +42,7 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/term.o				\
 		 kernel/bflt.o				\
 		 kernel/getaddrinfo.o		\
-		 kernel/kprintf.o			\
+		 kernel/kprintf.o 			\
 		 kernel/pipe.o
 
 

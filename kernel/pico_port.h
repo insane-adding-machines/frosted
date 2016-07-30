@@ -6,7 +6,8 @@
 #include "frosted.h"
 #include "string.h"
 #include "malloc.h"
-int kprintf(const char *format, ...);
+#include "kprintf.h"
+
 
 
 #define pico_free(x) f_free(x)

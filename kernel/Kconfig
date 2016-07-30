@@ -1,3 +1,24 @@
+menu "Compiler options"
+    config GDB_CFLAG
+    bool "Keep debugging symbols"
+    default y
+
+    choice 
+    prompt "Compiler optimization"
+        config OPTIMIZE_NONE
+        bool "No optimization"
+
+        config OPTIMIZE_SIZE
+        bool "Optimize for size"
+        
+        config OPTIMIZE_PERF
+        bool "Optimize for performance"
+    endchoice 
+
+
+endmenu
+
+
 menu "Platform Selection"
 
 choice ARCH
@@ -176,30 +197,8 @@ config KRAMMEM_SIZE
     int "Kernel RAM size (KB)"
     default 64
 
-menu "Debugging options"
-
-config KLOG
-    bool "Enable kernel logging"
-    default y
-
-config KLOG_SIZE
-    depends on KLOG
-    int "Kernel log buffer size"
-    default 256
-
-config HARDFAULT_DBG
-    bool "Enable extensive hardfault debug"
-    default n
-
-config STRACE
-    bool "Enable syscall tracer"
-    default n
-
-endmenu
-endmenu
-
 choice
-prompt "Default size for tasks stack memory"
+prompt "Tasks Stack Size"
 default TASK_STACK_SIZE_2K
 
    config TASK_STACK_SIZE_1K
@@ -213,8 +212,53 @@ default TASK_STACK_SIZE_2K
 
    config TASK_STACK_SIZE_8K
    bool "Huge stack (8192 Bytes)"
-
 endchoice
+
+config MPU
+bool "Run-time Memory Protection"
+default y
+
+menu "IPC features"
+    config SIGNALS
+    bool "Process Signals"
+    default y
+
+    config PIPE
+    bool "Pipe"
+    default y
+
+    config SOCK_UNIX
+    bool "UNIX Sockets for IPC"
+    default n
+
+endmenu
+
+menu "Debugging options"
+
+config KLOG
+    bool "Enable kernel logging"
+    default y
+
+config KLOG_SIZE
+    depends on KLOG
+    int "Kernel log buffer size"
+    default 256
+
+config MEMFAULT_DBG
+    bool "Enable extended segfault debug"
+    default y
+
+config HARDFAULT_DBG
+    bool "Enable extended hardfault debug"
+    default n
+
+config STRACE
+    bool "Enable syscall tracer"
+    default n
+
+endmenu
+
+endmenu
 
 menu "Filesystems"
        config SYSFS
@@ -245,10 +289,7 @@ menu "Filesystems"
 
 endmenu
 
-menu "Sockets"
-       config SOCK_UNIX
-       bool "UNIX Sockets for IPC"
-       default n
+menu "Networking"
        config SOCK_INET
        bool "TCP/IP Socket support"
        default n

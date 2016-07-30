@@ -9,6 +9,7 @@
 #include "errno.h"
 #include "vfs.h"
 #include "kprintf.h"
+#include "mpu.h"
 
 #define TASK_IDLE       0
 #define TASK_RUNNABLE   1
@@ -133,9 +134,6 @@ int unregister_module(struct module *m);
 struct module *module_search(char *name);
 
 /* System */
-void mpu_init(void);
-void mpu_task_on(void *stack);
-
 int sys_register_handler(uint32_t n, int (*_sys_c)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t));
 int syscall(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
 void syscalls_init(void);

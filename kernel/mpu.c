@@ -23,6 +23,9 @@
 #include "libopencmsis/core_cm3.h"
 #include "stm32/tools.h"
 
+
+#ifdef CONFIG_MPU
+
 #define MPUSIZE_1K      (0x09 << 1)
 #define MPUSIZE_2K      (0x0a << 1)
 #define MPUSIZE_4K      (0x0b << 1)
@@ -125,13 +128,13 @@ static void mpu_select(uint32_t region)
     MPU_RNR = region;
 }
 
-void mpu_setattr(int region, uint32_t attr)
+static void mpu_setattr(int region, uint32_t attr)
 {
     mpu_select(region);
     MPU_RASR = attr;
 }
 
-void mpu_setaddr(int region, uint32_t addr)
+static void mpu_setaddr(int region, uint32_t addr)
 {
     mpu_select(region);
     MPU_RBAR = addr;
@@ -178,3 +181,4 @@ void mpu_task_on(void *stack)
     mpu_setattr(4, mpu_size(CONFIG_TASK_STACK_SIZE) | MPU_RASR_ENABLE | MPU_RASR_ATTR_SCB | MPU_RASR_ATTR_AP_PRW_URW);
     mpu_enable();
 }
+#endif

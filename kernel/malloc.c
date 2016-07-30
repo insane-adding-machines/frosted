@@ -41,7 +41,15 @@
 #define F_IN_USE 0x20
 #define in_use(x) (((x->flags) & F_IN_USE) == F_IN_USE)
 #define block_valid(b) ((b) && (b->magic == F_MALLOC_MAGIC))
-#define MEMPOOL(x) ((((x) & MEM_OWNER_MASK) < 4)?(x):(3))
+
+static inline int MEMPOOL(int x)
+{
+    if (x == MEM_TCPIP)
+        return 3;
+    if (x == MEM_EXTRA)
+        return 4;
+    return x;
+}
 
 /*------------------*/
 /* Structures       */
@@ -68,9 +76,6 @@ struct f_malloc_stats f_malloc_stats[4] = {};
 static int _m_listeners[16] = { -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 };
 static struct semaphore _mlock = { .value = 1, .listeners=16, .listener=_m_listeners};
 static mutex_t *mlock = (mutex_t *)(&_mlock);
-
-
-
 
 #define KMEM_SIZE   (CONFIG_KRAM_SIZE << 10)
 
@@ -174,6 +179,7 @@ static struct f_malloc_block * f_find_best_fit(int flags, size_t size, struct f_
 static char * heap_end_kernel;
 static char * heap_stack;
 static char * heap_end_user;
+static char * heap_end_extra;
 
 #ifdef CONFIG_TCPIP_MEMPOOL
     static char * heap_end_tcpip = CONFIG_TCPIP_MEMPOOL;
@@ -187,6 +193,10 @@ static void * f_sbrk(int flags, int incr)
     extern char   _stack;           /* Set by linker */
     extern char   _user_heap_start; /* Set by linker */
     extern char   _user_heap_end;   /* Set by linker */
+#ifdef CONFIG_SRAM_EXTRA
+    extern char   _extra_heap_start; /* Set by linker */
+    extern char   _extra_heap_end;   /* Set by linker */
+#endif
     const char  * heap_stack_high = &_stack;
     char        * prev_heap_end;
 
@@ -211,8 +221,18 @@ static void * f_sbrk(int flags, int incr)
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
         memset(prev_heap_end, 0, incr);
-    }
-    else if (flags & MEM_TASK) {
+#ifdef CONFIG_SRAM_EXTRA
+    } else if (flags & MEM_EXTRA) {
+        if (!heap_end_extra)
+            return (void *)(0 - 1);
+        /* Do not over-commit */
+        if ((heap_end_extra + incr) > &_extra_heap_end)
+            return (void *)(0 - 1);
+        prev_heap_end = heap_end_extra;
+        heap_end_extra += incr;
+        memset(prev_heap_end, 0, incr);
+#endif
+    }else if (flags & MEM_TASK) {
         if ((heap_stack - incr) < heap_end_kernel)
             return (void *)(0 - 1);
         heap_stack -= incr;
@@ -514,9 +534,14 @@ int fmalloc_chown(void *ptr, uint16_t pid)
 }
 
 /* Syscalls back-end (for userspace memory call handling) */
-int sys_malloc_hdlr(int size)
+void *sys_malloc_hdlr(int size)
 {
-    return (int)f_malloc(MEM_USER, size);
+    void *addr = f_malloc(MEM_USER, size);
+    #ifdef CONFIG_SRAM_EXTRA
+    if (!addr)
+        addr = f_malloc(MEM_EXTRA, size);
+    #endif
+    return addr;
 }
 
 int sys_free_hdlr(int addr)

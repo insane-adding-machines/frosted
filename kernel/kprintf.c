@@ -30,6 +30,7 @@
 #include "device.h"
 #include <stdarg.h>
 
+#ifdef CONFIG_KLOG
 struct dev_klog {
     struct fnode *fno;
     struct cirbuf *buf;
@@ -281,7 +282,6 @@ int ksprintf(char *out, const char *format, ...)
 
 int klog_init(void)
 {
-#ifdef CONFIG_KLOG
     klog.fno = fno_create_rdonly(&mod_klog, "klog", fno_search("/dev"));
     if (klog.fno == NULL) {
         return -1;
@@ -291,7 +291,5 @@ int klog_init(void)
     klog.pid = 0;
     klog_lock = mutex_init();
     return 0;
-#else
-    return -1;
-#endif
 }
+#endif

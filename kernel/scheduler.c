@@ -34,9 +34,15 @@
 #define RUN_USER    (0xfffffffdu)
 
 #define SV_CALL_SIGRETURN 0xFFFFFFF8
-
-
 #define STACK_THRESHOLD 64
+
+/* TOP to Bottom: EXTRA | NVIC | T_EXTRA | T_NVIC */
+volatile struct extra_stack_frame *cur_extra; 
+volatile struct nvic_stack_frame *cur_nvic;
+volatile struct extra_stack_frame *tramp_extra;
+volatile struct nvic_stack_frame *tramp_nvic; 
+volatile struct extra_stack_frame *extra_usr;  
+
 
 
 #ifdef CONFIG_SYSCALL_TRACE
@@ -51,6 +57,7 @@ volatile struct strace Strace[STRACE_SIZE];
 volatile int StraceTop = 0;
 #endif
 
+#ifdef CONFIG_EXTENDED_MEMFAULT
 static char _my_x_str[11] = "";
 static char *x_str(uint32_t x)
 {
@@ -93,6 +100,7 @@ static char *pid_str(uint16_t p)
     _my_pid_str[i] = 0;
     return _my_pid_str;
 }
+#endif
 
 /* Array of syscalls */
 static void *sys_syscall_handlers[_SYSCALLS_NR] = {
@@ -514,110 +522,12 @@ int sys_dup2_hdlr(int fd, int newfd)
 /**/
 /**/
 /**/
-static void check_pending_signals(volatile struct task *t);
-
-
-static int add_handler(volatile struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
-{
-    
-    struct task_handler *sighdlr;
-    if (!t || (t->tb.pid < 1))
-        return -EINVAL;
-
-    sighdlr = kalloc(sizeof(struct task_handler));
-    if (!sighdlr)
-        return -ENOMEM;
-
-    sighdlr->signo = signo;
-    sighdlr->hdlr = hdlr;
-    sighdlr->mask = mask;
-    sighdlr->next = t->tb.sighdlr;
-    t->tb.sighdlr = sighdlr;
-    check_pending_signals(t);
-    return 0;
-}
-
-static int del_handler(struct task *t, int signo)
-{
-    struct task_handler *sighdlr;
-    struct task_handler *prev = NULL;
-    if (!t || (t->tb.pid < 1))
-        return -EINVAL;
-
-    sighdlr = t->tb.sighdlr;
-    while(sighdlr) {
-        if (sighdlr->signo == signo) {
-            if (prev == NULL) {
-                t->tb.sighdlr = sighdlr->next;
-            } else {
-                prev->next = sighdlr->next;
-            }
-            kfree(sighdlr);
-            check_pending_signals(t);
-            return 0;
-        }
-        prev = sighdlr;
-        sighdlr = sighdlr->next;
-    }
-    return -ESRCH;
-}
 
 void task_terminate(int pid);
 
-static void sig_hdlr_return(uint32_t arg)
-{
-    /* XXX: In order to use per-sigaction sa_mask, we need to set 
-     * t->tb.sigmask in the catch, and restore it here.
-     */
+#ifdef CONFIG_SIGNALS 
 
-    /* call special svc with n = SV_CALL_SIGRETURN */
-    asm volatile ("mov r0, %0" :: "r" (SV_CALL_SIGRETURN));
-    asm volatile ("svc 0\n");
-    //asm volatile ("pop {r4-r11}\n");
-}
-    
-/* TOP to Bottom: EXTRA | NVIC | T_EXTRA | T_NVIC */
-volatile struct extra_stack_frame *cur_extra; 
-volatile struct nvic_stack_frame *cur_nvic;
-volatile struct extra_stack_frame *tramp_extra;
-volatile struct nvic_stack_frame *tramp_nvic; 
-volatile struct extra_stack_frame *extra_usr;  
-
-void task_resume(int pid);
-void task_resume_lock(int pid);
-void task_stop(int pid);
-void task_continue(int pid);
-static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo)
-{
-    cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
-    cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
-    tramp_extra = t->tb.sp - EXTRA_FRAME_SIZE;
-    tramp_nvic  = t->tb.sp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
-    extra_usr = t->tb.sp;
-    
-    /* Save stack pointer for later */
-    memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
-    t->tb.osp = t->tb.sp;
-
-    /* Copy the EXTRA_FRAME into the trampoline extra, to preserve R9 for userspace relocations etc. */
-    memcpy(tramp_extra, cur_extra, EXTRA_FRAME_SIZE);
-    
-
-    memset(tramp_nvic, 0, NVIC_FRAME_SIZE);
-    tramp_nvic->pc = (uint32_t)h->hdlr;
-    tramp_nvic->lr = (uint32_t)sig_hdlr_return;
-    tramp_nvic->r0 = (uint32_t)signo;
-    tramp_nvic->psr = cur_nvic->psr;
-
-    t->tb.sp = (t->tb.osp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
-    
-    t->tb.sp -= EXTRA_FRAME_SIZE;
-    memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
-    t->tb.flags |= TASK_FLAG_SIGNALED;
-    task_resume(t->tb.pid);
-}
-
-
+static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo);
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
 {
     int i;
@@ -685,6 +595,116 @@ static void check_pending_signals(volatile struct task *t)
         }
     }
 }
+
+static int add_handler(volatile struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
+{
+    
+    struct task_handler *sighdlr;
+    if (!t || (t->tb.pid < 1))
+        return -EINVAL;
+
+    sighdlr = kalloc(sizeof(struct task_handler));
+    if (!sighdlr)
+        return -ENOMEM;
+
+    sighdlr->signo = signo;
+    sighdlr->hdlr = hdlr;
+    sighdlr->mask = mask;
+    sighdlr->next = t->tb.sighdlr;
+    t->tb.sighdlr = sighdlr;
+    check_pending_signals(t);
+    return 0;
+}
+
+static int del_handler(struct task *t, int signo)
+{
+    struct task_handler *sighdlr;
+    struct task_handler *prev = NULL;
+    if (!t || (t->tb.pid < 1))
+        return -EINVAL;
+
+    sighdlr = t->tb.sighdlr;
+    while(sighdlr) {
+        if (sighdlr->signo == signo) {
+            if (prev == NULL) {
+                t->tb.sighdlr = sighdlr->next;
+            } else {
+                prev->next = sighdlr->next;
+            }
+            kfree(sighdlr);
+            check_pending_signals(t);
+            return 0;
+        }
+        prev = sighdlr;
+        sighdlr = sighdlr->next;
+    }
+    return -ESRCH;
+}
+
+
+static void sig_hdlr_return(uint32_t arg)
+{
+    /* XXX: In order to use per-sigaction sa_mask, we need to set 
+     * t->tb.sigmask in the catch, and restore it here.
+     */
+
+    /* call special svc with n = SV_CALL_SIGRETURN */
+    asm volatile ("mov r0, %0" :: "r" (SV_CALL_SIGRETURN));
+    asm volatile ("svc 0\n");
+    //asm volatile ("pop {r4-r11}\n");
+}
+
+static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo)
+{
+    cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
+    cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
+    tramp_extra = t->tb.sp - EXTRA_FRAME_SIZE;
+    tramp_nvic  = t->tb.sp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE);
+    extra_usr = t->tb.sp;
+    
+    /* Save stack pointer for later */
+    memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
+    t->tb.osp = t->tb.sp;
+
+    /* Copy the EXTRA_FRAME into the trampoline extra, to preserve R9 for userspace relocations etc. */
+    memcpy(tramp_extra, cur_extra, EXTRA_FRAME_SIZE);
+    
+
+    memset(tramp_nvic, 0, NVIC_FRAME_SIZE);
+    tramp_nvic->pc = (uint32_t)h->hdlr;
+    tramp_nvic->lr = (uint32_t)sig_hdlr_return;
+    tramp_nvic->r0 = (uint32_t)signo;
+    tramp_nvic->psr = cur_nvic->psr;
+
+    t->tb.sp = (t->tb.osp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
+    
+    t->tb.sp -= EXTRA_FRAME_SIZE;
+    memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
+    t->tb.flags |= TASK_FLAG_SIGNALED;
+    task_resume(t->tb.pid);
+}
+
+
+
+#else
+#   define check_pending_signals(...) do{}while(0)
+#   define add_handler(...) (0)
+#   define del_handler(...) (0)
+#   define sig_hdlr_return NULL
+
+static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask) {
+    (void)orig_mask;
+    if (signo != SIGCHLD)
+        task_terminate(t);
+    return 0;
+}
+#endif
+
+
+void task_resume(int pid);
+void task_resume_lock(int pid);
+void task_stop(int pid);
+void task_continue(int pid);
 
 int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
@@ -756,7 +776,7 @@ int sys_sigsuspend_hdlr(const sigset_t *mask)
 
 
 /********************************/
-/*           Scheduler          */
+/*           working dir        */
 /********************************/
 /********************************/
 /********************************/
@@ -792,26 +812,6 @@ static __inl void * psp_read(void)
     return ret;
 }
 
-static __inl void task_switch(void)
-{
-    int i, pid;
-    volatile struct task *t;
-    if (forced_task) {
-        _cur_task = forced_task;
-        forced_task = NULL;
-        return;
-    }
-    pid = _cur_task->tb.pid;
-    t = _cur_task;
-
-    if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
-        t = tasks_running;
-    else
-        t = t->tb.next;
-    t->tb.timeslice = TIMESLICE(t);
-    t->tb.state = TASK_RUNNING;
-    _cur_task = t;
-}
 
 int scheduler_ntasks(void)
 {
@@ -894,8 +894,18 @@ void task_end(void)
     }
 }
 
-static void task_resume_vfork(int pid);
 
+
+/********************************/
+/*         Task creation        */
+/***      vfork() / exec()    ***/
+/********************************/
+/********************************/
+/**/
+/**/
+/**/
+
+static void task_resume_vfork(int pid);
 
 /* Duplicate exec() args into the new process address space. 
  */
@@ -1091,6 +1101,14 @@ int sys_vfork_hdlr(void)
     return vpid;
 }
 
+/********************************/
+/*         Task switching       */
+/********************************/
+/********************************/
+/********************************/
+/**/
+/**/
+/**/
 static __naked void save_kernel_context(void)
 {
     asm volatile ("mrs r0, "MSP"           ");
@@ -1130,6 +1148,26 @@ static __naked void restore_task_context(void)
     asm volatile ("bx lr                 ");
 }
 
+static __inl void task_switch(void)
+{
+    int i, pid;
+    volatile struct task *t;
+    if (forced_task) {
+        _cur_task = forced_task;
+        forced_task = NULL;
+        return;
+    }
+    pid = _cur_task->tb.pid;
+    t = _cur_task;
+
+    if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
+        t = tasks_running;
+    else
+        t = t->tb.next;
+    t->tb.timeslice = TIMESLICE(t);
+    t->tb.state = TASK_RUNNING;
+    _cur_task = t;
+}
 
 /* C ABI cannot mess with the stack, we will */
 void __naked  pend_sv_handler(void)
@@ -1220,8 +1258,6 @@ void kernel_task_init(void)
     /* Set kernel as current task */
     _cur_task = kernel;
 }
-
-
 
 static void task_suspend_to(int newstate)
 {
@@ -1595,12 +1631,13 @@ int sys_setsid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 
 int task_segfault(uint32_t address, uint32_t instruction, int flags)
 {
-    char segv_msg[128] = "Memory fault: process (pid=";
     if (in_kernel())
         return -1;
     if (_cur_task->tb.state == TASK_ZOMBIE)
         return 0;
     if ((_cur_task->tb.n_files > 2) &&  _cur_task->tb.filedesc[2].fno->owner->ops.write) {
+#    ifdef CONFIG_EXTENDED_MEMFAULT
+        char segv_msg[128] = "Memory fault: process (pid=";
         strcat(segv_msg, pid_str(_cur_task->tb.pid));
         if (flags == MEMFAULT_ACCESS) {
             strcat(segv_msg, ") attempted access to memory at ");
@@ -1610,6 +1647,9 @@ int task_segfault(uint32_t address, uint32_t instruction, int flags)
             strcat(segv_msg, ") attempted double free");
         }
         strcat(segv_msg, ". Killed.\r\n");
+#    else
+        char segv_msg[] = ">_< -- Segfault -- >_<";
+#    endif
         _cur_task->tb.filedesc[2].fno->owner->ops.write(_cur_task->tb.filedesc[2].fno, segv_msg, strlen(segv_msg));
     }
     task_terminate(_cur_task->tb.pid);
