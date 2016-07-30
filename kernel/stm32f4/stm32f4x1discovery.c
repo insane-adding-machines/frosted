@@ -22,65 +22,89 @@
 #include <unicore-mx/stm32/rcc.h>
 #include "unicore-mx/cm3/nvic.h"
 #include <unicore-mx/stm32/dma.h>
-
-#ifdef CONFIG_DEVUART
 #include "unicore-mx/stm32/usart.h"
-#include "uart.h"
-#endif
-
-#ifdef CONFIG_DEVGPIO
 #include <unicore-mx/stm32/gpio.h>
-#include "gpio.h"
-#endif
-
-#ifdef CONFIG_DEVSTM32F4EXTI
 #include <unicore-mx/stm32/exti.h>
-#include "stm32f4_exti.h"
-#endif
-
-#ifdef CONFIG_DEVSTM32F4DMA
-#include "stm32f4_dma.h"
-#endif
-
-#ifdef CONFIG_DEVSTM32F4SPI
 #include <unicore-mx/stm32/spi.h>
-#include "stm32f4_spi.h"
-#endif
-
-
-#ifdef CONFIG_DEVSTM32F4I2C
 #include <unicore-mx/stm32/i2c.h>
-#include "stm32f4_i2c.h"
-#endif
-
-
-#ifdef CONFIG_DEVSTM32F4ADC
 #include <unicore-mx/stm32/adc.h>
-#include "stm32f4_adc.h"
+
+#include "uart.h"
+#include "gpio.h"
+
+
+
+#if CONFIG_SYS_CLOCK == 48000000
+    static const uint32_t rcc_clock = RCC_CLOCK_3V3_48MHZ;
+#elif CONFIG_SYS_CLOCK == 84000000
+    static const uint32_t rcc_clock = RCC_CLOCK_3V3_84MHZ;
+#else
+#   error No valid clock speed selected for STM32F4x1 Discovery
 #endif
 
-#ifdef CONFIG_DEVGPIO
-static const struct gpio_addr gpio_addrs[] = { 
-            {.base=GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
-            {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
-            {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_14"},
-            {.base=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_15"},
-            {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL},
+static const struct gpio_config Leds[] = { 
+            {.base=GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="led0"},
+            {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="led1"},
+            {.base=GPIOD, .pin=GPIO14,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="led2"},
+            {.base=GPIOD, .pin=GPIO15,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="led3"},
+};
+static const struct gpio_config Button = {.base=GPIOA, .pin=GPIO0,.mode=GPIO_MODE_INPUT, .pullupdown=GPIO_PUPD_NONE, .name=NULL};
+
+
 #ifdef CONFIG_DEVUART
+static const struct uart_config uart_configs[] = { 
 #ifdef CONFIG_USART_1
-            {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-            {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+        {   .devidx = 1,
+            .base = USART1, 
+            .irq = NVIC_USART1_IRQ, 
+            .rcc = RCC_USART1, 
+            .baudrate = 115200,
+            .stop_bits = USART_STOPBITS_1,
+            .data_bits = 8,
+            .parity = USART_PARITY_NONE,
+            .flow = USART_FLOWCONTROL_NONE,
+            .pio_rx = {.base=GPIOA, .pin=GPIO9,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            .pio_tx = {.base=GPIOA, .pin=GPIO10,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+        },
 #endif
 #ifdef CONFIG_USART_2
-            {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-            {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+        { 
+            .devidx = 2,
+            .base = USART2, 
+            .irq = NVIC_USART2_IRQ, 
+            .rcc = RCC_USART2, 
+            .baudrate = 115200,
+            .stop_bits = USART_STOPBITS_1,
+            .data_bits = 8,
+            .parity = USART_PARITY_NONE,
+            .flow = USART_FLOWCONTROL_NONE,
+            .pio_rx = {.base=GPIOA, .pin=GPIO2,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            .pio_tx = {.base=GPIOA, .pin=GPIO3,.mode=GPIO_MODE_AF,.af=GPIO_AF7, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+        },
 #endif
 #ifdef CONFIG_USART_6
-            /* DO NOT use, pins are wired as SPI bus - see schematic */
-            {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
-            {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+        { 
+            .devidx = 6,
+            .base = USART6, 
+            .irq = NVIC_USART6_IRQ, 
+            .rcc = RCC_USART6, 
+            .baudrate = 115200,
+            .stop_bits = USART_STOPBITS_1,
+            .data_bits = 8,
+            .parity = USART_PARITY_NONE,
+            .flow = USART_FLOWCONTROL_NONE,
+            .pio_rx = {.base=GPIOC, .pin=GPIO6,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+            .pio_tx = {.base=GPIOC, .pin=GPIO7,.mode=GPIO_MODE_AF,.af=GPIO_AF8, .speed=GPIO_OSPEED_25MHZ, .optype=GPIO_OTYPE_PP, .name=NULL,},
+        },
 #endif
+};
+#define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 #endif
+
+
+
+/* TODO */
+#if 0 
 
 #ifdef CONFIG_DEVI2C
 #ifdef CONFIG_I2C_1
@@ -123,52 +147,8 @@ static const struct gpio_addr gpio_addrs[] = {
 #endif
 
 };
-#define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
-#endif
 
-#ifdef CONFIG_DEVUART
-static const struct uart_addr uart_addrs[] = { 
-#ifdef CONFIG_USART_1
-        {   .devidx = 1,
-            .base = USART1, 
-            .irq = NVIC_USART1_IRQ, 
-            .rcc = RCC_USART1, 
-            .baudrate = 115200,
-            .stop_bits = USART_STOPBITS_1,
-            .data_bits = 8,
-            .parity = USART_PARITY_NONE,
-            .flow = USART_FLOWCONTROL_NONE,
-        },
-#endif
-#ifdef CONFIG_USART_2
-        { 
-            .devidx = 2,
-            .base = USART2, 
-            .irq = NVIC_USART2_IRQ, 
-            .rcc = RCC_USART2, 
-            .baudrate = 115200,
-            .stop_bits = USART_STOPBITS_1,
-            .data_bits = 8,
-            .parity = USART_PARITY_NONE,
-            .flow = USART_FLOWCONTROL_NONE,
-        },
-#endif
-#ifdef CONFIG_USART_6
-        { 
-            .devidx = 6,
-            .base = USART6, 
-            .irq = NVIC_USART6_IRQ, 
-            .rcc = RCC_USART6, 
-            .baudrate = 115200,
-            .stop_bits = USART_STOPBITS_1,
-            .data_bits = 8,
-            .parity = USART_PARITY_NONE,
-            .flow = USART_FLOWCONTROL_NONE,
-        },
-#endif
-};
-#define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
-#endif
+
 
 #ifdef CONFIG_DEVSPI
 static const struct spi_addr spi_addrs[] = { 
@@ -323,26 +303,30 @@ static const struct l3gd20_addr l3gd20_addr = {
 };
 #endif
 
-void machine_init(struct fnode * dev)
-{
-        /* 401 & 411 run 84 and 100 MHz max respectively */
-#       if CONFIG_SYS_CLOCK == 48000000
-        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_48MHZ]);
-#       elif CONFIG_SYS_CLOCK == 84000000
-        rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_84MHZ]);
-#       else
-#error No valid clock speed selected for STM32F4x1 Discovery
-#endif
+#endif 
 
-#ifdef CONFIG_DEVGPIO
-    gpio_init(dev, gpio_addrs, NUM_GPIOS);
-#endif
-#ifdef CONFIG_DEVF4EXTI
-    exti_init(dev, exti_addrs, NUM_EXTIS);
-#endif
-#ifdef CONFIG_DEVUART
-    uart_init(dev, uart_addrs, NUM_UARTS);
-#endif
+int machine_init(void)
+{
+    int i;
+    /* Clock */
+    rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[rcc_clock]);
+
+    /* Button */
+    gpio_create(NULL, &Button);
+
+    /* Leds */
+    for (i = 0; i < 4; i++) {
+        gpio_create(NULL, &Leds[i]);
+    }
+
+    /* Uarts */
+    for (i = 0; i < NUM_UARTS; i++) {
+        uart_create(&uart_configs[i]);
+    }
+    return 0;
+
+    /* TODO: port to new pinmux */
+#if 0
 #ifdef CONFIG_DEVSPI
     spi_init(dev, spi_addrs, NUM_SPIS);
 #ifdef CONFIG_DEVL3GD20
@@ -367,5 +351,7 @@ void machine_init(struct fnode * dev)
 #ifdef CONFIG_DEVL3GD20
     l3gd20_init(dev, l3gd20_addr);
 #endif
+#endif 
+
 }
 
