@@ -176,10 +176,13 @@ static struct f_malloc_block * f_find_best_fit(int flags, size_t size, struct f_
     return found;
 }
 
-static char * heap_end_kernel;
-static char * heap_stack;
-static char * heap_end_user;
-static char * heap_end_extra;
+static unsigned char * heap_end_kernel;
+static unsigned char * heap_stack;
+static unsigned char * heap_end_user;
+static unsigned char * heap_end_extra;
+
+static unsigned char * heap_limit_user;
+static unsigned char * heap_limit_kernel;
 
 #ifdef CONFIG_TCPIP_MEMPOOL
     static char * heap_end_tcpip = CONFIG_TCPIP_MEMPOOL;
@@ -193,7 +196,7 @@ static void * f_sbrk(int flags, int incr)
     extern char   _stack;           /* Set by linker */
     extern char   _user_heap_start; /* Set by linker */
     extern char   _user_heap_end;   /* Set by linker */
-#ifdef CONFIG_SRAM_EXTRA
+#if defined(CONFIG_SRAM_EXTRA) || defined(CONFIG_SDRAM)
     extern char   _extra_heap_start; /* Set by linker */
     extern char   _extra_heap_end;   /* Set by linker */
 #endif
@@ -204,9 +207,17 @@ static void * f_sbrk(int flags, int incr)
     if (heap_end_kernel == 0) {
         /* kernel memory */
         heap_end_kernel = &end;
+        heap_limit_kernel = &end + KMEM_SIZE;
 
+#ifdef CONFIG_SDRAM
+        /* user memory  = external ram*/
+        heap_end_user = &_extra_heap_start; /* Start at beginning of heap */
+        heap_limit_user = &_extra_heap_end;
+#else
         /* user memory */
         heap_end_user = &_user_heap_start; /* Start at beginning of heap */
+        heap_limit_user = &_user_heap_end;
+#endif
 
         /* task/stack memory */
         heap_stack = &_stack - 4096; 
@@ -216,7 +227,7 @@ static void * f_sbrk(int flags, int incr)
         if (!heap_end_user)
             return (void *)(0 - 1);
         /* Do not over-commit */
-        if ((heap_end_user + incr) > &_user_heap_end)
+        if ((heap_end_user + incr) > heap_limit_user)
             return (void *)(0 - 1);
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
@@ -243,7 +254,7 @@ static void * f_sbrk(int flags, int incr)
         prev_heap_end = heap_end_tcpip;
         heap_end_tcpip += incr;
     } else {
-        if ((heap_end_kernel + incr) > ((&end) + KMEM_SIZE))
+        if ((heap_end_kernel + incr) > heap_limit_kernel)
             return (void*)(0 - 1);
         prev_heap_end = heap_end_kernel;
         heap_end_kernel += incr;
