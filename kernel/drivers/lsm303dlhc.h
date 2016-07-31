@@ -14,7 +14,7 @@ struct lsm303dlhc_addr {
     uint8_t drdy_address;
 };
 
-void lsm303dlhc_init(struct fnode *dev, const struct lsm303dlhc_addr lsm303dlhc_addr);
+int lsm303dlhc_init(int bus);
 
 #endif
 

@@ -22,7 +22,7 @@
 #include "device.h"
 #include <stdint.h>
 #include "cirbuf.h"
-#include "stm32f4_dma.h"
+#include "dma.h"
 #include "cirbuf.h"
 #include <unicore-mx/cm3/nvic.h>
 #include <unicore-mx/stm32/dma.h>

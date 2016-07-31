@@ -24,6 +24,8 @@
 #include <unicore-mx/stm32/gpio.h>
 #include <unicore-mx/cm3/nvic.h>
 #include <unicore-mx/stm32/sdio.h>
+#include <unicore-mx/stm32/i2c.h>
+#include <unicore-mx/stm32/dma.h>
 #include "drivers/stm32f4_dsp.h"
 #include "drivers/stm32_sdio.h"
 
@@ -34,6 +36,8 @@
 #include "rng.h"
 #include "usb.h"
 #include "eth.h"
+#include "i2c.h"
+#include "dma.h"
 
 #if CONFIG_SYS_CLOCK == 48000000
 #    define STM32_CLOCK RCC_CLOCK_3V3_48MHZ
@@ -134,6 +138,67 @@ static const struct eth_config eth_config = {
         .pullupdown=GPIO_PUPD_PULLUP
     },
 };
+
+
+static const struct i2c_config i2c_configs[] = {
+#ifdef CONFIG_I2C1
+    {
+        .idx  = 1,
+        .base = I2C1,
+        .ev_irq = NVIC_I2C1_EV_IRQ,
+        .er_irq = NVIC_I2C1_ER_IRQ,
+        .rcc = RCC_I2C1,
+
+        .clock_f = I2C_CR2_FREQ_36MHZ,
+        .fast_mode = 1,
+        .rise_time = 11,
+        .bus_clk_frequency = 10,
+
+        .tx_dma = {
+            .base = DMA1,
+            .stream = DMA_STREAM6,
+            .channel = DMA_SxCR_CHSEL_1,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+            .prio = DMA_SxCR_PL_MEDIUM,
+            .paddr =  (uint32_t) &I2C_DR(I2C1),
+            .irq = NVIC_DMA1_STREAM6_IRQ,
+        },
+        .rx_dma = {
+            .base = DMA1,
+            .stream = DMA_STREAM0,
+            .channel = DMA_SxCR_CHSEL_1,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+            .prio = DMA_SxCR_PL_VERY_HIGH,
+            .paddr =  (uint32_t) &I2C_DR(I2C1),
+            .irq = NVIC_DMA1_STREAM0_IRQ,
+        },
+        .dma_rcc = RCC_DMA1,
+        .pio_scl = {
+            .base=GPIOB,
+            .pin=GPIO6,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF4,
+            .speed=GPIO_OSPEED_50MHZ,
+            .optype=GPIO_OTYPE_OD,
+            .pullupdown=GPIO_PUPD_PULLUP
+        },
+        .pio_sda = {
+            .base=GPIOB,
+            .pin=GPIO9,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF4,
+            .speed=GPIO_OSPEED_50MHZ,
+            .optype=GPIO_OTYPE_OD,
+            .pullupdown=GPIO_PUPD_PULLUP
+        },
+    },
+#endif
+};
+#define NUM_I2CS (sizeof(i2c_configs) / sizeof(struct i2c_config))
 
 static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_1
@@ -341,6 +406,14 @@ int machine_init(void)
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
     }
+    
+    /* I2Cs */
+    for (i = 0; i < NUM_I2CS; i++) {
+        i2c_create(&i2c_configs[i]);
+    }
+
+    /* TODO: Enable INS on i2c1 */
+
     rng_create(1, RCC_RNG);
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
     sdio_conf.rcc_en  = RCC_APB2ENR_SDIOEN;

@@ -180,8 +180,8 @@ endif
 
 
 #I2Cs
-ifeq ($(I2C_1),y)
-    CFLAGS+=-DCONFIG_I2C_1
+ifeq ($(I2C1),y)
+    CFLAGS+=-DCONFIG_I2C1
 endif
 
 #RNG

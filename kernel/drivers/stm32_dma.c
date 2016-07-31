@@ -24,10 +24,10 @@
 #include "cirbuf.h"
 #include <unicore-mx/stm32/dma.h>
 
-#include "stm32f4_dma.h"
+#include "dma.h"
 
 
-void init_dma(const struct dma_setup * dma, uint32_t ptr, uint32_t len)
+void init_dma(const struct dma_config * dma, uint32_t ptr, uint32_t len)
 {
     dma_stream_reset(dma->base, dma->stream);
 

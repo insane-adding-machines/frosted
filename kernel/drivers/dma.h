@@ -1,7 +1,7 @@
-#ifndef INC_STM32F4
-#define INC_STM32F4
+#ifndef INC_DMA
+#define INC_DMA
 
-struct dma_setup {
+struct dma_config {
     uint32_t base;
     uint8_t stream;
     uint32_t channel;
@@ -13,7 +13,7 @@ struct dma_setup {
     uint32_t irq;
 };
 
-void init_dma(const struct dma_setup * dma, uint32_t ptr, uint32_t len);
+void init_dma(const struct dma_config * dma, uint32_t ptr, uint32_t len);
 
 #endif
 

@@ -11,7 +11,7 @@ struct adc_addr {
     uint8_t channel_array[NUM_ADC_CHANNELS];
     uint8_t num_channels;
 
-    struct dma_setup dma;
+    struct dma_config dma;
     uint32_t dma_rcc;
 };
 

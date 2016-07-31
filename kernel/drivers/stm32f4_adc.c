@@ -22,7 +22,7 @@
 #include "device.h"
 #include <stdint.h>
 #include "ioctl.h"
-#include "stm32f4_dma.h"
+#include "dma.h"
 #include "stm32f4_adc.h"
 #ifdef STM32F4
 #include <unicore-mx/cm3/nvic.h>
@@ -41,7 +41,7 @@ struct dev_adc{
     uint8_t num_channels;
     int conversion_done;
     uint16_t samples[NUM_ADC_CHANNELS];
-    const struct dma_setup * dma_setup;
+    const struct dma_config * dma_config;
 };
 
 #define MAX_ADCS 1
