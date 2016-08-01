@@ -17,7 +17,7 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include <unicore-mx/cm3/nvic.h>
@@ -31,30 +31,29 @@ static struct module mod_usb = {
     .name = "usb-otg-guest",
 };
 
+#ifdef CONFIG_DEVUSB
+uint8_t buffer[128] __attribute__((aligned(16)));
+#endif
 
-
-#define MAX_USBS 1
-
-static struct devusb_config *dev_usb = NULL;
+static struct usbd_device *usbd_dev = NULL;
 
 void otg_fs_isr(void)
 {
-    usbd_poll(dev_usb->usbd_dev);
+    usbd_poll(usbd_dev);
 }
 
 
-int usbdev_start(struct devusb_config *d)
+int usbdev_start(usbd_device **_usbd_dev,
+          const struct usb_device_descriptor *dev_desc)
 {
-    if (dev_usb)
+    if (usbd_dev)
         return -EBUSY;
 
     rcc_periph_clock_enable(RCC_OTGFS);
-    dev_usb = d;
-    dev_usb->usbd_dev = usbd_init(&otgfs_usb_driver, dev_usb->dev_desc, dev_usb->conf_desc,
-            dev_usb->strings, 4,
-            dev_usb->buffer, 128);
-    usbd_register_set_config_callback(dev_usb->usbd_dev, dev_usb->callback);
+    usbd_dev = usbd_init(USBD_STM32_OTG_FS, dev_desc, buffer, sizeof(buffer));
+    *_usbd_dev = usbd_dev;
     nvic_enable_irq(NVIC_OTG_FS_IRQ);
+    return 0;
 }
 
 int usb_init(struct usb_config *conf)
