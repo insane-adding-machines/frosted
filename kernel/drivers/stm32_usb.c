@@ -53,6 +53,7 @@ int usbdev_start(usbd_device **_usbd_dev,
     usbd_dev = usbd_init(USBD_STM32_OTG_FS, dev_desc, buffer, sizeof(buffer));
     *_usbd_dev = usbd_dev;
     nvic_enable_irq(NVIC_OTG_FS_IRQ);
+    return 0;
 }
 
 int usb_init(struct usb_config *conf)
