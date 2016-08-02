@@ -257,7 +257,7 @@ static struct usb_config usb_guest = {
 int machine_init(void)
 {
     int i = 0;
-    rcc_clock_setup_hse_3v3(&hse_25mhz_3v3[RCC_CLOCK_3V3_216MHZ]);
+    rcc_clock_setup_hse_3v3(&hse_8mhz_3v3);
     gpio_create(NULL, &gpio_led0);
     gpio_create(NULL, &gpio_led1);
     gpio_create(NULL, &gpio_led2);
