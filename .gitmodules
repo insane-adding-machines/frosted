@@ -1,6 +1,3 @@
-[submodule "kernel/libopencm3"]
-	path = kernel/libopencm3
-	url = https://github.com/insane-adding-machines/libopencm3.git
 [submodule "apps/busybox"]
 	path = apps/busybox
 	url = https://github.com/insane-adding-machines/busybox.git
