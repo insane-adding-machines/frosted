@@ -43,7 +43,7 @@ volatile struct extra_stack_frame *tramp_extra;
 volatile struct nvic_stack_frame *tramp_nvic; 
 volatile struct extra_stack_frame *extra_usr;  
 
-
+int task_ptr_valid(const void *ptr);
 
 #ifdef CONFIG_SYSCALL_TRACE
 #define STRACE_SIZE 10
@@ -181,6 +181,7 @@ static void * _top_stack;
 #define TASK_FLAG_IN_SYSCALL 0x02
 #define TASK_FLAG_SIGNALED 0x04
 #define TASK_FLAG_INTR  0x40
+#define TASK_FLAG_SYSCALL_STOP 0x80
 
 
 struct filedesc {
@@ -210,6 +211,8 @@ struct __attribute__((packed)) task_block {
 
     uint16_t ppid;
     uint16_t n_files;
+
+    uint16_t tracer;
 
     int exitval;
     struct fnode *cwd;
@@ -546,6 +549,11 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
         t->tb.sigpend |= (1 << signo);
         return 0;
     }
+    
+    /* If process is being traced, deliver SIGTRAP to tracer */
+    if (t->tb.tracer > 0) {
+        sys_kill_hdlr(t->tb.tracer, SIGTRAP);
+    }
 
     /* Reset signal, if pending, as it's going to be handled. */
     t->tb.sigpend &= ~(1 << signo);
@@ -695,7 +703,7 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask) {
     (void)orig_mask;
     if (signo != SIGCHLD)
-        task_terminate(t);
+        task_terminate(t->tb.pid);
     return 0;
 }
 #endif
@@ -726,7 +734,7 @@ int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     return 0; 
 }
 
-int sys_sigprocmask_hdlr(int how, const sigset_t *set, sigset_t *oldset)
+int sys_sigprocmask_hdlr(int how, const sigset_t * set, sigset_t *oldset)
 {
     if (set  && (
                 (how != SIG_SETMASK) && 
@@ -973,10 +981,11 @@ static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, v
     
     /* stack memory */
     sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
+
     new->tb.cur_stack = &new->stack;
 
     /* Change relocated section ownership */
-    fmalloc_chown(vfsi->pic, new->tb.pid);
+    fmalloc_chown((void *)vfsi->pic, new->tb.pid);
 
     /* Stack frame is at the end of the stack space */
     nvic_frame = (struct nvic_stack_frame *) sp;
@@ -1009,6 +1018,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
     new->tb.vfsi = vfsi;
+    new->tb.tracer = 0;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -1382,7 +1392,7 @@ void task_terminate(int pid)
                 }
                 task_resume_vfork(t->tb.ppid);
             }
-            tasklet_add(task_deliver_sigchld, (void *)t->tb.ppid);
+            tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
         }
     }
@@ -1503,6 +1513,7 @@ enum __ptrace_request {
     PTRACE_ATTACH = 16,
     PTRACE_DETACH = 17,
     PTRACE_SYSCALL = 24,
+    PTRACE_SEIZE = 0x4206
 };
 
 int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -1513,21 +1524,26 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
     uint32_t pid = arg2;
     void *addr = (void *)arg3;
     void *data = (void *)arg4;
+    struct task *tracee = NULL;
 
     if (addr && task_ptr_valid(addr))
         return -EACCES;
 
-    if (data && task_ptr_valid(data))
-        return -EACCES;
+    /* Prepare tracee based on pid */
+    tracee = tasklist_get(&tasks_idling, pid);
+    if (!tracee)
+        tracee = tasklist_get(&tasks_running, pid);
 
 
     switch (request) {
         case PTRACE_TRACEME:
+            _cur_task->tb.tracer = _cur_task->tb.ppid;
             break;
         case PTRACE_PEEKTEXT:
-            break;
         case PTRACE_PEEKDATA:
-            break;
+            return *((uint32_t *)addr);
+
+
         case PTRACE_PEEKUSER:
             break;
         case PTRACE_POKETEXT:
@@ -1537,21 +1553,55 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_POKEUSER:
             break;
         case PTRACE_CONT:
-            break;
+            if (!tracee)
+                return -ENOENT;
+            if (tracee->tb.tracer != _cur_task->tb.pid)
+                return -ESRCH;
+            task_continue(pid);
+            if ((int)data != 0)
+                task_kill(pid, (int)data);
+            return 0;
+
         case PTRACE_KILL:
-            break;
+            if (!tracee)
+                return -ENOENT;
+            if (tracee->tb.tracer != _cur_task->tb.pid)
+                return -ESRCH;
+            task_kill(pid, SIGKILL);
+            return 0;
+
         case PTRACE_SINGLESTEP:
             break;
         case PTRACE_GETREGS:
             break;
         case PTRACE_SETREGS:
             break;
+
+
         case PTRACE_ATTACH:
-            break;
+        case PTRACE_SEIZE:
+            if (!tracee)
+                return -ENOENT;
+            tracee->tb.tracer = _cur_task->tb.pid;
+            if (request == PTRACE_ATTACH)
+                task_kill(pid, SIGSTOP);
+            return 0;
+            
         case PTRACE_DETACH:
-            break;
+            if (!tracee)
+                return -ENOENT;
+            if (tracee->tb.tracer != _cur_task->tb.pid)
+                return -ESRCH;
+            tracee->tb.tracer = 0;
+            task_kill(tracee->tb.pid, SIGCONT);
+            return 0;
         case PTRACE_SYSCALL:
-            break;
+            if (!tracee)
+                return -ENOENT;
+            if (tracee->tb.tracer != _cur_task->tb.pid)
+                return -ESRCH;
+            tracee->tb.flags |= TASK_FLAG_SYSCALL_STOP;
+            return 0;
     }
     return -1;
 }
@@ -1656,7 +1706,7 @@ int task_segfault(uint32_t address, uint32_t instruction, int flags)
     return 0;
 }
 
-int task_ptr_valid(void *ptr)
+int task_ptr_valid(const void *ptr)
 {
     struct task *t;
     uint8_t *stack_start = (uint8_t *)_cur_task->tb.cur_stack;
@@ -1664,7 +1714,7 @@ int task_ptr_valid(void *ptr)
 
     if (_cur_task->tb.pid == 0)
         return 0; /* Kernel mode */
-    if ( (ptr >= stack_start) && (ptr < stack_end) )
+    if ( ((uint8_t *)ptr >= stack_start) && ((uint8_t *)ptr < stack_end) )
         return 0; /* In the process own's  stack */
     if (fmalloc_owner(ptr) == _cur_task->tb.pid)
         return 0; /* In the process own's  heap */

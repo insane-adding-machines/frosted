@@ -295,8 +295,8 @@ void kernel_task_init(void);
 #define task_space_free f_free
 #define F_MALLOC_OVERHEAD 24
 uint32_t mem_stats_frag(int pool);
-int fmalloc_owner(void *ptr);
-int fmalloc_chown(void *ptr, uint16_t pid);
+int fmalloc_owner(const void *ptr);
+int fmalloc_chown(const void *ptr, uint16_t pid);
 
 /* Helper defined by sysfs.c */
 int ul_to_str(unsigned long n, char *s);

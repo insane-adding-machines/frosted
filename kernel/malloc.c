@@ -515,7 +515,7 @@ uint32_t mem_stats_frag(int pool)
 }
 
 
-int fmalloc_owner(void *_ptr)
+int fmalloc_owner(const void *_ptr)
 {
     struct f_malloc_block *blk;
     uint8_t *ptr = (uint8_t *)_ptr;
@@ -537,7 +537,7 @@ int fmalloc_owner(void *_ptr)
     return -1;
 }
 
-int fmalloc_chown(void *ptr, uint16_t pid)
+int fmalloc_chown(const void *ptr, uint16_t pid)
 {
     struct f_malloc_block *blk = (struct f_malloc_block *) ( ((uint8_t *)ptr)  - sizeof(struct f_malloc_block));
     if (block_valid(blk))
