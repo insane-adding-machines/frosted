@@ -402,6 +402,9 @@ int machine_init(void)
         gpio_create(NULL, &Led[i]);
     }
 
+    /* Button */
+    gpio_create(NULL, &Button);
+
     /* Uarts */
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
