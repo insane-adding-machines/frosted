@@ -623,6 +623,8 @@ int gpio_init(void)
 static int devgpio_close(struct fnode *fno)
 {
     struct dev_gpio *gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
-    gpio->dev->pid = 0;
+    if (gpio) {
+        gpio->dev->pid = 0;
+    }
     return 0;
 }
