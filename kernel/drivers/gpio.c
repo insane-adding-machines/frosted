@@ -17,7 +17,7 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include "gpio.h"
@@ -459,26 +459,30 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
     /* GPIO: get current value */
     val = gpio_get(gpio->base, gpio->pin);
 
-#   ifdef CONFIG_DEVSTM32EXTI
-    /* Unlock immediately */
-    if ((gpio->trigger == GPIO_TRIGGER_NONE) || 
-            (val && (gpio->trigger == GPIO_TRIGGER_RAISE)) || (!val && (gpio->trigger == GPIO_TRIGGER_FALL))) {
+    if (gpio->trigger) {
+        mutex_lock(gpio->dev->mutex);
+        /* Unlock immediately */
+        if ((gpio->trigger == GPIO_TRIGGER_NONE) ||
+                (val && (gpio->trigger == GPIO_TRIGGER_RAISE)) || (!val && (gpio->trigger == GPIO_TRIGGER_FALL))) {
+            *((uint8_t*)buf) = val ? '1':'0';
+            return 1;
+        } else if (gpio->trigger == GPIO_TRIGGER_TOGGLE) {
+            if (TRIGGER_WAITING(gpio) == val) {
+                *((uint8_t*)buf) = val ? '1':'0';
+                RESET_TRIGGER_WAITING(gpio);
+                SET_TRIGGER_WAITING(gpio, (val) ? GPIO_TRIGGER_FALL : GPIO_TRIGGER_RAISE);
+                return 1;
+            }
+        }
+        gpio->dev->pid = scheduler_get_cur_pid();
+        mutex_unlock(gpio->dev->mutex);
+        task_suspend();
+        exti_enable(gpio->exti_idx, 1);
+        return SYS_CALL_AGAIN;
+    } else {
         *((uint8_t*)buf) = val ? '1':'0';
         return 1;
-    } else if (gpio->trigger == GPIO_TRIGGER_TOGGLE) {
-        if (TRIGGER_WAITING(gpio) == val) {
-            *((uint8_t*)buf) = val ? '1':'0';
-            RESET_TRIGGER_WAITING(gpio);
-            SET_TRIGGER_WAITING(gpio, (val) ? GPIO_TRIGGER_FALL : GPIO_TRIGGER_RAISE);
-            return 1;
-        }
     }
-    exti_enable(gpio->exti_idx, 1);
-    return SYS_CALL_AGAIN;
-#   else
-    *((uint8_t*)buf) = val ? '1':'0';
-    return 1;
-#   endif
 }
 
 
@@ -566,13 +570,13 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
         gpio->owner = mod;
     else
         gpio->owner = &mod_devgpio;
-    
+
     if (mod != &mod_devgpio) {
         gpio->flags |= GPIO_FL_PROTECTED;
     } else {
         gpio->flags &= ~GPIO_FL_PROTECTED;
     }
-    
+
     GPIO_CLOCK_ENABLE(gpio_config->base);
 
     switch(gpio_config->mode)
@@ -589,6 +593,9 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
         case GPIO_MODE_ANALOG:
             gpio_mode_setup(gpio_config->base, gpio_config->mode, GPIO_PUPD_NONE, gpio_config->pin);
             break;
+    }
+    if (gpio_config->trigger > 0) {
+        gpio->exti_idx = gpio_set_trigger(gpio, gpio_config->trigger);
     }
     gpio_list_add(gpio);
     return 0;

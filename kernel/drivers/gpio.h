@@ -18,6 +18,7 @@ struct gpio_config {
     uint8_t speed;
     uint8_t optype;
     uint8_t af;
+    uint32_t trigger;
     const char* name;
 };
 

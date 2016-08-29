@@ -174,6 +174,7 @@ void usage_fault_handler(void)
 static void hw_init(void)
 {
     gpio_init();
+    exti_init();
     uart_init();
     rng_init();
     sdram_init();
