@@ -220,6 +220,7 @@ static int devgpio_write(struct fnode *fno, const void *buf, unsigned int len);
 static int devgpio_ioctl(struct fnode *fno, const uint32_t cmd, void *arg);
 static int devgpio_read (struct fnode *fno, void *buf, unsigned int len);
 static int devgpio_poll (struct fnode *fno, uint16_t events, uint16_t *revents);
+static int devgpio_close (struct fnode *fno);
 
 static int devgpiomx_ioctl(struct fnode * fno, const uint32_t cmd, void *arg);
 
@@ -231,6 +232,7 @@ static struct module mod_devgpio = {
     .ops.poll = devgpio_poll,
     .ops.write = devgpio_write,
     .ops.ioctl = devgpio_ioctl,
+    .ops.close = devgpio_close,
 };
 
 static struct module mod_devgpio_mx = {
@@ -460,22 +462,25 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
     val = gpio_get(gpio->base, gpio->pin);
 
     if (gpio->trigger) {
-        mutex_lock(gpio->dev->mutex);
+        if ((gpio->dev->pid) && (gpio->dev->pid != scheduler_get_cur_pid())) {
+            return -EBUSY;
+        }
+        gpio->dev->pid = scheduler_get_cur_pid();
         /* Unlock immediately */
         if ((gpio->trigger == GPIO_TRIGGER_NONE) ||
                 (val && (gpio->trigger == GPIO_TRIGGER_RAISE)) || (!val && (gpio->trigger == GPIO_TRIGGER_FALL))) {
             *((uint8_t*)buf) = val ? '1':'0';
+            gpio->dev->pid = 0;
             return 1;
         } else if (gpio->trigger == GPIO_TRIGGER_TOGGLE) {
             if (TRIGGER_WAITING(gpio) == val) {
                 *((uint8_t*)buf) = val ? '1':'0';
                 RESET_TRIGGER_WAITING(gpio);
                 SET_TRIGGER_WAITING(gpio, (val) ? GPIO_TRIGGER_FALL : GPIO_TRIGGER_RAISE);
+                gpio->dev->pid = 0;
                 return 1;
             }
         }
-        gpio->dev->pid = scheduler_get_cur_pid();
-        mutex_unlock(gpio->dev->mutex);
         task_suspend();
         exti_enable(gpio->exti_idx, 1);
         return SYS_CALL_AGAIN;
@@ -615,3 +620,9 @@ int gpio_init(void)
     return 0;
 }
 
+static int devgpio_close(struct fnode *fno)
+{
+    struct dev_gpio *gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
+    gpio->dev->pid = 0;
+    return 0;
+}
