@@ -152,6 +152,13 @@ void usart_set_flow_control(uint32_t usart, enum usart_flowcontrol fc)
     (void)fc;
 }
 
+
+/* TODO: Move to unicore-mx when implemented */
+int exti_init(void)
+{
+    return 0;
+}
+
 void usart_enable(uint32_t usart)
 {
        (void)usart;

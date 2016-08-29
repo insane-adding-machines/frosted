@@ -107,6 +107,12 @@ void usart_disable(uint32_t usart)
  
 #define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
+/* TODO: Move to unicore-mx when implemented */
+int exti_init(void)
+{
+    return 0;
+}
+
 int machine_init(void)
 {
     int i;

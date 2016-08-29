@@ -461,7 +461,9 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
     /* GPIO: get current value */
     val = gpio_get(gpio->base, gpio->pin);
 
-    if (gpio->trigger) {
+    if (0) {
+#ifdef CONFIG_DEVSTM32EXTI
+    } else if (gpio->trigger) {
         if ((gpio->dev->pid) && (gpio->dev->pid != scheduler_get_cur_pid())) {
             return -EBUSY;
         }
@@ -484,6 +486,7 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
         task_suspend();
         exti_enable(gpio->exti_idx, 1);
         return SYS_CALL_AGAIN;
+#endif
     } else {
         *((uint8_t*)buf) = val ? '1':'0';
         return 1;
@@ -599,9 +602,11 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
             gpio_mode_setup(gpio_config->base, gpio_config->mode, GPIO_PUPD_NONE, gpio_config->pin);
             break;
     }
+#ifdef CONFIG_DEVSTM32EXTI
     if (gpio_config->trigger > 0) {
         gpio->exti_idx = gpio_set_trigger(gpio, gpio_config->trigger);
     }
+#endif
     gpio_list_add(gpio);
     return 0;
 }
