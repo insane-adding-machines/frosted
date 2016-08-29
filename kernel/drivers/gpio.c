@@ -576,7 +576,7 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
     else
         gpio->owner = &mod_devgpio;
 
-    if (mod != &mod_devgpio) {
+    if (gpio->owner != &mod_devgpio) {
         gpio->flags |= GPIO_FL_PROTECTED;
     } else {
         gpio->flags &= ~GPIO_FL_PROTECTED;
