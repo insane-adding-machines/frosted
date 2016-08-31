@@ -10,6 +10,12 @@ config ARCH_STM32F746_NG
     select RAM_SIZE_320KB
     select ARCH_STM32F746
 
+config ARCH_STM32F769_NI
+    bool "STM32F769NI 2MB"
+    select FLASH_SIZE_2MB
+    select RAM_SIZE_368KB
+    select ARCH_STM32F769
+
 endchoice
 
 endif

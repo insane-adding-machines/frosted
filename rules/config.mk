@@ -69,6 +69,9 @@ ifeq ($(FLASH_SIZE_128KB),y)
 	FLASH_SIZE=128
 endif
 
+ifeq ($(RAM_SIZE_368KB),y)
+	RAM_SIZE=368
+endif
 ifeq ($(RAM_SIZE_320KB),y)
 	RAM_SIZE=320
 endif

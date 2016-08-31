@@ -65,6 +65,8 @@ menu "Platform Selection"
     config FLASH_SIZE_128KB
             bool
 
+    config RAM_SIZE_368KB
+            bool
     config RAM_SIZE_320KB
             bool
     config RAM_SIZE_256KB
@@ -96,6 +98,8 @@ menu "Platform Selection"
         bool
     config ARCH_STM32F746
         bool
+    config ARCH_STM32F769
+        bool
 
     config DEVSTM32DMA
         bool
@@ -108,13 +112,13 @@ menu "Platform Selection"
             depends on (ARCH_STM32F401  || ARCH_STM32F411 || ARCH_STM32F429)
         config CLK_84MHZ
             bool "84MHz"
-            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429 )
+            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429)
         config CLK_100MHZ
             bool "100MHz"
             depends on ARCH_LPC17XX
         config CLK_120MHZ
             bool "120MHz"
-            depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_LPC1769 )
+            depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_LPC1769)
         config CLK_168MHZ
             bool "168MHz"
             depends on (ARCH_STM32F407 ||  ARCH_STM32F405 || ARCH_STM32F429)
@@ -123,7 +127,7 @@ menu "Platform Selection"
             depends on (ARCH_STM32F446)
         config CLK_216MHZ
             bool "216MHZ"
-            depends on (ARCH_STM32F746)
+            depends on (ARCH_STM32F746 || ARCH_STM32F769)
     endchoice
 
     choice
@@ -132,6 +136,10 @@ menu "Platform Selection"
     config MACH_STM32F746Discovery
         bool "STM32F746 Discovery"
         depends on (ARCH_STM32F746)
+        default y
+    config MACH_STM32F769Discovery
+        bool "STM32F769 Discovery"
+        depends on (ARCH_STM32F769)
         default y
     config MACH_STM32F746Nucleo144
         bool "STM32F746 Nucleo-144"
@@ -333,19 +341,24 @@ menu "Device Drivers"
 
             config USART_1
             bool "USART 1"
-            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 ||  ARCH_STM32F746 || ARCH_STM32F446)
+            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || \
+                        ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F407  || ARCH_STM32F429 || ARCH_STM32F446 || \
+                        ARCH_STM32F746 || ARCH_STM32F769)
 
             config USART_2
             bool "USART 2"
-            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407 || ARCH_STM32F746 || ARCH_STM32F446)
+            depends on (ARCH_LM3S6965 || ARCH_LM3SVIRT || \
+                        ARCH_STM32F401 || ARCH_STM32F411 || ARCH_STM32F405 || ARCH_STM32F429  || ARCH_STM32F407 || ARCH_STM32F446 || \
+                        ARCH_STM32F746 || ARCH_STM32F769 )
 
             config USART_3
             bool "USART 3"
-            depends on (ARCH_STM32F407 || ARCH_STM32F405)
+            depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F769 )
 
             config USART_6
             bool "USART 6"
-            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F746 || ARCH_STM32F446)
+            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F446 || \
+                        ARCH_STM32F746 || ARCH_STM32F769 )
 
             config UART_0
             bool "UART 0"
@@ -373,7 +386,8 @@ menu "Device Drivers"
 
        config DEVSTM32USB 
        bool "Support for USB OTG guest"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || ARCH_STM32F746)
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || \
+                   ARCH_STM32F746 || ARCH_STM32F769)
        default n
 
        config DEV_USB_ETH
@@ -397,7 +411,8 @@ menu "Device Drivers"
 
        config DEVSTM32EXTI
        bool "STM32 EXTI driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || ARCH_STM32F746)
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || \
+                   ARCH_STM32F746 || ARCH_STM32F769)
        default n
 
        config DEVTIM
@@ -419,7 +434,7 @@ menu "Device Drivers"
 
        config DEVF7ETH
        bool "STM32F7 Ethernet driver"
-       depends on ((ARCH_STM32F746) && PICOTCP)
+       depends on ((ARCH_STM32F746 || ARCH_STM32F769) && PICOTCP)
        default n
        
        config DEVLM3SETH

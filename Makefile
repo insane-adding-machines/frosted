@@ -160,6 +160,7 @@ OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o
 OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o
 OBJS-$(MACH_STM32F446Nucleo)+=kernel/$(BOARD)/stm32f446nucleo.o
 OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o 
+OBJS-$(MACH_STM32F769Discovery)+=kernel/$(BOARD)/stm32f769discovery.o 
 OBJS-$(MACH_STM32F746Nucleo144)+=kernel/$(BOARD)/stm32f746nucleo-144.o
 OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
