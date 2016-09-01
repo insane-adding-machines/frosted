@@ -63,7 +63,12 @@ static struct module mod_eth = {
 };
 
 static struct dev_eth * dev_eth_stm = NULL;
-static const uint8_t default_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+
+#ifdef STM32F4
+static const uint8_t default_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x54};
+#else
+static const uint8_t default_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x57};
+#endif
 
 static uint32_t eth_smi_get_phy_divider(void)
 {
