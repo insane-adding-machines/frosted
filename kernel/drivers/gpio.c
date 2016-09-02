@@ -67,7 +67,7 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
 #define ARCH_GPIO_PIN_MAX 15
 
 
-#include "stm32_exti.h"
+#include "exti.h"
 #endif
 
 #ifdef STM32F7
@@ -317,7 +317,6 @@ void eint3_isr(void)
 #endif
 
 
-#ifdef CONFIG_DEVSTM32EXTI
 static void gpio_isr(void *arg)
 {
     struct dev_gpio *gpio = arg;
@@ -342,8 +341,6 @@ static int gpio_set_trigger(struct dev_gpio *gpio, uint32_t trigger)
     }
     return exti_register(gpio->base, gpio->pin, gpio->trigger, gpio_isr, gpio);
 }
-
-#endif
 
 static int devgpiomx_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 {
@@ -432,7 +429,6 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         return 0;
     }
     if (cmd == IOCTL_GPIO_SET_TRIGGER) {
-#   ifdef CONFIG_DEVSTM32EXTI
         uint32_t trigger = *((uint32_t *)arg);
         if (trigger > GPIO_TRIGGER_TOGGLE) {
             gpio->trigger = 0;
@@ -440,9 +436,6 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         }
         gpio->exti_idx = gpio_set_trigger(gpio, trigger);
         return 0;
-#else
-        return -ENOSYS;
-#endif
     }
     return -EINVAL;
 }
@@ -461,9 +454,7 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
     /* GPIO: get current value */
     val = gpio_get(gpio->base, gpio->pin);
 
-    if (0) {
-#ifdef CONFIG_DEVSTM32EXTI
-    } else if (gpio->trigger) {
+    if (gpio->trigger) {
         if ((gpio->dev->pid) && (gpio->dev->pid != scheduler_get_cur_pid())) {
             return -EBUSY;
         }
@@ -486,7 +477,6 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
         task_suspend();
         exti_enable(gpio->exti_idx, 1);
         return SYS_CALL_AGAIN;
-#endif
     } else {
         *((uint8_t*)buf) = val ? '1':'0';
         return 1;
@@ -602,11 +592,9 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
             gpio_mode_setup(gpio_config->base, gpio_config->mode, GPIO_PUPD_NONE, gpio_config->pin);
             break;
     }
-#ifdef CONFIG_DEVSTM32EXTI
     if (gpio_config->trigger > 0) {
         gpio->exti_idx = gpio_set_trigger(gpio, gpio_config->trigger);
     }
-#endif
     gpio_list_add(gpio);
     return 0;
 }

@@ -29,13 +29,10 @@
 #include "uart.h"
 #endif
 
-#ifdef CONFIG_DEVGPIO
 #include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
-#endif
 #include "rng.h"
 
-#ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = {
     {.base=GPIOD, .pin=GPIO12,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_12"},
     {.base=GPIOD, .pin=GPIO13,.mode=GPIO_MODE_OUTPUT, .optype=GPIO_OTYPE_PP, .name="gpio_3_13"},
@@ -80,7 +77,6 @@ static const struct gpio_addr gpio_addrs[] = {
 #endif
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
-#endif
 
 #ifdef CONFIG_DEVUART
      static const struct uart_addr uart_addrs[] = {
@@ -217,9 +213,7 @@ void machine_init(struct fnode * dev)
 #error No valid clock speed selected
 #endif
 
-#ifdef CONFIG_DEVGPIO
     gpio_init(dev, gpio_addrs, NUM_GPIOS);
-#endif
 #ifdef CONFIG_DEVUART
     uart_init(dev, uart_addrs, NUM_UARTS);
 #endif

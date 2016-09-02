@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "unicore-mx/cm3/systick.h"
 #include <unicore-mx/lpc17xx/clock.h>
@@ -30,9 +30,8 @@
 #include "gpio.h"
 #endif
 
-#ifdef CONFIG_DEVGPIO
 static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO0, .pin=GPIOPIN22, .mode=GPIO_MODE_OUTPUT, .name="gpio_0_22"} ,
-                                                                                {.port=GPIO2, .pin=GPIOPIN10, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING}, 
+                                                                                {.port=GPIO2, .pin=GPIOPIN10, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
                                                                                 {.port=GPIO2, .pin=GPIOPIN11, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
                                                                                 {.port=GPIO2, .pin=GPIOPIN12, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
                                                                                 {.port=GPIO2, .pin=GPIOPIN13, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
@@ -48,10 +47,9 @@ static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO0, .pin=GPIOPIN22, .
 #endif
 };
 #define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
-#endif
 
 #ifdef CONFIG_DEVUART
-static const struct uart_addr uart_addrs[] = { 
+static const struct uart_addr uart_addrs[] = {
 #ifdef CONFIG_UART_0
         { .base = UART0_BASE, .irq = NVIC_UART0_IRQ, },
 #endif
@@ -73,7 +71,7 @@ static void uart_init(struct fnode * dev)
     int i;
     struct module * devuart = devuart_init(dev);
 
-    for (i = 0; i < NUM_UARTS; i++) 
+    for (i = 0; i < NUM_UARTS; i++)
         uart_fno_init(dev, i, &uart_addrs[i]);
 
     register_module(devuart);
@@ -90,9 +88,7 @@ clock_setup(&clock_scale[CLOCK_120MHZ]);
 #else
 #error No valid clock speed selected for lpc1768mbed
 #endif
-#ifdef CONFIG_DEVGPIO
     gpio_init(dev, gpio_addrs, NUM_GPIOS);
-#endif
 #ifdef CONFIG_DEVUART
     uart_init(dev);
 #endif

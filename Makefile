@@ -47,6 +47,15 @@ OBJS-y:= kernel/frosted.o \
 
 
 # device drivers
+
+OBJS-$(ARCH_STM32F4)+=kernel/drivers/gpio.o \
+	kernel/drivers/exti.o
+
+OBJS-$(ARCH_STM32F7)+=kernel/drivers/gpio.o \
+	kernel/drivers/exti.o
+
+OBJS-$(ARCH_LPC17XX)+=kernel/drivers/gpio.o
+
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
 OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
@@ -101,9 +110,6 @@ CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 OBJS-$(DEVFRAMEBUFFER)+= kernel/framebuffer.o kernel/drivers/stm32f7_ltdc.o
 CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER
 
-OBJS-$(DEVGPIO)+=kernel/drivers/gpio.o
-CFLAGS-$(DEVGPIO)+=-DCONFIG_DEVGPIO
-
 OBJS-$(DEVSTM32DMA)+=kernel/drivers/stm32_dma.o
 CFLAGS-$(DEVSTM32DMA)+=-DCONFIG_DMA
 
@@ -112,9 +118,6 @@ OBJS-$(DEVSTM32USB)+=kernel/drivers/stm32_usb.o
 
 OBJS-$(DEVSTM32SDIO)+=kernel/drivers/stm32_sdio.o
 CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_SDIO
-
-OBJS-$(DEVSTM32EXTI)+=kernel/drivers/stm32_exti.o
-CFLAGS-$(DEVSTM32EXTI)+=-DCONFIG_DEVSTM32EXTI
 
 OBJS-$(DEVADC)+=kernel/drivers/stm32f4_adc.o
 CFLAGS-$(DEVADC)+=-DCONFIG_DEVSTM32F4ADC
@@ -159,8 +162,8 @@ OBJS-$(MACH_STM32F405Pyboard)+=kernel/$(BOARD)/stm32f405pyboard.o
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o
 OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o
 OBJS-$(MACH_STM32F446Nucleo)+=kernel/$(BOARD)/stm32f446nucleo.o
-OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o 
-OBJS-$(MACH_STM32F769Discovery)+=kernel/$(BOARD)/stm32f769discovery.o 
+OBJS-$(MACH_STM32F746Discovery)+=kernel/$(BOARD)/stm32f746discovery.o
+OBJS-$(MACH_STM32F769Discovery)+=kernel/$(BOARD)/stm32f769discovery.o
 OBJS-$(MACH_STM32F746Nucleo144)+=kernel/$(BOARD)/stm32f746nucleo-144.o
 OBJS-$(MACH_LPC1768MBED)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
@@ -224,7 +227,7 @@ qemudbg: image.bin
 qemu: image.bin
 	qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic
 
-qemu2: qemu 
+qemu2: qemu
 
 qemunetdbg:
 	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333 -net nic,vlan=0 -net tap,vlan=0,ifname=frost0

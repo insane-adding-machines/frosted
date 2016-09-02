@@ -17,7 +17,7 @@
  *      Authors: danielinux, DarkVegetableMatter
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -29,7 +29,7 @@
 #include <unicore-mx/cm3/nvic.h>
 
 #include "gpio.h"
-#include "stm32_exti.h"
+#include "exti.h"
 
 struct dev_exti {
     int exti;                               /* Exti index in the dev_exti[] array */

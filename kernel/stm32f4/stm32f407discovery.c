@@ -409,7 +409,7 @@ int machine_init(void)
     for (i = 0; i < NUM_UARTS; i++) {
         uart_create(&uart_configs[i]);
     }
-    
+
     /* I2Cs */
     for (i = 0; i < NUM_I2CS; i++) {
         i2c_create(&i2c_configs[i]);

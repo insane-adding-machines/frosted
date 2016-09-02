@@ -24,7 +24,7 @@
 #include "ioctl.h"
 #include "lsm303dlhc.h"
 #include "gpio.h"
-#include "stm32_exti.h"
+#include "exti.h"
 #include "dma.h"
 #include "i2c.h"
 
@@ -33,7 +33,7 @@
 
 
 enum lsm303_state {
-    LSM303_STATE_IDLE = 0, 
+    LSM303_STATE_IDLE = 0,
     LSM303_STATE_BUSY,
     LSM303_STATE_TX_RDY,
     LSM303_STATE_RX_RDY
@@ -128,8 +128,8 @@ static int devlsm303dlhc_ioctl(struct fnode * fno, const uint32_t cmd, void *arg
             lsm303dlhc->state = LSM303_STATE_IDLE;
             return 0;
 
-        case LSM303_STATE_BUSY: 
-        case LSM303_STATE_TX_RDY: 
+        case LSM303_STATE_BUSY:
+        case LSM303_STATE_TX_RDY:
             task_suspend();
             return SYS_CALL_AGAIN;
     }
@@ -153,8 +153,8 @@ static int devlsm303dlhc_read(struct fnode *fno, void *buf, unsigned int len)
             lsm303dlhc->state = LSM303_STATE_IDLE;
             return 0;
 
-        case LSM303_STATE_BUSY: 
-        case LSM303_STATE_TX_RDY: 
+        case LSM303_STATE_BUSY:
+        case LSM303_STATE_TX_RDY:
             task_suspend();
             return SYS_CALL_AGAIN;
     }
