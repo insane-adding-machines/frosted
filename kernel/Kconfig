@@ -3,17 +3,17 @@ menu "Compiler options"
     bool "Keep debugging symbols"
     default y
 
-    choice 
+    choice
     prompt "Compiler optimization"
         config OPTIMIZE_NONE
         bool "No optimization"
 
         config OPTIMIZE_SIZE
         bool "Optimize for size"
-        
+
         config OPTIMIZE_PERF
         bool "Optimize for performance"
-    endchoice 
+    endchoice
 
 
 endmenu
@@ -384,7 +384,7 @@ menu "Device Drivers"
        select DEVSTM32DMA
        default n
 
-       config DEVSTM32USB 
+       config DEVSTM32USB
        bool "Support for USB OTG guest"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || \
                    ARCH_STM32F746 || ARCH_STM32F769)
@@ -409,12 +409,6 @@ menu "Device Drivers"
            default 192.168.6.1
        endif
 
-       config DEVSTM32EXTI
-       bool "STM32 EXTI driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || \
-                   ARCH_STM32F746 || ARCH_STM32F769)
-       default n
-
        config DEVTIM
        bool "System CPU timer on TIM2"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
@@ -436,7 +430,7 @@ menu "Device Drivers"
        bool "STM32F7 Ethernet driver"
        depends on ((ARCH_STM32F746 || ARCH_STM32F769) && PICOTCP)
        default n
-       
+
        config DEVLM3SETH
        bool "LM3S Ethernet driver"
        depends on ((ARCH_LM3S) && PICOTCP)
@@ -456,7 +450,7 @@ menu "Device Drivers"
                default 192.168.2.1
 
        endif
-       
+
        config DEVSTM32SDIO
        bool "STM32F4 SD I/O driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F7|| ARCH_STM32F446)
@@ -501,11 +495,6 @@ menu "Device Drivers"
            tristate "L3GD20 driver (Gyro)"
            depends on ( SPI_1)
            default n
-
-       config DEVGPIO
-       depends on (ARCH_STM32F4 || ARCH_STM32F7 || ARCH_LPC17XX)
-       bool "Generic GPIO driver"
-       default y
 
        config DEV_RANDOM
        depends on (ARCH_STM32F4 || ARCH_STM32F7)

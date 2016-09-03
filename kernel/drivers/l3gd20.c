@@ -17,14 +17,14 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
 #include "ioctl.h"
 #include "l3gd20.h"
 #include "gpio.h"
-#include "stm32_exti.h"
+#include "exti.h"
 #include <unicore-mx/stm32/f4/exti.h>
 #include "stm32f4_dma.h"
 #include "stm32f4_spi.h"

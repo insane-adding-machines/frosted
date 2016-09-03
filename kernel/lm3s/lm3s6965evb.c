@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,7 +27,30 @@
 #endif
 
 /* TODO: Move to unicore-mx when implemented */
+int exti_init(void)
+{
+    return 0;
+}
 
+int exti_enable(void)
+{
+    return 0;
+}
+
+int exti_register(void)
+{
+    return 0;
+}
+
+int gpio_init(void)
+{
+    return 0;
+}
+
+int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
+{
+    return 0;
+}
 
 
 void usart_set_baudrate(uint32_t usart, uint32_t baud)
@@ -84,41 +107,36 @@ void usart_disable(uint32_t usart)
 
 
 
- static const struct uart_config uart_configs[] = { 
+ static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_0
-         {   
-             .base = USART0_BASE, 
-             .irq = NVIC_UART0_IRQ, 
+         {
+             .base = USART0_BASE,
+             .irq = NVIC_UART0_IRQ,
          },
 #endif
 #ifdef CONFIG_USART_1
-         { 
-             .base = USART1_BASE, 
-             .irq = NVIC_UART1_IRQ, 
+         {
+             .base = USART1_BASE,
+             .irq = NVIC_UART1_IRQ,
          },
 #endif
 #ifdef CONFIG_USART_2
-         { 
-             .base = USART2_BASE, 
-             .irq = NVIC_UART2_IRQ, 
+         {
+             .base = USART2_BASE,
+             .irq = NVIC_UART2_IRQ,
          },
-#endif         
+#endif
  };
- 
+
 #define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
-/* TODO: Move to unicore-mx when implemented */
-int exti_init(void)
-{
-    return 0;
-}
 
 int machine_init(void)
 {
     int i;
     rcc_clock_setup_in_xtal_8mhz_out_50mhz();
 
-    for (i = 0; i < NUM_UARTS; i++) 
+    for (i = 0; i < NUM_UARTS; i++)
         uart_create(&(uart_configs[i]));
 
     ethernet_init(NULL);

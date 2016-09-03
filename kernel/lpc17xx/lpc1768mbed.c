@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "unicore-mx/cm3/systick.h"
 #include <unicore-mx/lpc17xx/clock.h>
@@ -34,11 +34,11 @@
 #error No valid clock speed selected for lpc1768mbed
 #endif
 
-static const struct gpio_config Leds[] = {                                  
+static const struct gpio_config Leds[] = {
     {.base=GPIO1, .pin=GPIOPIN18, .mode=GPIO_MODE_OUTPUT, .name="led0", /* .exti=1, .trigger=EXTI_TRIGGER_RISING */},
     {.base=GPIO1, .pin=GPIOPIN20, .mode=GPIO_MODE_OUTPUT, .name="led1", /* .exti=1, .trigger=EXTI_TRIGGER_RISING */},
     {.base=GPIO1, .pin=GPIOPIN21, .mode=GPIO_MODE_OUTPUT, .name="led2", /* .exti=1, .trigger=EXTI_TRIGGER_RISING */},
-    {.base=GPIO1, .pin=GPIOPIN23, .mode=GPIO_MODE_OUTPUT, .name="led3", /* .exti=1, .trigger=EXTI_TRIGGER_RISING */}, 
+    {.base=GPIO1, .pin=GPIOPIN23, .mode=GPIO_MODE_OUTPUT, .name="led3", /* .exti=1, .trigger=EXTI_TRIGGER_RISING */},
 };
 #define NUM_LEDS (sizeof(Leds) / sizeof(struct gpio_config))
 
@@ -155,6 +155,16 @@ void usart_set_flow_control(uint32_t usart, enum usart_flowcontrol fc)
 
 /* TODO: Move to unicore-mx when implemented */
 int exti_init(void)
+{
+    return 0;
+}
+
+int exti_enable(void)
+{
+    return 0;
+}
+
+int exti_register(void)
 {
     return 0;
 }
