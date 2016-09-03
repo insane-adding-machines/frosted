@@ -83,7 +83,7 @@ static const struct gpio_config Button = {
     .pin=GPIO0,
     .mode=GPIO_MODE_INPUT,
     .optype=GPIO_OTYPE_PP,
-    .pullupdown=GPIO_PUPD_NONE,
+    .pullupdown=GPIO_PUPD_PULLDOWN,
     .name="button"
 };
 

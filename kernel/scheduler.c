@@ -1163,6 +1163,8 @@ static __inl void task_switch(void)
     int i, pid;
     volatile struct task *t;
     if (forced_task) {
+        forced_task->tb.timeslice = TIMESLICE(t);
+        forced_task->tb.state = TASK_RUNNING;
         _cur_task = forced_task;
         forced_task = NULL;
         return;
@@ -1308,8 +1310,6 @@ void task_preempt(void) {
 void task_preempt_all(void)
 {
     volatile struct task *t = tasks_running;
-    if (_cur_task->tb.pid == 0)
-        return;
     while(t) {
         if (t->tb.pid != 0)
             t->tb.timeslice = 0;
