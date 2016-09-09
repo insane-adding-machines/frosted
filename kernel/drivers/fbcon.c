@@ -117,7 +117,7 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
     struct dev_fbcon *fbcon = (struct dev_fbcon *)FNO_MOD_PRIV(fno, &mod_devfbcon);
     const uint8_t *cbuf = buf;
     for (i = 0; i < len; i++) {
-        int p = 0;
+        int p = 0, t = 0;
         if ((fbcon->cursor) >= (FBCON_L * FBCON_H)) {
             scroll(fbcon);
         }
@@ -140,9 +140,12 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
 
             /* TAB */
             case '\t': 
-                for (p = 0; i < 4; i++)
+                t = fbcon->cursor % 4;
+                if (t == 0) 
+                    t = 4;
+                for (p = 0; p < t; p++)
                     fbcon->buffer[fbcon->cursor + p] = 0x20;
-                fbcon->cursor += 4;
+                fbcon->cursor += t;
                 break;
 
 
