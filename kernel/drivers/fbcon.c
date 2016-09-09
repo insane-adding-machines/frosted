@@ -97,6 +97,20 @@ static void render_screen(struct dev_fbcon *fbcon)
         render_row(fbcon, i);
 }
 
+static void scroll(struct dev_fbcon *fbcon)
+{
+    unsigned char *dest = fbcon->buffer;
+    unsigned char *src = fbcon->buffer + FBCON_L;
+    int i;
+    for (i = 0; i < FBCON_H; i++) {
+        memcpy(dest, src, FBCON_L);
+        dest += FBCON_L;
+        src += FBCON_L;
+    }
+    fbcon->cursor = FBCON_L * (FBCON_H - 1);
+    memset(fbcon->buffer + fbcon->cursor, 0, FBCON_L);
+}
+
 static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     int i;
@@ -105,8 +119,7 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
     for (i = 0; i < len; i++) {
         int p = 0;
         if ((fbcon->cursor) >= (FBCON_L * FBCON_H)) {
-            /* TODO: scroll. Wrap around for now. */
-            fbcon->cursor = 0;
+            scroll(fbcon);
         }
 
         switch(cbuf[i]) {
