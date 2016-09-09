@@ -44,6 +44,7 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len);
 static int devfbcon_read(struct fnode *fno, void *buf, unsigned int len);
 static int devfbcon_poll(struct fnode *fno, uint16_t events, uint16_t *revents);
 static void devfbcon_tty_attach(struct fnode *fno, int pid);
+static int devfbcon_seek(struct fnode *fno, int off, int whence);
 
 extern const unsigned char fb_font[256][8];
 static uint32_t fbcon_palette[256] = { 0 };
@@ -56,6 +57,7 @@ static struct module mod_devfbcon = {
     .ops.read = devfbcon_read,
     .ops.poll = devfbcon_poll,
     .ops.write = devfbcon_write,
+    .ops.seek = devfbcon_seek,
     .ops.tty_attach = devfbcon_tty_attach,
 };
 
@@ -101,21 +103,47 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
     struct dev_fbcon *fbcon = (struct dev_fbcon *)FNO_MOD_PRIV(fno, &mod_devfbcon);
     const uint8_t *cbuf = buf;
     for (i = 0; i < len; i++) {
+        int p = 0;
         if ((fbcon->cursor) >= (FBCON_L * FBCON_H)) {
             /* TODO: scroll. Wrap around for now. */
             fbcon->cursor = 0;
         }
-        /* CR */
-        if (cbuf[i] == '\r') {
-            fbcon->cursor -= (fbcon->cursor % FBCON_L);
-            continue;
+
+        switch(cbuf[i]) {
+            case '\r':
+                fbcon->cursor -= (fbcon->cursor % FBCON_L);
+                break;
+
+            /* LF */
+            case '\n': 
+                fbcon->cursor += FBCON_L;
+                break;
+
+
+            /* TAB */
+            case '\t': 
+                for (p = 0; i < 4; i++)
+                    fbcon->buffer[fbcon->cursor + p] = 0x20;
+                fbcon->cursor += 4;
+                break;
+
+
+            /* BS */
+            case 0x08:
+                fbcon->cursor--;
+                fbcon->buffer[fbcon->cursor] = 0x20;
+                break;
+
+
+            /* DEL */
+            case 0x7f:
+                fbcon->buffer[fbcon->cursor] = 0x20;
+                break;
+
+            /* Printable char */
+            default:
+                fbcon->buffer[fbcon->cursor++] = cbuf[i];
         }
-        /* LF */
-        if (cbuf[i] == '\n') {
-            fbcon->cursor += FBCON_L;
-            continue;
-        }
-        fbcon->buffer[fbcon->cursor++] = cbuf[i];
     }
     render_screen(fbcon);
     return len;
@@ -131,6 +159,34 @@ static int devfbcon_read(struct fnode *fno, void *buf, unsigned int len)
 static int devfbcon_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
     return 1;
+}
+
+static int devfbcon_seek(struct fnode *fno, int off, int whence)
+{
+    int new_off;
+    struct dev_fbcon *fbcon = (struct dev_fbcon *)FNO_MOD_PRIV(fno, &mod_devfbcon);
+    switch(whence) {
+        case SEEK_CUR:
+            new_off = fbcon->cursor + off;
+            break;
+        case SEEK_SET:
+            new_off = off;
+            break;
+        case SEEK_END:
+            new_off = FBCON_L * FBCON_H + off;
+            break;
+        default:
+            return -EINVAL;
+    }
+
+    if (new_off < 0)
+        new_off = 0;
+
+    if (new_off > FBCON_L * FBCON_H) {
+        new_off = FBCON_L * FBCON_H;
+    }
+    fbcon->cursor = new_off;
+    return 0;
 }
 
 
