@@ -336,7 +336,7 @@ static void task_destroy(void *arg)
     number_of_tasks--;
 }
 
-volatile struct task *_cur_task = NULL;
+static volatile struct task *_cur_task = NULL;
 static struct task *forced_task = NULL;
 
 
@@ -1711,6 +1711,9 @@ int task_ptr_valid(const void *ptr)
     struct task *t;
     uint8_t *stack_start = (uint8_t *)_cur_task->tb.cur_stack;
     uint8_t *stack_end   = stack_start + SCHEDULER_STACK_SIZE;
+
+    if (!ptr)
+        return 0; /* NULL is a permitted value */
 
     if (_cur_task->tb.pid == 0)
         return 0; /* Kernel mode */
