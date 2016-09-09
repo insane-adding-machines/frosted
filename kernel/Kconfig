@@ -517,6 +517,11 @@ menu "Device Drivers"
            bool "STM32F7 Framebuffer driver"
            default y
 
+       config DEVFBCON
+           depends on DEVFRAMEBUFFER
+           bool "Console on Framebuffer via /dev/fbcon"
+           default y
+
 endmenu
 
 menu "Power Management"

@@ -183,6 +183,11 @@ static int fb_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
     return -1;
 }
 
+unsigned char *framebuffer_get(void)
+{
+    return fb[0]->screen_buffer;
+}
+
 int fb_init(void)
 {
     struct fnode *devfs = fno_search("/dev");

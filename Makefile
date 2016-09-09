@@ -109,6 +109,8 @@ CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
 OBJS-$(DEVFRAMEBUFFER)+= kernel/framebuffer.o kernel/drivers/stm32f7_ltdc.o
 CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER
+OBJS-$(DEVFBCON)+= kernel/drivers/fbcon.o kernel/fonts/cga_8x8.o
+CFLAGS-$(DEVFBCON)+=-DCONFIG_DEVFBCON
 
 OBJS-$(DEVSTM32DMA)+=kernel/drivers/stm32_dma.o
 CFLAGS-$(DEVSTM32DMA)+=-DCONFIG_DMA

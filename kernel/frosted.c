@@ -34,6 +34,7 @@
 #include "fatfs.h"
 #include "framebuffer.h"
 #include "ltdc.h"
+#include "fbcon.h"
 #include "usb.h"
 #include "eth.h"
 
@@ -209,6 +210,7 @@ int frosted_init(void)
 
     fb_init();
     ltdc_init();
+    fbcon_init();
 
     vfs_mount(NULL, "/mem", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);

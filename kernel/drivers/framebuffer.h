@@ -103,6 +103,9 @@ struct fb_ops {
 /* low-level drivers must call this register function first */
 int register_framebuffer(struct fb_info *fb_info);
 
+/* Higher level drivers may access fb screen directly */
+unsigned char *framebuffer_get(void);
+
 /* kernel init */
 int fb_init(void);
 #else
