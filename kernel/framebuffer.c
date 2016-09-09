@@ -188,6 +188,11 @@ unsigned char *framebuffer_get(void)
     return fb[0]->screen_buffer;
 }
 
+int framebuffer_setcmap(uint32_t *arg, int len)
+{
+    return fb[0]->fbops->fb_setcmap(arg, len);
+}
+
 int fb_init(void)
 {
     struct fnode *devfs = fno_search("/dev");

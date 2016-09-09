@@ -27,10 +27,11 @@
 #define FBCON_L 60
 #define FBCON_H 34
 
-#define SCR_ROWS 480
-#define SCR_COLS 272
+#define SCR_ROWS 272
+#define SCR_COLS 480
 
 struct dev_fbcon {
+    struct device *dev;
     uint16_t sid;
     uint16_t size_x;
     uint16_t size_y;
@@ -45,6 +46,8 @@ static int devfbcon_poll(struct fnode *fno, uint16_t events, uint16_t *revents);
 static void devfbcon_tty_attach(struct fnode *fno, int pid);
 
 extern const unsigned char fb_font[256][8];
+static uint32_t fbcon_palette[256] = { 0 };
+
 
 static struct module mod_devfbcon = {
     .family = FAMILY_FILE,
@@ -70,16 +73,16 @@ static void render_row(struct dev_fbcon *fbcon, int row)
 {
     int i, j, l;
     unsigned char fc;
-    unsigned char fcl;
+    const unsigned char *fcl;
     int screen_off;
 
-    for (l = 0; l < 8; l++) { /* For each screen line... */
-        for (i = 0; i < FBCON_L; i++) { /* Each char */
-            fc = fbcon->buffer[row * FBCON_L + i];
-            fcl = fb_font[fc][l];
-            for (j = 0; j < 8; j++) {
+    for (i = 0; i < FBCON_L; i++) {            /* Each char ... i = column */ 
+        fc = fbcon->buffer[row * FBCON_L + i]; /* fc = char to render */
+        fcl = fb_font[fc];                     /* fcl = font rendering, 8 bytes. */
+        for (l = 0; l < 8; l++) {              /* screen lines 0..7 */
+            for (j = 0; j < 8; j++) {          /* each pixel in screen line */
                 screen_off = ((row * 8 + l) * SCR_COLS) + (i * 8) + j;
-                fbcon->screen[screen_off] = ((fcl & (1 << j)) >> j)?0xFF:0x00;
+                fbcon->screen[screen_off] = ((fcl[l] & (1 << (7 - j))) >> (7 - j))?0xFF:0;
             }
         }
     }
@@ -98,11 +101,21 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
     struct dev_fbcon *fbcon = (struct dev_fbcon *)FNO_MOD_PRIV(fno, &mod_devfbcon);
     const uint8_t *cbuf = buf;
     for (i = 0; i < len; i++) {
-        fbcon->buffer[fbcon->cursor++] = cbuf[i];
         if ((fbcon->cursor) >= (FBCON_L * FBCON_H)) {
             /* TODO: scroll. Wrap around for now. */
             fbcon->cursor = 0;
         }
+        /* CR */
+        if (cbuf[i] == '\r') {
+            fbcon->cursor -= (fbcon->cursor % FBCON_L);
+            continue;
+        }
+        /* LF */
+        if (cbuf[i] == '\n') {
+            fbcon->cursor += FBCON_L;
+            continue;
+        }
+        fbcon->buffer[fbcon->cursor++] = cbuf[i];
     }
     render_screen(fbcon);
     return len;
@@ -120,6 +133,9 @@ static int devfbcon_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     return 1;
 }
 
+
+const char fbcon_banner[] = "\r\n~~~ Welcome to Frosted! ~~~\r\nConsole framebuffer enabled.\r\n";
+
 int fbcon_init(void)
 {
     struct fnode *devfs = fno_search("/dev");
@@ -128,7 +144,9 @@ int fbcon_init(void)
     if (!fbcon)
         return -1;
 
-    fbcon->buffer = kalloc(sizeof(struct dev_fbcon));
+    memset(fbcon, 0, sizeof(struct dev_fbcon));
+
+    fbcon->buffer = kalloc(FBCON_L * FBCON_H);
     if (!fbcon->buffer) {
         kfree(fbcon);
         return -1;
@@ -140,7 +158,6 @@ int fbcon_init(void)
         return -1;
     }
 
-    memset(fbcon, 0, sizeof(struct dev_fbcon));
     memset(fbcon->buffer, 0, (FBCON_L * FBCON_H));
     register_module(&mod_devfbcon);
     fno_fbcon = fno_create(&mod_devfbcon, "fbcon", devfs);
@@ -148,5 +165,9 @@ int fbcon_init(void)
     fbcon->size_x = FBCON_L;
     fbcon->size_y = FBCON_H;
     fbcon->screen = framebuffer_get();
+    fbcon_palette[0xFF] = 0x0000FF00;
+    framebuffer_setcmap(fbcon_palette, 256);
+    /* Test */
+    devfbcon_write(fno_fbcon, fbcon_banner, strlen(fbcon_banner));
     return 0;
 }
