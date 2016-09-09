@@ -119,6 +119,11 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
                 fbcon->cursor += FBCON_L;
                 break;
 
+            /* FF */
+            case 0x0c:
+                memset(fbcon->buffer, 0, FBCON_L * FBCON_H);
+                fbcon->cursor = 0;
+                break;
 
             /* TAB */
             case '\t': 
