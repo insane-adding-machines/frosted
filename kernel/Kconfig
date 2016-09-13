@@ -458,7 +458,7 @@ menu "Device Drivers"
 
        menuconfig DEVSTM32I2C
        bool "STM32 I2C driver"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
+       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || ARCH_STM32F746)
        select DEVSTM32DMA
        default n
 
@@ -466,6 +466,13 @@ menu "Device Drivers"
            if DEVSTM32I2C
                 config I2C1
                 bool "I2C 1"
+                default n
+                config I2C2
+                bool "I2C 2"
+                default n
+                config I2C3
+                bool "I2C 3"
+                default y
            endif
 
            config DEVCS43L22

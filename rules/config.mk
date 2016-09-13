@@ -186,6 +186,12 @@ endif
 ifeq ($(I2C1),y)
     CFLAGS+=-DCONFIG_I2C1
 endif
+ifeq ($(I2C2),y)
+    CFLAGS+=-DCONFIG_I2C2
+endif
+ifeq ($(I2C3),y)
+    CFLAGS+=-DCONFIG_I2C3
+endif
 
 #RNG
 ifeq ($(DEVTIM),y)

@@ -32,6 +32,12 @@
 #include "i2c.h"
 #include "locks.h"
 
+/* Dummy module, for gpio claiming only. */
+static struct module mod_i2c = {
+    .family = FAMILY_DEV,
+    .name = "i2c"
+};
+
 typedef enum
 {
     I2C_STATE_READY,
@@ -389,13 +395,19 @@ int i2c_create(const struct i2c_config *conf)
     i2c = kalloc(sizeof(struct dev_i2c));
     if (!i2c)
         return -ENOMEM;
+
+    gpio_create(&mod_i2c, &conf->pio_sda);
+    gpio_create(&mod_i2c, &conf->pio_scl);
     
     memset(i2c, 0, sizeof(struct dev_i2c));
     rcc_periph_clock_enable(conf->rcc);
     rcc_periph_clock_enable(conf->dma_rcc);
 
+
+
     i2c_peripheral_disable(conf->base);
     i2c_reset(conf->base);
+
 
     i2c_set_clock_frequency(conf->base, conf->clock_f);
     if(conf->fast_mode)
