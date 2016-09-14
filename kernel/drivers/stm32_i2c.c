@@ -383,32 +383,34 @@ static int i2c_fno_init(const struct i2c_config *conf, struct dev_i2c *i)
 
 int i2c_create(const struct i2c_config *conf)
 {
-    struct dev_i2c *i2c = DEV_I2C[conf->idx];
+    struct dev_i2c *i2c = NULL;
 
-    if (i2c)
-        return -EBUSY;
     if (!conf)
         return -EINVAL;
     if (conf->base == 0)
+        return -EINVAL;
+
+    if ((conf->idx < 0) || (conf->idx > MAX_I2CS))
         return -EINVAL;
 
     i2c = kalloc(sizeof(struct dev_i2c));
     if (!i2c)
         return -ENOMEM;
 
+    /* Claim pins for SDA/SCL */
     gpio_create(&mod_i2c, &conf->pio_sda);
     gpio_create(&mod_i2c, &conf->pio_scl);
-
+    
+    /* Erase i2c content */
     memset(i2c, 0, sizeof(struct dev_i2c));
+
+    /* Enable clocks */
     rcc_periph_clock_enable(conf->rcc);
     rcc_periph_clock_enable(conf->dma_rcc);
 
-
-
+    /* Startup routine */
     i2c_peripheral_disable(conf->base);
     i2c_reset(conf->base);
-
-
     i2c_set_clock_frequency(conf->base, conf->clock_f);
     if(conf->fast_mode)
         i2c_set_fast_mode(conf->base);
@@ -417,7 +419,6 @@ int i2c_create(const struct i2c_config *conf)
 
     i2c_set_trise(conf->base, conf->rise_time);
     i2c_set_ccr(conf->base, conf->bus_clk_frequency);
-
     i2c_nack_current(conf->base);
     i2c_disable_ack(conf->base);
     i2c_clear_stop(conf->base);
@@ -431,6 +432,10 @@ int i2c_create(const struct i2c_config *conf)
     i2c->state = I2C_STATE_READY;
     i2c->mutex = mutex_init();
 
+    /* Store address in the DEV_I2C array. */
+    DEV_I2C[conf->idx] = i2c;
+
+    /* Enable interrupts */
     nvic_set_priority(conf->ev_irq, 1);
     nvic_enable_irq(conf->ev_irq);
     nvic_set_priority(conf->er_irq, 1);
