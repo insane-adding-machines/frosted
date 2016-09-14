@@ -105,7 +105,7 @@ int register_framebuffer(struct fb_info *fb_info);
 
 /* Higher level drivers may access fb screen directly */
 unsigned char *framebuffer_get(void);
-int framebuffer_setcmap(uint32_t *arg, int len);
+int framebuffer_setcmap(const uint32_t *arg, int len);
 
 /* kernel init */
 int fb_init(void);

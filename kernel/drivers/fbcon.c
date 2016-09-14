@@ -29,6 +29,7 @@
 
 #define SCR_ROWS 272
 #define SCR_COLS 480
+#define COLOR_DEFAULT 15 /* White */
 
 struct dev_fbcon {
     struct device *dev;
@@ -36,7 +37,10 @@ struct dev_fbcon {
     uint16_t size_x;
     uint16_t size_y;
     uint16_t cursor;
+    uint8_t color;
+    uint8_t escape;
     unsigned char *buffer;
+    unsigned char *colormap;
     unsigned char *screen;
 };
 
@@ -47,7 +51,7 @@ static void devfbcon_tty_attach(struct fnode *fno, int pid);
 static int devfbcon_seek(struct fnode *fno, int off, int whence);
 
 extern const unsigned char fb_font[256][8];
-static uint32_t fbcon_palette[256] = { 0 };
+extern const uint32_t       fb_palette[256];
 
 
 static struct module mod_devfbcon = {
@@ -76,15 +80,18 @@ static void render_row(struct dev_fbcon *fbcon, int row)
     int i, j, l;
     unsigned char fc;
     const unsigned char *fcl;
+    uint8_t fc_color = COLOR_DEFAULT;
     int screen_off;
 
     for (i = 0; i < FBCON_L; i++) {            /* Each char ... i = column */ 
         fc = fbcon->buffer[row * FBCON_L + i]; /* fc = char to render */
+        fc_color = 
+            fbcon->colormap[row * FBCON_L + i];/* fc_color: char color */
         fcl = fb_font[fc];                     /* fcl = font rendering, 8 bytes. */
         for (l = 0; l < 8; l++) {              /* screen lines 0..7 */
             for (j = 0; j < 8; j++) {          /* each pixel in screen line */
                 screen_off = ((row * 8 + l) * SCR_COLS) + (i * 8) + j;
-                fbcon->screen[screen_off] = ((fcl[l] & (1 << (7 - j))) >> (7 - j))?0xFF:0;
+                fbcon->screen[screen_off] = ((fcl[l] & (1 << (7 - j))) >> (7 - j))?fc_color:0;
             }
         }
     }
@@ -101,14 +108,20 @@ static void scroll(struct dev_fbcon *fbcon)
 {
     unsigned char *dest = fbcon->buffer;
     unsigned char *src = fbcon->buffer + FBCON_L;
+    unsigned char *c_dest = fbcon->colormap;
+    unsigned char *c_src = fbcon->colormap + FBCON_L;
     int i;
     for (i = 0; i < FBCON_H; i++) {
         memcpy(dest, src, FBCON_L);
         dest += FBCON_L;
         src += FBCON_L;
+        memcpy(c_dest, c_src, FBCON_L);
+        c_dest += FBCON_L;
+        c_src += FBCON_L;
     }
     fbcon->cursor = FBCON_L * (FBCON_H - 1);
     memset(fbcon->buffer + fbcon->cursor, 0, FBCON_L);
+    memset(fbcon->colormap + fbcon->cursor, COLOR_DEFAULT, FBCON_L);
 }
 
 static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
@@ -116,10 +129,17 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
     int i;
     struct dev_fbcon *fbcon = (struct dev_fbcon *)FNO_MOD_PRIV(fno, &mod_devfbcon);
     const uint8_t *cbuf = buf;
+
     for (i = 0; i < len; i++) {
         int p = 0, t = 0;
         if ((fbcon->cursor) >= (FBCON_L * FBCON_H)) {
             scroll(fbcon);
+        }
+
+        if (fbcon->escape) {
+            fbcon->escape = 0;
+            fbcon->color = cbuf[i];
+            continue;
         }
 
         switch(cbuf[i]) {
@@ -153,16 +173,24 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
             case 0x08:
                 fbcon->cursor--;
                 fbcon->buffer[fbcon->cursor] = 0x20;
+                fbcon->colormap[fbcon->cursor] = COLOR_DEFAULT;
                 break;
 
 
             /* DEL */
             case 0x7f:
                 fbcon->buffer[fbcon->cursor] = 0x20;
+                fbcon->colormap[fbcon->cursor] = COLOR_DEFAULT;
+                break;
+
+            /* ESC */
+            case 0x1b:
+                fbcon->escape = 1;
                 break;
 
             /* Printable char */
             default:
+                fbcon->colormap[fbcon->cursor] = fbcon->color;
                 fbcon->buffer[fbcon->cursor++] = cbuf[i];
         }
     }
@@ -211,7 +239,11 @@ static int devfbcon_seek(struct fnode *fno, int off, int whence)
 }
 
 
-const char fbcon_banner[] = "\r\n~~~ Welcome to Frosted! ~~~\r\nConsole framebuffer enabled.\r\n";
+const char frosted_banner[] = "\r\n~~~ Welcome to Frosted! ~~~\r\n";
+const char fbcon_banner[] = "\r\nConsole framebuffer enabled.\r\n";
+
+static const unsigned char color[2] = { 0x1b, 51 };
+static const unsigned char white[2] = { 0x1b, 15 };
 
 int fbcon_init(void)
 {
@@ -228,23 +260,34 @@ int fbcon_init(void)
         kfree(fbcon);
         return -1;
     }
+    fbcon->colormap = kalloc(FBCON_L * FBCON_H);
+    if (!fbcon->colormap) {
+        kfree(fbcon->buffer);
+        kfree(fbcon);
+        return -1;
+    }
 
     if (devfs == NULL) {
+        kfree(fbcon->colormap);
         kfree(fbcon->buffer);
         kfree(fbcon);
         return -1;
     }
 
     memset(fbcon->buffer, 0, (FBCON_L * FBCON_H));
+    memset(fbcon->colormap, COLOR_DEFAULT, (FBCON_L * FBCON_H));
     register_module(&mod_devfbcon);
     fno_fbcon = fno_create(&mod_devfbcon, "fbcon", devfs);
     fno_fbcon->priv = fbcon;
     fbcon->size_x = FBCON_L;
     fbcon->size_y = FBCON_H;
     fbcon->screen = framebuffer_get();
-    fbcon_palette[0xFF] = 0x0000FF00;
-    framebuffer_setcmap(fbcon_palette, 256);
+    fbcon->color = COLOR_DEFAULT;
+    framebuffer_setcmap(fb_palette, 256);
     /* Test */
+    devfbcon_write(fno_fbcon, color, 2);
+    devfbcon_write(fno_fbcon, frosted_banner, strlen(frosted_banner));
+    devfbcon_write(fno_fbcon, white, 2);
     devfbcon_write(fno_fbcon, fbcon_banner, strlen(fbcon_banner));
     return 0;
 }

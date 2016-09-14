@@ -188,7 +188,7 @@ unsigned char *framebuffer_get(void)
     return fb[0]->screen_buffer;
 }
 
-int framebuffer_setcmap(uint32_t *arg, int len)
+int framebuffer_setcmap(const uint32_t *arg, int len)
 {
     return fb[0]->fbops->fb_setcmap(arg, len);
 }

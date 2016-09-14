@@ -284,7 +284,7 @@ static struct usb_config usb_guest = {
 static const struct i2c_config i2c_configs[] = {
 #ifdef CONFIG_I2C3
     {
-        .idx  = 1,
+        .idx  = 3,
         .base = I2C3,
         .ev_irq = NVIC_I2C3_EV_IRQ,
         .er_irq = NVIC_I2C3_ER_IRQ,
