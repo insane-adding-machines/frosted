@@ -17,7 +17,7 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include <unicore-mx/cm3/nvic.h>
 
@@ -187,7 +187,7 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
     {
         case I2C_STATE_READY:
             i2c_peripheral_enable(i2c->base);
-            i2c_enable_interrupt(i2c->base, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN | I2C_CR2_ITBUFEN);
+            i2c_enable_interrupt(i2c->base, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN);
             i2c->state = I2C_STATE_ADDRESS;
             i2c_set_dma_last_transfer(i2c->base);
             i2c_send_start(i2c->base);
@@ -398,7 +398,7 @@ int i2c_create(const struct i2c_config *conf)
 
     gpio_create(&mod_i2c, &conf->pio_sda);
     gpio_create(&mod_i2c, &conf->pio_scl);
-    
+
     memset(i2c, 0, sizeof(struct dev_i2c));
     rcc_periph_clock_enable(conf->rcc);
     rcc_periph_clock_enable(conf->dma_rcc);
@@ -421,7 +421,7 @@ int i2c_create(const struct i2c_config *conf)
     i2c_nack_current(conf->base);
     i2c_disable_ack(conf->base);
     i2c_clear_stop(conf->base);
-    
+
     /* Set up device struct */
     i2c->base = conf->base;
     i2c->ev_irq = conf->ev_irq;
