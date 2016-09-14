@@ -170,6 +170,26 @@ void dma1_stream6_isr()
 }
 #endif
 
+#ifdef CONFIG_I2C3
+void i2c3_ev_isr(void)
+{
+    i2c_ev(DEV_I2C[3]);
+}
+void i2c3_er_isr(void)
+{
+    i2c_er(DEV_I2C[3]);
+}
+void dma1_stream2_isr()
+{
+    dma_clear_interrupt_flags(DMA1, DMA_STREAM2, DMA_LISR_TCIF0);
+    i2c_rx_dma_complete(DEV_I2C[3]);
+}
+void dma1_stream4_isr()
+{
+    dma_clear_interrupt_flags(DMA1, DMA_STREAM4, DMA_LISR_TCIF0);
+    i2c_tx_dma_complete(DEV_I2C[3]);
+}
+#endif
 
 static void restart_state_machine(struct dev_i2c *i2c)
 {
@@ -233,6 +253,7 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     restart_state_machine(i2c);
                     break;
                 case I2C_STIM_TXE:
+                case I2C_STIM_BTF:
                     i2c->state = I2C_STATE_READ_ADDRESS;
                     i2c_send_start(i2c->base);
                     break;
@@ -329,7 +350,7 @@ int i2c_init_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t len)
     if (!i2c)
         return -ENOENT;
 
-    if (mutex_trylock(i2c->dev->mutex) < 0)
+    if (mutex_trylock(i2c->mutex) < 0)
         return -EBUSY;
 
     i2c->dirn = 1;
@@ -355,7 +376,7 @@ int i2c_init_write(struct i2c_slave *sl, uint8_t reg, const uint8_t *buf, uint32
     if (!i2c)
         return -ENOENT;
 
-    if (mutex_trylock(i2c->dev->mutex) < 0)
+    if (mutex_trylock(i2c->mutex) < 0)
         return -EBUSY;
 
     i2c->dirn = 0;
@@ -400,7 +421,7 @@ int i2c_create(const struct i2c_config *conf)
     /* Claim pins for SDA/SCL */
     gpio_create(&mod_i2c, &conf->pio_sda);
     gpio_create(&mod_i2c, &conf->pio_scl);
-    
+
     /* Erase i2c content */
     memset(i2c, 0, sizeof(struct dev_i2c));
 
@@ -411,14 +432,9 @@ int i2c_create(const struct i2c_config *conf)
     /* Startup routine */
     i2c_peripheral_disable(conf->base);
     i2c_reset(conf->base);
-    i2c_set_clock_frequency(conf->base, conf->clock_f);
-    if(conf->fast_mode)
-        i2c_set_fast_mode(conf->base);
-    else
-        i2c_set_standard_mode(conf->base);
 
-    i2c_set_trise(conf->base, conf->rise_time);
-    i2c_set_ccr(conf->base, conf->bus_clk_frequency);
+    i2c_set_speed(conf->base, 0);
+
     i2c_nack_current(conf->base);
     i2c_disable_ack(conf->base);
     i2c_clear_stop(conf->base);
