@@ -191,6 +191,7 @@ void dma1_stream4_isr()
 }
 #endif
 
+
 static void restart_state_machine(struct dev_i2c *i2c)
 {
     mutex_unlock(i2c->mutex);
@@ -293,6 +294,7 @@ static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
                     restart_state_machine(i2c);
                     break;
                 case I2C_STIM_TXE:
+                case I2C_STIM_BTF:
                     i2c->state = I2C_STATE_DMA_COMPLETE;
                     i2c_enable_dma(i2c->base);
                     break;

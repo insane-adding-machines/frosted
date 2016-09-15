@@ -485,6 +485,11 @@ menu "Device Drivers"
            depends on (DEVSTM32I2C)
            default n
 
+           config DEVSTMPE811
+           tristate "STMPE811 driver (Touchscreen)"
+           depends on (DEVSTM32I2C)
+           default n
+
 
 
        menuconfig DEVSPI
