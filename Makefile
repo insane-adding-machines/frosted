@@ -255,7 +255,7 @@ malloc_test:
 
 
 libclean: clean
-	@make -C kernel/unicore-mx clean
+	@make -C kernel/unicore-mx clean PREFIX=arm-frosted-eabi
 
 clean:
 	@rm -f malloc.test
