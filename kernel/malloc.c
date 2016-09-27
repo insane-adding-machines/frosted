@@ -310,7 +310,7 @@ void* f_realloc(int flags, void* ptr, size_t size)
     else if (block_valid(blk))
     {
         size_t new_size, copy_size;
-        if ((blk->flags & F_IN_USE) == 0) {
+        if (!in_use(blk)) {
             task_segfault((uint32_t)ptr, 0, MEMFAULT_ACCESS);
         }
 
@@ -478,7 +478,7 @@ void f_free(void * ptr)
             return;
         }
 
-        if ((blk->flags & F_IN_USE) == 0) {
+        if (!in_use(blk)) {
             task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
         }
 
