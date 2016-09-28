@@ -289,7 +289,7 @@ void * f_calloc(int flags, size_t num, size_t size)
     return ptr;
 }
 
-void* f_realloc(int flags, void* ptr, size_t size)
+void * f_realloc(int flags, void* ptr, size_t size)
 {
     void * out = NULL;
     struct f_malloc_block * blk;
@@ -299,8 +299,6 @@ void* f_realloc(int flags, void* ptr, size_t size)
         goto realloc_free;
     
     blk = (struct f_malloc_block *)(((uint8_t*)ptr) - sizeof(struct f_malloc_block));
-
-
 
     if (!ptr)
     {
@@ -326,7 +324,7 @@ void* f_realloc(int flags, void* ptr, size_t size)
             /* Shrink  (Ignore for now) */
             return ptr;
         }
-        out = f_malloc(flags, size);
+        out = f_malloc(flags, new_size);
         if (!out)  {
             return NULL;
         }
