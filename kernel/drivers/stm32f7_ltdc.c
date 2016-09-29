@@ -56,7 +56,7 @@ static int ltdc_config_layer(struct fb_info *fb)
   fb->var.pixel_format = FB_PF_CMAP256;
 
   /* Allocate framebuffer memory */
-  fb->screen_buffer = f_malloc(MEM_USER, fb->var.xres * fb->var.xres * (fb->var.bits_per_pixel/8));
+  fb->screen_buffer = f_malloc(MEM_USER, fb->var.xres * fb->var.yres * (fb->var.bits_per_pixel/8));
   if (!fb->screen_buffer)
   {
       return -1;
@@ -166,7 +166,7 @@ static void ltdc_clock(void)
 
 static int ltdc_blank(struct fb_info *fb)
 {
-    uint32_t pixels = (fb->var.xres * fb->var.yres * fb->var.bits_per_pixel);
+    uint32_t pixels = (fb->var.xres * fb->var.yres * (fb->var.bits_per_pixel/8));
     memset((void *)fb->screen_buffer, 0x0, pixels);
 }
 
