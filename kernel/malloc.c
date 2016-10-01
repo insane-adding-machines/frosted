@@ -48,7 +48,11 @@ static inline int MEMPOOL(int x)
         return 3;
     if (x == MEM_EXTRA)
         return 4;
-    return x;
+    if (x == MEM_TASK)
+        return 2;
+    if (x == MEM_USER)
+        return 1;
+    return 0;
 }
 
 /*------------------*/
