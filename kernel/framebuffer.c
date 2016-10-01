@@ -158,9 +158,7 @@ static int fb_fno_init(struct fnode *dev, struct fb_info * fb)
         return -1;
 
     name[2] =  '0' + num_fb++;
-
     fb->dev = device_fno_init(&mod_devfb, name, dev, FL_TTY, fb);
-
     fb->dev->fno->off = 0;
     fb->dev->fno->size = fb->var.yres * fb->var.xres * fb->var.bits_per_pixel;
     return 0;
@@ -193,21 +191,15 @@ int framebuffer_setcmap(const uint32_t *arg, int len)
     return fb[0]->fbops->fb_setcmap(arg, len);
 }
 
-int fb_init(void)
-{
-    struct fnode *devfs = fno_search("/dev");
-    if (!devfs)
-        return -ENOENT;
-    /* Ony one FB supported for now */
-    fb_fno_init(devfs, fb[0]);
-    return 0;
-}
-
 /* Register a low-level framebuffer driver */
 int register_framebuffer(struct fb_info *fb_info)
 {
+    struct fnode *devfs = fno_search("/dev");
     if (!fb_info)
         return -1;
+
+    /* Ony one FB supported for now */
+    fb_fno_init(devfs, fb_info);
     
     if (!fb_info->fbops)
         return -1;

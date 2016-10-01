@@ -208,7 +208,6 @@ int frosted_init(void)
     sysfs_init();
     fatfs_init();
 
-    fb_init();
     ltdc_init();
     fbcon_init();
 
