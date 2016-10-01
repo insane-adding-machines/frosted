@@ -126,7 +126,7 @@ static void scroll(struct dev_fbcon *fbcon)
 
 static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
 {
-    int i;
+    int i, j;
     struct dev_fbcon *fbcon = (struct dev_fbcon *)FNO_MOD_PRIV(fno, &mod_devfbcon);
     const uint8_t *cbuf = buf;
 
@@ -136,11 +136,28 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
             scroll(fbcon);
         }
 
-        if (fbcon->escape) {
-            fbcon->escape = 0;
-            fbcon->color = cbuf[i];
+        if (fbcon->escape == 0x1b) {
+            if (cbuf[i] == '[')
+                fbcon->escape = '[';
+            else { 
+                fbcon->color = cbuf[i];
+                fbcon->escape = 0;
+            }
             continue;
         }
+        if (fbcon->escape == '[') {
+            if (cbuf[i] == 'H') {
+                fbcon->cursor = 0;
+            }
+            if (cbuf[i] == 'J') {
+                for (j = fbcon->cursor; j < (FBCON_L * FBCON_H); j++) {
+                    fbcon->buffer[j] = 0x20;
+                }
+            }
+            fbcon->escape = 0;
+            continue;
+        }
+        // TODO fbcon->color = cbuf[i];
 
         switch(cbuf[i]) {
             case '\r':
@@ -171,9 +188,11 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
 
             /* BS */
             case 0x08:
-                fbcon->cursor--;
-                fbcon->buffer[fbcon->cursor] = 0x20;
-                fbcon->colormap[fbcon->cursor] = COLOR_DEFAULT;
+                if (fbcon->cursor > 0) {
+                    fbcon->cursor--;
+                    fbcon->buffer[fbcon->cursor] = 0x20;
+                    fbcon->colormap[fbcon->cursor] = COLOR_DEFAULT;
+                }
                 break;
 
 
@@ -185,7 +204,7 @@ static int devfbcon_write(struct fnode *fno, const void *buf, unsigned int len)
 
             /* ESC */
             case 0x1b:
-                fbcon->escape = 1;
+                fbcon->escape = 0x1b;
                 break;
 
             /* Printable char */
@@ -242,7 +261,7 @@ static int devfbcon_seek(struct fnode *fno, int off, int whence)
 const char frosted_banner[] = "\r\n~~~ Welcome to Frosted! ~~~\r\n";
 const char fbcon_banner[] = "\r\nConsole framebuffer enabled.\r\n";
 
-static const unsigned char color[2] = { 0x1b, 51 };
+static const unsigned char color[2] = { 0x1b, 13 };
 static const unsigned char white[2] = { 0x1b, 15 };
 
 int fbcon_init(void)
