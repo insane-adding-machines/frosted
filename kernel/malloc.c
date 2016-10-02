@@ -258,7 +258,8 @@ static void * f_sbrk(int flags, int incr)
         prev_heap_end = heap_end_tcpip;
         heap_end_tcpip += incr;
     } else {
-        if ((heap_end_kernel + incr) > heap_limit_kernel)
+        if (((heap_end_kernel + incr) > heap_limit_kernel) ||
+            ((heap_end_kernel + incr) > heap_stack))
             return (void*)(0 - 1);
         prev_heap_end = heap_end_kernel;
         heap_end_kernel += incr;
