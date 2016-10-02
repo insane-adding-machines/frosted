@@ -212,7 +212,7 @@ struct fnode *fno_create_rdonly(struct module *owner, const char *name, struct f
 struct fnode *fno_create_wronly(struct module *owner, const char *name, struct fnode *parent);
 struct fnode *fno_mkdir(struct module *owner, const char *name, struct fnode *parent);
 void fno_unlink(struct fnode *fno);
-struct fnode *fno_search(char *path);
+struct fnode *fno_search(const char *path);
 int vfs_symlink(char *file, char *link);
 
 /* Modules (for files/sockets) */

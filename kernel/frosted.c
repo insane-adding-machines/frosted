@@ -19,8 +19,6 @@
  */
 #include "frosted.h"
 #include <sys/vfs.h>
-#include "libopencmsis/core_cm3.h"
-#include "unicore-mx/cm3/systick.h"
 #include "kprintf.h"
 #include "bflt.h"
 #include "null.h"
@@ -37,6 +35,9 @@
 #include "fbcon.h"
 #include "usb.h"
 #include "eth.h"
+#include "exti.h"
+#include "unicore-mx/cm3/systick.h"
+#include "libopencmsis/core_cm3.h"
 
 
 #ifdef CONFIG_PICOTCP

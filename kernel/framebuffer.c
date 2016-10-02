@@ -186,9 +186,9 @@ unsigned char *framebuffer_get(void)
     return fb[0]->screen_buffer;
 }
 
-int framebuffer_setcmap(const uint32_t *arg, int len)
+int framebuffer_setcmap(struct fb_cmap *cmap)
 {
-    return fb[0]->fbops->fb_setcmap(arg, len);
+    return fb[0]->fbops->fb_setcmap(cmap, fb[0]);
 }
 
 /* Register a low-level framebuffer driver */

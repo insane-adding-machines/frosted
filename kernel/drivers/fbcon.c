@@ -51,8 +51,7 @@ static void devfbcon_tty_attach(struct fnode *fno, int pid);
 static int devfbcon_seek(struct fnode *fno, int off, int whence);
 
 extern const unsigned char fb_font[256][8];
-extern const uint32_t       fb_palette[256];
-
+extern struct fb_cmap xterm_cmap;
 
 static struct module mod_devfbcon = {
     .family = FAMILY_FILE,
@@ -302,7 +301,7 @@ int fbcon_init(void)
     fbcon->size_y = FBCON_H;
     fbcon->screen = framebuffer_get();
     fbcon->color = COLOR_DEFAULT;
-    framebuffer_setcmap(fb_palette, 256);
+    framebuffer_setcmap(&xterm_cmap);
     /* Test */
     devfbcon_write(fno_fbcon, color, 2);
     devfbcon_write(fno_fbcon, frosted_banner, strlen(frosted_banner));

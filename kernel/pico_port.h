@@ -6,6 +6,7 @@
 #include "frosted.h"
 #include "string.h"
 #include "malloc.h"
+#include "locks.h"
 #include "kprintf.h"
 
 

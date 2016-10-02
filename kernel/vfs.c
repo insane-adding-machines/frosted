@@ -314,23 +314,36 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
     return _fno_search(path_walk(path), dir->children, follow);
 }
 
-struct fnode *fno_search(char *path)
+struct fnode *fno_search(const char *_path)
 {
-    int i;
+    int i, len;
+    struct fnode *fno = NULL;
+    char *path = NULL;
+    if (!_path)
+        return NULL;
+
+    len = strlen(_path);
+    if (!len)
+        return NULL;
+
+    path = kcalloc(len + 1, 1);
     if (!path)
         return NULL;
 
-    i = strlen(path) - 1;
+    memcpy(path, _path, len + 1);
+
+    i = len - 1;
     while (i > 0) {
         if (path[i] == '/')
             path[i] = '\0';
         else
             break;
     }
-    if (strlen(path) == 0)
-        return NULL;
-    
-    return _fno_search(path, &FNO_ROOT, 1);
+    if (strlen(path) > 0) {
+        fno = _fno_search(path, &FNO_ROOT, 1);
+    }
+    kfree(path);
+    return fno;
 }
 
 struct fnode *fno_search_nofollow(const char *path)
@@ -563,7 +576,7 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     struct fnode *fno = task_filedesc_get(arg1);
     if (!fno)
         return -EINVAL;
-    if (task_ptr_valid(arg3))
+    if (task_ptr_valid((void*)arg3))
         return -EACCES;
     if (fno->owner->ops.ioctl) {
         fno->owner->ops.ioctl(fno, (uint32_t)arg2, (void *)arg3);
@@ -573,7 +586,7 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 int sys_link_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     struct fnode *fno; 
-    if (task_ptr_valid(arg1) || task_ptr_valid(arg2))
+    if (task_ptr_valid((void*)arg1) || task_ptr_valid((void*)arg2))
         return -EACCES;
     fno = fno_link((char*)arg1, (char *)arg2);
     if (fno)
@@ -614,7 +627,7 @@ int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 int sys_opendir_hdlr(uint32_t arg1)
 {
     struct fnode *fno; 
-    if (task_ptr_valid(arg1))
+    if (task_ptr_valid((void*)arg1))
         return -EACCES;
     fno = fno_search((char *)arg1);
     if (fno && (fno->flags & FL_DIR)) {
@@ -768,7 +781,7 @@ int sys_truncate_hdlr(char *arg1, unsigned arg2)
 {
     char abs_p[MAX_FILE];
     struct fnode *fno;
-    if (task_ptr_valid(arg1))
+    if (task_ptr_valid((void*)arg1))
         return -EACCES;
     path_abs(arg1, abs_p, MAX_FILE);
     fno = fno_search(abs_p);
@@ -802,7 +815,7 @@ int sys_isatty_hdlr(uint32_t arg1)
 int sys_ttyname_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
     struct fnode *f = task_filedesc_get(arg1);
-    if (task_ptr_valid(arg2))
+    if (task_ptr_valid((void*)arg2))
        return  -EACCES;
     if (f && f->flags & FL_TTY) {
         strncpy((char *)arg2, f->fname, arg3);
@@ -921,14 +934,14 @@ int sys_mount_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     char *module = (char *)arg3;
     uint32_t flags = arg4;
     void *args = (void*)arg5;
-    if (task_ptr_valid(arg1) || task_ptr_valid(arg2)|| task_ptr_valid(arg3)|| (arg5 && task_ptr_valid(arg5)))
+    if (task_ptr_valid((void*)arg1) || task_ptr_valid((void*)arg2)|| task_ptr_valid((void*)arg3)|| (arg5 && task_ptr_valid((void*)arg5)))
        return  -EACCES;
     return vfs_mount(source, target, module, flags, args);
 }
 
 int sys_umount_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    if (task_ptr_valid(arg1))
+    if (task_ptr_valid((void*)arg1))
         return -EACCES;
     char *target = (char *)arg1;
     uint32_t flags = arg2;
