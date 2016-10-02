@@ -192,9 +192,9 @@ void ltdc_config_clut(uint32_t *CLUT, uint32_t size)
     }
 }
 
-int ltdc_set_cmap(struct fb_cmap *cmap, struct fb_info *info)
+int ltdc_set_cmap(uint32_t *cmap, struct fb_info *info)
 {
-    ltdc_config_clut((uint32_t *)cmap, 256);
+    ltdc_config_clut(cmap, 256);
     ltdc_enable_clut();
     return 0;
 }

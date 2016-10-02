@@ -176,7 +176,7 @@ static int fb_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         return 0;
     }
     if (cmd == IOCTL_FB_PUTCMAP) {
-        return fb->fbops->fb_setcmap((struct fb_cmap *)(arg), fb);
+        return fb->fbops->fb_setcmap((uint32_t *)arg, fb);
     }
     return -1;
 }
@@ -186,9 +186,9 @@ unsigned char *framebuffer_get(void)
     return fb[0]->screen_buffer;
 }
 
-int framebuffer_setcmap(struct fb_cmap *cmap)
+int framebuffer_setcmap(uint32_t *ptr)
 {
-    return fb[0]->fbops->fb_setcmap(cmap, fb[0]);
+    return fb[0]->fbops->fb_setcmap(ptr, fb[0]);
 }
 
 /* Register a low-level framebuffer driver */

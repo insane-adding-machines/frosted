@@ -36,22 +36,9 @@ struct fb_var_screeninfo {
     // __u32 vmode; /* see FB_VMODE_* */ 
 };
 
-/* Device independent colormap information. You can get and set the colormap using the FBIOGETCMAP and FBIOPUTCMAP ioctls.  */
-struct fb_cmap {
-    /* For now, entries have to by 32 bits, with AARRGGBB format */
-    uint32_t *start;         /* First entry  */
-    uint32_t len;           /* Number of entries */
-    //uint16_t *red;          /* Red values   */
-    //uint16_t *green;
-    //uint16_t *blue;
-    //uint16_t *transp;       /* transparency, can be NULL */
-};
-
 struct fb_info {
         struct fb_var_screeninfo var;   /* Current var */
         //struct fb_fix_screeninfo fix;   /* Current fix */
-        struct fb_cmap cmap;            /* Current cmap */
-        //struct list_head modelist;      /* mode list */
         struct fb_videomode *mode;      /* current mode */
         //struct backlight_device *bl_dev;
 
@@ -73,7 +60,7 @@ struct fb_ops {
         int (*fb_set_par)(struct fb_info *info);
 
         /* set color registers in batch */
-        int (*fb_setcmap)(struct fb_cmap *cmap, struct fb_info *info);
+        int (*fb_setcmap)(uint32_t *cmap, struct fb_info *info);
 
         /* blank display */
         int (*fb_blank)(struct fb_info *info);
@@ -105,7 +92,7 @@ int register_framebuffer(struct fb_info *fb_info);
 
 /* Higher level drivers may access fb screen directly */
 unsigned char *framebuffer_get(void);
-int framebuffer_setcmap(struct fb_cmap *cmap);
+int framebuffer_setcmap(uint32_t *cmap);
 
 /* kernel init */
 int fb_init(void);
