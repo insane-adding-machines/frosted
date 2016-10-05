@@ -576,8 +576,6 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     struct fnode *fno = task_filedesc_get(arg1);
     if (!fno)
         return -EINVAL;
-    if (task_ptr_valid((void*)arg3))
-        return -EACCES;
     if (fno->owner->ops.ioctl) {
         fno->owner->ops.ioctl(fno, (uint32_t)arg2, (void *)arg3);
     } else return -EOPNOTSUPP;
