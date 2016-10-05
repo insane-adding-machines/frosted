@@ -170,6 +170,14 @@ static int ltdc_blank(struct fb_info *fb)
     memset((void *)fb->screen_buffer, 0x0, pixels);
 }
 
+static void ltdc_screen_on(void)
+{
+    /* Assert display enable LCD_DISP pin */
+    gpio_set(GPIOI, GPIO12);
+    /* Assert backlight LCD_BL_CTRL pin */
+    gpio_set(GPIOK, GPIO3);
+}
+
 void ltdc_enable_clut(void)
 {
   /* Disable LTDC color lookup table by setting CLUTEN bit */
@@ -208,7 +216,8 @@ static int ltdc_open(struct fb_info *info)
     ltdc_config_layer(info);
 }
 
-static const struct fb_ops  ltdc_fbops = {  .fb_open = ltdc_open,
+static const struct fb_ops  ltdc_fbops = {  
+                                            .fb_open = ltdc_open,
                                             .fb_destroy = ltdc_destroy,
                                             .fb_blank = ltdc_blank,
                                             .fb_setcmap = ltdc_set_cmap};
@@ -282,18 +291,17 @@ static void lcd_pinmux(void)
     g.base = GPIOI;
     g.pin = GPIO12;
     g.mode = GPIO_MODE_OUTPUT;
-    gpio_create(&mod_ltdc, &g);
+    g.name = "display";
+    gpio_create(NULL, &g);
 
     /* LCD_BL control PK3 (output) */
     g.base = GPIOK;
     g.pin = GPIO3;
     g.mode = GPIO_MODE_OUTPUT;
-    gpio_create(&mod_ltdc, &g);
+    g.name = "backlight";
+    gpio_create(NULL, &g);
+    ltdc_screen_on();
 
-    /* Assert display enable LCD_DISP pin */
-    gpio_set(GPIOI, GPIO12);
-    /* Assert backlight LCD_BL_CTRL pin */
-    gpio_set(GPIOK, GPIO3);
 }
 
 
