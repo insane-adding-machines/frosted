@@ -89,7 +89,7 @@ CFLAGS-$(DEVLSM303DLHC)+=-DCONFIG_DEVLSM303DLHC
 OBJS-$(DEVSTMPE811)+= kernel/drivers/stmpe811.o
 CFLAGS-$(DEVSTMPE811)+=-DCONFIG_DEVSTMPE811
 
-OBJS-$(DEVSPI)+= kernel/drivers/stm32f4_spi.o
+OBJS-$(DEVSPI)+= kernel/drivers/stm32_spi.o
 CFLAGS-$(DEVSPI)+=-DCONFIG_DEVSTM32F4SPI
 
 OBJS-$(DEVSTM32I2C)+= kernel/drivers/stm32_i2c.o

@@ -17,7 +17,7 @@
  *      Authors: Maxime Vincent
  *
  */
- 
+
 #include <stdint.h>
 #include "frosted.h"
 #include "gpio.h"
@@ -75,24 +75,24 @@ static uint32_t eth_smi_get_phy_divider(void)
     uint32_t hclk = rcc_ahb_frequency;
 
 #if defined(STM32F4) || defined(STM32F7)
-    /* CSR Clock above 200 MHz */ 
+    /* CSR Clock above 200 MHz */
     if (hclk >= 200000000)
-        return ETH_MACMIIAR_CR_HCLK_DIV_124;    
-    
-    /* CSR Clock between 150-168 MHz */ 
+        return ETH_MACMIIAR_CR_HCLK_DIV_124;
+
+    /* CSR Clock between 150-168 MHz */
     if (hclk >= 150000000)
-        return ETH_MACMIIAR_CR_HCLK_DIV_102;    
+        return ETH_MACMIIAR_CR_HCLK_DIV_102;
 #endif
 
-    /* CSR Clock between 100-150 MHz */ 
+    /* CSR Clock between 100-150 MHz */
     if (hclk >= 100000000)
         return ETH_MACMIIAR_CR_HCLK_DIV_62;
 
-    /* CSR Clock between 60-100 MHz */ 
+    /* CSR Clock between 60-100 MHz */
     if (hclk >= 60000000)
         return ETH_MACMIIAR_CR_HCLK_DIV_42;
 
-    /* CSR Clock between 35-60 MHz */ 
+    /* CSR Clock between 35-60 MHz */
     if (hclk >= 35000000)
         return ETH_MACMIIAR_CR_HCLK_DIV_26;
 
@@ -229,7 +229,7 @@ int pico_eth_start(void)
     pico_string_to_ipv4(ipstr, &default_ip.addr);
     pico_string_to_ipv4(nmstr, &default_nm.addr);
     pico_string_to_ipv4(gwstr, &default_gw.addr);
-    
+
 
     dev_eth_stm = kalloc(sizeof(struct dev_eth));
     if (!dev_eth_stm)
@@ -279,7 +279,7 @@ int pico_eth_start(void)
 }
 
 /* HW initialization */
-int ethernet_init(struct eth_config *conf)
+int ethernet_init(const struct eth_config *conf)
 {
     unsigned int i;
     /* Create PHY reset pin */

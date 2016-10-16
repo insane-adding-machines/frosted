@@ -26,6 +26,7 @@
 #include <unicore-mx/stm32/sdio.h>
 #include <unicore-mx/stm32/i2c.h>
 #include <unicore-mx/stm32/dma.h>
+#include "unicore-mx/stm32/spi.h"
 #include "drivers/stm32f4_dsp.h"
 #include "drivers/stm32_sdio.h"
 
@@ -37,6 +38,7 @@
 #include "usb.h"
 #include "eth.h"
 #include "i2c.h"
+#include "spi.h"
 #include "dma.h"
 
 #if CONFIG_SYS_CLOCK == 48000000
@@ -199,6 +201,71 @@ static const struct i2c_config i2c_configs[] = {
 #endif
 };
 #define NUM_I2CS (sizeof(i2c_configs) / sizeof(struct i2c_config))
+
+static const struct spi_config spi_configs[] = {
+#ifdef CONFIG_SPI_1
+    {
+        .idx  = 1,
+        .base = SPI1,
+        .irq = NVIC_SPI1_IRQ,
+        .rcc = RCC_SPI1,
+        .baudrate = 0, /* TODO: SPI baudrate */
+        .polarity = 1,
+        .phase = 1,
+        .rx_only = 0,
+        .bidir_mode = 0,
+        .dff_16 = 0,
+        .enable_software_slave_management = 1,
+        .send_msb_first = 1,
+
+        .tx_dma = {
+            .base = DMA2,
+            .stream = DMA_STREAM3,
+            .channel = DMA_SxCR_CHSEL_3,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+            .prio = DMA_SxCR_PL_MEDIUM,
+            .paddr =  (uint32_t) &SPI_DR(SPI1),
+            .irq = NVIC_DMA1_STREAM6_IRQ,
+        },
+        .rx_dma = {
+            .base = DMA2,
+            .stream = DMA_STREAM2,
+            .channel = DMA_SxCR_CHSEL_3,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+            .prio = DMA_SxCR_PL_VERY_HIGH,
+            .paddr =  (uint32_t) &SPI_DR(SPI1),
+            .irq = NVIC_DMA1_STREAM0_IRQ,
+        },
+        .dma_rcc = RCC_DMA1,
+        .pio_sck = {
+            .base=GPIOA,
+            .pin=GPIO5,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF5,
+            .pullupdown=GPIO_PUPD_NONE
+        },
+        .pio_mosi = {
+            .base=GPIOA,
+            .pin=GPIO6,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF5,
+            .pullupdown=GPIO_PUPD_NONE
+        },
+        .pio_miso = {
+            .base=GPIOA,
+            .pin=GPIO6,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF5,
+            .pullupdown=GPIO_PUPD_NONE
+        },
+    },
+#endif
+};
+#define NUM_SPIS (sizeof(spi_configs) / sizeof(struct spi_config))
 
 static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_USART_1
@@ -415,7 +482,10 @@ int machine_init(void)
         i2c_create(&i2c_configs[i]);
     }
 
-    /* TODO: Enable INS on i2c1 */
+    /* SPIs */
+    for (i = 0; i < NUM_SPIS; i++) {
+        devspi_create(&spi_configs[i]);
+    }
 
     rng_create(1, RCC_RNG);
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
