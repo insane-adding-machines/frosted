@@ -101,6 +101,34 @@ static const struct uart_config uart_configs[] = {
         },
     },
 #endif
+#ifdef CONFIG_USART_3
+    {
+        .devidx = 3,
+        .base = USART3,
+        .irq = NVIC_USART3_IRQ,
+        .rcc = RCC_USART3,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+        .pio_tx = {
+            .base=GPIOD,
+            .pin=GPIO8,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .speed=GPIO_OSPEED_25MHZ,
+            .optype=GPIO_OTYPE_PP,
+        },
+        .pio_rx = {
+            .base=GPIOD,
+            .pin=GPIO9,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF7,
+            .pullupdown=GPIO_PUPD_NONE
+        },
+    },
+#endif
 #ifdef CONFIG_USART_6
     {
         .devidx = 6,

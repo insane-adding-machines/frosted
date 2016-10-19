@@ -73,8 +73,8 @@ static const struct uart_config uart_configs[] = {
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
         .pio_tx = {
-            .base=GPIOA,
-            .pin=GPIO10,
+            .base=GPIOB,
+            .pin=GPIO7,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF7,
             .speed=GPIO_OSPEED_25MHZ,
@@ -83,34 +83,6 @@ static const struct uart_config uart_configs[] = {
         .pio_rx = {
             .base=GPIOA,
             .pin=GPIO9,
-            .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7,
-            .pullupdown=GPIO_PUPD_NONE
-        },
-    },
-#endif
-#ifdef CONFIG_USART_2
-    {
-        .devidx = 2,
-        .base = USART2,
-        .irq = NVIC_USART2_IRQ,
-        .rcc = RCC_USART2,
-        .baudrate = 115200,
-        .stop_bits = USART_STOPBITS_1,
-        .data_bits = 8,
-        .parity = USART_PARITY_NONE,
-        .flow = USART_FLOWCONTROL_NONE,
-        .pio_tx = {
-            .base=GPIOA,
-            .pin=GPIO3,
-            .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7,
-            .speed=GPIO_OSPEED_25MHZ,
-            .optype=GPIO_OTYPE_PP,
-        },
-        .pio_rx = {
-            .base=GPIOA,
-            .pin=GPIO2,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF7,
             .pullupdown=GPIO_PUPD_NONE
