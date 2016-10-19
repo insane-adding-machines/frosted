@@ -73,12 +73,12 @@ static const struct gpio_config gpio_button = {
 
 static const struct uart_config uart_configs[] = {
 #ifdef CONFIG_DEVUART
-#ifdef CONFIG_USART_2
+#ifdef CONFIG_USART_3
     {
-        .devidx = 2,
-        .base = USART2,
-        .irq = NVIC_USART2_IRQ,
-        .rcc = RCC_USART2,
+        .devidx = 3,
+        .base = USART3,
+        .irq = NVIC_USART3_IRQ,
+        .rcc = RCC_USART3,
         .baudrate = 115200,
         .stop_bits = USART_STOPBITS_1,
         .data_bits = 8,
@@ -86,7 +86,7 @@ static const struct uart_config uart_configs[] = {
         .flow = USART_FLOWCONTROL_NONE,
         .pio_tx = {
             .base=GPIOD,
-            .pin=GPIO5,
+            .pin=GPIO8,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF7,
             .speed=GPIO_OSPEED_25MHZ,
@@ -94,7 +94,7 @@ static const struct uart_config uart_configs[] = {
         },
         .pio_rx = {
             .base=GPIOD,
-            .pin=GPIO6,
+            .pin=GPIO9,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF7,
             .pullupdown=GPIO_PUPD_NONE

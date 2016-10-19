@@ -353,7 +353,7 @@ menu "Device Drivers"
 
             config USART_3
             bool "USART 3"
-            depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F769 )
+            depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F746 || ARCH_STM32F769 )
 
             config USART_6
             bool "USART 6"
