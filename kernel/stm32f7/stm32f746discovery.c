@@ -73,8 +73,8 @@ static const struct uart_config uart_configs[] = {
         .parity = USART_PARITY_NONE,
         .flow = USART_FLOWCONTROL_NONE,
         .pio_tx = {
-            .base=GPIOA,
-            .pin=GPIO10,
+            .base=GPIOB,
+            .pin=GPIO7,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF7,
             .speed=GPIO_OSPEED_25MHZ,
@@ -83,34 +83,6 @@ static const struct uart_config uart_configs[] = {
         .pio_rx = {
             .base=GPIOA,
             .pin=GPIO9,
-            .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7,
-            .pullupdown=GPIO_PUPD_NONE
-        },
-    },
-#endif
-#ifdef CONFIG_USART_2
-    {
-        .devidx = 2,
-        .base = USART2,
-        .irq = NVIC_USART2_IRQ,
-        .rcc = RCC_USART2,
-        .baudrate = 115200,
-        .stop_bits = USART_STOPBITS_1,
-        .data_bits = 8,
-        .parity = USART_PARITY_NONE,
-        .flow = USART_FLOWCONTROL_NONE,
-        .pio_tx = {
-            .base=GPIOA,
-            .pin=GPIO3,
-            .mode=GPIO_MODE_AF,
-            .af=GPIO_AF7,
-            .speed=GPIO_OSPEED_25MHZ,
-            .optype=GPIO_OTYPE_PP,
-        },
-        .pio_rx = {
-            .base=GPIOA,
-            .pin=GPIO2,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF7,
             .pullupdown=GPIO_PUPD_NONE
@@ -225,10 +197,10 @@ struct gpio_config stm32eth_mii_pins[] = {
     {.base=GPIOA, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII REF CLK
     {.base=GPIOA, .pin=GPIO2, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDIO
     {.base=GPIOA, .pin=GPIO7, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII CRS DV
-    {.base=GPIOB, .pin=GPIO10,.mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXER
-    {.base=GPIOB, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXEN
-    {.base=GPIOB, .pin=GPIO12,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD0
-    {.base=GPIOB, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD1
+    {.base=GPIOG, .pin=GPIO2, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXER
+    {.base=GPIOG, .pin=GPIO11,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXEN
+    {.base=GPIOG, .pin=GPIO13,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD0
+    {.base=GPIOG, .pin=GPIO14,.mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // RMII TXD1
     {.base=GPIOC, .pin=GPIO1, .mode=GPIO_MODE_AF, .optype=GPIO_OTYPE_PP, .af=GPIO_AF11}, // MDC
     {.base=GPIOC, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD0
     {.base=GPIOC, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF11},                        // RMII RXD1
@@ -236,13 +208,8 @@ struct gpio_config stm32eth_mii_pins[] = {
 
 static struct eth_config eth_config = {
     .pio_mii = stm32eth_mii_pins,
-    .n_pio_mii = 10,
-    .pio_phy_reset = {
-        .base=GPIOE,
-        .pin=GPIO2,
-        .mode=GPIO_MODE_OUTPUT,
-        .optype=GPIO_OTYPE_PP,
-    },
+    .n_pio_mii = sizeof(stm32eth_mii_pins)/sizeof(struct gpio_config),
+    .pio_phy_reset = NULL,
 };
 
 static struct usb_config usb_guest = {
