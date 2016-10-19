@@ -40,6 +40,7 @@
 #include "i2c.h"
 #include "spi.h"
 #include "dma.h"
+#include "drivers/lis3dsh.h"
 
 #if CONFIG_SYS_CLOCK == 48000000
 #    define STM32_CLOCK RCC_CLOCK_3V3_48MHZ
@@ -150,6 +151,7 @@ static const struct i2c_config i2c_configs[] = {
         .ev_irq = NVIC_I2C1_EV_IRQ,
         .er_irq = NVIC_I2C1_ER_IRQ,
         .rcc = RCC_I2C1,
+        .dma_rcc = RCC_DMA2,
 
         .clock_f = I2C_CR2_FREQ_36MHZ,
         .fast_mode = 1,
@@ -227,7 +229,7 @@ static const struct spi_config spi_configs[] = {
             .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
             .prio = DMA_SxCR_PL_MEDIUM,
             .paddr =  (uint32_t) &SPI_DR(SPI1),
-            .irq = NVIC_DMA1_STREAM6_IRQ,
+            .irq = 0,
         },
         .rx_dma = {
             .base = DMA2,
@@ -238,7 +240,7 @@ static const struct spi_config spi_configs[] = {
             .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
             .prio = DMA_SxCR_PL_VERY_HIGH,
             .paddr =  (uint32_t) &SPI_DR(SPI1),
-            .irq = NVIC_DMA1_STREAM0_IRQ,
+            .irq = NVIC_DMA2_STREAM2_IRQ,
         },
         .dma_rcc = RCC_DMA1,
         .pio_sck = {
@@ -246,21 +248,24 @@ static const struct spi_config spi_configs[] = {
             .pin=GPIO5,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF5,
-            .pullupdown=GPIO_PUPD_NONE
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
         },
         .pio_mosi = {
             .base=GPIOA,
             .pin=GPIO6,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF5,
-            .pullupdown=GPIO_PUPD_NONE
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
         },
         .pio_miso = {
             .base=GPIOA,
-            .pin=GPIO6,
+            .pin=GPIO7,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF5,
-            .pullupdown=GPIO_PUPD_NONE
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
         },
     },
 #endif
@@ -458,6 +463,13 @@ struct sdio_config sdio_conf = {
     }
 };
 
+struct gpio_config lis3dsh_pio = {
+    .base=GPIOE,
+    .pin=GPIO3,
+    .mode=GPIO_MODE_OUTPUT,
+    .pullupdown=GPIO_PUPD_PULLUP
+};
+
 int machine_init(void)
 {
     int i;
@@ -486,6 +498,8 @@ int machine_init(void)
     for (i = 0; i < NUM_SPIS; i++) {
         devspi_create(&spi_configs[i]);
     }
+
+    lis3dsh_init(1, &lis3dsh_pio);
 
     rng_create(1, RCC_RNG);
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;

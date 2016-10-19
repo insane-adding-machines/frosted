@@ -484,6 +484,7 @@ menu "Device Drivers"
            tristate "LSM303DLHC driver (Accelerometer & Magnetometer)"
            depends on (DEVSTM32I2C)
            default n
+           
 
            config DEVSTMPE811
            tristate "STMPE811 driver (Touchscreen)"
@@ -503,9 +504,14 @@ menu "Device Drivers"
                 bool "SPI 1"
            endif
 
+           config DEVLIS3DSH
+           tristate "LIS3DSH driver (3-Axis Accelerometer)"
+           depends on (DEVSPI)
+           default n
+
            config DEVL3GD20
            tristate "L3GD20 driver (Gyro)"
-           depends on ( SPI_1)
+           depends on (DEVSPI)
            default n
 
        config DEV_RANDOM

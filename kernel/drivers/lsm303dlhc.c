@@ -39,12 +39,6 @@ enum lsm303_state {
     LSM303_STATE_RX_RDY
 };
 
-struct lsm303dlhc_ctrl_reg
-{
-    uint8_t reg;
-    uint8_t data;
-};
-
 struct dev_lsm303dlhc {
     struct i2c_slave i2c; /* As first argument, so isr callbacks will use this as arg */
     struct device * dev;

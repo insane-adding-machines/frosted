@@ -216,7 +216,7 @@ static int mac_init(uint8_t * phy_addr, uint32_t clk_div)
     return 0;
 }
 
-int pico_eth_start(void)
+static void pico_eth_start_deferred(uint32_t t, void *arg)
 {
     int8_t phy_addr;
     uint8_t * descriptors;
@@ -226,6 +226,8 @@ int pico_eth_start(void)
     const char gwstr[] = CONFIG_ETH_DEFAULT_GW;
     struct pico_ip4 default_ip, default_nm, default_gw, zero;
 
+    (void)arg;
+    (void)t;
     pico_string_to_ipv4(ipstr, &default_ip.addr);
     pico_string_to_ipv4(nmstr, &default_nm.addr);
     pico_string_to_ipv4(gwstr, &default_gw.addr);
@@ -233,7 +235,7 @@ int pico_eth_start(void)
 
     dev_eth_stm = kalloc(sizeof(struct dev_eth));
     if (!dev_eth_stm)
-        return -1;
+        return;
     memset(dev_eth_stm, 0, sizeof(struct dev_eth));
     mac_init(&dev_eth_stm->phy_addr, clk_div);
 
@@ -248,7 +250,7 @@ int pico_eth_start(void)
     /* sizes must be multiple of 4 bytes! buffer must be 4 byte aligned */
     descriptors = kalloc(2 * 2 * ETH_MAX_FRAME + 2 * 16); /* size of buffers + size of descriptors */
     if (!descriptors)
-        return -1;
+        return;
     eth_desc_init(descriptors, 2, 2, ETH_MAX_FRAME, ETH_MAX_FRAME, false);
 
     /* set pico function pointers */
@@ -258,7 +260,7 @@ int pico_eth_start(void)
 
     if (pico_device_init(&dev_eth_stm->dev,"eth0", default_mac) < 0) {
         kfree(dev_eth_stm);
-        return -1;
+        return;
     }
     /* Set address/netmask */
     pico_ipv4_link_add(&dev_eth_stm->dev, default_ip, default_nm);
@@ -274,14 +276,18 @@ int pico_eth_start(void)
     nvic_enable_irq(NVIC_ETH_IRQ);
 
     eth_start();
-    return 0;
-
 }
 
+
+
 /* HW initialization */
-int ethernet_init(const struct eth_config *conf)
+static struct eth_config init_defer_eth_config;
+
+static void ethernet_init_deferred(uint32_t t, void *arg)
 {
     unsigned int i;
+    (void)t;
+    struct eth_config *conf = (struct eth_config *)arg;
     /* Create PHY reset pin */
     gpio_create(&mod_eth, &conf->pio_phy_reset);
     /* Create MII pins */
@@ -290,6 +296,17 @@ int ethernet_init(const struct eth_config *conf)
     /* Reset PHY */
     gpio_clear(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
     gpio_set(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
+}
+
+int pico_eth_start(void) {
+    ktimer_add(100, ethernet_init_deferred, &init_defer_eth_config);
+    ktimer_add(300, pico_eth_start_deferred, NULL);
+    return 0;
+}
+
+int ethernet_init(const struct eth_config *conf)
+{
+    memcpy(&init_defer_eth_config, conf, sizeof(struct eth_config));
     return 0;
 }
 

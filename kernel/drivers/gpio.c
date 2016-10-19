@@ -273,7 +273,8 @@ static struct module mod_devgpio_mx = {
 #define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);   \
                                                           gpio_set_output_options(P, O, S, I);
 
-#define SET_AF(P, M, A, I)              gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);  \
+#define SET_AF(P, M, A, I, O, S)              gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);  \
+                                                         gpio_set_output_options(P, O, S, I); \
                                                          gpio_set_af(P, A, I);
 
 
@@ -289,7 +290,7 @@ static struct module mod_devgpio_mx = {
 #define SET_OUTPUT(P, I, O, S)          gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);   \
                                                                 gpio_set_af(P, GPIO_AF0, I);
 
-#define SET_AF(P, M, A, I)                   gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);    \
+#define SET_AF(P, M, A, I, O, S)                   gpio_mode_setup(P, M, GPIO_PUPD_NONE, I);    \
                                                                 gpio_set_af(P, A, I);
 
 void eint_isr(uint32_t exti_base)
@@ -586,7 +587,7 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
             SET_OUTPUT(gpio_config->base, gpio_config->pin, gpio_config->optype, gpio_config->speed);
             break;
         case GPIO_MODE_AF:
-            SET_AF(gpio_config->base, GPIO_MODE_AF, gpio_config->af,  gpio_config->pin);
+            SET_AF(gpio_config->base, GPIO_MODE_AF, gpio_config->af,  gpio_config->pin, gpio_config->optype, gpio_config->speed);
             break;
         case GPIO_MODE_ANALOG:
             gpio_mode_setup(gpio_config->base, gpio_config->mode, GPIO_PUPD_NONE, gpio_config->pin);

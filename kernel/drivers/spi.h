@@ -29,8 +29,7 @@ struct spi_config {
 };
 
 struct spi_slave {
-    int     bus;
-    uint8_t address;
+    uint8_t bus;
     void (*isr)(struct spi_slave *);
     void *priv;
 };
