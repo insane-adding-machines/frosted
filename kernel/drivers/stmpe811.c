@@ -738,10 +738,10 @@ static int devstmpe811_read(struct fnode *fno, void *buf, unsigned int len)
         return EINVAL;
 
     if (stmpe811->state == STMPE811_STATE_IDLE) {
-        if ((stmpe811->dev->pid) && (stmpe811->dev->pid != scheduler_get_cur_pid())) {
+        if ((stmpe811->dev->pid) && (stmpe811->dev->pid != this_task())) {
             return -EBUSY;
         }
-        stmpe811->dev->pid = scheduler_get_cur_pid();
+        stmpe811->dev->pid = this_task();
 
         task_suspend();
         exti_enable(stmpe811->eidx, 1);

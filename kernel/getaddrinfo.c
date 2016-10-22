@@ -41,13 +41,13 @@ struct dnsquery_cookie
 {
     char            *node;
     struct addrinfo *res;
-    uint16_t        pid;
+    struct task     *task;
     uint8_t         state;
 };
 
-struct waiting_pid {
-    uint16_t pid;
-    struct waiting_pid *next;
+struct waiting_task {
+    struct task *task;
+    struct waiting_task *next;
 };
 
 
@@ -55,7 +55,7 @@ struct waiting_pid {
 
 static struct dnsquery_cookie ck4 = { NULL, 0, DNSQUERY_IDLE };
 static struct dnsquery_cookie ck6 = { NULL, 0, DNSQUERY_IDLE };
-static struct waiting_pid *waiting_list = NULL;
+static struct waiting_task *waiting_list = NULL;
 
 
 static int dns_is_busy(void)
@@ -71,11 +71,11 @@ static int dns_is_busy(void)
 
 static int add_to_waiting_list(void)
 {
-    struct waiting_pid *wp = kalloc(sizeof(struct waiting_pid));
-    if (!wp)
+    struct waiting_task *wt = kalloc(sizeof(struct waiting_task));
+    if (!wt)
         return -1;
-    wp->next = waiting_list;
-    wp->pid = scheduler_get_cur_pid();
+    wt->next = waiting_list;
+    wt->task = this_task();
     return 0;
 }
 
@@ -86,7 +86,7 @@ static void dns_ip6_cb(char *ip, void *arg)
         new = f_calloc(MEM_USER, 1, sizeof(struct addrinfo));
         if (!new) {
             ck6.state= DNSQUERY_FAIL;
-            task_resume(ck6.pid);
+            task_resume(ck6.task);
             return;
         }
         new->ai_family = AF_INET6;
@@ -94,7 +94,7 @@ static void dns_ip6_cb(char *ip, void *arg)
         if (!new->ai_addr) {
             f_free(new);
             ck6.state = DNSQUERY_FAIL;
-            task_resume(ck6.pid);
+            task_resume(ck6.task);
             return;
         }
         new->ai_addrlen = sizeof(struct sockaddr_in6);
@@ -107,7 +107,7 @@ static void dns_ip6_cb(char *ip, void *arg)
         /* No ip given, but still callback was called: timeout! */
         ck6.state = DNSQUERY_FAIL;
     }
-    task_resume(ck6.pid);
+    task_resume(ck6.task);
 }
 #endif
 
@@ -118,7 +118,7 @@ static void dns_ip4_cb(char *ip, void *arg)
         new = f_calloc(MEM_USER, 1, sizeof(struct addrinfo));
         if (!new) {
             ck4.state = DNSQUERY_FAIL;
-            task_resume(ck4.pid);
+            task_resume(ck4.task);
             return;
         }
         new->ai_family = AF_INET;
@@ -126,7 +126,7 @@ static void dns_ip4_cb(char *ip, void *arg)
         if (!new->ai_addr) {
             f_free(new);
             ck4.state = DNSQUERY_FAIL;
-            task_resume(ck4.pid);
+            task_resume(ck4.task);
             return;
         }
         new->ai_addrlen = sizeof(struct sockaddr_in);
@@ -139,20 +139,20 @@ static void dns_ip4_cb(char *ip, void *arg)
         /* No ip given, but still callback was called: timeout! */
         ck4.state = DNSQUERY_FAIL;
     }
-    task_resume(ck4.pid);
+    task_resume(ck4.task);
 }
 
 static void dns_idle(void)
 {
-    struct waiting_pid *wp;
+    struct waiting_task *wt;
     ck6.state = DNSQUERY_IDLE;
     ck4.state = DNSQUERY_IDLE;
 
     while(waiting_list) {
-        wp = waiting_list;
-        task_resume(wp->pid);
-        waiting_list = wp->next;
-        kfree(wp);
+        wt = waiting_list;
+        task_resume(wt->task);
+        waiting_list = wt->next;
+        kfree(wt);
     }
 }
 
@@ -227,7 +227,7 @@ static int pico_getaddrinfo(const char *node, const char *service, const struct 
         ck6.state = DNSQUERY_IN_PROGRESS; 
         ck6.node = node;
         ck6.res = NULL;
-        ck6.pid = scheduler_get_cur_pid();
+        ck6.task = this_task();
         if (pico_dns_client_getaddr6(node, dns_ip6_cb, NULL) < 0) {
             dns_idle();
             return 0 - pico_err;
@@ -239,7 +239,7 @@ static int pico_getaddrinfo(const char *node, const char *service, const struct 
         ck4.state = DNSQUERY_IN_PROGRESS; 
         ck4.node = node;
         ck4.res = NULL;
-        ck4.pid = scheduler_get_cur_pid();
+        ck4.task = this_task();
         if (pico_dns_client_getaddr(node, dns_ip4_cb, NULL) < 0) {
             dns_idle();
             return 0 - pico_err;

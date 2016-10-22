@@ -76,8 +76,8 @@ static void completion(void * arg)
 {
     dev_l3gd20.cs_fnode->owner->ops.write(dev_l3gd20.cs_fnode, "1", 1);
 
-    if (dev_l3gd20.dev->pid > 0)
-        task_resume(dev_l3gd20.dev->pid);
+    if (dev_l3gd20.dev->task != NULL)
+        task_resume(dev_l3gd20.dev->task);
 }
 
 static void int1_callback(void *arg)
@@ -91,8 +91,8 @@ static void int2_callback(void *arg)
     (void)arg;
     dev_l3gd20.cs_fnode->owner->ops.write(dev_l3gd20.cs_fnode, "1", 1);
 
-    if (dev_l3gd20.dev->pid > 0)
-        task_resume(dev_l3gd20.dev->pid);
+    if (dev_l3gd20.dev->task != NULL)
+        task_resume(dev_l3gd20.dev->task);
 }
 
 
@@ -122,7 +122,7 @@ static int devl3gd20_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
             l3gd20->mode = L3GD20_WRITE;
         }
 
-        l3gd20->dev->pid = scheduler_get_cur_pid();
+        l3gd20->dev->task = this_task();
         task_suspend();
 
         l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
@@ -162,7 +162,7 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
         l3gd20->mode = L3GD20_PENDING;
         rd_obuffer[0] = 0xE8;
 
-        l3gd20->dev->pid = scheduler_get_cur_pid();
+        l3gd20->dev->task = this_task();
         task_suspend();
 
         l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);
@@ -174,7 +174,7 @@ static int devl3gd20_read(struct fnode *fno, void *buf, unsigned int len)
         l3gd20->mode = L3GD20_READING;
         rd_obuffer[0] = 0xE8;
 
-        l3gd20->dev->pid = scheduler_get_cur_pid();
+        l3gd20->dev->task = this_task();
         task_suspend();
 
         l3gd20->cs_fnode->owner->ops.write(l3gd20->cs_fnode, "0", 1);

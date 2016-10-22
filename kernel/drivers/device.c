@@ -40,7 +40,7 @@ struct device *  device_fno_init(struct module * mod, const char * name, struct 
         device->fno->priv = priv;
         device->fno->flags |= flags;
     }
-    device->pid = 0;
+    device->task = NULL;
     device->mutex = mutex_init();
     return device;
 }

@@ -35,7 +35,7 @@ struct dev_klog {
     struct fnode *fno;
     struct cirbuf *buf;
 	int used;
-    int pid;
+    struct task *task;
 };
 
 static struct dev_klog klog;
@@ -66,7 +66,7 @@ static int klog_read(struct fnode *fno, void *buf, unsigned int len)
 
     ret = cirbuf_readbytes(klog.buf, buf, len);
     if (ret <= 0) {
-        klog.pid = scheduler_get_cur_pid();
+        klog.task = this_task();
         task_suspend();
         return SYS_CALL_AGAIN;
     }
@@ -104,8 +104,8 @@ static void printchar(char **str, int c)
     else {
         if (cirbuf_bytesfree(klog.buf)) {
             cirbuf_writebyte(klog.buf, c);
-            if (klog.pid > 0) 
-                task_resume(klog.pid);
+            if (klog.task != NULL) 
+                task_resume(klog.task);
         }
     }
 }
@@ -288,7 +288,7 @@ int klog_init(void)
     }
     klog.buf = cirbuf_create(CONFIG_KLOG_SIZE);
 	klog.used = 0;
-    klog.pid = 0;
+    klog.task = NULL;
     klog_lock = mutex_init();
     return 0;
 }

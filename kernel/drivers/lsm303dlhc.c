@@ -72,16 +72,16 @@ static void isr_tx(struct i2c_slave * arg)
 {
     struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
     lsm303dlhc->state = LSM303_STATE_TX_RDY;
-    if (lsm303dlhc->dev->pid > 0)
-        task_resume(lsm303dlhc->dev->pid);
+    if (lsm303dlhc->dev->task != NULL)
+        task_resume(lsm303dlhc->dev->task);
 }
 
 static void isr_rx(struct i2c_slave * arg)
 {
     struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
     lsm303dlhc->state = LSM303_STATE_RX_RDY;
-    if (lsm303dlhc->dev->pid > 0)
-        task_resume(lsm303dlhc->dev->pid);
+    if (lsm303dlhc->dev->task != NULL)
+        task_resume(lsm303dlhc->dev->task);
 }
 
 
@@ -119,7 +119,7 @@ static int devlsm303dlhc_ioctl(struct fnode * fno, const uint32_t cmd, void *arg
                 lsm303dlhc->state = LSM303_STATE_BUSY;
                 i2c_init_write(&lsm303dlhc->i2c, ctrl->reg, &buffer, 1);
             }
-            lsm303dlhc->dev->pid = scheduler_get_cur_pid();
+            lsm303dlhc->dev->task = this_task();
             task_suspend();
             return SYS_CALL_AGAIN;
 
@@ -145,7 +145,7 @@ static int devlsm303dlhc_read(struct fnode *fno, void *buf, unsigned int len)
         case LSM303_STATE_IDLE:
             /* TODO: Implement Acceleration read mechanism (currently in userspace) */
             return 0;
-            lsm303dlhc->dev->pid = scheduler_get_cur_pid();
+            lsm303dlhc->dev->task = this_task();
             task_suspend();
             return SYS_CALL_AGAIN;
 

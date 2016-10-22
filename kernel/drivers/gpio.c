@@ -201,21 +201,6 @@ int gpio_list_len(void)
     return len;
 }
 
-int gpio_read_list_entry(void **last__, char *buf, int len)
-{
-    struct dev_gpio **last = (struct dev_gpio **)last__;
-    if (*last == NULL)
-        *last = Gpio_list;
-    else
-        *last = (*last)->next;
-    /* Line: port pid mode pupd trigger speed owner */
-    /* type: u32  u32 s    s    s       u32   s     */
-    //snprintf(buf, len, "%lu\t%lu\t%s\t%s\t%s\t%lu\t%s\r\n", 0, 0, "", "", "", 0, "");
-    buf[0] = 0;
-    return strlen(buf);
-}
-
-
 static int devgpio_write(struct fnode *fno, const void *buf, unsigned int len);
 static int devgpio_ioctl(struct fnode *fno, const uint32_t cmd, void *arg);
 static int devgpio_read (struct fnode *fno, void *buf, unsigned int len);
@@ -321,8 +306,8 @@ static void gpio_isr(void *arg)
 {
     struct dev_gpio *gpio = arg;
     exti_enable(gpio->exti_idx, 0);
-    if (gpio->dev->pid > 0) {
-        task_resume(gpio->dev->pid);
+    if (gpio->dev->task != NULL) {
+        task_resume(gpio->dev->task);
     }
 }
 
@@ -455,22 +440,22 @@ static int devgpio_read(struct fnode * fno, void *buf, unsigned int len)
     val = gpio_get(gpio->base, gpio->pin);
 
     if (gpio->trigger) {
-        if ((gpio->dev->pid) && (gpio->dev->pid != scheduler_get_cur_pid())) {
+        if ((gpio->dev->task) && (gpio->dev->task != this_task())) {
             return -EBUSY;
         }
-        gpio->dev->pid = scheduler_get_cur_pid();
-        /* Unlock immediately */
+        gpio->dev->task = this_task();
         if ((gpio->trigger == GPIO_TRIGGER_NONE) ||
                 (val && (gpio->trigger == GPIO_TRIGGER_RAISE)) || (!val && (gpio->trigger == GPIO_TRIGGER_FALL))) {
+            /* Unlock immediately */
             *((uint8_t*)buf) = val ? '1':'0';
-            gpio->dev->pid = 0;
+            gpio->dev->task = NULL;
             return 1;
         } else if (gpio->trigger == GPIO_TRIGGER_TOGGLE) {
             if (TRIGGER_WAITING(gpio) == val) {
                 *((uint8_t*)buf) = val ? '1':'0';
                 RESET_TRIGGER_WAITING(gpio);
                 SET_TRIGGER_WAITING(gpio, (val) ? GPIO_TRIGGER_FALL : GPIO_TRIGGER_RAISE);
-                gpio->dev->pid = 0;
+                gpio->dev->task = NULL;
                 return 1;
             }
         }
@@ -617,7 +602,7 @@ static int devgpio_close(struct fnode *fno)
 {
     struct dev_gpio *gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
     if (gpio) {
-        gpio->dev->pid = 0;
+        gpio->dev->task = NULL;
     }
     return 0;
 }

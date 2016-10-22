@@ -34,8 +34,8 @@ static struct module mod_pipe;
 struct pipe_priv {
     struct fnode *fno_r;
     struct fnode *fno_w;
-    int pid_r;
-    int pid_w;
+    struct task *task_r;
+    struct task *task_w;
     int w_off;
     struct cirbuf *cb;
 };
@@ -83,8 +83,8 @@ int sys_pipe2_hdlr(int paddr, int flags)
 
     pp->fno_r = rd;
     pp->fno_w = wr;
-    pp->pid_r = 0;
-    pp->pid_w = 0;
+    pp->task_r = NULL;
+    pp->task_w = NULL;
     pp->w_off = 0;
     pp->cb = cirbuf_create(PIPE_BUFSIZE);
     if (!pp->cb) {
@@ -135,8 +135,8 @@ static int pipe_poll(struct fnode *f, uint16_t events, uint16_t *revents)
 static int pipe_close(struct fnode *f)
 {
     struct pipe_priv *pp;
-    uint16_t pid;
-    pid = scheduler_get_cur_pid();
+    struct task *t;
+    t = this_task();
     if (!f)
         return -EINVAL;
 
@@ -151,15 +151,15 @@ static int pipe_close(struct fnode *f)
     if (f == pp->fno_r) {
         pp->fno_r = NULL;
         fno_unlink(f);
-        if ((pp->pid_w != pid) && (pp->pid_w > 0)) {
-            task_resume(pp->pid_w);
+        if ((pp->task_w != t) && (pp->task_w != NULL)) {
+            task_resume(pp->task_w);
         }
     }
     if (f == pp->fno_w) {
         pp->fno_w = NULL;
         fno_unlink(f);
-        if ((pp->pid_r != pid) && (pp->pid_r > 0)) {
-            task_resume(pp->pid_r);
+        if ((pp->task_r != t) && (pp->task_r != NULL)) {
+            task_resume(pp->task_r);
         }
     }
     if ((!pp->fno_w) && (!pp->fno_r))
@@ -186,7 +186,7 @@ static int pipe_read(struct fnode *f, void *buf, unsigned int len)
     len_available =  cirbuf_bytesinuse(pp->cb);
     if (len_available <= 0) {
         if (FNO_BLOCKING(f)) {
-            pp->pid_r = scheduler_get_cur_pid();
+            pp->task_r = this_task();
             task_suspend();
             return SYS_CALL_AGAIN;
         } else {
@@ -200,7 +200,7 @@ static int pipe_read(struct fnode *f, void *buf, unsigned int len)
             break;
         ptr++;
     }
-    pp->pid_r = 0;
+    pp->task_r = 0;
     return out;
 }
 
@@ -233,7 +233,7 @@ static int pipe_write(struct fnode *f, const void *buf, unsigned int len)
 
     if (out < len) {
         if (FNO_BLOCKING(f)) {
-            pp->pid_w = scheduler_get_cur_pid();
+            pp->task_w = this_task();
             pp->w_off = out;
             task_suspend();
             return SYS_CALL_AGAIN;
@@ -243,7 +243,7 @@ static int pipe_write(struct fnode *f, const void *buf, unsigned int len)
         }
     }
     pp->w_off = 0;
-    pp->pid_w = 0;
+    pp->task_w = NULL;
     return out;
 }
 

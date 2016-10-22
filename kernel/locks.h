@@ -3,7 +3,7 @@
 struct semaphore {
     int value;
     int listeners;
-    int *listener;
+    struct task **listener;
 };
 
 

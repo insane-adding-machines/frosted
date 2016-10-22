@@ -77,7 +77,7 @@ static struct f_malloc_block *malloc_entry[4] = {NULL, NULL, NULL, NULL};
 struct f_malloc_stats f_malloc_stats[4] = {};
 
 /* Mlock is a special lock, so initialization is made static */
-static int _m_listeners[16] = { -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1 };
+static struct task *_m_listeners[16] = {};
 static struct semaphore _mlock = { .value = 1, .listeners=16, .listener=_m_listeners};
 static mutex_t *mlock = (mutex_t *)(&_mlock);
 
@@ -378,7 +378,7 @@ void * f_malloc(int flags, size_t size)
         size++;
     } 
 
-    if (scheduler_get_cur_pid() == 0) {
+    if (this_task_getpid() == 0) {
         if (mutex_trylock(mlock) < 0) {
             return NULL;
         }
@@ -432,7 +432,7 @@ void * f_malloc(int flags, size_t size)
     /* destination found, fill in  meta-data */
     blk->flags = F_IN_USE | flags;
     if (flags & MEM_USER)
-        blk->pid = scheduler_get_cur_pid();
+        blk->pid = this_task_getpid();
     else
         blk->pid = 0;
 

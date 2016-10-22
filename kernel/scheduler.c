@@ -212,7 +212,7 @@ struct __attribute__((packed)) task_block {
     uint16_t ppid;
     uint16_t n_files;
 
-    uint16_t tracer;
+    struct task *tracer;
 
     int exitval;
     struct fnode *cwd;
@@ -289,6 +289,11 @@ static struct task *tasklist_get(struct task **list, uint16_t pid)
 
 static struct task *tasks_running = NULL;
 static struct task *tasks_idling = NULL;
+void task_resume(struct task *t);
+void task_resume_lock(struct task *t);
+void task_stop(struct task *t);
+void task_continue(struct task *t);
+void task_terminate(struct task *t);
 
 static void idling_to_running(volatile struct task *t)
 {
@@ -338,6 +343,14 @@ static void task_destroy(void *arg)
 
 static volatile struct task *_cur_task = NULL;
 static struct task *forced_task = NULL;
+
+
+struct task *this_task(void)
+{
+    if (_cur_task->tb.pid == 0)
+        return NULL;
+    return _cur_task;
+}
 
 
 static int next_pid(void)
@@ -526,11 +539,11 @@ int sys_dup2_hdlr(int fd, int newfd)
 /**/
 /**/
 
-void task_terminate(int pid);
 
 #ifdef CONFIG_SIGNALS 
 
 static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo);
+int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
 {
     int i;
@@ -551,8 +564,8 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
     }
     
     /* If process is being traced, deliver SIGTRAP to tracer */
-    if (t->tb.tracer > 0) {
-        sys_kill_hdlr(t->tb.tracer, SIGTRAP);
+    if (t->tb.tracer != NULL) {
+        catch_signal(t->tb.tracer, SIGTRAP, t->tb.tracer->tb.sigmask);
     }
 
     /* Reset signal, if pending, as it's going to be handled. */
@@ -579,14 +592,14 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
     } else {
         /* Handler not present: SIG_DFL */
         if (signo == SIGSTOP) {
-            task_stop(t->tb.pid);
+            task_stop(t);
         } else if (signo == SIGCHLD) {
-            task_resume(t->tb.pid);
+            task_resume(t);
         } else if (signo == SIGCONT) {
             /* If not in stopped state, SIGCONT is ignored. */
-            task_continue(t->tb.pid);
+            task_continue(t);
         } else {
-            task_terminate(t->tb.pid);
+            task_terminate(t);
         }
     }
     return 0;
@@ -689,7 +702,7 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
     t->tb.sp -= EXTRA_FRAME_SIZE;
     memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
     t->tb.flags |= TASK_FLAG_SIGNALED;
-    task_resume(t->tb.pid);
+    task_resume(t);
 }
 
 
@@ -703,16 +716,16 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask) {
     (void)orig_mask;
     if (signo != SIGCHLD)
-        task_terminate(t->tb.pid);
+        task_terminate(t);
     return 0;
 }
 #endif
 
 
-void task_resume(int pid);
-void task_resume_lock(int pid);
-void task_stop(int pid);
-void task_continue(int pid);
+void task_resume(struct task *t);
+void task_resume_lock(struct task *t);
+void task_stop(struct task *t);
+void task_continue(struct task *t);
 
 int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
@@ -866,18 +879,16 @@ char * scheduler_task_name(int pid)
     else return NULL;
 }
 
-uint16_t scheduler_get_cur_pid(void)
+static uint16_t scheduler_get_cur_pid(void)
 {
     if (!_cur_task)
         return 0;
     return _cur_task->tb.pid;
 }
 
-uint16_t scheduler_get_cur_ppid(void)
+uint16_t this_task_getpid(void)
 {
-    if (!_cur_task)
-        return 0;
-    return _cur_task->tb.ppid;
+    return scheduler_get_cur_pid();
 }
 
 int task_running(void)
@@ -897,7 +908,7 @@ void task_end(void)
     asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
     while(1) {
         if (_cur_task->tb.ppid > 0)
-            task_resume(_cur_task->tb.ppid);
+            task_resume(_cur_task);
         task_suspend();
     }
 }
@@ -913,7 +924,7 @@ void task_end(void)
 /**/
 /**/
 
-static void task_resume_vfork(int pid);
+static void task_resume_vfork(struct task *t);
 
 /* Duplicate exec() args into the new process address space. 
  */
@@ -965,6 +976,7 @@ static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, v
     new->tb.sighdlr = NULL;
     new->tb.sigpend = 0;
     new->tb.sigmask = 0;
+    new->tb.tracer = NULL;
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -973,7 +985,7 @@ static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, v
         if (pt) {
             /* Restore parent's stack */
             memcpy((void *)pt->tb.cur_stack, (void *)&new->stack, SCHEDULER_STACK_SIZE);
-            task_resume_vfork(pt->tb.pid);
+            task_resume_vfork(pt);
         }
         new->tb.flags &= (~TASK_FLAG_VFORK);
     }
@@ -1018,7 +1030,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
     new->tb.vfsi = vfsi;
-    new->tb.tracer = 0;
+    new->tb.tracer = NULL;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -1160,14 +1172,13 @@ static __naked void restore_task_context(void)
 
 static __inl void task_switch(void)
 {
-    int i, pid;
+    int i;
     volatile struct task *t;
     if (forced_task) {
         _cur_task = forced_task;
         forced_task = NULL;
         return;
     }
-    pid = _cur_task->tb.pid;
     t = _cur_task;
 
     if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
@@ -1285,12 +1296,7 @@ void task_suspend(void) {
     return task_suspend_to(TASK_WAITING);
 }
 
-void task_stop(int pid) {
-    struct task *t = tasklist_get(&tasks_idling, pid);
-    if (!t) {
-        t = tasklist_get(&tasks_running, pid);
-        running_to_idling(t);
-    }
+void task_stop(struct task *t) {
     if (!t)
         return;
     if (t->tb.state == TASK_RUNNABLE || t->tb.state == TASK_RUNNING) {
@@ -1319,9 +1325,8 @@ void task_preempt_all(void)
 }
 
 
-static void task_resume_real(int pid, int lock)
+static void task_resume_real(struct task *t, int lock)
 {
-    struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && (t->tb.state == TASK_WAITING)) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
@@ -1333,29 +1338,27 @@ static void task_resume_real(int pid, int lock)
 }
 
 
-void task_resume_lock(int pid)
+void task_resume_lock(struct task *t)
 {
-    task_resume_real(pid, 1);
+    task_resume_real(t, 1);
 }
 
 
-void task_resume(int pid)
+void task_resume(struct task *t)
 {
-    task_resume_real(pid, 0);
+    task_resume_real(t, 0);
 }
 
-void task_continue(int pid)
+void task_continue(struct task *t)
 {
-    struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && (t->tb.state == TASK_STOPPED)) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
     }
 }
 
-static void task_resume_vfork(int pid)
+static void task_resume_vfork(struct task *t)
 {
-    struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && t->tb.state == TASK_FORKED) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
@@ -1368,15 +1371,10 @@ void task_deliver_sigchld(void *arg)
     task_kill(pid, SIGCHLD);
 }
 
-void task_terminate(int pid)
+void task_terminate(struct task *t)
 {
-    struct task *t = tasklist_get(&tasks_running, pid);
-    if (!t) 
-        t = tasklist_get(&tasks_idling, pid);
-    else
-        running_to_idling(t);
-
     if (t) {
+        running_to_idling(t);
         t->tb.state = TASK_ZOMBIE;
         t->tb.timeslice = 0;
 
@@ -1390,7 +1388,7 @@ void task_terminate(int pid)
                     memcpy((void *)pt->tb.cur_stack, (void *)&_cur_task->stack, SCHEDULER_STACK_SIZE);
                     t->tb.flags &= ~TASK_FLAG_VFORK;
                 }
-                task_resume_vfork(t->tb.ppid);
+                task_resume_vfork(t);
             }
             tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
@@ -1411,27 +1409,36 @@ int scheduler_get_nice(int pid)
     return (int)t->tb.nice;
 }
 
+int sys_getpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    if (!_cur_task)
+        return 0;
+    return _cur_task->tb.pid;
+}
+
+int sys_getppid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    if (!_cur_task)
+        return 0;
+    return _cur_task->tb.ppid;
+}
+
 static void sleepy_task_wakeup(uint32_t now, void *arg)
 {
-    int pid = (int)arg;
-    task_resume(pid);
+    struct task *t = (struct task *)arg;
+    task_resume(t);
 }
 
 int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    uint32_t pid = (uint32_t)scheduler_get_cur_pid();
     uint32_t timeout = jiffies + arg1;
-
     if (arg1 < 0)
         return -EINVAL;
 
-    if (pid > 0) {
-        ktimer_add(arg1, sleepy_task_wakeup, (void *)pid);
-        if (timeout < jiffies) 
-            return 0;
-
-        task_suspend();
-    }
+    ktimer_add(arg1, sleepy_task_wakeup, this_task());
+    if (timeout < jiffies) 
+        return 0;
+    task_suspend();
     return 0;
 }
 
@@ -1537,7 +1544,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 
     switch (request) {
         case PTRACE_TRACEME:
-            _cur_task->tb.tracer = _cur_task->tb.ppid;
+            _cur_task->tb.tracer = _cur_task;
             break;
         case PTRACE_PEEKTEXT:
         case PTRACE_PEEKDATA:
@@ -1555,9 +1562,9 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_CONT:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
-            task_continue(pid);
+            task_continue(tracee);
             if ((int)data != 0)
                 task_kill(pid, (int)data);
             return 0;
@@ -1565,7 +1572,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_KILL:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
             task_kill(pid, SIGKILL);
             return 0;
@@ -1582,7 +1589,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_SEIZE:
             if (!tracee)
                 return -ENOENT;
-            tracee->tb.tracer = _cur_task->tb.pid;
+            tracee->tb.tracer = _cur_task;
             if (request == PTRACE_ATTACH)
                 task_kill(pid, SIGSTOP);
             return 0;
@@ -1590,9 +1597,9 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_DETACH:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
-            tracee->tb.tracer = 0;
+            tracee->tb.tracer = NULL;
             task_kill(tracee->tb.pid, SIGCONT);
             return 0;
         case PTRACE_SYSCALL:
@@ -1660,7 +1667,7 @@ int task_kill(int pid, int signal)
 int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
 {
     _cur_task->tb.exitval = (int)arg1;
-    task_terminate(_cur_task->tb.pid);
+    task_terminate(_cur_task);
 }
 
 int sys_setsid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
@@ -1702,7 +1709,7 @@ int task_segfault(uint32_t address, uint32_t instruction, int flags)
 #    endif
         _cur_task->tb.filedesc[2].fno->owner->ops.write(_cur_task->tb.filedesc[2].fno, segv_msg, strlen(segv_msg));
     }
-    task_terminate(_cur_task->tb.pid);
+    task_terminate(_cur_task);
     return 0;
 }
 

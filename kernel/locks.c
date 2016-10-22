@@ -25,12 +25,12 @@
 static void _add_listener(sem_t *s)
 {
     int i;
-    int pid = scheduler_get_cur_pid();
+    struct task *t = this_task();
     for (i = 0; i < s->listeners; i++) {
-        if (s->listener[i] == pid)
+        if (s->listener[i] == t)
             return;
-        if (s->listener[i] == -1) {
-            s->listener[i] = pid;
+        if (s->listener[i] == NULL) {
+            s->listener[i] = t;
             break;
         }
     }
@@ -39,10 +39,10 @@ static void _add_listener(sem_t *s)
 static void _del_listener(sem_t *s)
 {
     int i;
-    int pid = scheduler_get_cur_pid();
+    struct task *t = this_task();
     for (i = 0; i < s->listeners; i++) {
-        if (s->listener[i] == pid) {
-            s->listener[i] = -1;
+        if (s->listener[i] == t) {
+            s->listener[i] = NULL;
             return;
         }
     }
@@ -71,7 +71,7 @@ int sem_trywait(sem_t *s)
 
 int sem_wait(sem_t *s)
 {
-    if (scheduler_get_cur_pid() == 0)
+    if (this_task() == 0)
         return sem_spinwait(s);
     if (!s)
         return -EINVAL;
@@ -92,9 +92,9 @@ int sem_post(sem_t *s)
     if (_sem_post(s) > 0) {
         int i;
         for(i = 0; i < s->listeners; i++) {
-            int pid = s->listener[i];
-            if (pid > 0) {
-                task_resume_lock(pid);
+            struct task *t = s->listener[i];
+            if (t) {
+                task_resume_lock(t);
             }
         }
     }
@@ -116,9 +116,9 @@ sem_t *sem_init(int val)
         int i;
         s->value = val;
         s->listeners = 8;
-        s->listener = kalloc(sizeof(int) * (s->listeners + 1));
+        s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
         for (i = 0; i < s->listeners; i++)
-            s->listener[i] = -1;
+            s->listener[i] = NULL;
 
     }
     return s;
@@ -161,9 +161,9 @@ mutex_t *mutex_init()
         int i;
         s->value = 1; /* Unlocked. */
         s->listeners = 8;
-        s->listener = kalloc(sizeof(int) * (s->listeners + 1));
+        s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
         for (i = 0; i < s->listeners; i++)
-            s->listener[i] = -1;
+            s->listener[i] = NULL;
     }
     return s;
 }
@@ -196,7 +196,7 @@ int mutex_trylock(mutex_t *s)
 
 int mutex_lock(mutex_t *s)
 {
-    if (scheduler_get_cur_pid() == 0)
+    if (this_task() == 0)
         return mutex_spinlock(s);
     if (!s)
         return -EINVAL;
@@ -216,9 +216,9 @@ int mutex_unlock(mutex_t *s)
     if (_mutex_unlock(s) == 0) {
         int i;
         for(i = 0; i < s->listeners; i++) {
-            int pid = s->listener[i];
-            if (pid > 0) {
-                task_resume_lock(pid);
+            struct task *t = s->listener[i];
+            if (t) {
+                task_resume_lock(t);
             }
         }
         return 0;

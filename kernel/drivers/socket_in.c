@@ -13,7 +13,7 @@ static mutex_t *picotcp_lock = NULL;
 struct frosted_inet_socket {
     struct fnode *node;
     struct pico_socket *sock;
-    uint16_t pid;
+    struct task *task;
     int fd;
     uint16_t events;
     uint16_t revents;
@@ -77,7 +77,7 @@ static int sock_poll(struct fnode *f, uint16_t events, uint16_t *revents)
         return 1;
 
     s->events |= events;
-    s->pid = scheduler_get_cur_pid();
+    s->task = this_task();
     return 0;
 }
 
@@ -108,7 +108,7 @@ static void pico_socket_event(uint16_t ev, struct pico_socket *sock)
     }
     s->revents |= ev;
     if ((s->revents & s->events) != 0) {
-        task_resume(s->pid);
+        task_resume(s->task);
         s->events = 0;
     }
 }
@@ -209,7 +209,7 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
             s->revents &= (~PICO_SOCK_EV_RD);
             if (SOCK_BLOCKING(s))  {
                 s->events = PICO_SOCK_EV_RD;
-                s->pid = scheduler_get_cur_pid();
+                s->task = this_task();
                 task_suspend();
                 return SYS_CALL_AGAIN;
             }
@@ -261,7 +261,7 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
             s->revents &= (~PICO_SOCK_EV_WR);
             if (SOCK_BLOCKING(s)) {
                 s->events = PICO_SOCK_EV_WR;
-                s->pid = scheduler_get_cur_pid();
+                s->task = this_task();
                 task_suspend();
                 return SYS_CALL_AGAIN;
             }
@@ -340,7 +340,7 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
         return s->fd;
     } else {
         if (SOCK_BLOCKING(l)) {
-            l->pid = scheduler_get_cur_pid();
+            l->task = this_task();
             task_suspend();
             return SYS_CALL_AGAIN;
         } else {
@@ -366,7 +366,7 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
         ret = pico_socket_connect(s->sock, &paddr, port);
         pico_unlock();
         if (SOCK_BLOCKING(s)) {
-            s->pid = scheduler_get_cur_pid();
+            s->task = this_task();
             task_suspend();
             return SYS_CALL_AGAIN;
         } else {

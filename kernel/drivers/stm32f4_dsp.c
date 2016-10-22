@@ -108,7 +108,7 @@ int dsp_write(struct fnode *fno, const void *buf, unsigned int len)
         dsp_xmit();
     }
     if (dsp->written < len) {
-        dsp->dev->pid = scheduler_get_cur_pid();
+        dsp->dev->pid = this_task();
         mutex_unlock(dsp->dev->mutex);
         task_suspend();
         return SYS_CALL_AGAIN;
