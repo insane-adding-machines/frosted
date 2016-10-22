@@ -189,6 +189,11 @@ struct filedesc {
     uint32_t mask;
 };
 
+struct filedesc_table {
+    uint32_t n_files;
+    uint32_t usage_count;
+    struct filedesc *fdesc;
+};
 
 struct task_handler 
 {
@@ -210,7 +215,6 @@ struct __attribute__((packed)) task_block {
     uint16_t pid;
 
     uint16_t ppid;
-    uint16_t n_files;
 
     struct task *tracer;
 
@@ -219,7 +223,7 @@ struct __attribute__((packed)) task_block {
     struct task_handler *sighdlr;
     sigset_t sigmask;
     sigset_t sigpend;
-    struct filedesc *filedesc;
+    struct filedesc_table *filedesc_table;
     void *sp;
     void *osp;
     void *cur_stack;
@@ -295,6 +299,7 @@ void task_stop(struct task *t);
 void task_continue(struct task *t);
 void task_terminate(struct task *t);
 
+static void ftable_destroy(volatile struct task *t);
 static void idling_to_running(volatile struct task *t)
 {
     if (tasklist_del(&tasks_idling, t->tb.pid) == 0)
@@ -310,16 +315,22 @@ static void running_to_idling(volatile struct task *t)
 }
 
 static int task_filedesc_del_from_task(volatile struct task *t, int fd);
+
 static void task_destroy(void *arg)
 {
     struct task *t = arg;
     int i;
-    for (i = 0; i < t->tb.n_files; i++) {
+    struct filedesc_table *ft;
+    if (!t)
+        return;
+    ft = t->tb.filedesc_table;
+
+    for (i = 0; (ft) && (i < ft->n_files); i++) {
         task_filedesc_del_from_task(t, i);
     }
     tasklist_del(&tasks_running, t->tb.pid);
     tasklist_del(&tasks_idling, t->tb.pid);
-    kfree(t->tb.filedesc);
+    ftable_destroy(t);
     if (t->tb.arg) {
         char **arg = (char **)(t->tb.arg);
         i = 0;
@@ -347,9 +358,10 @@ static struct task *forced_task = NULL;
 
 struct task *this_task(void)
 {
-    if (_cur_task->tb.pid == 0)
+    struct task *t = _cur_task;
+    if (t->tb.pid == 0)
         return NULL;
-    return _cur_task;
+    return t;
 }
 
 
@@ -374,26 +386,55 @@ static int next_pid(void)
 /**/
 /**/
 /**/
+
+static struct filedesc_table *ftable_create(volatile struct task *t)
+{
+    struct filedesc_table *ft = t->tb.filedesc_table;
+    if (ft)
+        return ft;
+    ft = kcalloc(sizeof(struct filedesc_table), 1);
+    if (!ft)
+        return NULL;
+    ft->usage_count = 1;
+    t->tb.filedesc_table = ft;
+    return ft;
+}
+
+static void ftable_destroy(volatile struct task *t)
+{
+    struct filedesc_table *ft = t->tb.filedesc_table;
+    if (ft) {
+        if (--ft->usage_count == 0)
+            kfree(ft);
+    }
+    t->tb.filedesc_table = NULL;
+}
+
 static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
 {
     int i;
     void *re;
+    struct filedesc_table *ft = t->tb.filedesc_table;
     if (!t || !f)
         return -EINVAL;
-    for (i = 0; i < t->tb.n_files; i++) {
-        if (t->tb.filedesc[i].fno == NULL) {
+
+    if (!ft)
+        ft = ftable_create(t);
+
+    for (i = 0; i < ft->n_files; i++) {
+        if (ft->fdesc[i].fno == NULL) {
             f->usage_count++;
-            t->tb.filedesc[i].fno = f;
+            ft->fdesc[i].fno = f;
             return i;
         }
     }
-    t->tb.n_files++;
-    re = (void *)krealloc(t->tb.filedesc, t->tb.n_files * sizeof(struct filedesc));
+    ft->n_files++;
+    re = (void *)krealloc(ft->fdesc, ft->n_files * sizeof(struct filedesc));
     if (!re)
         return -1;
-    t->tb.filedesc = re;
-    memset(&(t->tb.filedesc[t->tb.n_files - 1]), 0, sizeof(struct filedesc));
-    t->tb.filedesc[t->tb.n_files - 1].fno = f;
+    ft->fdesc = re;
+    memset(&(ft->fdesc[ft->n_files - 1]), 0, sizeof(struct filedesc));
+    ft->fdesc[ft->n_files - 1].fno = f;
     if (f->flags & FL_TTY) {
         struct module *mod = f->owner;
         if (mod && mod->ops.tty_attach) {
@@ -401,7 +442,7 @@ static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
         }
     }
     f->usage_count++;
-    return t->tb.n_files - 1;
+    return ft->n_files - 1;
 }
 
 int task_filedesc_add(struct fnode *f)
@@ -412,15 +453,17 @@ int task_filedesc_add(struct fnode *f)
 static int task_filedesc_del_from_task(volatile struct task *t, int fd)
 {
     struct fnode *fno;
+    struct filedesc_table *ft;
     if (!t)
         return -EINVAL;
 
-    fno = t->tb.filedesc[fd].fno;
+    ft = t->tb.filedesc_table;
+    fno = ft->fdesc[fd].fno;
     if (!fno)
         return -ENOENT;
 
     /* Reattach controlling tty to parent task */
-    if ((fno->flags & FL_TTY) && ((t->tb.filedesc[fd].mask & O_NOCTTY) == 0)) {
+    if ((fno->flags & FL_TTY) && ((ft->fdesc[fd].mask & O_NOCTTY) == 0)) {
         struct module *mod = fno->owner;
         if (mod && mod->ops.tty_attach) {
             mod->ops.tty_attach(fno, t->tb.ppid);
@@ -433,7 +476,7 @@ static int task_filedesc_del_from_task(volatile struct task *t, int fd)
         if (fno->owner && fno->owner->ops.close)
             fno->owner->ops.close(fno);
     }
-    t->tb.filedesc[fd].fno = NULL;
+    ft->fdesc[fd].fno = NULL;
 }
 
 int task_filedesc_del(int fd)
@@ -443,40 +486,58 @@ int task_filedesc_del(int fd)
 
 int task_fd_setmask(int fd, uint32_t mask)
 {
-    struct fnode *fno = _cur_task->tb.filedesc[fd].fno;
-    if (!fno)
+    struct filedesc_table *ft;
+    struct fnode *fno;
+
+    ft = _cur_task->tb.filedesc_table;
+
+    if (!ft)
         return -EINVAL;
+
+    if (fd < 0 || fd > ft->n_files)
+        return -ENOENT;
+
+    fno = ft->fdesc[fd].fno;
+    if (!fno)
+        return -ENOENT;
 
     if ((mask & O_ACCMODE) != O_RDONLY) {
         if ((fno->flags & FL_WRONLY)== 0)
             return -EPERM;
     }
-
-    _cur_task->tb.filedesc[fd].mask = mask;
+    ft->fdesc[fd].mask = mask;
     return 0;
 }
 
 uint32_t task_fd_getmask(int fd)
 {
-    if (_cur_task->tb.filedesc[fd].fno)
-        return _cur_task->tb.filedesc[fd].mask;
+    struct filedesc_table *ft;
+    ft = _cur_task->tb.filedesc_table;
+    if (fd < 0 || fd > ft->n_files)
+        return 0;
+    if (ft->fdesc[fd].fno)
+        return ft->fdesc[fd].mask;
     return 0;
 }
 
 struct fnode *task_filedesc_get(int fd)
 {
     volatile struct task *t = _cur_task;
-    if (fd < 0)
-        return NULL;
-    if (fd >= t->tb.n_files)
-        return NULL;
+    struct filedesc_table *ft;
     if (!t)
         return NULL;
-    if (!t->tb.filedesc || (( t->tb.n_files - 1) < fd))
+    ft = t->tb.filedesc_table;
+    if (!ft)
         return NULL;
-    if (t->tb.filedesc[fd].fno == NULL)
+    if (fd < 0)
         return NULL;
-    return t->tb.filedesc[fd].fno;
+    if (fd >= ft->n_files)
+        return NULL;
+    if (( ft->n_files - 1) < fd)
+        return NULL;
+    if (ft->fdesc[fd].fno == NULL)
+        return NULL;
+    return ft->fdesc[fd].fno;
 }
 
 int task_fd_readable(int fd)
@@ -490,7 +551,7 @@ int task_fd_writable(int fd)
 {
     if (!task_filedesc_get(fd))
         return 0;
-    if ((_cur_task->tb.filedesc[fd].mask & O_ACCMODE) == O_RDONLY)
+    if ((_cur_task->tb.filedesc_table->fdesc[fd].mask & O_ACCMODE) == O_RDONLY)
         return 0;
     return 1;
 }
@@ -505,8 +566,8 @@ int sys_dup_hdlr(int fd)
         return -1;
     newfd = task_filedesc_add(f);
     if (newfd >= 0)
-        _cur_task->tb.filedesc[newfd].mask = 
-            _cur_task->tb.filedesc[fd].mask;
+        _cur_task->tb.filedesc_table->fdesc[newfd].mask = 
+            _cur_task->tb.filedesc_table->fdesc[fd].mask;
     return newfd;
 }
 
@@ -514,6 +575,10 @@ int sys_dup2_hdlr(int fd, int newfd)
 {
     volatile struct task *t = _cur_task;
     struct fnode *f = task_filedesc_get(fd);
+    struct filedesc_table *ft = t->tb.filedesc_table;
+    
+    if (!ft)
+        return -1;
     if (newfd < 0)
         return -1;
     if (newfd == fd)
@@ -522,11 +587,11 @@ int sys_dup2_hdlr(int fd, int newfd)
         return -1;
 
     /* TODO: create empty fnodes up until newfd */
-    if (newfd >= t->tb.n_files)
+    if (newfd >= ft->n_files)
         return -1;
-    if (t->tb.filedesc[newfd].fno != NULL)
+    if (ft->fdesc[newfd].fno != NULL)
         task_filedesc_del(newfd);
-    t->tb.filedesc[newfd].fno = f;
+    ft->fdesc[newfd].fno = f;
     return newfd;
 }
 
@@ -1016,6 +1081,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
 {
     struct task *new;
     int i;
+    struct filedesc_table *ft;
 
     irq_off();
     new = task_space_alloc(sizeof(struct task));
@@ -1025,19 +1091,20 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
     new->tb.pid = next_pid();
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = nice;
-    new->tb.filedesc = NULL;
-    new->tb.n_files = 0;
+    new->tb.filedesc_table = NULL;
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
     new->tb.vfsi = vfsi;
     new->tb.tracer = NULL;
 
+    ft = _cur_task->tb.filedesc_table;
+
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
         new->tb.cwd = task_getcwd();
-        for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
-            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
+        for (i = 0; (ft) && (i < ft->n_files); i++) {
+            task_filedesc_add_to_task(new, ft->fdesc[i].fno);
+            new->tb.filedesc_table->fdesc[i].mask = ft->fdesc[i].mask;
         }
     } 
 
@@ -1071,6 +1138,7 @@ int sys_vfork_hdlr(void)
     int i;
     uint32_t sp_off = (uint8_t *)_cur_task->tb.sp - (uint8_t *)_cur_task->tb.cur_stack;
     uint32_t vpid;
+    struct filedesc_table *ft = _cur_task->tb.filedesc_table;
 
     irq_off();
     new = task_space_alloc(sizeof(struct task));
@@ -1081,8 +1149,7 @@ int sys_vfork_hdlr(void)
     new->tb.pid = vpid;
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = _cur_task->tb.nice;
-    new->tb.filedesc = NULL;
-    new->tb.n_files = 0;
+    new->tb.filedesc_table = NULL;
     new->tb.arg = NULL;
     new->tb.vfsi = NULL;
     new->tb.flags = TASK_FLAG_VFORK;
@@ -1090,9 +1157,9 @@ int sys_vfork_hdlr(void)
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
-        for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
-            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
+        for (i = 0; (ft) && (i < ft->n_files); i++) {
+            task_filedesc_add_to_task(new, ft->fdesc[i].fno);
+            new->tb.filedesc_table->fdesc[i].mask = ft->fdesc[i].mask;
         }
         /* Inherit signal mask */
         new->tb.sigmask = _cur_task->tb.sigmask;
@@ -1266,8 +1333,7 @@ void kernel_task_init(void)
     kernel->tb.nice = NICE_DEFAULT;
     kernel->tb.start = NULL;
     kernel->tb.arg = NULL;
-    kernel->tb.filedesc = NULL;
-    kernel->tb.n_files = 0;
+    kernel->tb.filedesc_table = NULL;
     kernel->tb.timeslice = TIMESLICE(kernel);
     kernel->tb.state = TASK_RUNNABLE;
     kernel->tb.cwd = fno_search("/");
@@ -1605,7 +1671,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_SYSCALL:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
             tracee->tb.flags |= TASK_FLAG_SYSCALL_STOP;
             return 0;
@@ -1673,14 +1739,19 @@ int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 int sys_setsid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
 {
     int i;
-    for (i = 0; i < _cur_task->tb.n_files; i++) {
-        struct fnode *fno = _cur_task->tb.filedesc[i].fno;
-        if ((fno->flags & FL_TTY) && ((_cur_task->tb.filedesc[i].mask & O_NOCTTY) == 0)) {
-            struct module *mod = fno->owner;
-            if (mod && mod->ops.tty_attach) {
-                mod->ops.tty_attach(fno, _cur_task->tb.ppid);
-                _cur_task->tb.filedesc[i].mask |= O_NOCTTY;
-
+    struct filedesc_table *ft = _cur_task->tb.filedesc_table;
+    if (!ft)
+        return -1;
+    for (i = 0; (ft) && (i < ft->n_files); i++) {
+        if (ft->fdesc[i].fno != NULL) {
+            struct fnode *fno = ft->fdesc[i].fno;
+            if ((fno->flags & FL_TTY) && ((ft->fdesc[i].mask & O_NOCTTY) == 0)) {
+                struct module *mod = fno->owner;
+                if (mod && mod->ops.tty_attach) {
+                    mod->ops.tty_attach(fno, _cur_task->tb.ppid);
+                    ft->fdesc[i].mask |= O_NOCTTY;
+                    return 0;
+                }
             }
         }
     }
@@ -1688,11 +1759,14 @@ int sys_setsid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 
 int task_segfault(uint32_t address, uint32_t instruction, int flags)
 {
+    struct filedesc_table *ft;
     if (in_kernel())
         return -1;
     if (_cur_task->tb.state == TASK_ZOMBIE)
         return 0;
-    if ((_cur_task->tb.n_files > 2) &&  _cur_task->tb.filedesc[2].fno->owner->ops.write) {
+
+    ft = _cur_task->tb.filedesc_table;
+    if ( ft && (ft->n_files > 2) &&  ft->fdesc[2].fno->owner->ops.write) {
 #    ifdef CONFIG_EXTENDED_MEMFAULT
         char segv_msg[128] = "Memory fault: process (pid=";
         strcat(segv_msg, pid_str(_cur_task->tb.pid));
@@ -1707,7 +1781,7 @@ int task_segfault(uint32_t address, uint32_t instruction, int flags)
 #    else
         char segv_msg[] = ">_< -- Segfault -- >_<";
 #    endif
-        _cur_task->tb.filedesc[2].fno->owner->ops.write(_cur_task->tb.filedesc[2].fno, segv_msg, strlen(segv_msg));
+        ft->fdesc[2].fno->owner->ops.write(ft->fdesc[2].fno, segv_msg, strlen(segv_msg));
     }
     task_terminate(_cur_task);
     return 0;
