@@ -2,6 +2,7 @@
 /* Structures */
 struct semaphore {
     int value;
+    uint32_t signature;
     int listeners;
     struct task **listener;
 };

@@ -20,6 +20,9 @@
 #include "frosted.h"
 #include "locks.h"
 
+#define SIGN_MUTEX (0xCAFEC0C0)
+#define SIGN_SEMAP (0xCAFECAFE)
+
 
 /* Semaphore: internal functions */
 static void _add_listener(sem_t *s)
@@ -114,6 +117,7 @@ sem_t *sem_init(int val)
     sem_t *s = kalloc(sizeof(sem_t));
     if (s) {
         int i;
+        s->signature = SIGN_SEMAP;
         s->value = val;
         s->listeners = 8;
         s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
@@ -127,28 +131,29 @@ sem_t *sem_init(int val)
 /* Semaphore: Syscalls */
 int sys_sem_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
-        return -EACCES;
     return (int)sem_init(arg1);
 }
 
 int sys_sem_post_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s || s->signature != SIGN_SEMAP)
         return -EACCES;
     return sem_post((sem_t *)arg1);
 }
 
 int sys_sem_wait_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s || s->signature != SIGN_SEMAP)
         return -EACCES;
     return sem_wait((sem_t *)arg1);
 }
 
 int sys_sem_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s || s->signature != SIGN_SEMAP)
         return -EACCES;
     return sem_destroy((sem_t *)arg1);
 }
@@ -159,6 +164,7 @@ mutex_t *mutex_init()
     mutex_t *s = kalloc(sizeof(mutex_t));
     if (s) {
         int i;
+        s->signature = SIGN_MUTEX;
         s->value = 1; /* Unlocked. */
         s->listeners = 8;
         s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
@@ -230,28 +236,29 @@ int mutex_unlock(mutex_t *s)
 /* Mutex: Syscalls */
 int sys_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
-        return -EACCES;
     return (int)mutex_init(arg1);
 }
 
 int sys_mutex_lock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s || s->signature != SIGN_MUTEX)
         return -EACCES;
     return mutex_lock((mutex_t *)arg1);
 }
 
 int sys_mutex_unlock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s || s->signature != SIGN_MUTEX)
         return -EACCES;
     return mutex_unlock((mutex_t *)arg1);
 }
 
 int sys_mutex_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1))
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s || s->signature != SIGN_MUTEX)
         return -EACCES;
     return sem_destroy((sem_t *)arg1); /* Same as semaphore */
 }

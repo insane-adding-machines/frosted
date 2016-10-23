@@ -253,13 +253,13 @@ static void tasklist_add(struct task **list, volatile struct task *el)
     *list = el;
 }
 
-static int tasklist_del(struct task **list, uint16_t pid)
+static int tasklist_del(struct task **list, volatile struct task *togo)
 {
     struct task *t = *list;
     struct task *p = NULL;
 
     while (t) {
-        if (t->tb.pid == pid) {
+        if (t == togo) {
             if (p == NULL)
                 *list = t->tb.next;
             else
@@ -306,7 +306,7 @@ void task_terminate(struct task *t);
 static void ftable_destroy(volatile struct task *t);
 static void idling_to_running(volatile struct task *t)
 {
-    if (tasklist_del(&tasks_idling, t->tb.pid) == 0)
+    if (tasklist_del(&tasks_idling, t) == 0)
         tasklist_add(&tasks_running, t);
 }
 
@@ -314,7 +314,7 @@ static void running_to_idling(volatile struct task *t)
 {
     if (t->tb.pid < 1)
         return;
-    if (tasklist_del(&tasks_running, t->tb.pid) == 0)
+    if (tasklist_del(&tasks_running, t) == 0)
         tasklist_add(&tasks_idling, t);
 }
 
@@ -332,8 +332,8 @@ static void task_destroy(void *arg)
     for (i = 0; (ft) && (i < ft->n_files); i++) {
         task_filedesc_del_from_task(t, i);
     }
-    tasklist_del(&tasks_running, t->tb.pid);
-    tasklist_del(&tasks_idling, t->tb.pid);
+    tasklist_del(&tasks_running, t);
+    tasklist_del(&tasks_idling, t);
     ftable_destroy(t);
     if (t->tb.arg) {
         char **arg = (char **)(t->tb.arg);
@@ -1148,7 +1148,7 @@ int sys_vfork_hdlr(void)
     uint32_t vpid;
     struct filedesc_table *ft = _cur_task->tb.filedesc_table;
 
-    if (_cur_task->tb.pid != 1) {
+    if (_cur_task->tb.tid != 1) {
         /* Prohibit vfork() from a thread */
         return -ENOSYS;
     }
@@ -1284,11 +1284,6 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     struct task *new;
     int i;
     struct filedesc_table *ft = _cur_task->tb.filedesc_table;
-
-    if (_cur_task->tb.pid != 1) {
-        /* Prohibit vfork() from a thread */
-        return -ENOSYS;
-    }
 
     irq_off();
     new = task_space_alloc(sizeof(struct task));

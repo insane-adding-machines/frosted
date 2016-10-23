@@ -78,7 +78,7 @@ struct f_malloc_stats f_malloc_stats[4] = {};
 
 /* Mlock is a special lock, so initialization is made static */
 static struct task *_m_listeners[16] = {};
-static struct semaphore _mlock = { .value = 1, .listeners=16, .listener=_m_listeners};
+static struct semaphore _mlock = { .signature = 0xCAFEC0C0, .value = 1, .listeners=16, .listener=_m_listeners};
 static mutex_t *mlock = (mutex_t *)(&_mlock);
 
 #define KMEM_SIZE   (CONFIG_KRAM_SIZE << 10)

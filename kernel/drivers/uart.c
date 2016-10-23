@@ -101,6 +101,8 @@ static void devuart_tty_attach(struct fnode *fno, int pid)
 
 void uart_isr(struct dev_uart *uart)
 {
+    if (!uart)
+        return;
     /* TX interrupt */
     if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
         usart_clear_tx_interrupt(uart->base);
