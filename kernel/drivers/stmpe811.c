@@ -620,8 +620,8 @@ static void *ts_read_x_0(void *arg)
         stmpe811->state = STMPE811_STATE_RDY;
         stmpe811->cnt = 0;
 
-        if (stmpe811->dev->pid > 0) {
-            task_resume(stmpe811->dev->pid);
+        if (stmpe811->dev->task) {
+            task_resume(stmpe811->dev->task);
         }
     } else {
         i2c_init_read(&stmpe811->i2c, STMPE811_TSC_DATA_X, &buffer, 1);
@@ -664,8 +664,8 @@ static void *ts_read_end(void *arg)
     exti_enable(stmpe811->eidx, 0);
     stmpe811->state = STMPE811_STATE_RDY;
 
-    if (stmpe811->dev->pid > 0) {
-        task_resume(stmpe811->dev->pid);
+    if (stmpe811->dev->task> 0) {
+        task_resume(stmpe811->dev->task);
     }
 }
 
@@ -738,17 +738,17 @@ static int devstmpe811_read(struct fnode *fno, void *buf, unsigned int len)
         return EINVAL;
 
     if (stmpe811->state == STMPE811_STATE_IDLE) {
-        if ((stmpe811->dev->pid) && (stmpe811->dev->pid != this_task())) {
+        if ((stmpe811->dev->task) && (stmpe811->dev->task != this_task())) {
             return -EBUSY;
         }
-        stmpe811->dev->pid = this_task();
+        stmpe811->dev->task = this_task();
 
         task_suspend();
         exti_enable(stmpe811->eidx, 1);
         return SYS_CALL_AGAIN;
     } else if (stmpe811->state == STMPE811_STATE_RDY) {
         memcpy(buf, &xy, 4);
-        stmpe811->dev->pid = 0;
+        stmpe811->dev->task = 0;
         stmpe811->state = STMPE811_STATE_IDLE;
         return sizeof(uint32_t);
     }
@@ -771,7 +771,7 @@ static int stmpe811_fno_init(struct dev_stmpe811 *s)
 
     name[2] =  '0' + num_ts++;
     s->dev = device_fno_init(&mod_devstmpe811, name, devfs, FL_RDONLY, s);
-    s->dev->pid = -1;
+    s->dev->task = NULL;
     return 0;
 
 }
