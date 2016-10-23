@@ -89,7 +89,11 @@ syscalls = [
     ["ftruncate", 2, "sys_ftruncate_hdlr"],
     ["truncate", 2, "sys_truncate_hdlr"],
     ["pthread_create", 4, "sys_pthread_create_hdlr"],
-    ["pthread_exit", 1, "sys_pthread_exit_hdlr"]
+    ["pthread_exit", 1, "sys_pthread_exit_hdlr"],
+    ["pthread_join", 2, "sys_pthread_join_hdlr"],
+    ["pthread_detach", 1, "sys_pthread_detach_hdlr"],
+    ["pthread_kill", 2, "sys_pthread_kill_hdlr"],
+    ["pthread_self", 0, "sys_pthread_self_hdlr"],
 
 ]
 

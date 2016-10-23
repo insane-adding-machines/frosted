@@ -24,6 +24,7 @@
 #include "kprintf.h"
 #include "sys/wait.h"
 #include "vfs.h"
+#include "sys/pthread.h"
 
 
 /* Full kernel space separation */
@@ -182,6 +183,7 @@ static void * _top_stack;
 #define TASK_FLAG_SIGNALED 0x04
 #define TASK_FLAG_INTR  0x40
 #define TASK_FLAG_SYSCALL_STOP 0x80
+#define TASK_FLAG_DETACHED 0x0100
 
 
 struct filedesc {
@@ -207,19 +209,19 @@ struct __attribute__((packed)) task_block {
     void (*start)(void *);
     void *arg;
 
+    uint16_t flags;
     uint8_t state;
-    uint8_t flags;
     int8_t nice;
 
-    uint8_t timeslice;
+    uint16_t timeslice;
     uint16_t pid;
 
     /* threads */
-    uint16_t tid;
     struct task **threads;
-    uint16_t n_threads;
 
     uint16_t ppid;
+    uint8_t tid;
+    uint8_t n_threads;
 
     struct task *tracer;
 
@@ -327,31 +329,36 @@ static void task_destroy(void *arg)
     struct filedesc_table *ft;
     if (!t)
         return;
-    ft = t->tb.filedesc_table;
 
-    for (i = 0; (ft) && (i < ft->n_files); i++) {
-        task_filedesc_del_from_task(t, i);
+    if (t->tb.tid == 1) {
+        ft = t->tb.filedesc_table;
+        for (i = 0; (ft) && (i < ft->n_files); i++) {
+            task_filedesc_del_from_task(t, i);
+        }
     }
+
     tasklist_del(&tasks_running, t);
     tasklist_del(&tasks_idling, t);
     ftable_destroy(t);
-    if (t->tb.arg) {
-        char **arg = (char **)(t->tb.arg);
-        i = 0;
-        while(arg[i]) {
-            f_free(arg[i]);
-            i++;
+    if (t->tb.tid == 1) {
+        if (t->tb.arg) {
+            char **arg = (char **)(t->tb.arg);
+            i = 0;
+            while(arg[i]) {
+                f_free(arg[i]);
+                i++;
+            }
         }
+        if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
+        {
+            //kprintf("Freeing VFS type %d allocated pointer 0x%p\r\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
+            if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
+                f_free(t->tb.vfsi->allocated);
+            f_free(t->tb.vfsi);
+        }
+        f_free(t->tb.arg);
+        f_proc_heap_free(t->tb.pid);
     }
-    if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
-    {
-        //kprintf("Freeing VFS type %d allocated pointer 0x%p\r\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
-        if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
-            f_free(t->tb.vfsi->allocated);
-        f_free(t->tb.vfsi);
-    }
-    f_free(t->tb.arg);
-    f_proc_heap_free(t->tb.pid);
     task_space_free(t);
     number_of_tasks--;
 }
@@ -1214,25 +1221,33 @@ int sys_vfork_hdlr(void)
 /**/
 /**/
 
-typedef struct pthread_s {
-    int pid;
-    int tid;
-} pthread_t;
-
-typedef struct pthread_attr_s {
-    int a;
-
-} pthread_attr_t;
-
-void pthread_end(void)
+static struct task *pthread_get_task(int pid, int tid)
 {
-    running_to_idling(_cur_task);
-    _cur_task->tb.state = TASK_OVER;
-    tasklet_add(task_destroy, _cur_task);
-    /* TODO: make joinable */
+    struct task *t = NULL;
+    struct task *leader = NULL;
+    int i;
+
+    leader = tasklist_get(&tasks_running, pid);
+    if (!leader)
+        leader = tasklist_get(&tasks_idling, pid);
+    if (!leader)
+        return NULL;
+
+    if (tid == 1)
+        return leader;
+
+    if (!leader->tb.threads || leader->tb.n_threads < 2)
+        return NULL;
+
+    for (i = 0; i < t->tb.n_threads; i++) {
+        t = leader->tb.threads[i];
+        if (t->tb.tid == tid)
+            return t;
+    }
+    return NULL;
 }
 
-int pthread_add(struct task *cur, struct task *new)
+static int pthread_add(struct task *cur, struct task *new)
 {
     int i;
     struct task **old_threads = cur->tb.threads;
@@ -1267,6 +1282,14 @@ int pthread_add(struct task *cur, struct task *new)
     return cur->tb.n_threads;
 }
 
+static void pthread_end(void)
+{
+    running_to_idling(_cur_task);
+    _cur_task->tb.state = TASK_OVER;
+    tasklet_add(task_destroy, _cur_task);
+    /* TODO: alert joiners */
+}
+
 /* Pthread create handler. Call be like: 
  * int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg)
  */
@@ -1284,6 +1307,9 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     struct task *new;
     int i;
     struct filedesc_table *ft = _cur_task->tb.filedesc_table;
+
+    if (!thread || (task_ptr_valid(thread) < 0) || (task_ptr_valid(attr) < 0))
+        return -EINVAL;
 
     irq_off();
     new = task_space_alloc(sizeof(struct task));
@@ -1328,6 +1354,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     extra_frame->r9 = new->tb.vfsi->pic;
     new->tb.sp = (uint32_t *)sp;
     irq_on();
+    thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
     return 0;
 }
 
@@ -1335,6 +1362,44 @@ int sys_pthread_exit_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     _cur_task->tb.exitval = arg1;
     pthread_end();
+}
+
+int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return 0;
+}
+
+int sys_pthread_detach_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    pthread_t thread = (pthread_t)arg1;
+    int sig = arg2;
+    struct task *t = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
+    if (!t)
+        return -ESRCH;
+    t->tb.flags |= TASK_FLAG_DETACHED;
+    return 0;
+}
+
+int sys_pthread_kill_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    pthread_t thread = (pthread_t)arg1;
+    int sig = arg2;
+    struct task *t = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
+    if (t) {
+        running_to_idling(t);
+        t->tb.state = TASK_OVER;
+        tasklet_add(task_destroy, t);
+        /* TODO: alert joiners */
+        return 0;
+    }
+    return -ESRCH;
+}
+
+int sys_pthread_self_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    pthread_t thread;
+    thread = (_cur_task->tb.pid << 16) | (_cur_task->tb.tid & 0xFFFF);
+    return (int)thread;
 }
 
 /********************************/
@@ -1589,6 +1654,7 @@ void task_deliver_sigchld(void *arg)
 
 void task_terminate(struct task *t)
 {
+    int i;
     if (t) {
         running_to_idling(t);
         t->tb.state = TASK_ZOMBIE;
@@ -1608,6 +1674,17 @@ void task_terminate(struct task *t)
             }
             tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
+        }
+        /* Destroy the entire thread family */
+        for (i = 0; i < t->tb.n_threads; i++) {
+            if (t->tb.threads[i] != NULL) {
+                struct task *th = t->tb.threads[i];
+                if (th->tb.tid != t->tb.tid) {
+                    running_to_idling(th);
+                    th->tb.state = TASK_OVER;
+                    tasklet_add(task_destroy, th);
+                }
+            }
         }
     }
 }
