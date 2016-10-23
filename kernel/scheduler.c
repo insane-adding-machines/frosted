@@ -214,6 +214,11 @@ struct __attribute__((packed)) task_block {
     uint8_t timeslice;
     uint16_t pid;
 
+    /* threads */
+    uint16_t tid;
+    struct task **threads;
+    uint16_t n_threads;
+
     uint16_t ppid;
 
     struct task *tracer;
@@ -283,12 +288,11 @@ static struct task *tasklist_get(struct task **list, uint16_t pid)
 {
     struct task *t = *list;
     while (t) {
-        if (t->tb.pid == pid)
+        if ((t->tb.pid == pid) && (t->tb.tid == 1))
             return t;
         t = t->tb.next;
     }
     return NULL;
-
 }
 
 static struct task *tasks_running = NULL;
@@ -1089,6 +1093,10 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
         return -ENOMEM;
     }
     new->tb.pid = next_pid();
+    new->tb.tid = 1;
+    new->tb.threads = NULL;
+    new->tb.n_threads = 0;
+
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = nice;
     new->tb.filedesc_table = NULL;
@@ -1140,6 +1148,11 @@ int sys_vfork_hdlr(void)
     uint32_t vpid;
     struct filedesc_table *ft = _cur_task->tb.filedesc_table;
 
+    if (_cur_task->tb.pid != 1) {
+        /* Prohibit vfork() from a thread */
+        return -ENOSYS;
+    }
+
     irq_off();
     new = task_space_alloc(sizeof(struct task));
     if (!new) {
@@ -1147,6 +1160,9 @@ int sys_vfork_hdlr(void)
     }
     vpid = next_pid();
     new->tb.pid = vpid;
+    new->tb.tid = 1;
+    new->tb.threads = NULL;
+    new->tb.n_threads = 0;
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = _cur_task->tb.nice;
     new->tb.filedesc_table = NULL;
@@ -1188,6 +1204,142 @@ int sys_vfork_hdlr(void)
     task_suspend_to(TASK_FORKED);
     
     return vpid;
+}
+/********************************/
+/*         POSIX threads        */
+/********************************/
+/********************************/
+/********************************/
+/**/
+/**/
+/**/
+
+typedef struct pthread_s {
+    int pid;
+    int tid;
+} pthread_t;
+
+typedef struct pthread_attr_s {
+    int a;
+
+} pthread_attr_t;
+
+void pthread_end(void)
+{
+    running_to_idling(_cur_task);
+    _cur_task->tb.state = TASK_OVER;
+    tasklet_add(task_destroy, _cur_task);
+    /* TODO: make joinable */
+}
+
+int pthread_add(struct task *cur, struct task *new)
+{
+    int i;
+    struct task **old_threads = cur->tb.threads;
+
+    if (!cur->tb.threads) {
+        cur->tb.threads = kcalloc(sizeof(struct task *) * 2, 1);
+        cur->tb.threads[0] = cur;
+        cur->tb.threads[1] = new;
+        new->tb.threads = cur->tb.threads;
+        cur->tb.n_threads = 2;
+        new->tb.n_threads = 2;
+        return 2;
+    }
+    for (i = 0; i < cur->tb.n_threads; i++) {
+        if (cur->tb.threads[i] == NULL) {
+            cur->tb.threads[i] = new;
+            new->tb.threads = cur->tb.threads;
+            new->tb.n_threads = cur->tb.n_threads;
+            return i + 1;
+        }
+    }
+    ++cur->tb.n_threads;
+    cur->tb.threads = krealloc(cur->tb.threads, sizeof(struct task *) * cur->tb.n_threads);
+    if (!cur->tb.threads) {
+        cur->tb.threads = old_threads;
+        --cur->tb.n_threads;
+        return -ENOMEM;
+    }
+    cur->tb.threads[cur->tb.n_threads - 1] = new;
+    new->tb.threads = cur->tb.threads;
+    new->tb.n_threads = cur->tb.n_threads;
+    return cur->tb.n_threads;
+}
+
+/* Pthread create handler. Call be like: 
+ * int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg)
+ */
+
+int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    struct nvic_stack_frame *nvic_frame;
+    struct extra_stack_frame *extra_frame;
+    uint8_t *sp;
+    pthread_t *thread = (pthread_t *)arg1;
+    pthread_attr_t *attr = (pthread_attr_t *)arg2;
+    void (*start_routine)(void *) = (void (*)(void*))arg3;
+    void *arg = (void *)arg4;
+    (void)arg5;
+    struct task *new;
+    int i;
+    struct filedesc_table *ft = _cur_task->tb.filedesc_table;
+
+    if (_cur_task->tb.pid != 1) {
+        /* Prohibit vfork() from a thread */
+        return -ENOSYS;
+    }
+
+    irq_off();
+    new = task_space_alloc(sizeof(struct task));
+    if (!new) {
+        return -ENOMEM;
+    }
+
+    new->tb.tid = pthread_add(_cur_task, new);
+    if (new->tb.tid < 0) { 
+        task_space_free(new);
+        return -ENOMEM;
+    }
+    new->tb.pid = _cur_task->tb.pid;
+    new->tb.ppid = _cur_task->tb.ppid;
+    new->tb.nice = _cur_task->tb.nice;
+    new->tb.filedesc_table = _cur_task->tb.filedesc_table;
+    new->tb.arg = arg;
+    new->tb.vfsi = _cur_task->tb.vfsi;
+    new->tb.flags = TASK_RUNNABLE;
+    new->tb.cwd = task_getcwd();
+    new->tb.sigmask = _cur_task->tb.sigmask;
+    new->tb.sighdlr = _cur_task->tb.sighdlr;
+    new->tb.next = NULL;
+    tasklist_add(&tasks_running, new);
+    number_of_tasks++;
+    new->tb.start = start_routine;
+    new->tb.arg = arg;
+    new->tb.timeslice = TIMESLICE(new);
+    new->tb.state = TASK_RUNNABLE;
+    sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
+    new->tb.cur_stack = &new->stack;
+
+    /* Stack frame is at the end of the stack space */
+    nvic_frame = (struct nvic_stack_frame *) sp;
+    memset(nvic_frame, 0, NVIC_FRAME_SIZE);
+    nvic_frame->r0 = (uint32_t) new->tb.arg;
+    nvic_frame->pc = (uint32_t) new->tb.start;
+    nvic_frame->lr = (uint32_t) pthread_end;
+    nvic_frame->psr = 0x01000000u;
+    sp -= EXTRA_FRAME_SIZE;
+    extra_frame = (struct extra_stack_frame *)sp;
+    extra_frame->r9 = new->tb.vfsi->pic;
+    new->tb.sp = (uint32_t *)sp;
+    irq_on();
+    return 0;
+}
+
+int sys_pthread_exit_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    _cur_task->tb.exitval = arg1;
+    pthread_end();
 }
 
 /********************************/
@@ -1329,6 +1481,9 @@ void kernel_task_init(void)
     irq_off();
     kernel->tb.sp = msp_read(); // SP needs to be current SP
     kernel->tb.pid = next_pid();
+    kernel->tb.tid = 1;
+    kernel->tb.threads = NULL;
+    kernel->tb.n_threads = 0;
     kernel->tb.ppid = scheduler_get_cur_pid();
     kernel->tb.nice = NICE_DEFAULT;
     kernel->tb.start = NULL;

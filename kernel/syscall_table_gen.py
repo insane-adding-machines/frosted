@@ -87,7 +87,9 @@ syscalls = [
     ["getpriority", 2, "sys_getpriority_hdlr"],
     ["setpriority", 3, "sys_setpriority_hdlr"],
     ["ftruncate", 2, "sys_ftruncate_hdlr"],
-    ["truncate", 2, "sys_truncate_hdlr"]
+    ["truncate", 2, "sys_truncate_hdlr"],
+    ["pthread_create", 4, "sys_pthread_create_hdlr"],
+    ["pthread_exit", 1, "sys_pthread_exit_hdlr"]
 
 ]
 
