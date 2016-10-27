@@ -1075,13 +1075,16 @@ static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, v
     /* Change relocated section ownership */
     fmalloc_chown((void *)vfsi->pic, new->tb.pid);
 
-    /* Stack frame is at the end of the stack space */
+    /* Stack frame is at the end of the stack space,
+       the NVIC_FRAME is required for context-switching */
     nvic_frame = (struct nvic_stack_frame *) sp;
     memset(nvic_frame, 0, NVIC_FRAME_SIZE);
     nvic_frame->r0 = (uint32_t) new->tb.arg;
     nvic_frame->pc = (uint32_t) new->tb.start;
     nvic_frame->lr = (uint32_t) task_end;
     nvic_frame->psr = 0x01000000u;
+	/* The EXTRA_FRAME is needed in order to save/restore
+	   the task context when servicing PendSV exceptions */
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
     extra_frame->r9 = new->tb.vfsi->pic;
@@ -1519,7 +1522,13 @@ void __naked  pend_sv_handler(void)
         runnable = RUN_USER;
     }
 
-    /* Set return value selected by the restore procedure */
+    /* Set return value selected by the restore procedure;
+       RUN_KERNEL/RUN_USER are special values which inform
+	   the CPU we are returning from an exception handler,
+	   after detecting such a value the processor pops the
+	   correct stack frame (NVIC_FRAME) and jumps to the
+	   program counter stored into it, thus resuming task
+	   execution.  */
     asm volatile ("mov lr, %0" :: "r" (runnable));
 
     /* return (function is naked) */
