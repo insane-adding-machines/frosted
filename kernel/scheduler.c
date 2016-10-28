@@ -1357,7 +1357,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     extra_frame->r9 = new->tb.vfsi->pic;
     new->tb.sp = (uint32_t *)sp;
     irq_on();
-    thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
+    *thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
     return 0;
 }
 
