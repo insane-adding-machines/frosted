@@ -61,19 +61,10 @@
 #define SET_WRITE_MULTI_CMD(x)			(x & (~(0x80))	\
 						 x |= 0x40)
 
-enum dev_lis3dsh_state {
-    LIS3DSH_IDLE = 0,
-    LIS3DSH_READING,
-    LIS3DSH_COMPLETE
-};
-
 struct dev_lis3dsh {
     struct spi_slave sl; /* First argument, for inheritance */
     struct device * dev;
-    enum dev_lis3dsh_state state;
     const struct gpio_config *pio_cs;
-    uint8_t spi_obuf[8];
-    uint8_t spi_ibuf[8];
 };
 
 struct lis3dsh_ctrl_reg
@@ -96,50 +87,17 @@ static struct module mod_devlis3dsh = {
     .ops.close = devlis3dsh_close,
 };
 
-#if 0
-static int devlis3dsh_read(struct fnode *fno, void *buf, unsigned int len)
-{
-    struct dev_lis3dsh *lis3dsh = FNO_MOD_PRIV(fno, &mod_devlis3dsh);
-    if (len <= 0)
-        return len;
-
-    if (!lis3dsh)
-        return -1;
-
-    switch (lis3dsh->state) {
-        case LIS3DSH_IDLE:
-            lis3dsh->spi_obuf[0] = 0x28;
-            gpio_clear(lis3dsh->pio_cs->base, lis3dsh->pio_cs->pin);
-            devspi_xfer(&lis3dsh->sl, lis3dsh->spi_obuf, lis3dsh->spi_ibuf, 7);
-            gpio_set(lis3dsh->pio_cs->base, lis3dsh->pio_cs->pin);
-            lis3dsh->dev->pid = scheduler_get_cur_pid();
-            lis3dsh->state = LIS3DSH_READING;
-            task_suspend();
-            return SYS_CALL_AGAIN;
-        case LIS3DSH_READING:
-            task_suspend();
-            return SYS_CALL_AGAIN;
-        case LIS3DSH_COMPLETE:
-            memcpy(buf, lis3dsh->spi_ibuf, len);
-            lis3dsh->state = LIS3DSH_IDLE;
-            return len;
-    }
-    return len;
-}
-#endif
-
 
 /* Function to write a register to LIS3DSH through SPI  */
 static void lis3dsh_write_reg(int reg, int data)
 {
 	/* set CS low */
     irq_off();
-	gpio_clear(GPIOE, GPIO3);
-	/* discard returned value */
+    gpio_clear(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
 	spi_xfer(SPI1, SET_WRITE_SINGLE_CMD(reg));
 	spi_xfer(SPI1, data);
 	/* set CS high */
-	gpio_set(GPIOE, GPIO3);
+    gpio_set(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
     irq_on();
 }
 
@@ -150,11 +108,11 @@ static int lis3dsh_read_reg(int reg)
 	int reg_value;
     irq_off();
 	/* set CS low */
-	gpio_clear(GPIOE, GPIO3);
+    gpio_clear(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
 	reg_value = spi_xfer(SPI1, SET_READ_SINGLE_CMD(reg));
 	reg_value = spi_xfer(SPI1, 0xFF);
 	/* set CS high */
-	gpio_set(GPIOE, GPIO3);
+    gpio_set(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
     irq_on();
 	return reg_value;
 }
@@ -207,7 +165,6 @@ static int devlis3dsh_close(struct fnode *fno)
     lis3dsh = FNO_MOD_PRIV(fno, &mod_devlis3dsh);
     if (!lis3dsh)
         return -1;
-    lis3dsh->state = LIS3DSH_IDLE;
 
     return 0;
 }
@@ -215,12 +172,7 @@ static int devlis3dsh_close(struct fnode *fno)
 static void lis3dsh_isr(struct spi_slave *sl)
 {
     struct dev_lis3dsh *lis = (struct dev_lis3dsh *)sl;
-    switch(lis->state) {
-        case LIS3DSH_READING:
-            lis->state = LIS3DSH_COMPLETE;
-            task_resume(lis->dev->task);
-            break;
-    }
+    task_resume(lis->dev->task);
 }
 
 
