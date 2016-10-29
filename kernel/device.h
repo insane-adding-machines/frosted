@@ -6,7 +6,7 @@
 struct device {
     struct fnode *fno;
     mutex_t * mutex;
-    int pid;
+    struct task *task;
 };
 
 int device_open(const char *path, int flags);

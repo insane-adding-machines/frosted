@@ -24,6 +24,7 @@
 #include "kprintf.h"
 #include "sys/wait.h"
 #include "vfs.h"
+#include "sys/pthread.h"
 
 
 /* Full kernel space separation */
@@ -182,6 +183,7 @@ static void * _top_stack;
 #define TASK_FLAG_SIGNALED 0x04
 #define TASK_FLAG_INTR  0x40
 #define TASK_FLAG_SYSCALL_STOP 0x80
+#define TASK_FLAG_DETACHED 0x0100
 
 
 struct filedesc {
@@ -189,6 +191,11 @@ struct filedesc {
     uint32_t mask;
 };
 
+struct filedesc_table {
+    uint32_t n_files;
+    uint32_t usage_count;
+    struct filedesc *fdesc;
+};
 
 struct task_handler 
 {
@@ -202,24 +209,28 @@ struct __attribute__((packed)) task_block {
     void (*start)(void *);
     void *arg;
 
+    uint16_t flags;
     uint8_t state;
-    uint8_t flags;
     int8_t nice;
 
-    uint8_t timeslice;
+    uint16_t timeslice;
     uint16_t pid;
 
-    uint16_t ppid;
-    uint16_t n_files;
+    /* threads */
+    struct task **threads;
 
-    uint16_t tracer;
+    uint16_t ppid;
+    uint8_t tid;
+    uint8_t n_threads;
+
+    struct task *tracer;
 
     int exitval;
     struct fnode *cwd;
     struct task_handler *sighdlr;
     sigset_t sigmask;
     sigset_t sigpend;
-    struct filedesc *filedesc;
+    struct filedesc_table *filedesc_table;
     void *sp;
     void *osp;
     void *cur_stack;
@@ -244,13 +255,13 @@ static void tasklist_add(struct task **list, volatile struct task *el)
     *list = el;
 }
 
-static int tasklist_del(struct task **list, uint16_t pid)
+static int tasklist_del(struct task **list, volatile struct task *togo)
 {
     struct task *t = *list;
     struct task *p = NULL;
 
     while (t) {
-        if (t->tb.pid == pid) {
+        if (t == togo) {
             if (p == NULL)
                 *list = t->tb.next;
             else
@@ -279,20 +290,25 @@ static struct task *tasklist_get(struct task **list, uint16_t pid)
 {
     struct task *t = *list;
     while (t) {
-        if (t->tb.pid == pid)
+        if ((t->tb.pid == pid) && (t->tb.tid == 1))
             return t;
         t = t->tb.next;
     }
     return NULL;
-
 }
 
 static struct task *tasks_running = NULL;
 static struct task *tasks_idling = NULL;
+void task_resume(struct task *t);
+void task_resume_lock(struct task *t);
+void task_stop(struct task *t);
+void task_continue(struct task *t);
+void task_terminate(struct task *t);
 
+static void ftable_destroy(volatile struct task *t);
 static void idling_to_running(volatile struct task *t)
 {
-    if (tasklist_del(&tasks_idling, t->tb.pid) == 0)
+    if (tasklist_del(&tasks_idling, t) == 0)
         tasklist_add(&tasks_running, t);
 }
 
@@ -300,44 +316,64 @@ static void running_to_idling(volatile struct task *t)
 {
     if (t->tb.pid < 1)
         return;
-    if (tasklist_del(&tasks_running, t->tb.pid) == 0)
+    if (tasklist_del(&tasks_running, t) == 0)
         tasklist_add(&tasks_idling, t);
 }
 
 static int task_filedesc_del_from_task(volatile struct task *t, int fd);
+
 static void task_destroy(void *arg)
 {
     struct task *t = arg;
     int i;
-    for (i = 0; i < t->tb.n_files; i++) {
-        task_filedesc_del_from_task(t, i);
-    }
-    tasklist_del(&tasks_running, t->tb.pid);
-    tasklist_del(&tasks_idling, t->tb.pid);
-    kfree(t->tb.filedesc);
-    if (t->tb.arg) {
-        char **arg = (char **)(t->tb.arg);
-        i = 0;
-        while(arg[i]) {
-            f_free(arg[i]);
-            i++;
+    struct filedesc_table *ft;
+    if (!t)
+        return;
+
+    if (t->tb.tid == 1) {
+        ft = t->tb.filedesc_table;
+        for (i = 0; (ft) && (i < ft->n_files); i++) {
+            task_filedesc_del_from_task(t, i);
         }
     }
-    if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
-    {
-        //kprintf("Freeing VFS type %d allocated pointer 0x%p\r\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
-        if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
-            f_free(t->tb.vfsi->allocated);
-        f_free(t->tb.vfsi);
+
+    tasklist_del(&tasks_running, t);
+    tasklist_del(&tasks_idling, t);
+    ftable_destroy(t);
+    if (t->tb.tid == 1) {
+        if (t->tb.arg) {
+            char **arg = (char **)(t->tb.arg);
+            i = 0;
+            while(arg[i]) {
+                f_free(arg[i]);
+                i++;
+            }
+        }
+        if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
+        {
+            //kprintf("Freeing VFS type %d allocated pointer 0x%p\r\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
+            if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
+                f_free(t->tb.vfsi->allocated);
+            f_free(t->tb.vfsi);
+        }
+        f_free(t->tb.arg);
+        f_proc_heap_free(t->tb.pid);
     }
-    f_free(t->tb.arg);
-    f_proc_heap_free(t->tb.pid);
     task_space_free(t);
     number_of_tasks--;
 }
 
 static volatile struct task *_cur_task = NULL;
 static struct task *forced_task = NULL;
+
+
+struct task *this_task(void)
+{
+    struct task *t = _cur_task;
+    if (t->tb.pid == 0)
+        return NULL;
+    return t;
+}
 
 
 static int next_pid(void)
@@ -361,26 +397,55 @@ static int next_pid(void)
 /**/
 /**/
 /**/
+
+static struct filedesc_table *ftable_create(volatile struct task *t)
+{
+    struct filedesc_table *ft = t->tb.filedesc_table;
+    if (ft)
+        return ft;
+    ft = kcalloc(sizeof(struct filedesc_table), 1);
+    if (!ft)
+        return NULL;
+    ft->usage_count = 1;
+    t->tb.filedesc_table = ft;
+    return ft;
+}
+
+static void ftable_destroy(volatile struct task *t)
+{
+    struct filedesc_table *ft = t->tb.filedesc_table;
+    if (ft) {
+        if (--ft->usage_count == 0)
+            kfree(ft);
+    }
+    t->tb.filedesc_table = NULL;
+}
+
 static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
 {
     int i;
     void *re;
+    struct filedesc_table *ft = t->tb.filedesc_table;
     if (!t || !f)
         return -EINVAL;
-    for (i = 0; i < t->tb.n_files; i++) {
-        if (t->tb.filedesc[i].fno == NULL) {
+
+    if (!ft)
+        ft = ftable_create(t);
+
+    for (i = 0; i < ft->n_files; i++) {
+        if (ft->fdesc[i].fno == NULL) {
             f->usage_count++;
-            t->tb.filedesc[i].fno = f;
+            ft->fdesc[i].fno = f;
             return i;
         }
     }
-    t->tb.n_files++;
-    re = (void *)krealloc(t->tb.filedesc, t->tb.n_files * sizeof(struct filedesc));
+    ft->n_files++;
+    re = (void *)krealloc(ft->fdesc, ft->n_files * sizeof(struct filedesc));
     if (!re)
         return -1;
-    t->tb.filedesc = re;
-    memset(&(t->tb.filedesc[t->tb.n_files - 1]), 0, sizeof(struct filedesc));
-    t->tb.filedesc[t->tb.n_files - 1].fno = f;
+    ft->fdesc = re;
+    memset(&(ft->fdesc[ft->n_files - 1]), 0, sizeof(struct filedesc));
+    ft->fdesc[ft->n_files - 1].fno = f;
     if (f->flags & FL_TTY) {
         struct module *mod = f->owner;
         if (mod && mod->ops.tty_attach) {
@@ -388,7 +453,7 @@ static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
         }
     }
     f->usage_count++;
-    return t->tb.n_files - 1;
+    return ft->n_files - 1;
 }
 
 int task_filedesc_add(struct fnode *f)
@@ -399,15 +464,17 @@ int task_filedesc_add(struct fnode *f)
 static int task_filedesc_del_from_task(volatile struct task *t, int fd)
 {
     struct fnode *fno;
+    struct filedesc_table *ft;
     if (!t)
         return -EINVAL;
 
-    fno = t->tb.filedesc[fd].fno;
+    ft = t->tb.filedesc_table;
+    fno = ft->fdesc[fd].fno;
     if (!fno)
         return -ENOENT;
 
     /* Reattach controlling tty to parent task */
-    if ((fno->flags & FL_TTY) && ((t->tb.filedesc[fd].mask & O_NOCTTY) == 0)) {
+    if ((fno->flags & FL_TTY) && ((ft->fdesc[fd].mask & O_NOCTTY) == 0)) {
         struct module *mod = fno->owner;
         if (mod && mod->ops.tty_attach) {
             mod->ops.tty_attach(fno, t->tb.ppid);
@@ -420,7 +487,7 @@ static int task_filedesc_del_from_task(volatile struct task *t, int fd)
         if (fno->owner && fno->owner->ops.close)
             fno->owner->ops.close(fno);
     }
-    t->tb.filedesc[fd].fno = NULL;
+    ft->fdesc[fd].fno = NULL;
 }
 
 int task_filedesc_del(int fd)
@@ -430,40 +497,58 @@ int task_filedesc_del(int fd)
 
 int task_fd_setmask(int fd, uint32_t mask)
 {
-    struct fnode *fno = _cur_task->tb.filedesc[fd].fno;
-    if (!fno)
+    struct filedesc_table *ft;
+    struct fnode *fno;
+
+    ft = _cur_task->tb.filedesc_table;
+
+    if (!ft)
         return -EINVAL;
+
+    if (fd < 0 || fd > ft->n_files)
+        return -ENOENT;
+
+    fno = ft->fdesc[fd].fno;
+    if (!fno)
+        return -ENOENT;
 
     if ((mask & O_ACCMODE) != O_RDONLY) {
         if ((fno->flags & FL_WRONLY)== 0)
             return -EPERM;
     }
-
-    _cur_task->tb.filedesc[fd].mask = mask;
+    ft->fdesc[fd].mask = mask;
     return 0;
 }
 
 uint32_t task_fd_getmask(int fd)
 {
-    if (_cur_task->tb.filedesc[fd].fno)
-        return _cur_task->tb.filedesc[fd].mask;
+    struct filedesc_table *ft;
+    ft = _cur_task->tb.filedesc_table;
+    if (fd < 0 || fd > ft->n_files)
+        return 0;
+    if (ft->fdesc[fd].fno)
+        return ft->fdesc[fd].mask;
     return 0;
 }
 
 struct fnode *task_filedesc_get(int fd)
 {
     volatile struct task *t = _cur_task;
-    if (fd < 0)
-        return NULL;
-    if (fd >= t->tb.n_files)
-        return NULL;
+    struct filedesc_table *ft;
     if (!t)
         return NULL;
-    if (!t->tb.filedesc || (( t->tb.n_files - 1) < fd))
+    ft = t->tb.filedesc_table;
+    if (!ft)
         return NULL;
-    if (t->tb.filedesc[fd].fno == NULL)
+    if (fd < 0)
         return NULL;
-    return t->tb.filedesc[fd].fno;
+    if (fd >= ft->n_files)
+        return NULL;
+    if (( ft->n_files - 1) < fd)
+        return NULL;
+    if (ft->fdesc[fd].fno == NULL)
+        return NULL;
+    return ft->fdesc[fd].fno;
 }
 
 int task_fd_readable(int fd)
@@ -477,7 +562,7 @@ int task_fd_writable(int fd)
 {
     if (!task_filedesc_get(fd))
         return 0;
-    if ((_cur_task->tb.filedesc[fd].mask & O_ACCMODE) == O_RDONLY)
+    if ((_cur_task->tb.filedesc_table->fdesc[fd].mask & O_ACCMODE) == O_RDONLY)
         return 0;
     return 1;
 }
@@ -492,8 +577,8 @@ int sys_dup_hdlr(int fd)
         return -1;
     newfd = task_filedesc_add(f);
     if (newfd >= 0)
-        _cur_task->tb.filedesc[newfd].mask = 
-            _cur_task->tb.filedesc[fd].mask;
+        _cur_task->tb.filedesc_table->fdesc[newfd].mask = 
+            _cur_task->tb.filedesc_table->fdesc[fd].mask;
     return newfd;
 }
 
@@ -501,6 +586,10 @@ int sys_dup2_hdlr(int fd, int newfd)
 {
     volatile struct task *t = _cur_task;
     struct fnode *f = task_filedesc_get(fd);
+    struct filedesc_table *ft = t->tb.filedesc_table;
+    
+    if (!ft)
+        return -1;
     if (newfd < 0)
         return -1;
     if (newfd == fd)
@@ -509,11 +598,11 @@ int sys_dup2_hdlr(int fd, int newfd)
         return -1;
 
     /* TODO: create empty fnodes up until newfd */
-    if (newfd >= t->tb.n_files)
+    if (newfd >= ft->n_files)
         return -1;
-    if (t->tb.filedesc[newfd].fno != NULL)
+    if (ft->fdesc[newfd].fno != NULL)
         task_filedesc_del(newfd);
-    t->tb.filedesc[newfd].fno = f;
+    ft->fdesc[newfd].fno = f;
     return newfd;
 }
 
@@ -526,11 +615,11 @@ int sys_dup2_hdlr(int fd, int newfd)
 /**/
 /**/
 
-void task_terminate(int pid);
 
 #ifdef CONFIG_SIGNALS 
 
 static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo);
+int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
 {
     int i;
@@ -551,8 +640,8 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
     }
     
     /* If process is being traced, deliver SIGTRAP to tracer */
-    if (t->tb.tracer > 0) {
-        sys_kill_hdlr(t->tb.tracer, SIGTRAP);
+    if (t->tb.tracer != NULL) {
+        catch_signal(t->tb.tracer, SIGTRAP, t->tb.tracer->tb.sigmask);
     }
 
     /* Reset signal, if pending, as it's going to be handled. */
@@ -579,14 +668,14 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
     } else {
         /* Handler not present: SIG_DFL */
         if (signo == SIGSTOP) {
-            task_stop(t->tb.pid);
+            task_stop(t);
         } else if (signo == SIGCHLD) {
-            task_resume(t->tb.pid);
+            task_resume(t);
         } else if (signo == SIGCONT) {
             /* If not in stopped state, SIGCONT is ignored. */
-            task_continue(t->tb.pid);
+            task_continue(t);
         } else {
-            task_terminate(t->tb.pid);
+            task_terminate(t);
         }
     }
     return 0;
@@ -689,7 +778,7 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
     t->tb.sp -= EXTRA_FRAME_SIZE;
     memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
     t->tb.flags |= TASK_FLAG_SIGNALED;
-    task_resume(t->tb.pid);
+    task_resume(t);
 }
 
 
@@ -703,16 +792,16 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
 static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask) {
     (void)orig_mask;
     if (signo != SIGCHLD)
-        task_terminate(t->tb.pid);
+        task_terminate(t);
     return 0;
 }
 #endif
 
 
-void task_resume(int pid);
-void task_resume_lock(int pid);
-void task_stop(int pid);
-void task_continue(int pid);
+void task_resume(struct task *t);
+void task_resume_lock(struct task *t);
+void task_stop(struct task *t);
+void task_continue(struct task *t);
 
 int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
@@ -866,18 +955,16 @@ char * scheduler_task_name(int pid)
     else return NULL;
 }
 
-uint16_t scheduler_get_cur_pid(void)
+static uint16_t scheduler_get_cur_pid(void)
 {
     if (!_cur_task)
         return 0;
     return _cur_task->tb.pid;
 }
 
-uint16_t scheduler_get_cur_ppid(void)
+uint16_t this_task_getpid(void)
 {
-    if (!_cur_task)
-        return 0;
-    return _cur_task->tb.ppid;
+    return scheduler_get_cur_pid();
 }
 
 int task_running(void)
@@ -897,7 +984,7 @@ void task_end(void)
     asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
     while(1) {
         if (_cur_task->tb.ppid > 0)
-            task_resume(_cur_task->tb.ppid);
+            task_resume(_cur_task);
         task_suspend();
     }
 }
@@ -913,7 +1000,7 @@ void task_end(void)
 /**/
 /**/
 
-static void task_resume_vfork(int pid);
+static void task_resume_vfork(struct task *t);
 
 /* Duplicate exec() args into the new process address space. 
  */
@@ -965,6 +1052,7 @@ static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, v
     new->tb.sighdlr = NULL;
     new->tb.sigpend = 0;
     new->tb.sigmask = 0;
+    new->tb.tracer = NULL;
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -973,7 +1061,7 @@ static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, v
         if (pt) {
             /* Restore parent's stack */
             memcpy((void *)pt->tb.cur_stack, (void *)&new->stack, SCHEDULER_STACK_SIZE);
-            task_resume_vfork(pt->tb.pid);
+            task_resume_vfork(pt);
         }
         new->tb.flags &= (~TASK_FLAG_VFORK);
     }
@@ -1004,6 +1092,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
 {
     struct task *new;
     int i;
+    struct filedesc_table *ft;
 
     irq_off();
     new = task_space_alloc(sizeof(struct task));
@@ -1011,21 +1100,26 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
         return -ENOMEM;
     }
     new->tb.pid = next_pid();
+    new->tb.tid = 1;
+    new->tb.threads = NULL;
+    new->tb.n_threads = 0;
+
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = nice;
-    new->tb.filedesc = NULL;
-    new->tb.n_files = 0;
+    new->tb.filedesc_table = NULL;
     new->tb.flags = 0;
     new->tb.cwd = fno_search("/");
     new->tb.vfsi = vfsi;
-    new->tb.tracer = 0;
+    new->tb.tracer = NULL;
+
+    ft = _cur_task->tb.filedesc_table;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
         new->tb.cwd = task_getcwd();
-        for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
-            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
+        for (i = 0; (ft) && (i < ft->n_files); i++) {
+            task_filedesc_add_to_task(new, ft->fdesc[i].fno);
+            new->tb.filedesc_table->fdesc[i].mask = ft->fdesc[i].mask;
         }
     } 
 
@@ -1059,6 +1153,12 @@ int sys_vfork_hdlr(void)
     int i;
     uint32_t sp_off = (uint8_t *)_cur_task->tb.sp - (uint8_t *)_cur_task->tb.cur_stack;
     uint32_t vpid;
+    struct filedesc_table *ft = _cur_task->tb.filedesc_table;
+
+    if (_cur_task->tb.tid != 1) {
+        /* Prohibit vfork() from a thread */
+        return -ENOSYS;
+    }
 
     irq_off();
     new = task_space_alloc(sizeof(struct task));
@@ -1067,10 +1167,12 @@ int sys_vfork_hdlr(void)
     }
     vpid = next_pid();
     new->tb.pid = vpid;
+    new->tb.tid = 1;
+    new->tb.threads = NULL;
+    new->tb.n_threads = 0;
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = _cur_task->tb.nice;
-    new->tb.filedesc = NULL;
-    new->tb.n_files = 0;
+    new->tb.filedesc_table = NULL;
     new->tb.arg = NULL;
     new->tb.vfsi = NULL;
     new->tb.flags = TASK_FLAG_VFORK;
@@ -1078,9 +1180,9 @@ int sys_vfork_hdlr(void)
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
-        for (i = 0; i < _cur_task->tb.n_files; i++) {
-            task_filedesc_add_to_task(new, _cur_task->tb.filedesc[i].fno);
-            new->tb.filedesc[i].mask = _cur_task->tb.filedesc[i].mask;
+        for (i = 0; (ft) && (i < ft->n_files); i++) {
+            task_filedesc_add_to_task(new, ft->fdesc[i].fno);
+            new->tb.filedesc_table->fdesc[i].mask = ft->fdesc[i].mask;
         }
         /* Inherit signal mask */
         new->tb.sigmask = _cur_task->tb.sigmask;
@@ -1109,6 +1211,195 @@ int sys_vfork_hdlr(void)
     task_suspend_to(TASK_FORKED);
     
     return vpid;
+}
+/********************************/
+/*         POSIX threads        */
+/********************************/
+/********************************/
+/********************************/
+/**/
+/**/
+/**/
+
+static struct task *pthread_get_task(int pid, int tid)
+{
+    struct task *t = NULL;
+    struct task *leader = NULL;
+    int i;
+
+    leader = tasklist_get(&tasks_running, pid);
+    if (!leader)
+        leader = tasklist_get(&tasks_idling, pid);
+    if (!leader)
+        return NULL;
+
+    if (tid == 1)
+        return leader;
+
+    if (!leader->tb.threads || leader->tb.n_threads < 2)
+        return NULL;
+
+    for (i = 0; i < t->tb.n_threads; i++) {
+        t = leader->tb.threads[i];
+        if (t->tb.tid == tid)
+            return t;
+    }
+    return NULL;
+}
+
+static int pthread_add(struct task *cur, struct task *new)
+{
+    int i;
+    struct task **old_threads = cur->tb.threads;
+
+    if (!cur->tb.threads) {
+        cur->tb.threads = kcalloc(sizeof(struct task *) * 2, 1);
+        cur->tb.threads[0] = cur;
+        cur->tb.threads[1] = new;
+        new->tb.threads = cur->tb.threads;
+        cur->tb.n_threads = 2;
+        new->tb.n_threads = 2;
+        return 2;
+    }
+    for (i = 0; i < cur->tb.n_threads; i++) {
+        if (cur->tb.threads[i] == NULL) {
+            cur->tb.threads[i] = new;
+            new->tb.threads = cur->tb.threads;
+            new->tb.n_threads = cur->tb.n_threads;
+            return i + 1;
+        }
+    }
+    ++cur->tb.n_threads;
+    cur->tb.threads = krealloc(cur->tb.threads, sizeof(struct task *) * cur->tb.n_threads);
+    if (!cur->tb.threads) {
+        cur->tb.threads = old_threads;
+        --cur->tb.n_threads;
+        return -ENOMEM;
+    }
+    cur->tb.threads[cur->tb.n_threads - 1] = new;
+    new->tb.threads = cur->tb.threads;
+    new->tb.n_threads = cur->tb.n_threads;
+    return cur->tb.n_threads;
+}
+
+static void pthread_end(void)
+{
+    running_to_idling(_cur_task);
+    _cur_task->tb.state = TASK_OVER;
+    tasklet_add(task_destroy, _cur_task);
+    /* TODO: alert joiners */
+}
+
+/* Pthread create handler. Call be like: 
+ * int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg)
+ */
+
+int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    struct nvic_stack_frame *nvic_frame;
+    struct extra_stack_frame *extra_frame;
+    uint8_t *sp;
+    pthread_t *thread = (pthread_t *)arg1;
+    pthread_attr_t *attr = (pthread_attr_t *)arg2;
+    void (*start_routine)(void *) = (void (*)(void*))arg3;
+    void *arg = (void *)arg4;
+    (void)arg5;
+    struct task *new;
+    int i;
+    struct filedesc_table *ft = _cur_task->tb.filedesc_table;
+
+    if (!thread || (task_ptr_valid(thread) < 0) || (task_ptr_valid(attr) < 0))
+        return -EINVAL;
+
+    irq_off();
+    new = task_space_alloc(sizeof(struct task));
+    if (!new) {
+        return -ENOMEM;
+    }
+
+    new->tb.tid = pthread_add(_cur_task, new);
+    if (new->tb.tid < 0) { 
+        task_space_free(new);
+        return -ENOMEM;
+    }
+    new->tb.pid = _cur_task->tb.pid;
+    new->tb.ppid = _cur_task->tb.ppid;
+    new->tb.nice = _cur_task->tb.nice;
+    new->tb.filedesc_table = _cur_task->tb.filedesc_table;
+    new->tb.arg = arg;
+    new->tb.vfsi = _cur_task->tb.vfsi;
+    new->tb.flags = TASK_RUNNABLE;
+    new->tb.cwd = task_getcwd();
+    new->tb.sigmask = _cur_task->tb.sigmask;
+    new->tb.sighdlr = _cur_task->tb.sighdlr;
+    new->tb.next = NULL;
+    tasklist_add(&tasks_running, new);
+    number_of_tasks++;
+    new->tb.start = start_routine;
+    new->tb.arg = arg;
+    new->tb.timeslice = TIMESLICE(new);
+    new->tb.state = TASK_RUNNABLE;
+    sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
+    new->tb.cur_stack = &new->stack;
+
+    /* Stack frame is at the end of the stack space */
+    nvic_frame = (struct nvic_stack_frame *) sp;
+    memset(nvic_frame, 0, NVIC_FRAME_SIZE);
+    nvic_frame->r0 = (uint32_t) new->tb.arg;
+    nvic_frame->pc = (uint32_t) new->tb.start;
+    nvic_frame->lr = (uint32_t) pthread_end;
+    nvic_frame->psr = 0x01000000u;
+    sp -= EXTRA_FRAME_SIZE;
+    extra_frame = (struct extra_stack_frame *)sp;
+    extra_frame->r9 = new->tb.vfsi->pic;
+    new->tb.sp = (uint32_t *)sp;
+    irq_on();
+    thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
+    return 0;
+}
+
+int sys_pthread_exit_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    _cur_task->tb.exitval = arg1;
+    pthread_end();
+}
+
+int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return 0;
+}
+
+int sys_pthread_detach_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    pthread_t thread = (pthread_t)arg1;
+    int sig = arg2;
+    struct task *t = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
+    if (!t)
+        return -ESRCH;
+    t->tb.flags |= TASK_FLAG_DETACHED;
+    return 0;
+}
+
+int sys_pthread_kill_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    pthread_t thread = (pthread_t)arg1;
+    int sig = arg2;
+    struct task *t = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
+    if (t) {
+        running_to_idling(t);
+        t->tb.state = TASK_OVER;
+        tasklet_add(task_destroy, t);
+        /* TODO: alert joiners */
+        return 0;
+    }
+    return -ESRCH;
+}
+
+int sys_pthread_self_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    pthread_t thread;
+    thread = (_cur_task->tb.pid << 16) | (_cur_task->tb.tid & 0xFFFF);
+    return (int)thread;
 }
 
 /********************************/
@@ -1160,14 +1451,13 @@ static __naked void restore_task_context(void)
 
 static __inl void task_switch(void)
 {
-    int i, pid;
+    int i;
     volatile struct task *t;
     if (forced_task) {
         _cur_task = forced_task;
         forced_task = NULL;
         return;
     }
-    pid = _cur_task->tb.pid;
     t = _cur_task;
 
     if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
@@ -1251,12 +1541,14 @@ void kernel_task_init(void)
     irq_off();
     kernel->tb.sp = msp_read(); // SP needs to be current SP
     kernel->tb.pid = next_pid();
+    kernel->tb.tid = 1;
+    kernel->tb.threads = NULL;
+    kernel->tb.n_threads = 0;
     kernel->tb.ppid = scheduler_get_cur_pid();
     kernel->tb.nice = NICE_DEFAULT;
     kernel->tb.start = NULL;
     kernel->tb.arg = NULL;
-    kernel->tb.filedesc = NULL;
-    kernel->tb.n_files = 0;
+    kernel->tb.filedesc_table = NULL;
     kernel->tb.timeslice = TIMESLICE(kernel);
     kernel->tb.state = TASK_RUNNABLE;
     kernel->tb.cwd = fno_search("/");
@@ -1285,12 +1577,7 @@ void task_suspend(void) {
     return task_suspend_to(TASK_WAITING);
 }
 
-void task_stop(int pid) {
-    struct task *t = tasklist_get(&tasks_idling, pid);
-    if (!t) {
-        t = tasklist_get(&tasks_running, pid);
-        running_to_idling(t);
-    }
+void task_stop(struct task *t) {
     if (!t)
         return;
     if (t->tb.state == TASK_RUNNABLE || t->tb.state == TASK_RUNNING) {
@@ -1319,9 +1606,8 @@ void task_preempt_all(void)
 }
 
 
-static void task_resume_real(int pid, int lock)
+static void task_resume_real(struct task *t, int lock)
 {
-    struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && (t->tb.state == TASK_WAITING)) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
@@ -1333,29 +1619,27 @@ static void task_resume_real(int pid, int lock)
 }
 
 
-void task_resume_lock(int pid)
+void task_resume_lock(struct task *t)
 {
-    task_resume_real(pid, 1);
+    task_resume_real(t, 1);
 }
 
 
-void task_resume(int pid)
+void task_resume(struct task *t)
 {
-    task_resume_real(pid, 0);
+    task_resume_real(t, 0);
 }
 
-void task_continue(int pid)
+void task_continue(struct task *t)
 {
-    struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && (t->tb.state == TASK_STOPPED)) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
     }
 }
 
-static void task_resume_vfork(int pid)
+static void task_resume_vfork(struct task *t)
 {
-    struct task *t = tasklist_get(&tasks_idling, pid);
     if ((t) && t->tb.state == TASK_FORKED) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
@@ -1368,15 +1652,11 @@ void task_deliver_sigchld(void *arg)
     task_kill(pid, SIGCHLD);
 }
 
-void task_terminate(int pid)
+void task_terminate(struct task *t)
 {
-    struct task *t = tasklist_get(&tasks_running, pid);
-    if (!t) 
-        t = tasklist_get(&tasks_idling, pid);
-    else
-        running_to_idling(t);
-
+    int i;
     if (t) {
+        running_to_idling(t);
         t->tb.state = TASK_ZOMBIE;
         t->tb.timeslice = 0;
 
@@ -1390,10 +1670,21 @@ void task_terminate(int pid)
                     memcpy((void *)pt->tb.cur_stack, (void *)&_cur_task->stack, SCHEDULER_STACK_SIZE);
                     t->tb.flags &= ~TASK_FLAG_VFORK;
                 }
-                task_resume_vfork(t->tb.ppid);
+                task_resume_vfork(t);
             }
             tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
+        }
+        /* Destroy the entire thread family */
+        for (i = 0; i < t->tb.n_threads; i++) {
+            if (t->tb.threads[i] != NULL) {
+                struct task *th = t->tb.threads[i];
+                if (th->tb.tid != t->tb.tid) {
+                    running_to_idling(th);
+                    th->tb.state = TASK_OVER;
+                    tasklet_add(task_destroy, th);
+                }
+            }
         }
     }
 }
@@ -1411,27 +1702,36 @@ int scheduler_get_nice(int pid)
     return (int)t->tb.nice;
 }
 
+int sys_getpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    if (!_cur_task)
+        return 0;
+    return _cur_task->tb.pid;
+}
+
+int sys_getppid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    if (!_cur_task)
+        return 0;
+    return _cur_task->tb.ppid;
+}
+
 static void sleepy_task_wakeup(uint32_t now, void *arg)
 {
-    int pid = (int)arg;
-    task_resume(pid);
+    struct task *t = (struct task *)arg;
+    task_resume(t);
 }
 
 int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    uint32_t pid = (uint32_t)scheduler_get_cur_pid();
     uint32_t timeout = jiffies + arg1;
-
     if (arg1 < 0)
         return -EINVAL;
 
-    if (pid > 0) {
-        ktimer_add(arg1, sleepy_task_wakeup, (void *)pid);
-        if (timeout < jiffies) 
-            return 0;
-
-        task_suspend();
-    }
+    ktimer_add(arg1, sleepy_task_wakeup, this_task());
+    if (timeout < jiffies) 
+        return 0;
+    task_suspend();
     return 0;
 }
 
@@ -1537,7 +1837,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 
     switch (request) {
         case PTRACE_TRACEME:
-            _cur_task->tb.tracer = _cur_task->tb.ppid;
+            _cur_task->tb.tracer = _cur_task;
             break;
         case PTRACE_PEEKTEXT:
         case PTRACE_PEEKDATA:
@@ -1555,9 +1855,9 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_CONT:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
-            task_continue(pid);
+            task_continue(tracee);
             if ((int)data != 0)
                 task_kill(pid, (int)data);
             return 0;
@@ -1565,7 +1865,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_KILL:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
             task_kill(pid, SIGKILL);
             return 0;
@@ -1582,7 +1882,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_SEIZE:
             if (!tracee)
                 return -ENOENT;
-            tracee->tb.tracer = _cur_task->tb.pid;
+            tracee->tb.tracer = _cur_task;
             if (request == PTRACE_ATTACH)
                 task_kill(pid, SIGSTOP);
             return 0;
@@ -1590,15 +1890,15 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
         case PTRACE_DETACH:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
-            tracee->tb.tracer = 0;
+            tracee->tb.tracer = NULL;
             task_kill(tracee->tb.pid, SIGCONT);
             return 0;
         case PTRACE_SYSCALL:
             if (!tracee)
                 return -ENOENT;
-            if (tracee->tb.tracer != _cur_task->tb.pid)
+            if (tracee->tb.tracer != _cur_task)
                 return -ESRCH;
             tracee->tb.flags |= TASK_FLAG_SYSCALL_STOP;
             return 0;
@@ -1660,20 +1960,25 @@ int task_kill(int pid, int signal)
 int sys_exit_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
 {
     _cur_task->tb.exitval = (int)arg1;
-    task_terminate(_cur_task->tb.pid);
+    task_terminate(_cur_task);
 }
 
 int sys_setsid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg)
 {
     int i;
-    for (i = 0; i < _cur_task->tb.n_files; i++) {
-        struct fnode *fno = _cur_task->tb.filedesc[i].fno;
-        if ((fno->flags & FL_TTY) && ((_cur_task->tb.filedesc[i].mask & O_NOCTTY) == 0)) {
-            struct module *mod = fno->owner;
-            if (mod && mod->ops.tty_attach) {
-                mod->ops.tty_attach(fno, _cur_task->tb.ppid);
-                _cur_task->tb.filedesc[i].mask |= O_NOCTTY;
-
+    struct filedesc_table *ft = _cur_task->tb.filedesc_table;
+    if (!ft)
+        return -1;
+    for (i = 0; (ft) && (i < ft->n_files); i++) {
+        if (ft->fdesc[i].fno != NULL) {
+            struct fnode *fno = ft->fdesc[i].fno;
+            if ((fno->flags & FL_TTY) && ((ft->fdesc[i].mask & O_NOCTTY) == 0)) {
+                struct module *mod = fno->owner;
+                if (mod && mod->ops.tty_attach) {
+                    mod->ops.tty_attach(fno, _cur_task->tb.ppid);
+                    ft->fdesc[i].mask |= O_NOCTTY;
+                    return 0;
+                }
             }
         }
     }
@@ -1681,11 +1986,14 @@ int sys_setsid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 
 int task_segfault(uint32_t address, uint32_t instruction, int flags)
 {
+    struct filedesc_table *ft;
     if (in_kernel())
         return -1;
     if (_cur_task->tb.state == TASK_ZOMBIE)
         return 0;
-    if ((_cur_task->tb.n_files > 2) &&  _cur_task->tb.filedesc[2].fno->owner->ops.write) {
+
+    ft = _cur_task->tb.filedesc_table;
+    if ( ft && (ft->n_files > 2) &&  ft->fdesc[2].fno->owner->ops.write) {
 #    ifdef CONFIG_EXTENDED_MEMFAULT
         char segv_msg[128] = "Memory fault: process (pid=";
         strcat(segv_msg, pid_str(_cur_task->tb.pid));
@@ -1700,9 +2008,9 @@ int task_segfault(uint32_t address, uint32_t instruction, int flags)
 #    else
         char segv_msg[] = ">_< -- Segfault -- >_<";
 #    endif
-        _cur_task->tb.filedesc[2].fno->owner->ops.write(_cur_task->tb.filedesc[2].fno, segv_msg, strlen(segv_msg));
+        ft->fdesc[2].fno->owner->ops.write(ft->fdesc[2].fno, segv_msg, strlen(segv_msg));
     }
-    task_terminate(_cur_task->tb.pid);
+    task_terminate(_cur_task);
     return 0;
 }
 

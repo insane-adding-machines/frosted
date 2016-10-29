@@ -69,16 +69,6 @@ int sys_gettimeofday_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t 
     return 0;
 }
 
-int sys_getpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
-{
-    return scheduler_get_cur_pid();
-}
-
-int sys_getppid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
-{
-    return scheduler_get_cur_ppid();
-}
-
 int sys_reboot_hdlr(void)
 {
     scb_reset_system(); /* Never returns. */

@@ -84,13 +84,14 @@ struct lis3dsh_ctrl_reg
 
 static struct dev_lis3dsh LIS3DSH;
 
+static int devlis3dsh_open(const char *path, int flags);
 static int devlis3dsh_read(struct fnode *fno, void *buf, unsigned int len);
 static int devlis3dsh_close(struct fnode *fno);
 
 static struct module mod_devlis3dsh = {
     .family = FAMILY_FILE,
     .name = "lis3dsh",
-    .ops.open = device_open,
+    .ops.open = devlis3dsh_open,
     .ops.read = devlis3dsh_read,
     .ops.close = devlis3dsh_close,
 };
@@ -155,42 +156,49 @@ static int lis3dsh_read_reg(int reg)
 	/* set CS high */
 	gpio_set(GPIOE, GPIO3);
     irq_on();
-
 	return reg_value;
 }
 
+static int devlis3dsh_open(const char *path, int flags)
+{
+    struct fnode *f = fno_search(path);
+    volatile int int_reg_value;
+    if (!f)
+        return -1;
+    /* get WHO AM I value */
+    int_reg_value = lis3dsh_read_reg(ADD_REG_WHO_AM_I);
+
+    /* if WHO AM I value is the expected one */
+    if (int_reg_value == UC_WHO_AM_I_DEFAULT_VALUE) {
+        /* set output data rate to 400 Hz and enable X,Y,Z axis */
+        lis3dsh_write_reg(ADD_REG_CTRL_4, UC_ADD_REG_CTRL_4_CFG_VALUE);
+        /* verify written value */
+        int_reg_value = lis3dsh_read_reg(ADD_REG_CTRL_4);
+        /* if written value is different */
+        if (int_reg_value != UC_ADD_REG_CTRL_4_CFG_VALUE) {
+            return -EIO;
+        }
+    } else {
+        return -EIO;
+    }
+    return task_filedesc_add(f);
+}
 
 static int devlis3dsh_read(struct fnode *fno, void *buf, unsigned int len)
 {
     struct dev_lis3dsh *lis3dsh = FNO_MOD_PRIV(fno, &mod_devlis3dsh);
+    uint8_t reg_base = ADD_REG_OUT_X_L;
+    uint8_t i;
     volatile int int_reg_value;
-    if (len <= 0)
+    if (len < 6)
         return len;
 
     if (!lis3dsh)
         return -1;
-	
-    int_reg_value = lis3dsh_read_reg(0x0d);
-    int_reg_value = lis3dsh_read_reg(0x0e);
-	/* get WHO AM I value */
-	int_reg_value = lis3dsh_read_reg(ADD_REG_WHO_AM_I);
-
-	/* if WHO AM I value is the expected one */
-	if (int_reg_value == UC_WHO_AM_I_DEFAULT_VALUE) {
-		/* set output data rate to 400 Hz and enable X,Y,Z axis */
-		lis3dsh_write_reg(ADD_REG_CTRL_4, UC_ADD_REG_CTRL_4_CFG_VALUE);
-		/* verify written value */
-		int_reg_value = lis3dsh_read_reg(ADD_REG_CTRL_4);
-		/* if written value is different */
-		if (int_reg_value != UC_ADD_REG_CTRL_4_CFG_VALUE) {
-			/* ERROR: stay here... */
-			while (1);
-		}
-	} else {
-		/* ERROR: stay here... */
-		while (1);
-	}
-    return len;
+    for (i = 0; i < 6; i++) {
+        ((uint8_t*)buf)[i] = lis3dsh_read_reg(reg_base + i);
+    }
+    return 6;
 }
 
 static int devlis3dsh_close(struct fnode *fno)
@@ -210,7 +218,7 @@ static void lis3dsh_isr(struct spi_slave *sl)
     switch(lis->state) {
         case LIS3DSH_READING:
             lis->state = LIS3DSH_COMPLETE;
-            task_resume(lis->dev->pid);
+            task_resume(lis->dev->task);
             break;
     }
 }

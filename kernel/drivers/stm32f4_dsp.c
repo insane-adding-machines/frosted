@@ -108,7 +108,7 @@ int dsp_write(struct fnode *fno, const void *buf, unsigned int len)
         dsp_xmit();
     }
     if (dsp->written < len) {
-        dsp->dev->pid = scheduler_get_cur_pid();
+        dsp->dev->task = this_task();
         mutex_unlock(dsp->dev->mutex);
         task_suspend();
         return SYS_CALL_AGAIN;
@@ -132,8 +132,8 @@ void dma1_stream5_isr(void)
         dac_trigger_disable(CHANNEL_1);
         dac_dma_disable(CHANNEL_1);
         if (Dsp.written >= Dsp.transfer_size) {
-            if (Dsp.dev->pid)
-                task_resume(Dsp.dev->pid);
+            if (Dsp.dev->task)
+                task_resume(Dsp.dev->task);
         } else {
             dsp_xmit();
         }

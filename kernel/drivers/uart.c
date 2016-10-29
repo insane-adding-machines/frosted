@@ -89,14 +89,26 @@ static void uart_send_break(void *arg)
         task_kill(*pid, 2);
 }
 
+static void devuart_tty_attach(struct fnode *fno, int pid)
+{
+    struct dev_uart *uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
+    if (uart->sid != pid) {
+        //kprintf("/dev/%s active job pid: %d\r\n", fno->fname, pid);
+        uart->sid = pid;
+    }
+}
+
+
 void uart_isr(struct dev_uart *uart)
 {
+    if (!uart)
+        return;
     /* TX interrupt */
     if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
         usart_clear_tx_interrupt(uart->base);
 
-        if (scheduler_get_cur_pid() != 0) /* cannot spinlock in ISR! */
-            mutex_lock(uart->dev->mutex);
+//        if (this_task() != NULL) /* cannot spinlock in ISR! */
+//            mutex_lock(uart->dev->mutex);
 
         /* Are there bytes left to be written? */
         if (cirbuf_bytesinuse(uart->outbuf))
@@ -107,10 +119,10 @@ void uart_isr(struct dev_uart *uart)
         } else {
             usart_disable_tx_interrupt(uart->base);
             /* If a process is attached, resume the process */
-            if (uart->dev->pid > 0)
-                task_resume(uart->dev->pid);
+            if (uart->dev->task != NULL)
+                task_resume(uart->dev->task);
         }
-        mutex_unlock(uart->dev->mutex);
+//        mutex_unlock(uart->dev->mutex);
     }
 
     /* RX interrupt */
@@ -132,8 +144,8 @@ void uart_isr(struct dev_uart *uart)
             cirbuf_writebyte(uart->inbuf, byte);
         }
         /* If a process is attached, resume the process */
-        if (uart->dev->pid > 0)
-            task_resume(uart->dev->pid);
+        if (uart->dev->task != NULL)
+            task_resume(uart->dev->task);
     }
 
 }
@@ -185,15 +197,6 @@ void usart6_isr(void)
 }
 #endif
 
-
-static void devuart_tty_attach(struct fnode *fno, int pid)
-{
-    struct dev_uart *uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
-    if (uart->sid != pid) {
-        //kprintf("/dev/%s active job pid: %d\r\n", fno->fname, pid);
-        uart->sid = pid;
-    }
-}
 
 static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
 {
@@ -250,7 +253,7 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
 
     if (uart->w_start < uart->w_end)
     {
-        uart->dev->pid = scheduler_get_cur_pid();
+        uart->dev->task = this_task();
         mutex_unlock(uart->dev->mutex);
         task_suspend();
         return SYS_CALL_AGAIN;
@@ -281,7 +284,7 @@ static int devuart_read(struct fnode *fno, void *buf, unsigned int len)
     usart_disable_rx_interrupt(uart->base);
     len_available =  cirbuf_bytesinuse(uart->inbuf);
     if (len_available <= 0) {
-        uart->dev->pid = scheduler_get_cur_pid();
+        uart->dev->task = this_task();
         task_suspend();
         mutex_unlock(uart->dev->mutex);
         out = SYS_CALL_AGAIN;
@@ -314,7 +317,7 @@ static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     if (!uart)
         return -1;
 
-    uart->dev->pid = scheduler_get_cur_pid();
+    uart->dev->task = this_task();
     mutex_lock(uart->dev->mutex);
     usart_disable_rx_interrupt(uart->base);
     *revents = 0;
@@ -350,7 +353,7 @@ static int uart_fno_init(const struct uart_config * addr)
     u->dev = device_fno_init(&mod_devuart, name, devfs, FL_TTY, u);
     u->inbuf = cirbuf_create(256);
     u->outbuf = cirbuf_create(256);
-    u->dev->pid = -1;
+    u->dev->task = NULL;
     DEV_UART[addr->devidx] = u;
     return 0;
 

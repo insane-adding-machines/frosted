@@ -66,8 +66,8 @@ void dma2_stream0_isr()
         dma_clear_interrupt_flags(DMA2, DMA_STREAM0, DMA_LISR_TCIF0);
         adc_disable_dma(adc->base);
         adc->conversion_done = 1;
-        if (adc->dev->pid > 0)
-            task_resume(adc->dev->pid);
+        if (adc->dev->task != NULL)
+            task_resume(adc->dev->task);
     }
 }
 
@@ -89,7 +89,7 @@ static int devadc_read(struct fnode *fno, void *buf, unsigned int len)
     {
         adc_enable_dma(adc->base);
         adc_start_conversion_regular(adc->base);
-        adc->dev->pid = scheduler_get_cur_pid();
+        adc->dev->task = this_task();
         task_suspend();
         mutex_unlock(adc->dev->mutex);
         return  SYS_CALL_AGAIN;

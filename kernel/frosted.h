@@ -77,34 +77,53 @@ void sysfs_init(void);
 #define NICE_RT (0 - 20)
 #define NICE_MAX (20)
 
+/* Called by boot code.
+ * Set system NVIC priorities and start systick. */
 void frosted_scheduler_on(void);
+
+/* Forced preemption */
+void task_preempt(void);
+void task_preempt_all(void);
+
+/* Execute/terminate a process. */
+int scheduler_exec(struct vfs_info *v, void *args);
+int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio);
+int task_kill(int pid, int signal);
+
+/* Getter functions. XXX refactor to thread id XXX */
 char * scheduler_task_name(int pid);
-uint16_t scheduler_get_cur_pid(void);
-uint16_t scheduler_get_cur_ppid(void);
-int task_timeslice(void);
+int scheduler_task_state(int pid);
+unsigned scheduler_stack_used(int pid);
+int scheduler_get_nice(int pid);
+
+/* Get the task object for the current task */
+struct task *this_task(void);
+uint16_t this_task_getpid(void);
+
+/* Resume target task */
+void task_resume(struct task *t);
+void task_resume_lock(struct task *t);
+
+
+/* Functions targeting the Current (Running) task
+ * */
 int task_running(void);
 int task_filedesc_add(struct fnode *f);
 int task_fd_setmask(int fd, uint32_t mask);
 uint32_t task_fd_getmask(int fd);
 struct fnode *task_filedesc_get(int fd);
 int task_segfault(uint32_t addr, uint32_t instr, int flags);
-
 int task_fd_readable(int fd);
 int task_fd_writable(int fd);
 int task_filedesc_del(int fd);
 void task_suspend(void);
-void task_resume(int pid);
-void task_resume_lock(int pid);
-int task_create(struct vfs_info *vfsi, void *arg, unsigned int prio);
-int task_kill(int pid, int signal);
-
-void task_preempt(void);
-void task_preempt_all(void);
-
+/* Validate userspace pointers passed in the syscalls. */
+int task_ptr_valid(const void *ptr);
+/* Slice off one unit from the task current run time */
+int task_timeslice(void);
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
 
-int scheduler_get_nice(int pid);
 
 int sem_wait(sem_t *s);
 int sem_trywait(sem_t *s);

@@ -72,7 +72,7 @@ static void isr_tx(struct i2c_slave * arg)
     switch (lsm303dlhc->state) {
         case LSM303_STATE_DISABLED:
             lsm303dlhc->state = LSM303_STATE_IDLE;
-            task_resume(lsm303dlhc->dev->pid);
+            task_resume(lsm303dlhc->dev->task);
             break;
         case LSM303_STATE_IDLE:
             lsm303dlhc->state = LSM303_STATE_DISABLED;
@@ -84,8 +84,8 @@ static void isr_rx(struct i2c_slave * arg)
 {
     struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
     lsm303dlhc->state = LSM303_STATE_RX_RDY;
-    if (lsm303dlhc->dev->pid > 0)
-        task_resume(lsm303dlhc->dev->pid);
+    if (lsm303dlhc->dev->task != NULL)
+        task_resume(lsm303dlhc->dev->task);
 }
 
 
@@ -115,19 +115,18 @@ static int devlsm303dlhc_read(struct fnode *fno, void *buf, unsigned int len)
 
     if (!lsm303dlhc)
         return -EINVAL;
-
     if (len == 0)
         return -EINVAL;
 
     switch (lsm303dlhc->state) {
         case LSM303_STATE_DISABLED:
-            lsm303dlhc->dev->pid = scheduler_get_cur_pid();
+            lsm303dlhc->dev->task = this_task();
             val = 0x27; /* PM=001, DR=00, XYZ=111 */
             i2c_init_write(&lsm303dlhc->i2c, CTRL_REG1_A, &val, 1);
             task_suspend();
             return SYS_CALL_AGAIN;
         case LSM303_STATE_IDLE:
-            lsm303dlhc->dev->pid = scheduler_get_cur_pid();
+            lsm303dlhc->dev->task = this_task();
             i2c_init_write(&lsm303dlhc->i2c, OUT_X_L_A, lsm303dlhc->ins_data.data, 6);
             task_suspend();
             return SYS_CALL_AGAIN;

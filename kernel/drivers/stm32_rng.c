@@ -83,7 +83,7 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 		    ((RNG_SR & RNG_SR_DRDY) != 1)) {
 		rng->random = (uint32_t *)buf;
 		rng_enable_interrupt();
-        	rng->dev->pid = scheduler_get_cur_pid();
+        	rng->dev->task = this_task();
         	mutex_unlock(rng->dev->mutex);
         	task_suspend();
         	return SYS_CALL_AGAIN;
@@ -129,7 +129,7 @@ void rng_isr(void)
 #else
 		memcpy(rng->random, &random, 4);
 		rng_disable_interrupt();
-		task_resume(rng->dev->pid);
+		task_resume(rng->dev->task);
 #endif
 	}
 }

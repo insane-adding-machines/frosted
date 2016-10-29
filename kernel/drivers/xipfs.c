@@ -32,7 +32,6 @@ static struct module mod_xipfs;
 struct xipfs_fnode {
     struct fnode *fnode;
     void (*init)(void *);
-    uint16_t pid;
 };
 
 
@@ -102,7 +101,6 @@ static int xipfs_creat(struct fnode *fno)
 
 static void *xipfs_exe(struct fnode *fno, void *arg)
 {
-    int pid;
     struct xipfs_fnode *xip = (struct xipfs_fnode *)fno->priv;
     void *reloc_text, *reloc_data, *reloc_bss;
     size_t stack_size;
