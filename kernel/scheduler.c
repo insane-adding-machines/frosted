@@ -1303,12 +1303,20 @@ static int pthread_add(struct task *cur, struct task *new)
     return cur->tb.n_threads;
 }
 
-static void pthread_end(void)
+static void _inl pthread_destroy_task(void)
 {
-    running_to_idling(_cur_task);
-    _cur_task->tb.state = TASK_OVER;
+	running_to_idling(_cur_task);
+	_cur_task->tb.state = TASK_OVER;
     tasklet_add(task_destroy, _cur_task);
     /* TODO: alert joiners */
+
+}
+
+static void pthread_end(void)
+{
+	/* storing thread return value */
+	asm volatile("mov %0, r0" : "=r" (_cur_task->tb.exitval) );
+	pthread_destroy_task();
 }
 
 /* Pthread create handler. Call be like:
@@ -1349,7 +1357,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     new->tb.filedesc_table = _cur_task->tb.filedesc_table;
     new->tb.arg = arg;
     new->tb.vfsi = _cur_task->tb.vfsi;
-    new->tb.flags = TASK_RUNNABLE;
+    new->tb.flags = TASK_FLAG_DETACHED;
     new->tb.cwd = task_getcwd();
     new->tb.sigmask = _cur_task->tb.sigmask;
     new->tb.sighdlr = _cur_task->tb.sighdlr;
@@ -1383,7 +1391,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
 int sys_pthread_exit_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     _cur_task->tb.exitval = arg1;
-    pthread_end();
+	pthread_destroy_task();
 }
 
 int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
