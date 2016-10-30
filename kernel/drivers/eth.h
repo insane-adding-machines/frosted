@@ -10,7 +10,7 @@ struct eth_config {
 };
 
 #ifdef CONFIG_DEVETH
-int ethernet_init(struct eth_config *conf);
+int ethernet_init(const struct eth_config *conf);
 int pico_eth_start(void);
 #else
 #  define ethernet_init(x) ((-ENOENT))

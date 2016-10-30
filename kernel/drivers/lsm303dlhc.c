@@ -33,28 +33,27 @@
 
 
 enum lsm303_state {
-    LSM303_STATE_IDLE = 0,
+    LSM303_STATE_DISABLED = 0,
+    LSM303_STATE_IDLE,
     LSM303_STATE_BUSY,
-    LSM303_STATE_TX_RDY,
     LSM303_STATE_RX_RDY
 };
-
-struct lsm303dlhc_ctrl_reg
-{
-    uint8_t reg;
-    uint8_t data;
-};
-
-
 
 struct dev_lsm303dlhc {
     struct i2c_slave i2c; /* As first argument, so isr callbacks will use this as arg */
     struct device * dev;
     enum lsm303_state state;
+    union dev_lsm303dlhc_data {
+        uint8_t data[6];
+        struct __attribute__((packed)) ins_data_xyz {
+            int16_t x;
+            int16_t y;
+            int16_t z;
+        } xyz;
+    } ins_data;
 } INS;
 
 static int devlsm303dlhc_read(struct fnode *fno, void *buf, unsigned int len);
-static int devlsm303dlhc_ioctl(struct fnode * fno, const uint32_t cmd, void *arg);
 static int devlsm303dlhc_close(struct fnode *fno);
 
 static struct module mod_devlsm303dlhc = {
@@ -62,7 +61,6 @@ static struct module mod_devlsm303dlhc = {
     .name = "lsm303dlhc",
     .ops.open = device_open,
     .ops.read = devlsm303dlhc_read,
-    .ops.ioctl = devlsm303dlhc_ioctl,
     .ops.close = devlsm303dlhc_close,
 };
 
@@ -71,9 +69,15 @@ static struct module mod_devlsm303dlhc = {
 static void isr_tx(struct i2c_slave * arg)
 {
     struct dev_lsm303dlhc *lsm303dlhc = (struct dev_lsm303dlhc *) arg;
-    lsm303dlhc->state = LSM303_STATE_TX_RDY;
-    if (lsm303dlhc->dev->task != NULL)
-        task_resume(lsm303dlhc->dev->task);
+    switch (lsm303dlhc->state) {
+        case LSM303_STATE_DISABLED:
+            lsm303dlhc->state = LSM303_STATE_IDLE;
+            task_resume(lsm303dlhc->dev->task);
+            break;
+        case LSM303_STATE_IDLE:
+            lsm303dlhc->state = LSM303_STATE_DISABLED;
+            break;
+    }
 }
 
 static void isr_rx(struct i2c_slave * arg)
@@ -101,67 +105,49 @@ static void drdy_callback(void *arg)
 }
 
 
-static int devlsm303dlhc_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
-{
-    struct dev_lsm303dlhc *lsm303dlhc = FNO_MOD_PRIV(fno, &mod_devlsm303dlhc);
-    struct lsm303dlhc_ctrl_reg * ctrl = (struct lsm303dlhc_ctrl_reg *) arg;
-    static uint8_t buffer;
-
-    if (!lsm303dlhc)
-        return -EINVAL;
-    switch (lsm303dlhc->state) {
-        case LSM303_STATE_IDLE:
-            if(cmd == IOCTL_LSM303DLHC_READ_CTRL_REG) {
-                lsm303dlhc->state = LSM303_STATE_BUSY;
-                i2c_init_read(&lsm303dlhc->i2c, ctrl->reg, &buffer, 1);
-            } else {
-                buffer = ctrl->data;
-                lsm303dlhc->state = LSM303_STATE_BUSY;
-                i2c_init_write(&lsm303dlhc->i2c, ctrl->reg, &buffer, 1);
-            }
-            lsm303dlhc->dev->task = this_task();
-            task_suspend();
-            return SYS_CALL_AGAIN;
-
-        case LSM303_STATE_RX_RDY:
-            ctrl->data = buffer;
-            lsm303dlhc->state = LSM303_STATE_IDLE;
-            return 0;
-
-        case LSM303_STATE_BUSY:
-        case LSM303_STATE_TX_RDY:
-            task_suspend();
-            return SYS_CALL_AGAIN;
-    }
-}
+#define CTRL_REG1_A (0x20)
+#define OUT_X_L_A   (0x28)
 
 static int devlsm303dlhc_read(struct fnode *fno, void *buf, unsigned int len)
 {
     struct dev_lsm303dlhc *lsm303dlhc = FNO_MOD_PRIV(fno, &mod_devlsm303dlhc);
+    uint8_t val;
 
     if (!lsm303dlhc)
         return -EINVAL;
+    if (len == 0)
+        return -EINVAL;
+
     switch (lsm303dlhc->state) {
-        case LSM303_STATE_IDLE:
-            /* TODO: Implement Acceleration read mechanism (currently in userspace) */
-            return 0;
+        case LSM303_STATE_DISABLED:
             lsm303dlhc->dev->task = this_task();
+            val = 0x27; /* PM=001, DR=00, XYZ=111 */
+            i2c_init_write(&lsm303dlhc->i2c, CTRL_REG1_A, &val, 1);
+            task_suspend();
+            return SYS_CALL_AGAIN;
+        case LSM303_STATE_IDLE:
+            lsm303dlhc->dev->task = this_task();
+            i2c_init_write(&lsm303dlhc->i2c, OUT_X_L_A, lsm303dlhc->ins_data.data, 6);
             task_suspend();
             return SYS_CALL_AGAIN;
 
         case LSM303_STATE_RX_RDY:
+            if (len > 6)
+                len = 6;
+            memcpy(buf, lsm303dlhc->ins_data.data, len);
             lsm303dlhc->state = LSM303_STATE_IDLE;
-            return 0;
-
-        case LSM303_STATE_BUSY:
-        case LSM303_STATE_TX_RDY:
-            task_suspend();
-            return SYS_CALL_AGAIN;
+            val = 0x07; /* PM=000, DR=00, XYZ=111 */
+            i2c_init_write(&lsm303dlhc->i2c, CTRL_REG1_A, &val, 1);
+            return len;
     }
 }
 
 static int devlsm303dlhc_close(struct fnode *fno)
 {
+    struct dev_lsm303dlhc *lsm303dlhc = FNO_MOD_PRIV(fno, &mod_devlsm303dlhc);
+    uint8_t val = 0x07; /* PM=000, DR=00, XYZ=111 */
+    lsm303dlhc->state = LSM303_STATE_IDLE;
+    i2c_init_write(&lsm303dlhc->i2c, CTRL_REG1_A, &val, 1);
     return 0;
 }
 
