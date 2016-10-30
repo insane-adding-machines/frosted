@@ -1544,11 +1544,6 @@ void __naked  pend_sv_handler(void)
     asm volatile ("bx lr          \n" );
 }
 
-void __inl pendsv_enable(void)
-{
-   *((uint32_t volatile *)0xE000ED04) = 0x10000000;
-}
-
 void kernel_task_init(void)
 {
     /* task0 = kernel */
