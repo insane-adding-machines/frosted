@@ -979,12 +979,16 @@ int task_timeslice(void)
 
 void task_end(void)
 {
+	/* here we need to be in a irqoff context
+	   because we are dealing with the scheduler
+	   data structures, otherwise we could produce dead code
+	   after callling running_to_idling */
+	irq_off();
     running_to_idling(_cur_task);
     _cur_task->tb.state = TASK_ZOMBIE;
     asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
+	irq_on();
     while(1) {
-        if (_cur_task->tb.ppid > 0)
-            task_resume(_cur_task);
         task_suspend();
     }
 }
@@ -1462,7 +1466,8 @@ static __inl void task_switch(void)
         return;
     }
     t = _cur_task;
-
+	/* Checks that the _cur_task hasn't left the "task_running" list.
+	 * If it's not in the valid state, revert task-switching to the head of task_running */
     if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
         t = tasks_running;
     else
