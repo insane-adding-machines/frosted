@@ -92,13 +92,11 @@ static struct module mod_devlis3dsh = {
 static void lis3dsh_write_reg(int reg, int data)
 {
 	/* set CS low */
-    irq_off();
     gpio_clear(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
 	spi_xfer(SPI1, SET_WRITE_SINGLE_CMD(reg));
 	spi_xfer(SPI1, data);
 	/* set CS high */
     gpio_set(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
-    irq_on();
 }
 
 
@@ -106,14 +104,12 @@ static void lis3dsh_write_reg(int reg, int data)
 static int lis3dsh_read_reg(int reg)
 {
 	int reg_value;
-    irq_off();
 	/* set CS low */
     gpio_clear(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
 	reg_value = spi_xfer(SPI1, SET_READ_SINGLE_CMD(reg));
 	reg_value = spi_xfer(SPI1, 0xFF);
 	/* set CS high */
     gpio_set(LIS3DSH.pio_cs->base, LIS3DSH.pio_cs->pin);
-    irq_on();
 	return reg_value;
 }
 
