@@ -124,7 +124,7 @@ int pico_eth_start(void)
 }
 
 /* HW initialization */
-int ethernet_init(struct eth_config *conf)
+int ethernet_init(const struct eth_config *conf)
 {
     (void)conf;
     eth_init(0, ETH_CLK_50MHZ); /* does a phy_reset */
