@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "unicore-mx/cm3/systick.h"
 
@@ -35,7 +35,8 @@ uint32_t max_tasklets = 0;
 void tasklet_add(void (*exe)(void*), void *arg)
 {
     int i;
-    irq_off();
+    if (!task_in_syscall())
+	    irq_off();
     for (i = 0; i < MAX_TASKLETS; i++) {
         if (!tasklet_array[i].exe) {
             tasklet_array[i].exe = exe;
@@ -43,7 +44,8 @@ void tasklet_add(void (*exe)(void*), void *arg)
             n_tasklets++;
             if (n_tasklets > max_tasklets)
                 max_tasklets = n_tasklets;
-            irq_on();
+	    if (!task_in_syscall())
+		    irq_on();
             return;
         }
     }

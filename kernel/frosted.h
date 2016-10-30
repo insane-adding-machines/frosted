@@ -107,6 +107,7 @@ void task_resume_lock(struct task *t);
 
 /* Functions targeting the Current (Running) task
  * */
+int task_in_syscall(void);
 int task_running(void);
 int task_filedesc_add(struct fnode *f);
 int task_fd_setmask(int fd, uint32_t mask);
@@ -137,7 +138,7 @@ int mutex_unlock(mutex_t *s);
 mutex_t *mutex_init();
 void mutex_destroy(mutex_t *s);
 
-#define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000 
+#define schedule()   *((uint32_t volatile *)0xE000ED04) = 0x10000000
 
 /* Timers */
 int Timer_on(unsigned int n);
@@ -158,7 +159,7 @@ int syscall(uint32_t syscall_nr, uint32_t arg1, uint32_t arg2, uint32_t arg3, ui
 void syscalls_init(void);
 int task_is_interrupted(void);
 
-#define SYS_CALL_AGAIN_VAL (-1024) 
+#define SYS_CALL_AGAIN_VAL (-1024)
 //#define SYS_CALL_AGAIN (task_is_interrupted()?(-EINTR):(SYS_CALL_AGAIN_VAL))
 #define SYS_CALL_AGAIN SYS_CALL_AGAIN_VAL
 
@@ -191,7 +192,7 @@ void fno_use(struct fnode *f);
 #endif
 
 #ifndef F_SETFD
-    #define F_SETFD 2 
+    #define F_SETFD 2
 #endif
 
 #ifndef F_GETFL
@@ -220,7 +221,7 @@ struct fnode {
 #define FNO_MOD_PRIV(fno,mod) (((fno == NULL)?NULL:((mod != fno->owner)?NULL:(fno->priv))))
 #define FNO_BLOCKING(f) ((f->flags & O_NONBLOCK) == 0)
 
-struct mountpoint 
+struct mountpoint
 {
     struct fnode *target;
     struct mountpoint *next;

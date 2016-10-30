@@ -375,6 +375,10 @@ struct task *this_task(void)
     return t;
 }
 
+int task_in_syscall(void)
+{
+	return ((_cur_task->tb.flags & TASK_FLAG_IN_SYSCALL) == TASK_FLAG_IN_SYSCALL);
+}
 
 static int next_pid(void)
 {
@@ -2119,6 +2123,8 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
         asm volatile ( "mov %0, r0" : "=r"
             (*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
 
+    /* out of syscall */
+    _cur_task->tb.flags &= (~TASK_FLAG_IN_SYSCALL);
     irq_on();
 
 
@@ -2150,6 +2156,5 @@ return_from_syscall:
     asm volatile ("mov lr, %0" :: "r" (runnable));
 
     /* return (function is naked) */
-    _cur_task->tb.flags &= (~TASK_FLAG_IN_SYSCALL);
     asm volatile ( "bx lr");
 }
