@@ -495,7 +495,7 @@ menu "Device Drivers"
 
        menuconfig DEVSPI
            bool "Generic SPI driver"
-           depends on (ARCH_STM32F4)
+           depends on (ARCH_STM32F4 || ARCH_STM32F7)
            select DEVSTM32DMA
            default n
 
