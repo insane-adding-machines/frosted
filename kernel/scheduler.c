@@ -1345,7 +1345,6 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
 	if (!thread || (task_ptr_valid(thread) < 0) || (task_ptr_valid(attr) < 0))
 		return -EINVAL;
 
-	irq_off();
 	new = task_space_alloc(sizeof(struct task));
 	if (!new) {
 		return -ENOMEM;
@@ -1389,7 +1388,6 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
 	extra_frame = (struct extra_stack_frame *)sp;
 	extra_frame->r9 = new->tb.vfsi->pic;
 	new->tb.sp = (uint32_t *)sp;
-	irq_on();
 	*thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
 	return 0;
 }
