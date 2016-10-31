@@ -1262,7 +1262,7 @@ static struct task *pthread_get_task(int pid, int tid)
 	if (!leader->tb.threads || leader->tb.n_threads < 2)
 		return NULL;
 
-    for (i = 0; i < t->tb.n_threads; i++) {
+    for (i = 0; i < leader->tb.n_threads; i++) {
         t = leader->tb.threads[i];
         if (t->tb.tid == tid)
             return t;
@@ -1413,13 +1413,10 @@ int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 		return -EINVAL;
 	if (to_join == _cur_task || _cur_task->tb.joined_thread == to_join )
 		return -EDEADLK;
-	irq_off();
-	if (to_join->tb.joined_thread) {
-		irq_on();
+	if (to_join->tb.joined_thread && to_join->tb.joined_thread != _cur_task) {
 		return -EINVAL;
 	}
 	to_join->tb.joined_thread = _cur_task;
-	irq_on();
 	if (to_join->tb.state != TASK_ZOMBIE) {
 		task_suspend();
 		return SYS_CALL_AGAIN;
