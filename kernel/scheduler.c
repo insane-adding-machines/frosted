@@ -984,6 +984,10 @@ int task_timeslice(void)
 
 void task_end(void)
 {
+	/* We have to set the stack pointer because we jumped here
+	 * after setting lr to task_end into the NVIC_FRAME and there
+	 * we were using the sp of the task's parent */
+	asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
 	/* here we need to be in a irqoff context
 	   because we are dealing with the scheduler
 	   data structures, otherwise we could produce dead code
