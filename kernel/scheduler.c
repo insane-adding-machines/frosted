@@ -1305,24 +1305,32 @@ static int pthread_add(struct task *cur, struct task *new)
 	return cur->tb.n_threads;
 }
 
-static __inl void pthread_destroy_task(struct task *t)
+static __inl int pthread_destroy_task(struct task *t)
 {
 	running_to_idling(t);
 	if ((t->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED) {
 		t->tb.state = TASK_OVER;
 		tasklet_add(task_destroy, t);
+		return TASK_OVER;
 	} else {
 		t->tb.state = TASK_ZOMBIE;
 		if (t->tb.joined_thread)
 			task_resume(t->tb.joined_thread);
+		return TASK_ZOMBIE;
 	}
 }
 
 static void pthread_end(void)
 {
+	int thread_state;
 	/* storing thread return value */
 	asm volatile("mov %0, r0" : "=r" (_cur_task->tb.exitval) );
-	pthread_destroy_task(_cur_task);
+	irq_off();
+	thread_state = pthread_destroy_task(_cur_task);
+	irq_on();
+	while(1) {
+		task_suspend_to(thread_state);
+	}
 }
 
 /* Pthread create handler. Call be like:
