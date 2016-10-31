@@ -25,6 +25,7 @@
 #include "sys/wait.h"
 #include "vfs.h"
 #include "sys/pthread.h"
+#include "poll.h"
 
 
 /* Full kernel space separation */
@@ -236,6 +237,7 @@ struct __attribute__((packed)) task_block {
     void *cur_stack;
     struct task *next;
     struct vfs_info *vfsi;
+    int timer_id;
 };
 
 struct __attribute__((packed)) task {
@@ -330,6 +332,9 @@ static void task_destroy(void *arg)
     struct filedesc_table *ft;
     if (!t)
         return;
+
+    if (t->tb.timer_id > 0)
+        ktimer_del(t->tb.timer_id);
 
     if (t->tb.tid == 1) {
         ft = t->tb.filedesc_table;
@@ -1066,6 +1071,7 @@ static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, v
     new->tb.sigpend = 0;
     new->tb.sigmask = 0;
     new->tb.tracer = NULL;
+    new->tb.timer_id = -1;
 
     if ((new->tb.flags & TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -1191,6 +1197,7 @@ int sys_vfork_hdlr(void)
     new->tb.vfsi = NULL;
     new->tb.flags = TASK_FLAG_VFORK;
     new->tb.cwd = task_getcwd();
+    new->tb.timer_id = -1;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -1355,6 +1362,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     new->tb.state = TASK_RUNNABLE;
     sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
     new->tb.cur_stack = &new->stack;
+    new->tb.timer_id = -1;
 
     /* Stack frame is at the end of the stack space */
     nvic_frame = (struct nvic_stack_frame *) sp;
@@ -1560,6 +1568,7 @@ void kernel_task_init(void)
     kernel->tb.nice = NICE_DEFAULT;
     kernel->tb.start = NULL;
     kernel->tb.arg = NULL;
+    kernel->tb.timer_id = -1;
     kernel->tb.filedesc_table = NULL;
     kernel->tb.timeslice = TIMESLICE(kernel);
     kernel->tb.state = TASK_RUNNABLE;
@@ -1728,10 +1737,12 @@ int sys_getppid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
     return _cur_task->tb.ppid;
 }
 
-static void sleepy_task_wakeup(uint32_t now, void *arg)
+void sleepy_task_wakeup(uint32_t now, void *arg)
 {
     struct task *t = (struct task *)arg;
-    task_resume(t);
+    t->tb.timer_id = -1;
+    if (t->tb.state == TASK_WAITING)
+        task_resume(t);
 }
 
 int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -1742,8 +1753,48 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 
     if (timeout < jiffies)
         return 0;
-    ktimer_add(arg1, sleepy_task_wakeup, this_task());
+    _cur_task->tb.timer_id = ktimer_add(arg1, sleepy_task_wakeup, this_task());
     task_suspend();
+    return 0;
+}
+
+int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
+{
+    struct pollfd *pfd = (struct pollfd *)arg1;
+    int i, n = (int)arg2;
+    int time_left = (int)arg3;
+    uint32_t timeout = jiffies + arg3;
+    int ret = 0;
+    struct fnode *f;
+    if (task_ptr_valid(arg1))
+        return -EACCES;
+
+    while ((time_left < 0) || (jiffies <= timeout)) {
+        for (i = 0; i < n; i++) {
+            f = task_filedesc_get(pfd[i].fd);
+            if (!f || !f->owner || !f->owner->ops.poll) {
+                return -EOPNOTSUPP;
+            }
+            ret += f->owner->ops.poll(f, pfd[i].events, &pfd[i].revents);
+        }
+        if (ret > 0) {
+            if (this_task()->tb.timer_id >= 0) {
+                ktimer_del(this_task()->tb.timer_id);
+                this_task()->tb.timer_id = -1;
+            }
+            return ret;
+        }
+
+        if ((time_left > 0) && (this_task()->tb.timer_id < 0)) {
+            this_task()->tb.timer_id = ktimer_add(time_left, sleepy_task_wakeup, this_task());
+        }
+        task_suspend();
+        return SYS_CALL_AGAIN;
+    }
+    if (_cur_task->tb.timer_id >= 0) {
+        ktimer_del(_cur_task->tb.timer_id);
+        _cur_task->tb.timer_id = -1;
+    }
     return 0;
 }
 

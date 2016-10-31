@@ -37,7 +37,6 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/syscall_table.o		\
 		 kernel/malloc.o			\
 		 kernel/module.o			\
-		 kernel/poll.o				\
 		 kernel/cirbuf.o			\
 		 kernel/term.o				\
 		 kernel/bflt.o				\

@@ -60,6 +60,7 @@ int fpb_init(void);
 
 struct ktimer;
 int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg);
+int ktimer_del(int tid);
 void ktimer_cancel(struct ktimer *t);
 
 /* FS initializers */

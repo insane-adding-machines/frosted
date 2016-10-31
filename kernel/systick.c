@@ -68,6 +68,7 @@ int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
 {
     struct ktimer t;
     int ret;
+    memset(&t, 0, sizeof(t));
     t.expire_time = jiffies + count;
     t.handler = handler;
     t.arg = arg;
@@ -75,6 +76,14 @@ int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
     ret = heap_insert(ktimer_list, &t);
     irq_on();
     return ret;
+}
+
+/* Delete kernel timer */
+int ktimer_del(int tid)
+{
+    if (tid < 0)
+        return -1;
+    return heap_delete(ktimer_list, tid);
 }
 
 static inline int ktimer_expired(void)
