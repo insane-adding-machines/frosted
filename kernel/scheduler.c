@@ -1737,9 +1737,9 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
     if (arg1 < 0)
         return -EINVAL;
 
-    ktimer_add(arg1, sleepy_task_wakeup, this_task());
     if (timeout < jiffies)
         return 0;
+    ktimer_add(arg1, sleepy_task_wakeup, this_task());
     task_suspend();
     return 0;
 }
