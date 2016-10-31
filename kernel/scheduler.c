@@ -304,6 +304,7 @@ void task_resume_lock(struct task *t);
 void task_stop(struct task *t);
 void task_continue(struct task *t);
 void task_terminate(struct task *t);
+static void task_suspend_to(int newstate);
 
 static void ftable_destroy(volatile struct task *t);
 static void idling_to_running(volatile struct task *t)
@@ -993,7 +994,7 @@ void task_end(void)
     asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
 	irq_on();
     while(1) {
-        task_suspend();
+        task_suspend_to(TASK_ZOMBIE);
     }
 }
 
@@ -1155,8 +1156,6 @@ int scheduler_exec(struct vfs_info *vfsi, void *args)
     mpu_task_on((void *)(((uint32_t)t->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
     return 0;
 }
-
-static void task_suspend_to(int newstate);
 
 int sys_vfork_hdlr(void)
 {
