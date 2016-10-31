@@ -1322,6 +1322,10 @@ static __inl int pthread_destroy_task(struct task *t)
 
 static void pthread_end(void)
 {
+	/* We have to set the stack pointer because we jumped here
+	 * after setting lr to pthread_end into the NVIC_FRAME and there
+	 * we were using the sp of the thread's parent */
+	asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
 	int thread_state;
 	/* storing thread return value */
 	asm volatile("mov %0, r0" : "=r" (_cur_task->tb.exitval) );
