@@ -256,13 +256,13 @@ static struct task *const kernel = (struct task *)(&struct_task_kernel);
 
 static int number_of_tasks = 0;
 
-static void tasklist_add(struct task **list, volatile struct task *el)
+static void tasklist_add(struct task **list, struct task *el)
 {
 	el->tb.next = *list;
 	*list = el;
 }
 
-static int tasklist_del(struct task **list, volatile struct task *togo)
+static int tasklist_del(struct task **list, struct task *togo)
 {
 	struct task *t = *list;
 	struct task *p = NULL;
@@ -313,14 +313,14 @@ void task_continue(struct task *t);
 void task_terminate(struct task *t);
 static void task_suspend_to(int newstate);
 
-static void ftable_destroy(volatile struct task *t);
-static void idling_to_running(volatile struct task *t)
+static void ftable_destroy(struct task *t);
+static void idling_to_running(struct task *t)
 {
 	if (tasklist_del(&tasks_idling, t) == 0)
 		tasklist_add(&tasks_running, t);
 }
 
-static void running_to_idling(volatile struct task *t)
+static void running_to_idling(struct task *t)
 {
 	if (t->tb.pid < 1)
 		return;
@@ -328,7 +328,7 @@ static void running_to_idling(volatile struct task *t)
 		tasklist_add(&tasks_idling, t);
 }
 
-static int task_filedesc_del_from_task(volatile struct task *t, int fd);
+static int task_filedesc_del_from_task(struct task *t, int fd);
 
 static void task_destroy(void *arg)
 {
@@ -374,7 +374,7 @@ static void task_destroy(void *arg)
 	number_of_tasks--;
 }
 
-static volatile struct task *_cur_task = NULL;
+static struct task *_cur_task = NULL;
 static struct task *forced_task = NULL;
 
 
@@ -413,7 +413,7 @@ static int next_pid(void)
 /**/
 /**/
 
-static struct filedesc_table *ftable_create(volatile struct task *t)
+static struct filedesc_table *ftable_create(struct task *t)
 {
 	struct filedesc_table *ft = t->tb.filedesc_table;
 	if (ft)
@@ -426,7 +426,7 @@ static struct filedesc_table *ftable_create(volatile struct task *t)
 	return ft;
 }
 
-static void ftable_destroy(volatile struct task *t)
+static void ftable_destroy( struct task *t)
 {
 	struct filedesc_table *ft = t->tb.filedesc_table;
 	if (ft) {
@@ -436,7 +436,7 @@ static void ftable_destroy(volatile struct task *t)
 	t->tb.filedesc_table = NULL;
 }
 
-static int task_filedesc_add_to_task(volatile struct task *t, struct fnode *f)
+static int task_filedesc_add_to_task(struct task *t, struct fnode *f)
 {
 	int i;
 	void *re;
@@ -476,7 +476,7 @@ int task_filedesc_add(struct fnode *f)
 	return task_filedesc_add_to_task(_cur_task, f);
 }
 
-static int task_filedesc_del_from_task(volatile struct task *t, int fd)
+static int task_filedesc_del_from_task(struct task *t, int fd)
 {
 	struct fnode *fno;
 	struct filedesc_table *ft;
@@ -548,7 +548,7 @@ uint32_t task_fd_getmask(int fd)
 
 struct fnode *task_filedesc_get(int fd)
 {
-	volatile struct task *t = _cur_task;
+	struct task *t = _cur_task;
 	struct filedesc_table *ft;
 	if (!t)
 		return NULL;
@@ -585,7 +585,7 @@ int task_fd_writable(int fd)
 
 int sys_dup_hdlr(int fd)
 {
-	volatile struct task *t = _cur_task;
+	struct task *t = _cur_task;
 	struct fnode *f = task_filedesc_get(fd);
 	int newfd = -1;
 	if (!f)
@@ -599,7 +599,7 @@ int sys_dup_hdlr(int fd)
 
 int sys_dup2_hdlr(int fd, int newfd)
 {
-	volatile struct task *t = _cur_task;
+	struct task *t = _cur_task;
 	struct fnode *f = task_filedesc_get(fd);
 	struct filedesc_table *ft = t->tb.filedesc_table;
 
@@ -633,9 +633,9 @@ int sys_dup2_hdlr(int fd, int newfd)
 
 #ifdef CONFIG_SIGNALS
 
-static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo);
+static void sig_trampoline(struct task *t, struct task_handler *h, int signo);
 int sys_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5);
-static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
+static int catch_signal(struct task *t, int signo, sigset_t orig_mask)
 {
 	int i;
 	struct task_handler *sighdlr;
@@ -696,7 +696,7 @@ static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
 	return 0;
 }
 
-static void check_pending_signals(volatile struct task *t)
+static void check_pending_signals(struct task *t)
 {
 	int i;
 	t->tb.sigpend &= ~(t->tb.sigmask);
@@ -708,7 +708,7 @@ static void check_pending_signals(volatile struct task *t)
 	}
 }
 
-static int add_handler(volatile struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
+static int add_handler(struct task *t, int signo, void (*hdlr)(int), uint32_t mask)
 {
 
 	struct task_handler *sighdlr;
@@ -766,7 +766,7 @@ static void sig_hdlr_return(uint32_t arg)
 	//asm volatile ("pop {r4-r11}\n");
 }
 
-static void sig_trampoline(volatile struct task *t, struct task_handler *h, int signo)
+static void sig_trampoline(struct task *t, struct task_handler *h, int signo)
 {
 	cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
 	cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
@@ -775,14 +775,14 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
 	extra_usr = t->tb.sp;
 
 	/* Save stack pointer for later */
-	memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
+	memcpy((void *)t->tb.sp, (void *)cur_extra, EXTRA_FRAME_SIZE);
 	t->tb.osp = t->tb.sp;
 
 	/* Copy the EXTRA_FRAME into the trampoline extra, to preserve R9 for userspace relocations etc. */
-	memcpy(tramp_extra, cur_extra, EXTRA_FRAME_SIZE);
+	memcpy((void *)tramp_extra, (void *)cur_extra, EXTRA_FRAME_SIZE);
 
 
-	memset(tramp_nvic, 0, NVIC_FRAME_SIZE);
+	memset((void *)tramp_nvic, 0, NVIC_FRAME_SIZE);
 	tramp_nvic->pc = (uint32_t)h->hdlr;
 	tramp_nvic->lr = (uint32_t)sig_hdlr_return;
 	tramp_nvic->r0 = (uint32_t)signo;
@@ -791,7 +791,7 @@ static void sig_trampoline(volatile struct task *t, struct task_handler *h, int 
 	t->tb.sp = (t->tb.osp - (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE));
 
 	t->tb.sp -= EXTRA_FRAME_SIZE;
-	memcpy(t->tb.sp, cur_extra, EXTRA_FRAME_SIZE);
+	memcpy((void *)t->tb.sp, (void *)cur_extra, EXTRA_FRAME_SIZE);
 	t->tb.flags |= TASK_FLAG_SIGNALED;
 	task_resume(t);
 }
@@ -1056,7 +1056,7 @@ static void *task_pass_args(void *_args)
 	return new;
 }
 
-static void task_create_real(volatile struct task *new, struct vfs_info *vfsi, void *arg, unsigned int nice)
+static void task_create_real(struct task *new, struct vfs_info *vfsi, void *arg, unsigned int nice)
 {
 	struct nvic_stack_frame *nvic_frame;
 	struct extra_stack_frame *extra_frame;
@@ -1162,7 +1162,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
 
 int scheduler_exec(struct vfs_info *vfsi, void *args)
 {
-	volatile struct task *t = _cur_task;
+	struct task *t = _cur_task;
 
 	t->tb.vfsi = vfsi;
 	task_create_real(t, vfsi, (void *)args, t->tb.nice);
@@ -1331,7 +1331,7 @@ static void pthread_end(void)
 	asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
 	int thread_state;
 	/* storing thread return value */
-	asm volatile("mov %0, r0" : "=r" (_cur_task->tb.exitval) );
+	asm volatile("mov %0, r0" : "=r" (_cur_task->tb.exitval));
 	irq_off();
 	thread_state = pthread_destroy_task(_cur_task);
 	irq_on();
@@ -1438,7 +1438,7 @@ int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 		return SYS_CALL_AGAIN;
 	}
 	if (retval)
-		*retval = to_join->tb.exitval;
+		*retval = (void *)to_join->tb.exitval;
 	to_join->tb.state = TASK_OVER;
 	tasklet_add(task_destroy, to_join);
 	return 0;
@@ -1499,8 +1499,8 @@ int sys_pthread_cancel_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 			} else {
 				t->tb.state = TASK_ZOMBIE;
 				t->tb.exitval = PTHREAD_CANCELED;
-				if (t->tb.joined_thead)
-					task_resume(t->tb.joined_thead);
+				if (t->tb.joined_thread)
+					task_resume(t->tb.joined_thread);
 			}
 		} else {
 			t->tb.flags |= TASK_FLAG_PENDING_CANC;
@@ -1567,7 +1567,7 @@ static __naked void restore_task_context(void)
 static __inl void task_switch(void)
 {
 	int i;
-	volatile struct task *t;
+	struct task *t;
 	if (forced_task) {
 		_cur_task = forced_task;
 		forced_task = NULL;
@@ -1708,7 +1708,7 @@ void task_preempt(void) {
 
 void task_preempt_all(void)
 {
-	volatile struct task *t = tasks_running;
+	struct task *t = tasks_running;
 	if (_cur_task->tb.pid == 0)
 		return;
 	while(t) {
@@ -1859,7 +1859,7 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     uint32_t timeout = jiffies + arg3;
     int ret = 0;
     struct fnode *f;
-    if (task_ptr_valid(arg1))
+    if (task_ptr_valid((void *)arg1))
         return -EACCES;
 
     while ((time_left < 0) || (jiffies <= timeout)) {
