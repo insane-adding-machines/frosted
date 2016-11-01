@@ -29,7 +29,7 @@ syscalls = [
     ["realloc", 2, "sys_realloc_hdlr"],
     ["opendir", 1, "sys_opendir_hdlr"],
     ["readdir", 2, "sys_readdir_hdlr"],
-    ["closedir",1, "sys_closedir_hdlr"], 
+    ["closedir",1, "sys_closedir_hdlr"],
     ["stat", 2, "sys_stat_hdlr"],
     ["poll", 3, "sys_poll_hdlr"],
     ["ioctl", 3, "sys_ioctl_hdlr"],
@@ -61,7 +61,7 @@ syscalls = [
     ["kill", 2, "sys_kill_hdlr"],
     ["isatty", 1, "sys_isatty_hdlr"],
     ["exec", 2, "sys_exec_hdlr"],
-    ["ttyname_r", 3, "sys_ttyname_hdlr"],  
+    ["ttyname_r", 3, "sys_ttyname_hdlr"],
     ["exit", 1, "sys_exit_hdlr"],
     ["tcsetattr", 3, "sys_tcsetattr_hdlr"],
     ["tcgetattr", 2, "sys_tcgetattr_hdlr"],
@@ -92,7 +92,7 @@ syscalls = [
     ["pthread_exit", 1, "sys_pthread_exit_hdlr"],
     ["pthread_join", 2, "sys_pthread_join_hdlr"],
     ["pthread_detach", 1, "sys_pthread_detach_hdlr"],
-    ["pthread_kill", 2, "sys_pthread_kill_hdlr"],
+    ["pthread_cancel", 1, "sys_pthread_cancel_hdlr"],
     ["pthread_self", 0, "sys_pthread_self_hdlr"],
 
 ]

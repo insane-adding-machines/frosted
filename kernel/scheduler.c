@@ -14,7 +14,7 @@
  *      You should have received a copy of the GNU General Public License
  *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
  *
- *      Authors: Daniele Lacamera, Maxime Vincent
+ *      Authors: Daniele Lacamera, Maxime Vincent, Antonio Cardace
  *
  */
 #include "frosted.h"
@@ -179,12 +179,15 @@ static void * _top_stack;
 #define __naked __attribute__((naked))
 
 
-#define TASK_FLAG_VFORK 0x01
-#define TASK_FLAG_IN_SYSCALL 0x02
-#define TASK_FLAG_SIGNALED 0x04
-#define TASK_FLAG_INTR  0x40
-#define TASK_FLAG_SYSCALL_STOP 0x80
-#define TASK_FLAG_DETACHED 0x0100
+#define TASK_FLAG_VFORK 		0x01
+#define TASK_FLAG_IN_SYSCALL 	0x02
+#define TASK_FLAG_SIGNALED 		0x04
+#define TASK_FLAG_INTR  		0x40
+#define TASK_FLAG_SYSCALL_STOP 	0x80
+/* thread related */
+#define TASK_FLAG_DETACHED 		0x0100
+#define TASK_FLAG_CANCELABLE 	0x0200
+#define TASK_FLAG_PENDING_CANC 	0x0400
 
 
 struct filedesc {
@@ -1000,13 +1003,13 @@ void task_end(void)
 	   data structures, otherwise we could produce dead code
 	   after callling running_to_idling */
 	irq_off();
-    running_to_idling(_cur_task);
-    _cur_task->tb.state = TASK_ZOMBIE;
-    asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
+	running_to_idling(_cur_task);
+	_cur_task->tb.state = TASK_ZOMBIE;
+	asm volatile ( "mov %0, r0" : "=r" (_cur_task->tb.exitval));
 	irq_on();
-    while(1) {
-        task_suspend_to(TASK_ZOMBIE);
-    }
+	while(1) {
+		task_suspend_to(TASK_ZOMBIE);
+	}
 }
 
 
@@ -1262,12 +1265,12 @@ static struct task *pthread_get_task(int pid, int tid)
 	if (!leader->tb.threads || leader->tb.n_threads < 2)
 		return NULL;
 
-    for (i = 0; i < leader->tb.n_threads; i++) {
-        t = leader->tb.threads[i];
-        if (t->tb.tid == tid)
-            return t;
-    }
-    return NULL;
+	for (i = 0; i < leader->tb.n_threads; i++) {
+		t = leader->tb.threads[i];
+		if (t->tb.tid == tid)
+			return t;
+	}
+	return NULL;
 }
 
 static int pthread_add(struct task *cur, struct task *new)
@@ -1367,13 +1370,16 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
 		task_space_free(new);
 		return -ENOMEM;
 	}
+	if (*attr == PTHREAD_CREATE_DETACHED)
+		new->tb.flags = TASK_FLAG_DETACHED | TASK_FLAG_CANCELABLE;
+	else
+		new->tb.flags = TASK_FLAG_CANCELABLE;
 	new->tb.pid = _cur_task->tb.pid;
 	new->tb.ppid = _cur_task->tb.ppid;
 	new->tb.nice = _cur_task->tb.nice;
 	new->tb.filedesc_table = _cur_task->tb.filedesc_table;
 	new->tb.arg = arg;
 	new->tb.vfsi = _cur_task->tb.vfsi;
-	new->tb.flags = 0;
 	new->tb.cwd = task_getcwd();
 	new->tb.sigmask = _cur_task->tb.sigmask;
 	new->tb.sighdlr = _cur_task->tb.sighdlr;
@@ -1449,16 +1455,25 @@ int sys_pthread_detach_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 	return 0;
 }
 
-int sys_pthread_kill_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+int sys_pthread_cancel_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
 	pthread_t thread = (pthread_t)arg1;
-	int sig = arg2;
 	struct task *t = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
 	if (t) {
-		running_to_idling(t);
-		t->tb.state = TASK_OVER;
-		tasklet_add(task_destroy, t);
-		/* TODO: alert joiners */
+		if ((t->tb.flags & TASK_FLAG_CANCELABLE) == TASK_FLAG_CANCELABLE) {
+			running_to_idling(t);
+			if ((t->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED) {
+				t->tb.state = TASK_OVER;
+				tasklet_add(task_destroy, t);
+			} else {
+				t->tb.state = TASK_ZOMBIE;
+				t->tb.exitval = PTHREAD_CANCELED;
+				if (t->tb.joined_thead)
+					task_resume(t->tb.joined_thead);
+			}
+		} else {
+			t->tb.flags |= TASK_FLAG_PENDING_CANC;
+		}
 		return 0;
 	}
 	return -ESRCH;
@@ -1520,23 +1535,23 @@ static __naked void restore_task_context(void)
 
 static __inl void task_switch(void)
 {
-    int i;
-    volatile struct task *t;
-    if (forced_task) {
-        _cur_task = forced_task;
-        forced_task = NULL;
-        return;
-    }
-    t = _cur_task;
+	int i;
+	volatile struct task *t;
+	if (forced_task) {
+		_cur_task = forced_task;
+		forced_task = NULL;
+		return;
+	}
+	t = _cur_task;
 	/* Checks that the _cur_task hasn't left the "task_running" list.
 	 * If it's not in the valid state, revert task-switching to the head of task_running */
-    if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
-        t = tasks_running;
-    else
-        t = t->tb.next;
-    t->tb.timeslice = TIMESLICE(t);
-    t->tb.state = TASK_RUNNING;
-    _cur_task = t;
+	if (((t->tb.state != TASK_RUNNING) && (t->tb.state != TASK_RUNNABLE)) || (t->tb.next == NULL))
+		t = tasks_running;
+	else
+		t = t->tb.next;
+	t->tb.timeslice = TIMESLICE(t);
+	t->tb.state = TASK_RUNNING;
+	_cur_task = t;
 }
 
 /* C ABI cannot mess with the stack, we will */
@@ -2219,9 +2234,9 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
 		asm volatile ( "mov %0, r0" : "=r"
 				(*((uint32_t *)(_cur_task->tb.sp + EXTRA_FRAME_SIZE))) );
 
-    /* out of syscall */
-    _cur_task->tb.flags &= (~TASK_FLAG_IN_SYSCALL);
-    irq_on();
+	/* out of syscall */
+	_cur_task->tb.flags &= (~TASK_FLAG_IN_SYSCALL);
+	irq_on();
 
 
 	if (_cur_task->tb.state != TASK_RUNNING) {
@@ -2230,27 +2245,27 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
 
 return_from_syscall:
 
-    /* write new stack pointer and restore context */
-    if (in_kernel()) {
-        asm volatile ("msr "MSP", %0" :: "r" (_cur_task->tb.sp));
-        asm volatile ("isb");
-        asm volatile ("msr CONTROL, %0" :: "r" (0x00));
-        asm volatile ("isb");
-        restore_kernel_context();
-        runnable = RUN_KERNEL;
-    } else {
-        mpu_task_on((void *)(((uint32_t)_cur_task->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
-        asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
-        asm volatile ("isb");
-        asm volatile ("msr CONTROL, %0" :: "r" (0x01));
-        asm volatile ("isb");
-        restore_task_context();
-        runnable = RUN_USER;
-    }
+	/* write new stack pointer and restore context */
+	if (in_kernel()) {
+		asm volatile ("msr "MSP", %0" :: "r" (_cur_task->tb.sp));
+		asm volatile ("isb");
+		asm volatile ("msr CONTROL, %0" :: "r" (0x00));
+		asm volatile ("isb");
+		restore_kernel_context();
+		runnable = RUN_KERNEL;
+	} else {
+		mpu_task_on((void *)(((uint32_t)_cur_task->tb.cur_stack) - (sizeof(struct task_block) + F_MALLOC_OVERHEAD) ));
+		asm volatile ("msr "PSP", %0" :: "r" (_cur_task->tb.sp));
+		asm volatile ("isb");
+		asm volatile ("msr CONTROL, %0" :: "r" (0x01));
+		asm volatile ("isb");
+		restore_task_context();
+		runnable = RUN_USER;
+	}
 
-    /* Set return value selected by the restore procedure */
-    asm volatile ("mov lr, %0" :: "r" (runnable));
+	/* Set return value selected by the restore procedure */
+	asm volatile ("mov lr, %0" :: "r" (runnable));
 
-    /* return (function is naked) */
-    asm volatile ( "bx lr");
+	/* return (function is naked) */
+	asm volatile ( "bx lr");
 }
