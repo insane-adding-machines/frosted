@@ -222,8 +222,7 @@ struct __attribute__((packed)) task_block {
 
     /* threads */
     struct task **threads;
-    struct task *joiner_thread;
-
+    uint8_t joiner_thread_tid;
 
     uint16_t ppid;
     uint8_t tid;
@@ -1306,6 +1305,8 @@ static int pthread_add(struct task *cur, struct task *new)
 
 static __inl int pthread_destroy_task(struct task *t)
 {
+    struct task *t_joiner;
+
     running_to_idling(t);
     if ((t->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED) {
         t->tb.state = TASK_OVER;
@@ -1313,8 +1314,11 @@ static __inl int pthread_destroy_task(struct task *t)
         return TASK_OVER;
     } else {
         t->tb.state = TASK_ZOMBIE;
-        if (t->tb.joiner_thread)
-            task_resume(t->tb.joiner_thread);
+        if (t->tb.joiner_thread_tid) {
+            t_joiner = pthread_get_task(t->tb.pid, t->tb.joiner_thread_tid);
+            if (t_joiner)
+                task_resume(t_joiner);
+        }
         return TASK_ZOMBIE;
     }
 }
@@ -1379,7 +1383,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     new->tb.cwd = task_getcwd();
     new->tb.sigmask = _cur_task->tb.sigmask;
     new->tb.sighdlr = _cur_task->tb.sighdlr;
-    new->tb.joiner_thread = NULL;
+    new->tb.joiner_thread_tid = 0;
     new->tb.next = NULL;
     tasklist_add(&tasks_running, new);
     number_of_tasks++;
@@ -1423,12 +1427,12 @@ int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
         return -ESRCH;
     if ((to_join->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED)
         return -EINVAL;
-    if (to_join == _cur_task || _cur_task->tb.joiner_thread == to_join )
+    if (to_join == _cur_task || _cur_task->tb.joiner_thread_tid == to_join->tb.tid)
         return -EDEADLK;
-    if (to_join->tb.joiner_thread && to_join->tb.joiner_thread != _cur_task) {
+    if (to_join->tb.joiner_thread_tid && to_join->tb.joiner_thread_tid != _cur_task->tb.tid) {
         return -EINVAL;
     }
-    to_join->tb.joiner_thread = _cur_task;
+    to_join->tb.joiner_thread_tid = _cur_task->tb.tid;
     if (to_join->tb.state != TASK_ZOMBIE) {
         task_suspend();
         return SYS_CALL_AGAIN;
@@ -1455,6 +1459,8 @@ int sys_pthread_setcancelstate_hdlr(int arg1, int arg2, int arg3, int arg4, int 
 {
     int state = arg1;
     int *oldstate = (int *)arg2;
+    struct task *t_joiner;
+
     if (state != PTHREAD_CANCEL_ENABLE && state != PTHREAD_CANCEL_DISABLE)
         return -EINVAL;
     if (oldstate) {
@@ -1473,8 +1479,11 @@ int sys_pthread_setcancelstate_hdlr(int arg1, int arg2, int arg3, int arg4, int 
             } else {
                 _cur_task->tb.state = TASK_ZOMBIE;
                 _cur_task->tb.exitval = PTHREAD_CANCELED;
-                if (_cur_task->tb.joiner_thread)
-                    task_resume(_cur_task->tb.joiner_thread);
+                if (_cur_task->tb.joiner_thread_tid) {
+                    t_joiner = pthread_get_task(_cur_task->tb.pid, _cur_task->tb.joiner_thread_tid);
+                    if (t_joiner)
+                        task_resume(t_joiner);
+                }
             }
         }
     } else
@@ -1486,6 +1495,8 @@ int sys_pthread_cancel_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     pthread_t thread = (pthread_t)arg1;
     struct task *t = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
+    struct task *t_joiner;
+
     if (t) {
         if ((t->tb.flags & TASK_FLAG_CANCELABLE) == TASK_FLAG_CANCELABLE) {
             running_to_idling(t);
@@ -1495,8 +1506,11 @@ int sys_pthread_cancel_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
             } else {
                 t->tb.state = TASK_ZOMBIE;
                 t->tb.exitval = PTHREAD_CANCELED;
-                if (t->tb.joiner_thread)
-                    task_resume(t->tb.joiner_thread);
+                if (t->tb.joiner_thread_tid) {
+                    t_joiner = pthread_get_task(t->tb.pid, t->tb.joiner_thread_tid);
+                    if (t_joiner)
+                        task_resume(t_joiner);
+                }
             }
         } else {
             t->tb.flags |= TASK_FLAG_PENDING_CANC;
