@@ -94,6 +94,7 @@ syscalls = [
     ["pthread_detach", 1, "sys_pthread_detach_hdlr"],
     ["pthread_cancel", 1, "sys_pthread_cancel_hdlr"],
     ["pthread_self", 0, "sys_pthread_self_hdlr"],
+    ["pthread_setcancelstate", 2, "sys_pthread_setcancelstate_hdlr"],
 
 ]
 

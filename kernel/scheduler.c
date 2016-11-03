@@ -1455,6 +1455,37 @@ int sys_pthread_detach_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 	return 0;
 }
 
+int sys_pthread_setcancelstate_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+	int state = arg1;
+	int *oldstate = (int *)arg2;
+	if (state != PTHREAD_CANCEL_ENABLE && state != PTHREAD_CANCEL_DISABLE)
+		return -EINVAL;
+	if (oldstate) {
+		if ((_cur_task->tb.flags & TASK_FLAG_CANCELABLE) == TASK_FLAG_CANCELABLE)
+			*oldstate =  PTHREAD_CANCEL_ENABLE;
+		else
+			*oldstate =  PTHREAD_CANCEL_DISABLE;
+	}
+	if (state == PTHREAD_CANCEL_ENABLE) {
+	 	_cur_task->tb.flags |= TASK_FLAG_CANCELABLE;
+		if ((_cur_task->tb.flags & TASK_FLAG_PENDING_CANC) == TASK_FLAG_PENDING_CANC) {
+			running_to_idling(_cur_task);
+			if ((_cur_task->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED) {
+				_cur_task->tb.state = TASK_OVER;
+				tasklet_add(task_destroy, _cur_task);
+			} else {
+				_cur_task->tb.state = TASK_ZOMBIE;
+				_cur_task->tb.exitval = PTHREAD_CANCELED;
+				if (_cur_task->tb.joined_thread)
+					task_resume(_cur_task->tb.joined_thread);
+			}
+		}
+	} else
+		_cur_task->tb.flags &= ~TASK_FLAG_CANCELABLE;
+	return 0;
+}
+
 int sys_pthread_cancel_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
 	pthread_t thread = (pthread_t)arg1;
