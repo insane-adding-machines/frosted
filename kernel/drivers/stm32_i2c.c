@@ -38,7 +38,7 @@ static struct module mod_i2c = {
     .name = "i2c"
 };
 
-typedef enum
+enum i2c_state
 {
     I2C_STATE_READY,
     I2C_STATE_ADDRESS,
@@ -50,9 +50,9 @@ typedef enum
     I2C_STATE_DMA_COMPLETE,
     I2C_STATE_BTF,
     I2C_STATE_ERROR,
-}I2C_STATE_t;
+};
 
-typedef enum
+enum i2c_stim
 {
     I2C_STIM_START,
     I2C_STIM_TIMEOUT,
@@ -64,7 +64,7 @@ typedef enum
     I2C_STIM_DMA_COMPLETE_RX,
     I2C_STIM_BTF,
     I2C_STIM_TXE,
-}I2C_STIM_t;
+};
 
 struct dev_i2c {
     struct device * dev;
@@ -79,14 +79,14 @@ struct dev_i2c {
     mutex_t *mutex;
 
     uint8_t dirn;
-    I2C_STATE_t state;
+    volatile enum i2c_state state;
 };
 
 #define MAX_I2CS 4
 
 static struct dev_i2c *DEV_I2C[MAX_I2CS] = { };
 
-static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim);
+static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim);
 
 /*****************************
     MASTER_MODE_SELECT                                   SR2: BUSY|MSL              SR1: SB
@@ -198,7 +198,7 @@ static void restart_state_machine(struct dev_i2c *i2c)
     i2c->state = I2C_STATE_READY;
 }
 
-static void state_machine(struct dev_i2c *i2c, I2C_STIM_t stim)
+static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
 {
     volatile uint16_t cr1;
     volatile uint16_t cr2;
