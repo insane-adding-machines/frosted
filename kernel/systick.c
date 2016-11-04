@@ -81,9 +81,13 @@ int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
 /* Delete kernel timer */
 int ktimer_del(int tid)
 {
+    int ret;
     if (tid < 0)
         return -1;
-    return heap_delete(ktimer_list, tid);
+    irq_off();
+    ret = heap_delete(ktimer_list, tid);
+    irq_on();
+    return ret;
 }
 
 static inline int ktimer_expired(void)
