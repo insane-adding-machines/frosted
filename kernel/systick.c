@@ -70,9 +70,11 @@ int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
     t.expire_time = jiffies + count;
     t.handler = handler;
     t.arg = arg;
-    irq_off();
+    if (!task_in_syscall())
+        irq_off();
     ret = heap_insert(ktimer_list, &t);
-    irq_on();
+    if (!task_in_syscall())
+        irq_on();
     return ret;
 }
 
@@ -82,9 +84,11 @@ int ktimer_del(int tid)
     int ret;
     if (tid < 0)
         return -1;
-    irq_off();
+    if (!task_in_syscall())
+        irq_off();
     ret = heap_delete(ktimer_list, tid);
-    irq_on();
+    if (!task_in_syscall())
+        irq_on();
     return ret;
 }
 
