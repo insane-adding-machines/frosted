@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "heap.h"
 #include "unicore-mx/cm3/nvic.h"
@@ -26,7 +26,6 @@ volatile unsigned int _n_int = 0u;
 volatile int ktimer_check_pending = 0;
 int clock_interval = 1;
 static int _sched_active = 0;
-
 
 void frosted_scheduler_on(void)
 {
@@ -53,7 +52,6 @@ typedef struct ktimer {
     void (*handler)(uint32_t time, void *arg);
 } ktimer;
 
-
 DECLARE_HEAP(ktimer, expire_time);
 static struct heap_ktimer *ktimer_list = NULL;
 
@@ -72,9 +70,11 @@ int ktimer_add(uint32_t count, void (*handler)(uint32_t, void *), void *arg)
     t.expire_time = jiffies + count;
     t.handler = handler;
     t.arg = arg;
-    irq_off();
+    if (!task_in_syscall())
+        irq_off();
     ret = heap_insert(ktimer_list, &t);
-    irq_on();
+    if (!task_in_syscall())
+        irq_on();
     return ret;
 }
 
@@ -84,22 +84,25 @@ int ktimer_del(int tid)
     int ret;
     if (tid < 0)
         return -1;
-    irq_off();
+    if (!task_in_syscall())
+        irq_off();
     ret = heap_delete(ktimer_list, tid);
-    irq_on();
+    if (!task_in_syscall())
+        irq_on();
     return ret;
 }
 
 static inline int ktimer_expired(void)
 {
     struct ktimer *t;
-    return ((ktimer_list) && (ktimer_list->n > 0) && (t = heap_first(ktimer_list)) && (t->expire_time < jiffies));
+    return ((ktimer_list) && (ktimer_list->n > 0) &&
+            (t = heap_first(ktimer_list)) && (t->expire_time < jiffies));
 }
 
 /* Tasklet that checks expired timers */
 static void ktimers_check_tasklet(void *arg)
 {
-    struct ktimer *t; 
+    struct ktimer *t;
     struct ktimer t_previous;
     int next_t;
 
@@ -115,7 +118,7 @@ static void ktimers_check_tasklet(void *arg)
                 t->handler(jiffies, t->arg);
             }
             irq_off();
-            heap_peek(ktimer_list, &t_previous); 
+            heap_peek(ktimer_list, &t_previous);
             t = heap_first(ktimer_list);
             irq_on();
         }
@@ -125,8 +128,9 @@ static void ktimers_check_tasklet(void *arg)
     ktimer_check_pending = 0;
 
 #ifdef CONFIG_LOWPOWER
-    if (next_t < 0 || next_t > 1000){
-        next_t = 1000; /* Wake up every second if timer is too long, or if no timers */
+    if (next_t < 0 || next_t > 1000) {
+        next_t = 1000; /* Wake up every second if timer is too long, or if no
+                          timers */
     }
 
     /* Checking deep sleep */
@@ -146,9 +150,7 @@ static void ktimers_check_tasklet(void *arg)
     return;
 #endif
 #endif
-
 }
-
 
 void sys_tick_handler(void)
 {
@@ -156,7 +158,7 @@ void sys_tick_handler(void)
     volatile uint32_t reload = systick_get_reload();
     uint32_t this_timeslice;
     SysTick_Hook();
-    jiffies+= clock_interval;
+    jiffies += clock_interval;
     _n_int++;
 
     if (ktimer_expired()) {
@@ -173,4 +175,3 @@ void sys_tick_handler(void)
         (void)next_timer;
     }
 }
-
