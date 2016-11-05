@@ -149,7 +149,7 @@ void tasklet_add(void (*exe)(void*), void *arg);
 void check_tasklets(void);
 
 /* Kthreads */
-int kthread_create(void (routine)(void *), void *arg)
+int kthread_create(void (routine)(void *), void *arg);
 int kthread_cancel(int tid);
 
 /* Modules */
