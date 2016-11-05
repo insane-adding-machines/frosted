@@ -211,9 +211,6 @@ int ltdc_set_cmap(uint32_t *cmap, struct fb_info *info)
 static int ltdc_open(struct fb_info *info)
 {
     /* init LCD */
-    ltdc_clock(); 
-    ltdc_config(); /* Configure LCD : Only one layer is used */
-    ltdc_config_layer(info);
 }
 
 static const struct fb_ops  ltdc_fbops = {  
@@ -222,7 +219,9 @@ static const struct fb_ops  ltdc_fbops = {
                                             .fb_blank = ltdc_blank,
                                             .fb_setcmap = ltdc_set_cmap};
 
-static struct fb_info ltdc_info = { .fbops = (struct fb_ops *)&ltdc_fbops };
+static struct fb_info ltdc_info = { 
+        .fbops = (struct fb_ops *)&ltdc_fbops,
+};
 
 
 
@@ -309,6 +308,9 @@ static void lcd_pinmux(void)
 void ltdc_init(void)
 {
     lcd_pinmux();
+    ltdc_clock(); 
+    ltdc_config(); /* Configure LCD : Only one layer is used */
+    ltdc_config_layer(&ltdc_info);
     register_framebuffer(&ltdc_info);
     register_module(&mod_ltdc);
 }
