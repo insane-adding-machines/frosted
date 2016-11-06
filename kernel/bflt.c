@@ -216,7 +216,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
 {
     struct flat_hdr hdr;
     void * mem = NULL;
-    uint32_t text_len, data_len, bss_len, stack_len, flags, alloc_len;
+    uint32_t text_len, data_len, bss_len, stack_len, flags, alloc_len, entry_point_offset;
     uint8_t *relocs_src, *text_src, *data_dest;
     uint8_t *address_zero = from;
     int32_t relocs, rev;
@@ -244,7 +244,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     /* Calculate source addresses */
     text_src            = address_zero + sizeof(struct flat_hdr);
     relocs_src          = address_zero + long_be(hdr.reloc_start);
-    *entry_point        = (void *)address_zero + (long_be(hdr.entry) & 0xFFFFFFFE); /* entrypoint - reset THUMB bit */
+    entry_point_offset  = (long_be(hdr.entry) & 0xFFFFFFFE) - sizeof(struct flat_hdr); /* offset inside .text + reset THUMB bit */
     *stack_size         = stack_len;
 
     /*
@@ -298,6 +298,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
         /* .data is always relocated */
         data_dest = mem + data_offset;
 
+        *entry_point = *reloc_text + entry_point_offset;
         *reloc_data = data_dest;
         *reloc_bss = data_dest + data_len;
 
