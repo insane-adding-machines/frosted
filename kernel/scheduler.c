@@ -1413,6 +1413,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
     new->tb.sigmask = _cur_task->tb.sigmask;
     new->tb.sighdlr = _cur_task->tb.sighdlr;
     thread_create(new, start_routine, arg);
+    *thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
     return 0;
 }
 
@@ -1423,6 +1424,7 @@ int kthread_create(void (routine)(void *), void *arg)
     if (!new) {
         return -ENOMEM;
     }
+    irq_off();
     new->tb.tid = pthread_add(kernel, new);
     if (new->tb.tid < 0) {
         task_space_free(new);
@@ -1436,6 +1438,7 @@ int kthread_create(void (routine)(void *), void *arg)
     new->tb.vfsi = NULL;
     new->tb.cwd = NULL;
     thread_create(new, start_routine, arg);
+    irq_on();
     return new->tb.tid;
 }
 
