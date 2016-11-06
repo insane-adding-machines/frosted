@@ -22,12 +22,13 @@
 #include <unicore-mx/stm32/rcc.h>
 #include "unicore-mx/stm32/usart.h"
 #include "unicore-mx/cm3/nvic.h"
-#include "drivers/stm32f4_dsp.h"
 #include "drivers/stm32_sdio.h"
 
 #ifdef CONFIG_DEVUART
 #include "uart.h"
 #endif
+
+#include "dsp.h"
 
 #include <unicore-mx/stm32/gpio.h>
 #include "gpio.h"
