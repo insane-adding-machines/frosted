@@ -335,29 +335,58 @@ static void running_to_idling(struct task *t)
 }
 
 static int task_filedesc_del_from_task(struct task *t, int fd);
+static void destroy_thread_group(struct thread_group *group);
 
+
+
+/* Catch-all destroy functions for processes and threads.
+ *
+ * Single point of deallocation for all the memory related
+ * to task management.
+ */
 static void task_destroy(void *arg)
 {
     struct task *t = arg;
     int i;
     struct filedesc_table *ft;
+    struct thread_group *grp = t->tb.tgroup;
+
     if (!t)
         return;
 
     if (t->tb.timer_id > 0)
         ktimer_del(t->tb.timer_id);
 
+
+    /* Group leader being destroyed. Destroy all threads. */
     if (t->tb.tid == 1) {
         ft = t->tb.filedesc_table;
         for (i = 0; (ft) && (i < ft->n_files); i++) {
             task_filedesc_del_from_task(t, i);
         }
+        if (grp) {
+            destroy_thread_group(grp);
+        }
+    } else if (grp) {
+        /* if single sub-thread being destroyed, delete from
+         * the group->threads array, so the position can
+         * be reused. 
+         *
+         * We never get here after a destroy_thread_group()
+         * that has been called by the leader, because t->group
+         * has been set to NULL.
+         */
+        for (i = 0; i < grp->n_threads; i++) {
+            if (grp->threads[i] == t) {
+                grp->threads[i] = NULL;
+            }
+        }
     }
 
     tasklist_del(&tasks_running, t);
     tasklist_del(&tasks_idling, t);
-    ftable_destroy(t);
     if (t->tb.tid == 1) {
+        /* Get rid of allocated arguments */
         if (t->tb.arg) {
             char **arg = (char **)(t->tb.arg);
             i = 0;
@@ -365,17 +394,33 @@ static void task_destroy(void *arg)
                 f_free(arg[i]);
                 i++;
             }
-        }
-        if (t->tb.vfsi) /* free allocated VFS mem, e.g. by bflt_load */
+        } 
+        f_free(t->tb.arg);
+        
+        /* Destroy the file table */
+        ftable_destroy(t);
+
+        /* free allocated VFS mem, e.g. by bflt_load */
+        if (t->tb.vfsi)
         {
             //kprintf("Freeing VFS type %d allocated pointer 0x%p\r\n", t->tb.vfsi->type, t->tb.vfsi->allocated);
             if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
                 f_free(t->tb.vfsi->allocated);
             f_free(t->tb.vfsi);
         }
-        f_free(t->tb.arg);
+
+        /* free pre-allocated thread space */
+        if (grp) {
+            kfree(grp->threads);
+            kfree(grp);
+            t->tb.tgroup = NULL;
+        }
+
+        /* Remove heap allocations spawned by this pid. */
         f_proc_heap_free(t->tb.pid);
+
     }
+    /* Get rid of the stack space allocation. */
     task_space_free(t);
     number_of_tasks--;
 }
@@ -1795,10 +1840,30 @@ void task_deliver_sigchld(void *arg)
     task_kill(pid, SIGCHLD);
 }
 
+static void destroy_thread_group(struct thread_group *group)
+{
+    int i;
+    /* Destroy the entire thread family */
+    for (i = 0; i < group->n_threads; i++) {
+        if (group->threads[i] != NULL) {
+            struct task *th = group->threads[i];
+            if (th->tb.tid != 1) {
+                running_to_idling(th);
+                th->tb.state = TASK_OVER;
+                /* this thread leaves the group, 
+                 * so the extra check in task_destroy 
+                 * is not done 
+                 */
+                th->tb.tgroup = NULL;
+                tasklet_add(task_destroy, th);
+            }
+        }
+    }
+}
+
 void task_terminate(struct task *t)
 {
     int i;
-    struct thread_group *group = t->tb.tgroup;
     if (t) {
         running_to_idling(t);
         t->tb.state = TASK_ZOMBIE;
@@ -1818,19 +1883,6 @@ void task_terminate(struct task *t)
             }
             tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
-        }
-        if (group) {
-            /* Destroy the entire thread family */
-            for (i = 0; i < group->n_threads; i++) {
-                if (group->threads[i] != NULL) {
-                    struct task *th = group->threads[i];
-                    if (th->tb.tid != t->tb.tid) {
-                        running_to_idling(th);
-                        th->tb.state = TASK_OVER;
-                        tasklet_add(task_destroy, th);
-                    }
-                }
-            }
         }
     }
 }
