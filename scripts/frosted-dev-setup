@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+printf "\nSetting up Frosted dev env...";
+path="$(pwd)";
+
+cd ~;
+
+mkdir frosted-dev;
+cd frosted-dev;
+
+sudo apt-get install build-essential cmake libusb-1.0 libusb-1.0.0-dev git screen
+
+wget http://archive.trexotech.com:8081/arm-frosted-eabi-latest.tar.bz2;
+tar xjf arm-frosted-eabi-latest.tar.bz2;
+export PATH="$(pwd)/arm-frosted-eabi/bin:$PATH";
+
+git clone https://github.com/texane/stlink.git;
+cd stlink;
+mkdir build;
+cd build;
+cmake -DCMAKE_BUILD_TYPE=Debug ..;
+make;
+cd ..;
+sudo cp etc/udev/rules.d/*.rules /etc/udev/rules.d/;
+sudo udevadm control --reload-rules;
+sudo udevadm trigger;
+export PATH="$(pwd)/build:$PATH";
+
+cd "$path";
+
+git submodule init;
+git submodule update;
+cd frosted-userland;
+git submodule init;
+git submodule update;
+
+
+printf " OK!\n\nFrosted dev env setup in ~/frosted-dev\n\n";
