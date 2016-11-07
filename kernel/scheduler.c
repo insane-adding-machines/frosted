@@ -209,7 +209,17 @@ struct task_handler
     struct task_handler *next;
 };
 
+struct thread_group {
+    struct task **threads;
+    uint16_t n_threads;
+    uint16_t max_tid;
+
+};
+
 struct __attribute__((packed)) task_block {
+    /* Watch out for alignment here 
+     * (try to pack togehter smaller fields) 
+     * */
     void (*start)(void *);
     void *arg;
 
@@ -220,16 +230,12 @@ struct __attribute__((packed)) task_block {
     uint16_t timeslice;
     uint16_t pid;
 
-    /* threads */
-    struct task **threads;
-    uint8_t joiner_thread_tid;
-
     uint16_t ppid;
-    uint8_t tid;
-    uint8_t n_threads;
-
+    uint16_t tid;
+    uint16_t joiner_thread_tid;
+    uint16_t _padding;
+    struct thread_group *tgroup;
     struct task *tracer;
-
     int exitval;
     struct fnode *cwd;
     struct task_handler *sighdlr;
@@ -242,6 +248,7 @@ struct __attribute__((packed)) task_block {
     struct task *next;
     struct vfs_info *vfsi;
     int timer_id;
+
 };
 
 struct __attribute__((packed)) task {
@@ -1126,8 +1133,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
     }
     new->tb.pid = next_pid();
     new->tb.tid = 1;
-    new->tb.threads = NULL;
-    new->tb.n_threads = 0;
+    new->tb.tgroup = NULL;
 
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = nice;
@@ -1189,8 +1195,7 @@ int sys_vfork_hdlr(void)
     vpid = next_pid();
     new->tb.pid = vpid;
     new->tb.tid = 1;
-    new->tb.threads = NULL;
-    new->tb.n_threads = 0;
+    new->tb.tgroup = NULL;
     new->tb.ppid = scheduler_get_cur_pid();
     new->tb.nice = _cur_task->tb.nice;
     new->tb.filedesc_table = NULL;
@@ -1246,6 +1251,7 @@ static struct task *pthread_get_task(int pid, int tid)
 {
     struct task *t = NULL;
     struct task *leader = NULL;
+    struct thread_group *group = NULL;
     int i;
 
     leader = tasklist_get(&tasks_running, pid);
@@ -1257,11 +1263,13 @@ static struct task *pthread_get_task(int pid, int tid)
     if (tid == 1)
         return leader;
 
-    if (!leader->tb.threads || leader->tb.n_threads < 2)
+    group = leader->tb.tgroup;
+
+    if (!group || !group->threads || group->n_threads < 2)
         return NULL;
 
-    for (i = 0; i < leader->tb.n_threads; i++) {
-        t = leader->tb.threads[i];
+    for (i = 0; i < group->n_threads; i++) {
+        t = group->threads[i];
         if (t->tb.tid == tid)
             if (t->tb.state == TASK_OVER)
                 return NULL;
@@ -1273,36 +1281,46 @@ static struct task *pthread_get_task(int pid, int tid)
 static int pthread_add(struct task *cur, struct task *new)
 {
     int i;
-    struct task **old_threads = cur->tb.threads;
+    struct thread_group *group = cur->tb.tgroup;
+    struct task **old_tgroup;
 
-    if (!cur->tb.threads) {
-        cur->tb.threads = kcalloc(sizeof(struct task *) * 2, 1);
-        cur->tb.threads[0] = cur;
-        cur->tb.threads[1] = new;
-        new->tb.threads = cur->tb.threads;
-        cur->tb.n_threads = 2;
-        new->tb.n_threads = 2;
+    if (!group) {
+        group = kcalloc(sizeof(struct thread_group), 1);
+        if (!group)
+            return -ENOMEM;
+        group->threads = kcalloc(sizeof(struct task *), 2);
+        if (!group->threads) {
+            kfree(group);
+            return -ENOMEM;
+        }
+        cur->tb.tgroup = group;
+        new->tb.tgroup = group;
+        group->threads[0] = cur;
+        group->threads[1] = new;
+        group->n_threads = 2;
+        group->max_tid = 2;
         return 2;
     }
-    for (i = 0; i < cur->tb.n_threads; i++) {
-        if (cur->tb.threads[i] == NULL) {
-            cur->tb.threads[i] = new;
-            new->tb.threads = cur->tb.threads;
-            new->tb.n_threads = cur->tb.n_threads;
-            return i + 1;
+    for (i = 0; i < group->n_threads; i++) {
+        if (group->threads[i] == NULL) {
+            group->threads[i] = new;
+            new->tb.tgroup = group;
+            new->tb.tid = ++group->max_tid;
+            return new->tb.tid;
         }
     }
-    ++cur->tb.n_threads;
-    cur->tb.threads = krealloc(cur->tb.threads, sizeof(struct task *) * cur->tb.n_threads);
-    if (!cur->tb.threads) {
-        cur->tb.threads = old_threads;
-        --cur->tb.n_threads;
+    ++group->n_threads;
+    old_tgroup = group->threads;
+    group->threads = krealloc(group->threads, sizeof(struct task *) * group->n_threads);
+    if (!group->threads) {
+        group->threads = old_tgroup;
+        --group->n_threads;
         return -ENOMEM;
     }
-    cur->tb.threads[cur->tb.n_threads - 1] = new;
-    new->tb.threads = cur->tb.threads;
-    new->tb.n_threads = cur->tb.n_threads;
-    return cur->tb.n_threads;
+    group->threads[group->n_threads - 1] = new;
+    new->tb.tgroup = group;
+    new->tb.tid = ++group->max_tid;
+    return new->tb.tid;
 }
 
 static __inl int pthread_destroy_task(struct task *t)
@@ -1667,8 +1685,7 @@ void kernel_task_init(void)
     kernel->tb.sp = msp_read(); // SP needs to be current SP
     kernel->tb.pid = next_pid();
     kernel->tb.tid = 1;
-    kernel->tb.threads = NULL;
-    kernel->tb.n_threads = 0;
+    kernel->tb.tgroup = NULL;
     kernel->tb.ppid = scheduler_get_cur_pid();
     kernel->tb.nice = NICE_DEFAULT;
     kernel->tb.start = NULL;
@@ -1781,6 +1798,7 @@ void task_deliver_sigchld(void *arg)
 void task_terminate(struct task *t)
 {
     int i;
+    struct thread_group *group = t->tb.tgroup;
     if (t) {
         running_to_idling(t);
         t->tb.state = TASK_ZOMBIE;
@@ -1801,14 +1819,16 @@ void task_terminate(struct task *t)
             tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
         }
-        /* Destroy the entire thread family */
-        for (i = 0; i < t->tb.n_threads; i++) {
-            if (t->tb.threads[i] != NULL) {
-                struct task *th = t->tb.threads[i];
-                if (th->tb.tid != t->tb.tid) {
-                    running_to_idling(th);
-                    th->tb.state = TASK_OVER;
-                    tasklet_add(task_destroy, th);
+        if (group) {
+            /* Destroy the entire thread family */
+            for (i = 0; i < group->n_threads; i++) {
+                if (group->threads[i] != NULL) {
+                    struct task *th = group->threads[i];
+                    if (th->tb.tid != t->tb.tid) {
+                        running_to_idling(th);
+                        th->tb.state = TASK_OVER;
+                        tasklet_add(task_destroy, th);
+                    }
                 }
             }
         }
