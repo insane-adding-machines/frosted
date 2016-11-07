@@ -1263,6 +1263,8 @@ static struct task *pthread_get_task(int pid, int tid)
     for (i = 0; i < leader->tb.n_threads; i++) {
         t = leader->tb.threads[i];
         if (t->tb.tid == tid)
+            if (t->tb.state == TASK_OVER)
+                return NULL;
             return t;
     }
     return NULL;
