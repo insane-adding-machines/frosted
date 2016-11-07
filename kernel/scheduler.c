@@ -816,7 +816,9 @@ int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     struct sigaction *sa = (struct sigaction *)arg2;
     struct sigaction *sa_old = (struct sigaction *)arg3;
-    if (task_ptr_valid(sa))
+    struct task_handler *sighdlr;
+
+    if (sa && task_ptr_valid(sa))
         return -EACCES;
     if (sa_old && task_ptr_valid(sa_old))
         return -EACCES;
@@ -827,8 +829,26 @@ int sys_sigaction_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     if (arg1 >= SIGMAX || arg1 < 1)
         return -EINVAL;
 
-    /* TODO: Populate sa_old */
-    add_handler(_cur_task, arg1, sa->sa_handler, sa->sa_mask);
+    /* Populating sa_old */
+    if (sa_old) {
+        sighdlr = _cur_task->tb.sighdlr;
+        while (sighdlr) {
+            if (arg1 == sighdlr->signo)
+                break;
+            sighdlr = sighdlr->next;
+        }
+        if (sighdlr) {
+            sa_old->sa_mask = (sigset_t)sighdlr->mask;
+            sa_old->sa_handler = sighdlr->hdlr;
+        } else {
+            sa_old->sa_mask = (sigset_t)0u;
+            sa_old->sa_handler = SIG_DFL;
+        }
+        sa_old->sa_flags = 0;
+        sa_old->sa_restorer = NULL;
+    }
+    if (sa)
+        add_handler(_cur_task, arg1, sa->sa_handler, sa->sa_mask);
     return 0;
 }
 
