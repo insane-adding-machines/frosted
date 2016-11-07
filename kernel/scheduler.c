@@ -1449,11 +1449,15 @@ int kthread_cancel(int tid)
         return -1;
     if (tid > 0xffff)
         return -1;
+    irq_off();
     t = pthread_get_task(0, tid);
     if (!t)
         return -1;
+    if (tasklist_del(&tasks_running, t) == 0)
+        tasklist_add(&tasks_idling, t);
     t->tb.state = TASK_OVER;
     tasklet_add(task_destroy, t);
+    irq_on();
     return 0;
 }
 
