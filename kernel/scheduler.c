@@ -1342,14 +1342,43 @@ static void pthread_end(void)
     }
 }
 
+/* Finalize thread creation, code shared by pthreads/kthreads. */
+static inline void thread_create(struct task *new, void (*start_routine)(void *), void *arg)
+{
+    struct nvic_stack_frame *nvic_frame;
+    struct extra_stack_frame *extra_frame;
+    uint8_t *sp;
+    new->tb.joiner_thread_tid = 0;
+    new->tb.start = start_routine;
+    new->tb.arg = arg;
+    new->tb.next = NULL;
+    tasklist_add(&tasks_running, new);
+    number_of_tasks++;
+    new->tb.arg = arg;
+    new->tb.timeslice = TIMESLICE(new);
+    new->tb.state = TASK_RUNNABLE;
+    sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
+    new->tb.cur_stack = &new->stack;
+    new->tb.timer_id = -1;
+
+    /* Stack frame is at the end of the stack space */
+    nvic_frame = (struct nvic_stack_frame *) sp;
+    memset(nvic_frame, 0, NVIC_FRAME_SIZE);
+    nvic_frame->r0 = (uint32_t) new->tb.arg;
+    nvic_frame->pc = (uint32_t) new->tb.start;
+    nvic_frame->lr = (uint32_t) pthread_end;
+    nvic_frame->psr = 0x01000000u;
+    sp -= EXTRA_FRAME_SIZE;
+    extra_frame = (struct extra_stack_frame *)sp;
+    extra_frame->r9 = new->tb.vfsi->pic;
+    new->tb.sp = (uint32_t *)sp;
+}
+
 /* Pthread create handler. Call be like:
  * int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg)
  */
 int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    struct nvic_stack_frame *nvic_frame;
-    struct extra_stack_frame *extra_frame;
-    uint8_t *sp;
     pthread_t *thread = (pthread_t *)arg1;
     pthread_attr_t *attr = (pthread_attr_t *)arg2;
     void (*start_routine)(void *) = (void (*)(void*))arg3;
@@ -1376,41 +1405,64 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_
         new->tb.flags = TASK_FLAG_DETACHED | TASK_FLAG_CANCELABLE;
     else
         new->tb.flags = TASK_FLAG_CANCELABLE;
+
     new->tb.pid = _cur_task->tb.pid;
     new->tb.ppid = _cur_task->tb.ppid;
     new->tb.nice = _cur_task->tb.nice;
     new->tb.filedesc_table = _cur_task->tb.filedesc_table;
-    new->tb.arg = arg;
     new->tb.vfsi = _cur_task->tb.vfsi;
     new->tb.cwd = task_getcwd();
     new->tb.sigmask = _cur_task->tb.sigmask;
     new->tb.sighdlr = _cur_task->tb.sighdlr;
-    new->tb.joiner_thread_tid = 0;
-    new->tb.next = NULL;
-    tasklist_add(&tasks_running, new);
-    number_of_tasks++;
-    new->tb.start = start_routine;
-    new->tb.arg = arg;
-    new->tb.timeslice = TIMESLICE(new);
-    new->tb.state = TASK_RUNNABLE;
-    sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
-    new->tb.cur_stack = &new->stack;
-    new->tb.timer_id = -1;
-
-    /* Stack frame is at the end of the stack space */
-    nvic_frame = (struct nvic_stack_frame *) sp;
-    memset(nvic_frame, 0, NVIC_FRAME_SIZE);
-    nvic_frame->r0 = (uint32_t) new->tb.arg;
-    nvic_frame->pc = (uint32_t) new->tb.start;
-    nvic_frame->lr = (uint32_t) pthread_end;
-    nvic_frame->psr = 0x01000000u;
-    sp -= EXTRA_FRAME_SIZE;
-    extra_frame = (struct extra_stack_frame *)sp;
-    extra_frame->r9 = new->tb.vfsi->pic;
-    new->tb.sp = (uint32_t *)sp;
+    thread_create(new, start_routine, arg);
     *thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
     return 0;
 }
+
+int kthread_create(void (routine)(void *), void *arg)
+{
+    struct task *new = task_space_alloc(sizeof(struct task));
+    void (*start_routine)(void *) = (void (*)(void*))routine;
+    if (!new) {
+        return -ENOMEM;
+    }
+    irq_off();
+    new->tb.tid = pthread_add(kernel, new);
+    if (new->tb.tid < 0) {
+        task_space_free(new);
+        return -ENOMEM;
+    }
+    new->tb.flags = TASK_FLAG_DETACHED | TASK_FLAG_CANCELABLE;
+    new->tb.pid = 0;
+    new->tb.ppid = 0;
+    new->tb.nice = NICE_DEFAULT;
+    new->tb.filedesc_table = NULL;
+    new->tb.vfsi = NULL;
+    new->tb.cwd = NULL;
+    thread_create(new, start_routine, arg);
+    irq_on();
+    return new->tb.tid;
+}
+
+int kthread_cancel(int tid)
+{
+    struct task *t;
+    if (tid <= 0)
+        return -1;
+    if (tid > 0xffff)
+        return -1;
+    irq_off();
+    t = pthread_get_task(0, tid);
+    if (!t)
+        return -1;
+    if (tasklist_del(&tasks_running, t) == 0)
+        tasklist_add(&tasks_idling, t);
+    t->tb.state = TASK_OVER;
+    tasklet_add(task_destroy, t);
+    irq_on();
+    return 0;
+}
+
 
 int sys_pthread_exit_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
@@ -2257,7 +2309,7 @@ int __attribute__((naked)) sv_call_handler(uint32_t n, uint32_t arg1, uint32_t a
 #ifdef CONFIG_SYSCALL_TRACE
     Strace[StraceTop].n = n;
     Strace[StraceTop].pid = _cur_task->tb.pid;
-    Strace[StraceTop].sp = _top_stack;
+    Strace[StraceTop].sp = (uint32_t)_top_stack;
     StraceTop++;
     if (StraceTop > 9)
         StraceTop = 0;
