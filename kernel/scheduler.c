@@ -211,6 +211,7 @@ struct task_handler
 
 struct thread_group {
     struct task **threads;
+    uint16_t active_threads;
     uint16_t n_threads;
     uint16_t max_tid;
 
@@ -335,7 +336,7 @@ static void running_to_idling(struct task *t)
 }
 
 static int task_filedesc_del_from_task(struct task *t, int fd);
-static void destroy_thread_group(struct thread_group *group);
+static void destroy_thread_group(struct thread_group *group, uint16_t tid);
 
 
 
@@ -354,20 +355,9 @@ static void task_destroy(void *arg)
     if (!t)
         return;
 
-    if (t->tb.timer_id > 0)
-        ktimer_del(t->tb.timer_id);
-
-
-    /* Group leader being destroyed. Destroy all threads. */
-    if (t->tb.tid == 1) {
-        ft = t->tb.filedesc_table;
-        for (i = 0; (ft) && (i < ft->n_files); i++) {
-            task_filedesc_del_from_task(t, i);
-        }
-        if (grp) {
-            destroy_thread_group(grp);
-        }
-    } else if (grp) {
+    tasklist_del(&tasks_running, t);
+    tasklist_del(&tasks_idling, t);
+    if ((grp) && (--grp->active_threads > 0)) {
         /* if single sub-thread being destroyed, delete from
          * the group->threads array, so the position can
          * be reused. 
@@ -381,11 +371,10 @@ static void task_destroy(void *arg)
                 grp->threads[i] = NULL;
             }
         }
-    }
-
-    tasklist_del(&tasks_running, t);
-    tasklist_del(&tasks_idling, t);
-    if (t->tb.tid == 1) {
+    } else {
+        /* Group leader being destroyed. Destroy all threads. */
+        if (grp)
+            destroy_thread_group(grp, t->tb.tid);
         /* Get rid of allocated arguments */
         if (t->tb.arg) {
             char **arg = (char **)(t->tb.arg);
@@ -396,10 +385,12 @@ static void task_destroy(void *arg)
             }
         } 
         f_free(t->tb.arg);
-        
-        /* Destroy the file table */
+        /* Close files & Destroy the file table */
+        ft = t->tb.filedesc_table;
+        for (i = 0; (ft) && (i < ft->n_files); i++) {
+            task_filedesc_del_from_task(t, i);
+        }
         ftable_destroy(t);
-
         /* free allocated VFS mem, e.g. by bflt_load */
         if (t->tb.vfsi)
         {
@@ -408,19 +399,19 @@ static void task_destroy(void *arg)
                 f_free(t->tb.vfsi->allocated);
             f_free(t->tb.vfsi);
         }
-
         /* free pre-allocated thread space */
         if (grp) {
             kfree(grp->threads);
             kfree(grp);
             t->tb.tgroup = NULL;
         }
-
         /* Remove heap allocations spawned by this pid. */
         f_proc_heap_free(t->tb.pid);
-
     }
-    /* Get rid of the stack space allocation. */
+
+    /* Get rid of stack space allocation, timer. */
+    if (t->tb.timer_id > 0)
+        ktimer_del(t->tb.timer_id);
     task_space_free(t);
     number_of_tasks--;
 }
@@ -1344,6 +1335,7 @@ static int pthread_add(struct task *cur, struct task *new)
         group->threads[1] = new;
         group->n_threads = 2;
         group->max_tid = 2;
+        group->active_threads = 2;
         return 2;
     }
     for (i = 0; i < group->n_threads; i++) {
@@ -1351,6 +1343,7 @@ static int pthread_add(struct task *cur, struct task *new)
             group->threads[i] = new;
             new->tb.tgroup = group;
             new->tb.tid = ++group->max_tid;
+            group->active_threads++;
             return new->tb.tid;
         }
     }
@@ -1365,6 +1358,7 @@ static int pthread_add(struct task *cur, struct task *new)
     group->threads[group->n_threads - 1] = new;
     new->tb.tgroup = group;
     new->tb.tid = ++group->max_tid;
+    group->active_threads++;
     return new->tb.tid;
 }
 
@@ -1840,14 +1834,14 @@ void task_deliver_sigchld(void *arg)
     task_kill(pid, SIGCHLD);
 }
 
-static void destroy_thread_group(struct thread_group *group)
+static void destroy_thread_group(struct thread_group *group, uint16_t tid)
 {
     int i;
     /* Destroy the entire thread family */
     for (i = 0; i < group->n_threads; i++) {
         if (group->threads[i] != NULL) {
             struct task *th = group->threads[i];
-            if (th->tb.tid != 1) {
+            if (th->tb.tid != tid) {
                 running_to_idling(th);
                 th->tb.state = TASK_OVER;
                 /* this thread leaves the group, 
@@ -1884,6 +1878,8 @@ void task_terminate(struct task *t)
             tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
         }
+        if (t->tb.tgroup)
+            destroy_thread_group(t->tb.tgroup, t->tb.tid);
     }
 }
 
