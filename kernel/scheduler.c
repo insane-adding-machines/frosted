@@ -1413,6 +1413,8 @@ int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     void **retval = (void **)arg2;
     struct task *to_join;
 
+    if (task_ptr_valid((void *)retval) < 0)
+        return -EINVAL;
     to_join = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
     if (!to_join)
         return -ESRCH;
@@ -1440,7 +1442,7 @@ int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 int sys_pthread_detach_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     pthread_t thread = (pthread_t)arg1;
-    int sig = arg2;
+
     struct task *t =
         pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
     if (!t)
@@ -1456,6 +1458,8 @@ int sys_pthread_setcancelstate_hdlr(int arg1, int arg2, int arg3, int arg4,
     int *oldstate = (int *)arg2;
     struct task *t_joiner;
 
+    if (task_ptr_valid((void *)oldstate) < 0)
+        return -EINVAL;
     if (state != PTHREAD_CANCEL_ENABLE && state != PTHREAD_CANCEL_DISABLE)
         return -EINVAL;
     if (oldstate) {
