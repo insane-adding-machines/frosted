@@ -43,7 +43,20 @@
 
 /* ADD_REG_CTRL_4 register configuration value:
  * X,Y,Z axis enabled and 400Hz of output data rate */
-#define UC_ADD_REG_CTRL_4_CFG_VALUE		0x77
+
+#define UC_ADD_REG_CTRL_4_CFG_OFF               0x00
+#define UC_ADD_REG_CTRL_4_CFG_3_125HZ           ((0x10) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_6_25HZ            ((0x20) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_12_5HZ            ((0x30) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_25HZ              ((0x40) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_50HZ              ((0x50) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_3_100HZ           ((0x60) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_3_400HZ           ((0x70) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_3_800HZ           ((0x80) | (0x07))
+#define UC_ADD_REG_CTRL_4_CFG_3_1600HZ          ((0x90) | (0x07))
+
+#define UC_ADD_REG_CTRL_4_CFG_VALUE_DEFAULT		UC_ADD_REG_CTRL_4_CFG_25HZ
+
 
 /* Sensitivity for 2G range [mg/digit] */
 #define SENS_2G_RANGE_MG_PER_DIGIT		((float)0.06)
@@ -125,11 +138,11 @@ static int devlis3dsh_open(const char *path, int flags)
     /* if WHO AM I value is the expected one */
     if (int_reg_value == UC_WHO_AM_I_DEFAULT_VALUE) {
         /* set output data rate to 400 Hz and enable X,Y,Z axis */
-        lis3dsh_write_reg(ADD_REG_CTRL_4, UC_ADD_REG_CTRL_4_CFG_VALUE);
+        lis3dsh_write_reg(ADD_REG_CTRL_4, UC_ADD_REG_CTRL_4_CFG_VALUE_DEFAULT);
         /* verify written value */
         int_reg_value = lis3dsh_read_reg(ADD_REG_CTRL_4);
         /* if written value is different */
-        if (int_reg_value != UC_ADD_REG_CTRL_4_CFG_VALUE) {
+        if (int_reg_value != UC_ADD_REG_CTRL_4_CFG_VALUE_DEFAULT) {
             return -EIO;
         }
     } else {
