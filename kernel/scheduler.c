@@ -1296,6 +1296,8 @@ static __inl int pthread_destroy_task(struct task *t)
 {
     struct task *t_joiner;
 
+    /* delete from active threads of the process */
+    t->tb.threads[t->tb.tid - 1] = NULL;
     running_to_idling(t);
     if ((t->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED) {
         t->tb.state = TASK_OVER;
