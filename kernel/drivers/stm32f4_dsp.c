@@ -143,7 +143,7 @@ void dma1_stream5_isr(void)
 
 /* Initialization functions */
 
-#define PERIOD (1800)
+#define PERIOD (5200)
 static void timer_setup(void)
 {
     /* Enable TIM2 clock. */

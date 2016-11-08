@@ -27,7 +27,6 @@
 #include <unicore-mx/stm32/i2c.h>
 #include <unicore-mx/stm32/dma.h>
 #include "unicore-mx/stm32/spi.h"
-#include "drivers/stm32f4_dsp.h"
 #include "drivers/stm32_sdio.h"
 
 #include "uart.h"
@@ -39,6 +38,7 @@
 #include "eth.h"
 #include "i2c.h"
 #include "spi.h"
+#include "dsp.h"
 #include "dma.h"
 #include "drivers/lis3dsh.h"
 
@@ -507,5 +507,6 @@ int machine_init(void)
     sdio_init(&sdio_conf);
     usb_init(&usb_guest);
     ethernet_init(&eth_config);
+    dsp_init();
     return 0;
 }

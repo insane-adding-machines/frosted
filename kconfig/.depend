@@ -3,10 +3,16 @@ confdata.o: confdata.c lkc.h expr.h list.h lkc_proto.h
 expr.o: expr.c lkc.h expr.h list.h lkc_proto.h
 images.o: images.c
 kxgettext.o: kxgettext.c lkc.h expr.h list.h lkc_proto.h
-mconf.o: mconf.c lkc.h expr.h list.h lkc_proto.h lxdialog/dialog.h
+mconf.o: mconf.c lkc.h expr.h list.h lkc_proto.h lxdialog/dialog.h \
+ /usr/include/ncursesw/curses.h
 menu.o: menu.c lkc.h expr.h list.h lkc_proto.h
-nconf.o: nconf.c lkc.h expr.h list.h lkc_proto.h nconf.h
-nconf.gui.o: nconf.gui.c nconf.h
+nconf.o: nconf.c lkc.h expr.h list.h lkc_proto.h nconf.h \
+ /usr/include/ncursesw/curses.h /usr/include/ncursesw/menu.h \
+ /usr/include/ncursesw/panel.h /usr/include/ncursesw/form.h \
+ /usr/include/ncursesw/ncurses.h
+nconf.gui.o: nconf.gui.c nconf.h /usr/include/ncursesw/curses.h \
+ /usr/include/ncursesw/menu.h /usr/include/ncursesw/panel.h \
+ /usr/include/ncursesw/form.h /usr/include/ncursesw/ncurses.h
 symbol.o: symbol.c lkc.h expr.h list.h lkc_proto.h
 util.o: util.c lkc.h expr.h list.h lkc_proto.h
 zconf.hash.o: zconf.hash.c
