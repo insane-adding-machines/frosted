@@ -1844,11 +1844,6 @@ static void destroy_thread_group(struct thread_group *group, uint16_t tid)
             if (th->tb.tid != tid) {
                 running_to_idling(th);
                 th->tb.state = TASK_OVER;
-                /* this thread leaves the group, 
-                 * so the extra check in task_destroy 
-                 * is not done 
-                 */
-                th->tb.tgroup = NULL;
                 tasklet_add(task_destroy, th);
             }
         }
