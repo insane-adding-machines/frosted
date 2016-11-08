@@ -372,7 +372,7 @@ static void task_destroy(void *arg)
             }
         }
     } else {
-        /* Group leader being destroyed. Destroy all threads. */
+         /* Last (or the one) thread in group being destroyed. Free resources. */
         if (grp)
             destroy_thread_group(grp, t->tb.tid);
         /* Get rid of allocated arguments */
