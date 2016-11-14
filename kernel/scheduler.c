@@ -18,14 +18,14 @@
  *
  */
 #include "frosted.h"
-#include "kprintf.h"
-#include "poll.h"
-#include "signal.h"
-#include "string.h" /* flibc string.h */
 #include "sys/frosted.h"
-#include "sys/pthread.h"
+#include "string.h" /* flibc string.h */
+#include "signal.h"
+#include "kprintf.h"
 #include "sys/wait.h"
 #include "vfs.h"
+#include "sys/pthread.h"
+#include "poll.h"
 
 /* Full kernel space separation */
 #define RUN_HANDLER (0xfffffff1u)
@@ -829,14 +829,12 @@ static void sig_trampoline(struct task *t, struct task_handler *h, int signo)
 }
 
 #else
-#define check_pending_signals(...)                                             \
-    do {                                                                       \
-        while (0) }
+#define check_pending_signals(...) do{}while(0)
 #define add_handler(...) (0)
 #define del_handler(...) (0)
 #define sig_hdlr_return NULL
 
-static int catch_signal(volatile struct task *t, int signo, sigset_t orig_mask)
+static int catch_signal(struct task *t, int signo, sigset_t orig_mask)
 {
     (void)orig_mask;
     if (signo != SIGCHLD)
