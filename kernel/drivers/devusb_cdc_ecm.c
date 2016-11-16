@@ -29,10 +29,27 @@
 #define USBETH_MAX_FRAME 1514
 struct pico_dev_usbeth {
     struct pico_device dev;
-    int tx_busy;
+
+    enum {
+        TX_STATUS_FREE,
+        TX_STATUS_PENDING,
+        TX_STATUS_COMPLETE
+    } tx_status;
+};
+
+struct usbeth_rx_buffer {
+    enum {
+        RX_STATUS_FREE, /**< Buffer is free */
+        RX_STATUS_INCOMING, /**< We have unprocessed buffer */
+        RX_STATUS_TCPIP /** PICO TCP is processing */
+    } status;
+
+    uint16_t size;
+    uint8_t buf[USBETH_MAX_FRAME];
 };
 
 static struct pico_dev_usbeth *pico_usbeth = NULL;
+static struct usbeth_rx_buffer *rx_buffer = NULL;
 
 static const struct usb_endpoint_descriptor comm_endp[] = {{
     .bLength = USB_DT_ENDPOINT_SIZE,
@@ -130,6 +147,24 @@ static const struct usb_interface ifaces[] = {
     }
 };
 
+static const char usb_string_manuf[] = "Insane adding machines";
+static const char usb_string_name[] = "Frosted Eth gadget";
+static const char usb_serialn[] = "01";
+static const char usb_macaddr[] = "005af341b4c9";
+
+
+static const char *usb_strings_ascii[4] = {
+    usb_string_manuf, usb_string_name, usb_serialn, usb_macaddr
+};
+
+static const struct usb_string_utf8_data usb_strings[] = {{
+    .data = (const uint8_t **) usb_strings_ascii,
+    .count = 4,
+    .lang_id = USB_LANGID_ENGLISH_UNITED_STATES
+}, {
+    .data = NULL
+}};
+
 static const struct usb_config_descriptor cdc_ecm_config = {
     .bLength = USB_DT_CONFIGURATION_SIZE,
     .bDescriptorType = USB_DT_CONFIGURATION,
@@ -141,6 +176,7 @@ static const struct usb_config_descriptor cdc_ecm_config = {
     .bMaxPower = 0x32,
 
     .interface = ifaces,
+    .string = usb_strings
 };
 
 static const struct usb_device_descriptor cdc_ecm_dev = {
@@ -159,56 +195,48 @@ static const struct usb_device_descriptor cdc_ecm_dev = {
     .iSerialNumber = 3,
     .bNumConfigurations = 1,
 
-    .config = &cdc_ecm_config
+    .config = &cdc_ecm_config,
+    .string = usb_strings
 };
-
-static const char usb_string_manuf[] = "Insane adding machines";
-static const char usb_string_name[] = "Frosted Eth gadget";
-static const char usb_serialn[] = "01";
-static const char usb_macaddr[] = "005af341b4c9";
-
-
-static const char *usb_strings_ascii[4] = {
-    usb_string_manuf, usb_string_name, usb_serialn, usb_macaddr
-};
-
-static int usb_strings(usbd_device *_usbd_dev,
-    struct usbd_get_string_arg *arg)
-{
-	(void)_usbd_dev;
-	return usbd_handle_string_ascii(arg, usb_strings_ascii, 4);
-}
 
 static const uint8_t mac_addr[6] = { 0, 0x5a, 0xf3, 0x41, 0xb4, 0xca };
 
-static enum usbd_control_result cdcecm_control_request(
-    usbd_device *_usbd_dev, struct usbd_control_arg *arg)
+uint8_t usbdev_buffer[128] __attribute__((aligned(16)));
+
+static void cdcecm_setup_request(usbd_device *usbd_dev, uint8_t ep_addr,
+            const struct usb_setup_data *setup_data)
 {
-    (void)_usbd_dev;
+    (void) ep_addr; /* Assuming (ep_addr == 0) */
 
     const uint8_t bmReqMask = USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT;
     const uint8_t bmReqVal = USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE;
 
-    if ((arg->setup.bmRequestType & bmReqMask) != bmReqVal) {
-        return USBD_REQ_NEXT;
+    if ((setup_data->bmRequestType & bmReqMask) != bmReqVal) {
+        /* Not of our interest, let library handle */
+        usbd_ep0_setup(usbd_dev, setup_data);
+        return;
     }
 
-    switch (arg->setup.bRequest) {
-        case USB_CDC_REQ_SET_ETHERNET_MULTICAST_FILTER:
-        case USB_CDC_REQ_SET_ETHERNET_PACKET_FILTER:
-        case USB_CDC_REQ_SET_ETHERNET_PM_PATTERN_FILTER:
-            return USBD_REQ_HANDLED;
-    case USB_CDC_REQ_SET_CONTROL_LINE_STATE: {
-        return USBD_REQ_HANDLED;
-        }
+    switch (setup_data->bRequest) {
+    case USB_CDC_REQ_SET_ETHERNET_MULTICAST_FILTER:
+    case USB_CDC_REQ_SET_ETHERNET_PACKET_FILTER:
+    case USB_CDC_REQ_SET_ETHERNET_PM_PATTERN_FILTER:
+    case USB_CDC_REQ_SET_CONTROL_LINE_STATE:
+        usbd_ep0_transfer(usbd_dev, setup_data, NULL, 0, NULL);
+    return;
     case USB_CDC_REQ_SET_LINE_CODING:
-        if (arg->len < sizeof(struct usb_cdc_line_coding)) {
-            return USBD_REQ_STALL;
+        if (setup_data->wLength < sizeof(struct usb_cdc_line_coding)) {
+            break;
         }
 
-        return USBD_REQ_HANDLED;
+        /* Just read whatever the host is sending */
+        usbd_ep0_transfer(usbd_dev, setup_data, usbdev_buffer,
+                setup_data->wLength, NULL);
+    return;
     }
-    return USBD_REQ_STALL;
+
+    /* Unsupported request */
+    usbd_ep0_stall(usbd_dev);
 }
 
 
@@ -227,84 +255,66 @@ static void cdcecm_set_config(usbd_device *usbd_dev,
 
 static usbd_device *usbd_dev;
 
-struct usbeth_rx_buffer {
-    uint16_t size;
-    int status;
-    uint8_t buf[USBETH_MAX_FRAME];
-};
-
-static struct usbeth_rx_buffer *rx_buffer = NULL;
-#define RXBUF_FREE 0
-#define RXBUF_INCOMING 1
-#define RXBUF_TCPIP    2
-static void rx_buffer_free(uint8_t *arg)
+static void notify_link_up(void)
 {
-    (void) arg;
-    rx_buffer->size = 0;
-    rx_buffer->status = RXBUF_FREE;
+    static const uint8_t buf[8] = {0x51, 0, 1, 0, 0, 0, 0, 0};
+    const usbd_transfer transfer = {
+        .ep_type = USBD_EP_INTERRUPT,
+        .ep_addr = 0x82,
+        .ep_size = 16,
+        .ep_interval = 0,
+        .buffer = (void *) buf,
+        .length = sizeof(buf),
+        .flags = USBD_FLAG_NONE,
+        .timeout = USBD_TIMEOUT_NEVER,
+        .callback = NULL
+    };
+
+    usbd_transfer_submit(usbd_dev, &transfer);
 }
 
-struct usbeth_tx_frame {
-    uint16_t off;
-    uint16_t size;
-    uint8_t *base;
-};
-
-static struct usbeth_tx_frame tx_frame = {};
-
-static void cdcecm_data_tx_complete_cb(usbd_device *usbd_dev, uint8_t ep)
+static void bulk_out_callback(usbd_device *dev,
+            const usbd_transfer *transfer, usbd_transfer_status status,
+            usbd_urb_id urb_id)
 {
-    (void)ep;
-    int ret;
-    int len;
-    if (pico_usbeth->tx_busy == 0)
-        return;
-    len = tx_frame.size - tx_frame.off;
-    if (len > 64)
-        len = 64;
+    static int notified_link_up = 0;
+    (void)urb_id;
 
-    tx_frame.off += usbd_ep_write_packet(usbd_dev, 0x81, tx_frame.base + tx_frame.off, len);
-    if (tx_frame.off == tx_frame.size)
-        pico_usbeth->tx_busy = 0;
+    if (status != USBD_SUCCESS) {
+        return;
+    }
+
+    if (!notified_link_up) {
+        notified_link_up = 1;
+        notify_link_up();
+    }
+
+    /* Full frame. */
+    rx_buffer->size = transfer->transferred;
+    rx_buffer->status = RX_STATUS_INCOMING;
+
     frosted_tcpip_wakeup();
 }
 
-static void cdcecm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
+static void bulk_out_submit(uint8_t *arg)
 {
-    static int notified_link_up = 0;
-    int len;
-    (void)ep;
-    if (!notified_link_up) {
-        uint8_t buf[8] = { };
-        buf[0] = 0x51;
-        buf[1] = 0;
-        buf[2] = 1;
-        buf[3] = 0;
+    (void) arg;
+    rx_buffer->size = 0;
+    rx_buffer->status = RX_STATUS_FREE;
 
-        notified_link_up++;
-        usbd_ep_write_packet(usbd_dev, 0x82, buf, 8);
-    }
-    if (!rx_buffer) {
-        rx_buffer = kalloc(USBETH_MAX_FRAME);
-        rx_buffer->size =0;
-        rx_buffer->status = RXBUF_FREE; /* First call! */
-    }
-    if (!pico_usbeth || !rx_buffer || (rx_buffer->status != RXBUF_FREE)) {
-        char buf[64];
-        len = usbd_ep_read_packet(usbd_dev, 0x01, buf, 64);
-        (void)len;
-        return;
-    }
+    const usbd_transfer transfer = {
+        .ep_type = USBD_EP_BULK,
+        .ep_addr = 0x01,
+        .ep_size = 64,
+        .ep_interval = USBD_INTERVAL_NA,
+        .buffer = rx_buffer->buf,
+        .length = sizeof(rx_buffer->buf),
+        .flags = USBD_FLAG_SHORT_PACKET,
+        .timeout = USBD_TIMEOUT_NEVER,
+        .callback = bulk_out_callback
+    };
 
-    len = usbd_ep_read_packet(usbd_dev, 0x01, rx_buffer->buf + rx_buffer->size, 64);
-    if (len > 0) {
-        rx_buffer->size += len;
-    }
-    if (len < 64) {
-        /* End of frame. */
-        rx_buffer->status++; /* incoming packet */
-        frosted_tcpip_wakeup();
-    }
+    usbd_transfer_submit(usbd_dev, &transfer);
 }
 
 static void cdcecm_set_config(usbd_device *usbd_dev,
@@ -312,40 +322,66 @@ static void cdcecm_set_config(usbd_device *usbd_dev,
 {
     (void)cfg;
 
-    usbd_ep_setup(usbd_dev, 0x01, USB_ENDPOINT_ATTR_BULK, 64,
-            cdcecm_data_rx_cb);
-    usbd_ep_setup(usbd_dev, 0x81, USB_ENDPOINT_ATTR_BULK, 64, cdcecm_data_tx_complete_cb);
-    usbd_ep_setup(usbd_dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
+    usbd_ep_prepare(usbd_dev, 0x01, USBD_EP_BULK, 64, USBD_INTERVAL_NA, USBD_EP_NONE);
+    usbd_ep_prepare(usbd_dev, 0x81, USBD_EP_BULK, 64, USBD_INTERVAL_NA, USBD_EP_NONE);
+    usbd_ep_prepare(usbd_dev, 0x82, USBD_EP_INTERRUPT, 16, 0, USBD_EP_NONE);
+
+    if (!rx_buffer) {
+        rx_buffer = kalloc(sizeof(*rx_buffer));
+    }
+
+    bulk_out_submit(NULL);
 }
 
+/**
+ * Transfer callback for BULK IN (TX)
+ */
+static void bulk_in_callback(usbd_device *dev,
+    const usbd_transfer *transfer, usbd_transfer_status status,
+    usbd_urb_id urb_id)
+{
+    (void)dev;
+    (void)transfer;
+    (void)urb_id;
+
+    pico_usbeth->tx_status = TX_STATUS_COMPLETE;
+    frosted_tcpip_wakeup();
+}
 
 static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
 {
     struct pico_dev_usbeth *usbeth = (struct pico_dev_usbeth *) dev;
-    int ret;
-    if (pico_usbeth->tx_busy > 0)
-        return 0;
 
-    if ((tx_frame.size > 0) && (tx_frame.size == tx_frame.off) && (tx_frame.base == buf)) {
-        memset(&tx_frame, 0, sizeof(tx_frame));
+    if (pico_usbeth->tx_status == TX_STATUS_COMPLETE) {
+        pico_usbeth->tx_status = TX_STATUS_FREE;
         return len;
+    } else if (pico_usbeth->tx_status == TX_STATUS_PENDING) {
+        return 0;
     }
 
-    if (len <= 64)
-        return usbd_ep_write_packet(usbd_dev, 0x81, buf, len);
+    const usbd_transfer transfer = {
+        .ep_type = USBD_EP_BULK,
+        .ep_addr = 0x81,
+        .ep_size = 64,
+        .ep_interval = USBD_INTERVAL_NA,
+        .buffer = buf,
+        .length = len,
+        .flags = USBD_FLAG_NONE,
+        .timeout = USBD_TIMEOUT_NEVER,
+        .callback = NULL
+    };
 
-    tx_frame.base = buf;
-    tx_frame.size = len;
-    tx_frame.off = usbd_ep_write_packet(usbd_dev, 0x81, buf, 64);
-    pico_usbeth->tx_busy++;
+    usbd_transfer_submit(usbd_dev, &transfer);
+    pico_usbeth->tx_status = TX_STATUS_PENDING;
     return 0;
 }
 
 static int pico_usbeth_poll(struct pico_device *dev, int loop_score)
 {
-    if (rx_buffer->status == RXBUF_INCOMING) {
-        pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev, rx_buffer->buf, rx_buffer->size, rx_buffer_free);
-        rx_buffer->status++;
+    if (rx_buffer->status == RX_STATUS_INCOMING) {
+        pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev,
+                        rx_buffer->buf, rx_buffer->size, bulk_out_submit);
+        rx_buffer->status = RX_STATUS_TCPIP;
         loop_score--;
     }
     return loop_score;
@@ -356,12 +392,13 @@ static void pico_usbeth_destroy(struct pico_device *dev)
     struct pico_dev_usbeth *usbeth = (struct pico_dev_usbeth *) dev;
     kfree(rx_buffer);
     kfree(usbeth);
-    pico_usbeth = NULL;
+    usbeth = NULL;
+    rx_buffer = NULL;
 }
 
 int usb_ethernet_init(void)
 {
-    struct pico_dev_usbeth *usb = kalloc(sizeof(struct pico_dev_usbeth));;
+    struct pico_dev_usbeth *usb = kalloc(sizeof(*usb));
     uint8_t *usb_buf;
     struct pico_ip4 default_ip, default_nm, default_gw, zero;
     const char ipstr[] = CONFIG_USB_DEFAULT_IP;
@@ -389,13 +426,14 @@ int usb_ethernet_init(void)
     pico_ipv4_link_add(&usb->dev, default_ip, default_nm);
     /* Set default gateway */
     pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
-    pico_usbeth->tx_busy = 0;
-    if (usbdev_start(&usbd_dev, &cdc_ecm_dev) < 0)
+    pico_usbeth->tx_status = TX_STATUS_FREE;
+    if (usbdev_start(&usbd_dev, &cdc_ecm_dev, usbdev_buffer,
+                                    sizeof(usbdev_buffer)) < 0) {
         return -EBUSY;
+    }
 
-	usbd_register_set_config_callback(usbd_dev, cdcecm_set_config);
-	usbd_register_control_callback(usbd_dev, cdcecm_control_request);
-	usbd_register_get_string_callback(usbd_dev, usb_strings);
+    usbd_register_set_config_callback(usbd_dev, cdcecm_set_config);
+    usbd_register_setup_callback(usbd_dev, cdcecm_setup_request);
 
     return 0;
 }

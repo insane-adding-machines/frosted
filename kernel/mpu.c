@@ -17,11 +17,10 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include "cm3/mpu.h"
 #include "libopencmsis/core_cm3.h"
-#include "stm32/tools.h"
 
 
 #ifdef CONFIG_MPU

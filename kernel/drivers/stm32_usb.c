@@ -31,26 +31,22 @@ static struct module mod_usb = {
     .name = "usb-otg-guest",
 };
 
-#ifdef CONFIG_DEVUSB
-uint8_t buffer[128] __attribute__((aligned(16)));
-#endif
-
 static struct usbd_device *usbd_dev = NULL;
 
 void otg_fs_isr(void)
 {
-    usbd_poll(usbd_dev);
+    usbd_poll(usbd_dev, 0);
 }
 
-
 int usbdev_start(usbd_device **_usbd_dev,
-          const struct usb_device_descriptor *dev_desc)
+          const struct usb_device_descriptor *dev_desc,
+          void *buffer, size_t buffer_size)
 {
     if (usbd_dev)
         return -EBUSY;
 
-    rcc_periph_clock_enable(RCC_OTGFS);
-    usbd_dev = usbd_init(USBD_STM32_OTG_FS, dev_desc, buffer, sizeof(buffer));
+    usbd_dev = usbd_init(USBD_STM32_OTG_FS, NULL, dev_desc, buffer,
+                            buffer_size);
     *_usbd_dev = usbd_dev;
     nvic_enable_irq(NVIC_OTG_FS_IRQ);
     return 0;

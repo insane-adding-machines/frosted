@@ -6,7 +6,6 @@
 #include <unicore-mx/usb/class/cdc.h>
 #include <unicore-mx/cm3/scb.h>
 #include <unicore-mx/cm3/nvic.h>
-#include <unicore-mx/usbd/misc/string.h>
 
 #define USB_MODE_GUEST 1
 #define USB_MODE_HOST  2
@@ -19,7 +18,8 @@ struct usb_config {
 #ifdef CONFIG_DEVUSB
     int usb_init(struct usb_config *conf);
     int usbdev_start(usbd_device **_usbd_dev,
-          const struct usb_device_descriptor *dev_desc);
+          const struct usb_device_descriptor *dev_desc,
+          void *buffer, size_t buffer_size);
 #else
 #  define usb_init(x) ((-ENOENT))
 #  define usbdev_start(x,y) ((-ENOENT))
