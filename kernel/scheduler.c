@@ -323,7 +323,7 @@ static void idling_to_running(struct task *t)
 
 static void running_to_idling(struct task *t)
 {
-    if (t->tb.pid < 1)
+    if ((t->tb.pid < 1) && (t->tb.tid <= 1))
         return;
     if (tasklist_del(&tasks_running, t) == 0)
         tasklist_add(&tasks_idling, t);
@@ -414,8 +414,6 @@ static struct task *forced_task = NULL;
 struct task *this_task(void)
 {
     struct task *t = _cur_task;
-    if (t->tb.pid == 0)
-        return NULL;
     return t;
 }
 
@@ -951,7 +949,7 @@ void task_chdir(struct fnode *f)
 }
 static __inl int in_kernel(void)
 {
-    return (_cur_task->tb.pid == 0);
+    return ((_cur_task->tb.pid == 0) && (_cur_task->tb.tid <= 1));
 }
 static __inl void *msp_read(void)
 {
@@ -1819,7 +1817,8 @@ void kernel_task_init(void)
 
 static void task_suspend_to(int newstate)
 {
-    if (_cur_task->tb.pid < 1)
+    /* Refuse to suspend on main kernel thread. */
+    if ((_cur_task->tb.pid < 1) && (_cur_task->tb.tid < 2))
         return;
     running_to_idling(_cur_task);
     if (_cur_task->tb.state == TASK_RUNNABLE ||
@@ -1999,6 +1998,17 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
     _cur_task->tb.timer_id = ktimer_add(arg1, sleepy_task_wakeup, this_task());
     task_suspend();
     return 0;
+}
+
+void kthread_sleep_ms(uint32_t ms)
+{
+    struct task *t = this_task();
+    if (!t)
+        return;
+    if (ms == 0)
+        return;
+    _cur_task->tb.timer_id = ktimer_add(ms, sleepy_task_wakeup, t);
+    task_suspend();
 }
 
 int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)

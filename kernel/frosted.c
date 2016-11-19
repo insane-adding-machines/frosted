@@ -42,12 +42,6 @@
 
 #ifdef CONFIG_PICOTCP
 # include "pico_stack.h"
-void socket_in_ini(void);
-#else
-# define pico_stack_init() do{}while(0)
-# define socket_in_init()  do{}while(0)
-# define pico_lock() do{}while(0)
-# define pico_unlock() do{}while(0)
 #endif
 
 #ifdef CONFIG_PICOTCP_LOOP
@@ -230,44 +224,36 @@ int frosted_init(void)
 
 static void ktimer_tcpip(uint32_t time, void *arg);
 
-#ifdef CONFIG_LOWPOWER
-static void tasklet_tcpip_lowpower(void *arg)
-{
 #ifdef CONFIG_PICOTCP
-    int interval;
-    pico_lock();
+static void picotcp_kthread(void *arg)
+{
+    pico_stack_init();
+    socket_in_init();
+    
+    /* Network devices initialization */
+    usb_ethernet_init();
+    pico_loop_create();
+    pico_eth_start();
+
+    while(1) {
+        pico_lock();
+        pico_stack_tick();
+        pico_unlock();
+        kthread_sleep_ms(1);
+    }
+
+    /* 
     do {
         interval = pico_stack_go();
     } while (interval == 0);
-
     if (interval < 0)
         interval = 200;
     if (!tcpip_timer_pending++)
         ktimer_add(interval, ktimer_tcpip, NULL);
-    pico_unlock();
-#endif
-}
-#endif
-
-static void tasklet_tcpip(void *arg)
-{
-#ifdef CONFIG_PICOTCP
-    pico_lock();
-    pico_stack_tick();
-    ktimer_add(1, ktimer_tcpip, NULL);
-    pico_unlock();
-#endif
+    */
 }
 
-static void ktimer_tcpip(uint32_t time, void *arg)
-{
-    tcpip_timer_pending = 0;
-#ifdef CONFIG_LOWPOWER
-    tasklet_add(tasklet_tcpip_lowpower, NULL);
-#else
-    tasklet_add(tasklet_tcpip, NULL);
 #endif
-}
 
 #ifdef CONFIG_LOWPOWER
 void frosted_tcpip_wakeup(void)
@@ -279,6 +265,13 @@ void frosted_tcpip_wakeup(void)
 
 static const char init_path[] = "/bin/init";
 static const char *const init_args[2] = { init_path, NULL };
+
+
+static void tcpip_init(uint32_t time, void *arg)
+{
+    (void)time;
+    kthread_create(picotcp_kthread, NULL);
+}
 
 void frosted_kernel(int xipfs_mounted)
 {
@@ -303,16 +296,8 @@ void frosted_kernel(int xipfs_mounted)
     } else {
         IDLE();
     }
-
-    ktimer_add(1000, ktimer_tcpip, NULL);
-
-    pico_stack_init();
-    pico_loop_create();
-    socket_in_init();
-
-    /* Network devices initialization */
-    usb_ethernet_init();
-    pico_eth_start();
+    //ktimer_add(1000, tcpip_init, NULL);
+    kthread_create(picotcp_kthread, NULL);
 
     while(1) {
         check_tasklets();
