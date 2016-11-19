@@ -266,9 +266,7 @@ static void cdcecm_data_tx_complete_cb(usbd_device *usbd_dev, uint8_t ep)
     tx_frame.off += usbd_ep_write_packet(usbd_dev, 0x81, tx_frame.base + tx_frame.off, len);
     if (tx_frame.off == tx_frame.size)
         pico_usbeth->tx_busy = 0;
-#ifdef CONFIG_LOWPOWER
     frosted_tcpip_wakeup();
-#endif
 }
 
 
@@ -320,10 +318,7 @@ static void cdcecm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
     if (len < 64) {
         /* End of frame. */
         rx_buffer->status++; /* incoming packet */
-#ifdef CONFIG_LOWPOWER
-        tasklet_add(pico_usbeth_rx, rx_buffer);
-#endif
-        //rx_buffer = NULL;
+        frosted_tcpip_wakeup();
     }
 }
 

@@ -1479,18 +1479,18 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
     return 0;
 }
 
-int kthread_create(void(routine)(void *), void *arg)
+struct task *kthread_create(void(routine)(void *), void *arg)
 {
     struct task *new = task_space_alloc(sizeof(struct task));
     void (*start_routine)(void *) = (void (*)(void *))routine;
     if (!new) {
-        return -ENOMEM;
+        return NULL;
     }
     irq_off();
     new->tb.tid = pthread_add(kernel, new);
     if (new->tb.tid < 0) {
         task_space_free(new);
-        return -ENOMEM;
+        return NULL;
     }
     new->tb.flags = TASK_FLAG_DETACHED | TASK_FLAG_CANCELABLE;
     new->tb.pid = 0;
@@ -1501,20 +1501,14 @@ int kthread_create(void(routine)(void *), void *arg)
     new->tb.cwd = NULL;
     thread_create(new, start_routine, arg);
     irq_on();
-    return new->tb.tid;
+    return new;
 }
 
-int kthread_cancel(int tid)
+int kthread_cancel(struct task *t)
 {
-    struct task *t;
-    if (tid <= 0)
-        return -1;
-    if (tid > 0xffff)
+    if (!t || (t->tb.pid != 0) || (t->tb.tid <= 1))
         return -1;
     irq_off();
-    t = pthread_get_task(0, tid);
-    if (!t)
-        return -1;
     if (tasklist_del(&tasks_running, t) == 0)
         tasklist_add(&tasks_idling, t);
     t->tb.state = TASK_OVER;

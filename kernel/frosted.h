@@ -149,8 +149,9 @@ void tasklet_add(void (*exe)(void*), void *arg);
 void check_tasklets(void);
 
 /* Kthreads */
-int kthread_create(void (routine)(void *), void *arg);
-int kthread_cancel(int tid);
+struct task *kthread_create(void (routine)(void *), void *arg);
+void kthread_sleep_ms(uint32_t ms);
+int kthread_cancel(struct task *t);
 
 /* Modules */
 struct module *MODS;

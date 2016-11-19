@@ -241,37 +241,21 @@ static void picotcp_kthread(void *arg)
         pico_unlock();
         kthread_sleep_ms(1);
     }
-
-    /* 
-    do {
-        interval = pico_stack_go();
-    } while (interval == 0);
-    if (interval < 0)
-        interval = 200;
-    if (!tcpip_timer_pending++)
-        ktimer_add(interval, ktimer_tcpip, NULL);
-    */
 }
 
-#endif
-
-#ifdef CONFIG_LOWPOWER
+struct task *picotcp = NULL;
 void frosted_tcpip_wakeup(void)
 {
-    tasklet_add(tasklet_tcpip_lowpower, NULL);
+    if (picotcp) {
+        task_preempt_all();
+        task_resume(picotcp);
+    }
 }
 #endif
 
 
 static const char init_path[] = "/bin/init";
 static const char *const init_args[2] = { init_path, NULL };
-
-
-static void tcpip_init(uint32_t time, void *arg)
-{
-    (void)time;
-    kthread_create(picotcp_kthread, NULL);
-}
 
 void frosted_kernel(int xipfs_mounted)
 {
@@ -296,15 +280,13 @@ void frosted_kernel(int xipfs_mounted)
     } else {
         IDLE();
     }
-    //ktimer_add(1000, tcpip_init, NULL);
-    kthread_create(picotcp_kthread, NULL);
+#ifdef CONFIG_PICOTCP
+    picotcp = kthread_create(picotcp_kthread, NULL);
+#endif
 
     while(1) {
         check_tasklets();
         __WFI();
-#ifdef CONFIG_LOWPOWER
-        tasklet_add(tasklet_tcpip_lowpower, NULL);
-#endif
     }
 }
 

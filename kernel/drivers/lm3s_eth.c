@@ -123,6 +123,11 @@ int pico_eth_start(void)
 
 }
 
+static void eth_isr(void)
+{
+    frosted_tcpip_wakeup();
+}
+
 /* HW initialization */
 int ethernet_init(const struct eth_config *conf)
 {
