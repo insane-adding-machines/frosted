@@ -74,7 +74,7 @@ int sem_trywait(sem_t *s)
 
 int sem_wait(sem_t *s)
 {
-    if (this_task() == 0)
+    if (this_task() == NULL)
         return sem_spinwait(s);
     if (!s)
         return -EINVAL;
@@ -202,7 +202,7 @@ int mutex_trylock(mutex_t *s)
 
 int mutex_lock(mutex_t *s)
 {
-    if (this_task() == 0)
+    if (this_task() == NULL)
         return mutex_spinlock(s);
     if (!s)
         return -EINVAL;

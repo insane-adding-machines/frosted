@@ -27,6 +27,10 @@
 #include "sys/pthread.h"
 #include "poll.h"
 
+#define __inl inline
+#define __naked __attribute__((naked))
+
+
 /* Full kernel space separation */
 #define RUN_HANDLER (0xfffffff1u)
 #define MSP "msp"
@@ -45,6 +49,8 @@ volatile struct nvic_stack_frame *tramp_nvic;
 volatile struct extra_stack_frame *extra_usr;
 
 int task_ptr_valid(const void *ptr);
+
+
 
 #ifdef CONFIG_SYSCALL_TRACE
 #define STRACE_SIZE 10
@@ -175,9 +181,6 @@ struct __attribute__((packed)) extra_stack_frame {
 #define EXTRA_FRAME_SIZE ((sizeof(struct extra_stack_frame)))
 
 static void *_top_stack;
-#define __inl inline
-#define __naked __attribute__((naked))
-
 #define TASK_FLAG_VFORK 0x01
 #define TASK_FLAG_IN_SYSCALL 0x02
 #define TASK_FLAG_SIGNALED 0x04
@@ -411,10 +414,19 @@ static void task_destroy(void *arg)
 static struct task *_cur_task = NULL;
 static struct task *forced_task = NULL;
 
+static __inl int in_kernel(void)
+{
+    return ((_cur_task->tb.pid == 0) && (_cur_task->tb.tid <= 1));
+}
+
 struct task *this_task(void)
 {
-    struct task *t = _cur_task;
-    return t;
+    /* External modules like locks.c expect this to
+     * return NULL when in kernel
+     */
+    if (in_kernel())
+        return NULL;
+    return _cur_task;
 }
 
 int task_in_syscall(void)
@@ -946,10 +958,6 @@ struct fnode *task_getcwd(void)
 void task_chdir(struct fnode *f)
 {
     _cur_task->tb.cwd = f;
-}
-static __inl int in_kernel(void)
-{
-    return ((_cur_task->tb.pid == 0) && (_cur_task->tb.tid <= 1));
 }
 static __inl void *msp_read(void)
 {
@@ -1764,8 +1772,10 @@ void __naked pend_sv_handler(void)
                              (sizeof(struct task_block) + F_MALLOC_OVERHEAD)));
         asm volatile("msr " PSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        asm volatile("msr CONTROL, %0" ::"r"(0x01));
-        asm volatile("isb");
+        if (_cur_task->tb.pid != 0)  {
+            asm volatile("msr CONTROL, %0" ::"r"(0x01));
+            asm volatile("isb");
+        }
         restore_task_context();
         runnable = RUN_USER;
     }
@@ -1847,8 +1857,6 @@ void task_preempt(void)
 void task_preempt_all(void)
 {
     struct task *t = tasks_running;
-    if (_cur_task->tb.pid == 0)
-        return;
     while (t) {
         if (t->tb.pid != 0)
             t->tb.timeslice = 0;
@@ -2449,8 +2457,10 @@ return_from_syscall:
                              (sizeof(struct task_block) + F_MALLOC_OVERHEAD)));
         asm volatile("msr " PSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        asm volatile("msr CONTROL, %0" ::"r"(0x01));
-        asm volatile("isb");
+        if (_cur_task->tb.pid != 0)  {
+            asm volatile("msr CONTROL, %0" ::"r"(0x01));
+            asm volatile("isb");
+        }
         restore_task_context();
         runnable = RUN_USER;
     }
