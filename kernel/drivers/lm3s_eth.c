@@ -32,6 +32,7 @@
 
 #define ETH_MAX_FRAME    (1524)                 /* Round to multiple of 4 bytes! */
 #define ETH_IRQ_PRIO        (1)
+#define ETH_IRQMASK_RX (1)                      /* Interrupt Mask for RXINT (bit 0) */
 
 /* FIXME: Put in board config */
 #define BOARD_PHY_RMII                          /* Whether the board uses RMII or MII */
@@ -123,8 +124,9 @@ int pico_eth_start(void)
 
 }
 
-static void eth_isr(void)
+void eth_isr(void)
 {
+    eth_irq_ack_pending(ETH_IRQMASK_RX);
     frosted_tcpip_wakeup();
 }
 
@@ -133,6 +135,8 @@ int ethernet_init(const struct eth_config *conf)
 {
     (void)conf;
     eth_init(0, ETH_CLK_50MHZ); /* does a phy_reset */
+    nvic_enable_irq(NVIC_ETH_IRQ);
+    eth_irq_enable(ETH_IRQMASK_RX);
     eth_set_mac((uint8_t*)default_mac);
     return 0;
 }
