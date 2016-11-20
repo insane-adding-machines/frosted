@@ -239,7 +239,7 @@ static void picotcp_kthread(void *arg)
         pico_lock();
         pico_stack_tick();
         pico_unlock();
-        kthread_sleep_ms(1);
+        kthread_yield();
     }
 }
 
@@ -247,8 +247,10 @@ struct task *picotcp = NULL;
 void frosted_tcpip_wakeup(void)
 {
     if (picotcp) {
+        irq_off();
         task_preempt_all();
         task_resume(picotcp);
+        irq_on();
     }
 }
 #endif

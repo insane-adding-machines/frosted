@@ -2005,12 +2005,22 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
 void kthread_sleep_ms(uint32_t ms)
 {
     struct task *t = this_task();
-    if (!t)
+    if (!t || (t->tb.pid != 0) || (t->tb.tid < 2))
         return;
     if (ms == 0)
         return;
     _cur_task->tb.timer_id = ktimer_add(ms, sleepy_task_wakeup, t);
+    irq_off();
     task_suspend();
+    irq_on();
+}
+
+void kthread_yield(void)
+{
+    struct task *t = this_task();
+    if (!t || (t->tb.pid != 0) || (t->tb.tid < 2))
+        return;
+    task_preempt();
 }
 
 int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
