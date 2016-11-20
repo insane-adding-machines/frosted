@@ -32,6 +32,8 @@ int sys_freeaddrinfo_hdlr(uint32_t arg1)
 }
 #else
 
+
+
 #define DNSQUERY_IDLE           0
 #define DNSQUERY_OK             1
 #define DNSQUERY_IN_PROGRESS    2
@@ -49,6 +51,23 @@ struct waiting_task {
     struct task *task;
     struct waiting_task *next;
 };
+
+
+static uint16_t get_port(char *service)
+{
+    int i;
+    int f = 1;
+    uint16_t p = 0;
+    if (!service)
+        return 0;
+    for (i = strlen(service) - 1; i >= 0; i--) {
+        if (service[i] < '0' || service[i] > '9')
+            return 0;
+        p += (service[i] - '0') * f;
+        f *= 10;
+    }
+    return p;
+}
 
 
 
@@ -172,7 +191,10 @@ static int pico_getaddrinfo(const char *node, const char *service, const struct 
         ai->ai_addr = f_calloc(MEM_USER, 1, sizeof(struct sockaddr_in6));
         ai->ai_addrlen = sizeof(struct sockaddr_in6);
         ai->ai_next = NULL;
+        sa6.sin6_family = AF_INET6;
+        sa6.sin6_port = short_be(get_port(service));
         memcpy(ai->ai_addr, &sa6, sizeof(struct sockaddr_in6));
+        *res = ai;
         return 0;
     }
 #endif
@@ -185,7 +207,10 @@ static int pico_getaddrinfo(const char *node, const char *service, const struct 
         ai->ai_addr = f_calloc(MEM_USER, 1, sizeof(struct sockaddr_in));
         ai->ai_addrlen = sizeof(struct sockaddr_in);
         ai->ai_next = NULL;
+        sa4.sin_family = AF_INET;
+        sa4.sin_port = short_be(get_port(service));
         memcpy(ai->ai_addr, &sa4, sizeof(struct sockaddr_in));
+        *res = ai;
         return 0;
     }
 

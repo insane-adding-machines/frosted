@@ -34,8 +34,8 @@ extern void   *pico_signal_tick;
 
 
 typedef int socklen_t;
-#define AF_INET     (PICO_PROTO_IPV4)
-#define AF_INET6    (PICO_PROTO_IPV6)
+#define AF_INET     (2)
+#define AF_INET6    (10)
 #define SOL_SOCKET (0x80)
 
 #define IP_MULTICAST_LOOP   (PICO_IP_MULTICAST_LOOP)

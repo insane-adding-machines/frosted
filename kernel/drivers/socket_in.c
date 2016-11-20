@@ -309,6 +309,7 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
     struct pico_socket *cli;
     union pico_address paddr;
     uint16_t port;
+    struct sockaddr_in *s_in = (struct sockaddr_in *)addr;
 
     l = fd_inet(fd);
     if (!l)
@@ -337,6 +338,11 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
         s->fd = task_filedesc_add(s->node);
         if (s->fd >= 0)
             task_fd_setmask(s->fd, O_RDWR);
+        if (s_in) {
+            s_in->sin_family = AF_INET;
+            s_in->sin_port = port;
+            s_in->sin_addr.s_addr = paddr.ip4.addr;
+        }
         return s->fd;
     } else {
         if (SOCK_BLOCKING(l)) {
