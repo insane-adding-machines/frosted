@@ -30,7 +30,6 @@
 #define __inl inline
 #define __naked __attribute__((naked))
 
-
 /* Full kernel space separation */
 #define RUN_HANDLER (0xfffffff1u)
 #define MSP "msp"
@@ -49,8 +48,6 @@ volatile struct nvic_stack_frame *tramp_nvic;
 volatile struct extra_stack_frame *extra_usr;
 
 int task_ptr_valid(const void *ptr);
-
-
 
 #ifdef CONFIG_SYSCALL_TRACE
 #define STRACE_SIZE 10
@@ -1772,7 +1769,7 @@ void __naked pend_sv_handler(void)
                              (sizeof(struct task_block) + F_MALLOC_OVERHEAD)));
         asm volatile("msr " PSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        if (_cur_task->tb.pid != 0)  {
+        if (_cur_task->tb.pid != 0) {
             asm volatile("msr CONTROL, %0" ::"r"(0x01));
             asm volatile("isb");
         }
@@ -2015,13 +2012,25 @@ void kthread_sleep_ms(uint32_t ms)
     irq_on();
 }
 
+__inl void task_yield(void)
+{
+    task_preempt();
+}
+
 void kthread_yield(void)
 {
     struct task *t = this_task();
     if (!t || (t->tb.pid != 0) || (t->tb.tid < 2))
         return;
-    task_preempt();
+    task_yield();
 }
+
+int sys_sched_yield_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                         uint32_t arg4, uint32_t arg5)
+{
+    task_yield();
+    return 0;
+};
 
 int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
@@ -2467,7 +2476,7 @@ return_from_syscall:
                              (sizeof(struct task_block) + F_MALLOC_OVERHEAD)));
         asm volatile("msr " PSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        if (_cur_task->tb.pid != 0)  {
+        if (_cur_task->tb.pid != 0) {
             asm volatile("msr CONTROL, %0" ::"r"(0x01));
             asm volatile("isb");
         }

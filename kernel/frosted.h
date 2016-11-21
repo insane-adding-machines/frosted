@@ -151,6 +151,7 @@ void check_tasklets(void);
 /* Kthreads */
 struct task *kthread_create(void (routine)(void *), void *arg);
 void kthread_sleep_ms(uint32_t ms);
+void task_yield(void);
 void kthread_yield(void);
 int kthread_cancel(struct task *t);
 
