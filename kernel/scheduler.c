@@ -1653,6 +1653,63 @@ int sys_pthread_self_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     return (int)thread;
 }
 
+int sys_pthread_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4,
+                                int arg5)
+{
+    mutex_t *mutex = (mutex_t *)arg1;
+    mutex = mutex_init();
+    if (!mutex)
+        return -ENOMEM;
+    return 0;
+}
+
+int sys_pthread_mutex_destroy_hdlr(int arg1, int arg2, int arg3, int arg4,
+                                   int arg5)
+{
+    mutex_t *mutex = (mutex_t *)arg1;
+    if (task_ptr_valid((void *)mutex) < 0)
+        return -EPERM;
+    mutex_destroy(mutex);
+    return 0;
+}
+
+int sys_pthread_mutex_lock_hdlr(int arg1, int arg2, int arg3, int arg4,
+                                int arg5)
+{
+    mutex_t *mutex = (mutex_t *)arg1;
+    if (!mutex) {
+        mutex = mutex_init();
+        if (!mutex)
+            return -EAGAIN;
+    } else if (task_ptr_valid((void *)mutex) < 0) {
+        return -EINVAL;
+    }
+    return mutex_lock(mutex);
+}
+
+int sys_pthread_mutex_trylock_hdlr(int arg1, int arg2, int arg3, int arg4,
+                                   int arg5)
+{
+    mutex_t *mutex = (mutex_t *)arg1;
+    if (!mutex) {
+        mutex = mutex_init();
+        if (!mutex)
+            return -EAGAIN;
+    } else if (task_ptr_valid((void *)mutex) < 0) {
+        return -EINVAL;
+    }
+    return mutex_trylock(mutex);
+}
+
+int sys_pthread_mutex_unlock_hdlr(int arg1, int arg2, int arg3, int arg4,
+                                  int arg5)
+{
+    mutex_t *mutex = (mutex_t *)arg1;
+    if (task_ptr_valid((void *)mutex) < 0)
+        return -EINVAL;
+    return mutex_unlock(mutex);
+}
+
 /********************************/
 /*         Task switching       */
 /********************************/

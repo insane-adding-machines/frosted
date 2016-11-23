@@ -96,7 +96,11 @@ syscalls = [
     ["pthread_self", 0, "sys_pthread_self_hdlr"],
     ["pthread_setcancelstate", 2, "sys_pthread_setcancelstate_hdlr"],
     ["sched_yield", 0, "sys_sched_yield_hdlr"],
-
+    ["pthread_mutex_init", 2, "sys_pthread_mutex_init_hdlr"],
+    ["pthread_mutex_destroy", 1, "sys_pthread_mutex_destroy_hdlr"],
+    ["pthread_mutex_lock", 1, "sys_pthread_mutex_lock_hdlr"],
+    ["pthread_mutex_trylock", 1, "sys_pthread_mutex_trylock_hdlr"],
+    ["pthread_mutex_unlock", 1, "sys_pthread_mutex_unlock_hdlr"],
 ]
 
    #
