@@ -1466,7 +1466,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
         task_space_free(new);
         return -ENOMEM;
     }
-    if (*attr == PTHREAD_CREATE_DETACHED)
+    if (attr && *attr == PTHREAD_CREATE_DETACHED)
         new->tb.flags = TASK_FLAG_DETACHED | TASK_FLAG_CANCELABLE;
     else
         new->tb.flags = TASK_FLAG_CANCELABLE;
