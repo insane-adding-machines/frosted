@@ -1310,10 +1310,11 @@ static struct task *pthread_get_task(int pid, int tid)
 
     for (i = 0; i < group->n_threads; i++) {
         t = group->threads[i];
-        if (t->tb.tid == tid)
+        if (t->tb.tid == tid) {
             if (t->tb.state == TASK_OVER)
                 return NULL;
-        return t;
+            return t;
+        }
     }
     return NULL;
 }
