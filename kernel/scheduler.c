@@ -1414,16 +1414,14 @@ static inline void thread_create(struct task *new,
     uint8_t *sp;
     new->tb.joiner_thread_tid = 0;
     new->tb.start = start_routine;
-    new->tb.arg = arg;
+    new->tb.arg = task_pass_args(arg);
     new->tb.next = NULL;
     tasklist_add(&tasks_running, new);
     number_of_tasks++;
-    new->tb.arg = arg;
     new->tb.timeslice = TIMESLICE(new);
     new->tb.state = TASK_RUNNABLE;
     sp = (((uint8_t *)(&new->stack)) + SCHEDULER_STACK_SIZE - NVIC_FRAME_SIZE);
     new->tb.cur_stack = &new->stack;
-    new->tb.timer_id = -1;
 
     /* Stack frame is at the end of the stack space */
     nvic_frame = (struct nvic_stack_frame *)sp;
@@ -1480,6 +1478,8 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
     new->tb.cwd = task_getcwd();
     new->tb.sigmask = _cur_task->tb.sigmask;
     new->tb.sighdlr = _cur_task->tb.sighdlr;
+    new->tb.tracer = NULL;
+    new->tb.timer_id = -1;
     thread_create(new, start_routine, arg);
     *thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
     return 0;
