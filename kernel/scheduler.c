@@ -2001,8 +2001,6 @@ void task_terminate(struct task *t)
             tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
             task_preempt();
         }
-        if (t->tb.tgroup)
-            destroy_thread_group(t->tb.tgroup, t->tb.tid);
     }
 }
 
