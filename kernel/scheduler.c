@@ -1413,7 +1413,7 @@ static inline void thread_create(struct task *new,
     uint8_t *sp;
     new->tb.joiner_thread_tid = 0;
     new->tb.start = start_routine;
-    new->tb.arg = task_pass_args(arg);
+    new->tb.arg = arg;
     new->tb.next = NULL;
     tasklist_add(&tasks_running, new);
     number_of_tasks++;
