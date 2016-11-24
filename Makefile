@@ -196,7 +196,10 @@ $(PREFIX)/lib/libpicotcp.a:
 	$(BUILD_PICO)
 	@pwd
 
-.PHONY: FORCE
+.PHONY: FORCE st-flash
+
+st-flash: image.bin
+	st-flash write image.bin 0x08000000
 
 kernel.img: kernel.elf
 	@export PADTO=`python2 -c "print ( $(KFLASHMEM_SIZE) * 1024) + int('$(FLASH_ORIGIN)', 16)"`;	\
