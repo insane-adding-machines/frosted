@@ -342,11 +342,10 @@ static void task_destroy(void *arg)
     struct task *t = arg;
     int i;
     struct filedesc_table *ft;
-    struct thread_group *grp = t->tb.tgroup;
-
+    struct thread_group *grp;
     if (!t)
         return;
-
+    grp = t->tb.tgroup;
     tasklist_del(&tasks_running, t);
     tasklist_del(&tasks_idling, t);
     if ((grp) && (--grp->active_threads > 0)) {
