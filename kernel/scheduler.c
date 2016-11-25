@@ -313,6 +313,7 @@ void task_stop(struct task *t);
 void task_continue(struct task *t);
 void task_terminate(struct task *t);
 static void task_suspend_to(int newstate);
+void task_deliver_sigchld(void *arg);
 
 static void ftable_destroy(struct task *t);
 static void idling_to_running(struct task *t)
@@ -348,7 +349,7 @@ static void task_destroy(void *arg)
     grp = t->tb.tgroup;
     tasklist_del(&tasks_running, t);
     tasklist_del(&tasks_idling, t);
-    if ((grp) && (--grp->active_threads > 0)) {
+    if ((grp) && (grp->active_threads > 0)) {
         /* if single sub-thread being destroyed, delete from
          * the group->threads array, so the position can
          * be reused.
@@ -1372,13 +1373,14 @@ static __inl int pthread_destroy_task(struct task *t)
     struct task *t_joiner;
 
     running_to_idling(t);
-    if ((t->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED) {
+    if (t->tb.tid > 1 &&
+        (t->tb.flags & TASK_FLAG_DETACHED) == TASK_FLAG_DETACHED) {
         t->tb.state = TASK_OVER;
         tasklet_add(task_destroy, t);
         return TASK_OVER;
     } else {
         t->tb.state = TASK_ZOMBIE;
-        if (t->tb.joiner_thread_tid) {
+        if (t->tb.tid > 1 && t->tb.joiner_thread_tid) {
             t_joiner = pthread_get_task(t->tb.pid, t->tb.joiner_thread_tid);
             if (t_joiner)
                 task_resume(t_joiner);
@@ -1398,6 +1400,7 @@ static void pthread_end(void)
     asm volatile("mov %0, r0" : "=r"(_cur_task->tb.exitval));
     irq_off();
     thread_state = pthread_destroy_task(_cur_task);
+    _cur_task->tb.tgroup->active_threads--;
     irq_on();
     while (1) {
         task_suspend_to(thread_state);
@@ -1526,6 +1529,11 @@ int sys_pthread_exit_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     _cur_task->tb.exitval = arg1;
     pthread_destroy_task(_cur_task);
+    /* deliver SIGCHLD if this is the last thread */
+    if (_cur_task->tb.tgroup->active_threads == 1)
+        tasklet_add(task_deliver_sigchld, ((void *)(int)_cur_task->tb.ppid));
+    else
+        _cur_task->tb.tgroup->active_threads--;
 }
 
 int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
@@ -1977,6 +1985,9 @@ static void destroy_thread_group(struct thread_group *group, uint16_t tid)
             if (th->tb.tid != tid) {
                 running_to_idling(th);
                 th->tb.state = TASK_OVER;
+                kfree(th->tb.tgroup->threads);
+                kfree(th->tb.tgroup);
+                th->tb.tgroup = NULL;
                 tasklet_add(task_destroy, th);
             }
         }
@@ -2191,6 +2202,10 @@ child_found:
         *((int *)arg2) = t->tb.exitval;
     }
     pid = t->tb.pid;
+    /* if this is a thread this is the last active one because it sent a SIGCHLD
+     */
+    if (t->tb.tgroup)
+        t->tb.tgroup->active_threads = 0;
     tasklet_add(task_destroy, t);
     t->tb.state = TASK_OVER;
     return pid;
