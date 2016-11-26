@@ -8,7 +8,6 @@
 #include <pico_device.h>
 
 static struct module mod_socket_in;
-static mutex_t *picotcp_lock = NULL;
 
 struct frosted_inet_socket {
     struct fnode *node;
@@ -23,17 +22,6 @@ struct frosted_inet_socket {
 #define SOCK_BLOCKING(s) (((s->node->flags & O_NONBLOCK) == 0))
 
 
-void pico_lock(void)
-{
-    if (picotcp_lock)
-        mutex_lock(picotcp_lock);
-}
-
-void pico_unlock(void)
-{
-    if (picotcp_lock)
-        mutex_unlock(picotcp_lock);
-}
 
 static int sock_check_fd(int fd, struct fnode **fno)
 {
@@ -861,8 +849,6 @@ void socket_in_init(void)
 
     mod_socket_in.ops.poll = sock_poll;
     mod_socket_in.ops.close = sock_close;
-
-    picotcp_lock = mutex_init();
 
     mod_socket_in.ops.socket     = sock_socket;
     mod_socket_in.ops.connect    = sock_connect;

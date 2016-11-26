@@ -1841,7 +1841,7 @@ void __naked pend_sv_handler(void)
         restore_task_context();
         runnable = RUN_USER;
     }
-    
+
     /* Set control bit for non-kernel threads */
     if (_cur_task->tb.pid != 0) {
         asm volatile("msr CONTROL, %0" ::"r"(0x01));

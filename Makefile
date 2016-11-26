@@ -182,6 +182,7 @@ OBJS-$(MACH_LM3SVIRT)+=kernel/$(BOARD)/lm3s6965evb.o
 LIB-y:=
 LIB-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a
 LIB-y+=kernel/unicore-mx/lib/libucmx_$(BOARD).a
+OBJS-$(PICOTCP)+=kernel/net/pico_lock.o
 
 CFLAGS+=$(CFLAGS-y)
 

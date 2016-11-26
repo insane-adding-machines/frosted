@@ -68,12 +68,14 @@ static uint8_t temp_rx_buf[ETH_MAX_FRAME];
 static int eth_poll(struct pico_device *dev, int loop_score)
 {
     uint32_t rx_len = 0;
-    while (eth_rx(temp_rx_buf, &rx_len, ETH_MAX_FRAME))
+    pico_lock();
+    while (eth_rx(temp_rx_buf, &rx_len, ETH_MAX_FRAME) && (loop_score > 0))
     {
         pico_stack_recv(dev, temp_rx_buf, rx_len);
         rx_len = 0;
         loop_score--;
     }
+    pico_unlock();
     return loop_score;
 }
 

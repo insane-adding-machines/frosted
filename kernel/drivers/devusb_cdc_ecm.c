@@ -277,7 +277,9 @@ static void pico_usbeth_rx(void *arg)
         //pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size, rx_buffer_free);
         //cur_rxbuf->status++;
         // Alternate settings
+        pico_lock();
         pico_stack_recv(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size);
+        pico_unlock();
         cur_rxbuf->status = RXBUF_FREE;
     } else {
         tasklet_add(pico_usbeth_rx, cur_rxbuf);

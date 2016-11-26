@@ -334,6 +334,9 @@ int sysfs_register(char *name, char *dir,
 void sysfs_lock(void);
 void sysfs_unlock(void);
 void frosted_tcpip_wakeup(void);
+void pico_lock_init(void);
+void pico_lock(void);
+void pico_unlock(void);
 
 #endif /* BSP_INCLUDED_H */
 

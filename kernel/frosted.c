@@ -229,6 +229,7 @@ static void picotcp_kthread(void *arg)
 {
     pico_stack_init();
     socket_in_init();
+    pico_lock_init();
     
     /* Network devices initialization */
     usb_ethernet_init();

@@ -125,12 +125,14 @@ static int stm_eth_poll(struct pico_device *dev, int loop_score)
 {
     uint32_t rx_len = 0;
     /* add eth_rx_peek, then dynamically alloc + zerocopy */
-    while (loop_score && eth_rx(temp_rx_buf, &rx_len, ETH_MAX_FRAME))
+    pico_lock();
+    while ((loop_score > 0) && eth_rx(temp_rx_buf, &rx_len, ETH_MAX_FRAME))
     {
         pico_stack_recv(dev, temp_rx_buf, rx_len);
         rx_len = 0;
         loop_score--;
     }
+    pico_lock();
     return loop_score;
 }
 
