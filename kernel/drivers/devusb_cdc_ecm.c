@@ -269,23 +269,6 @@ static void cdcecm_data_tx_complete_cb(usbd_device *usbd_dev, uint8_t ep)
     frosted_tcpip_wakeup();
 }
 
-
-static void pico_usbeth_rx(void *arg)
-{
-    struct usbeth_rx_buffer *cur_rxbuf = (struct usbeth_rx_buffer *)arg;
-    if (cur_rxbuf->status == RXBUF_INCOMING) {
-        //pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size, rx_buffer_free);
-        //cur_rxbuf->status++;
-        // Alternate settings
-        pico_lock();
-        pico_stack_recv(&pico_usbeth->dev, cur_rxbuf->buf, cur_rxbuf->size);
-        pico_unlock();
-        cur_rxbuf->status = RXBUF_FREE;
-    } else {
-        tasklet_add(pico_usbeth_rx, cur_rxbuf);
-    }
-}
-
 static void cdcecm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 {
     static int notified_link_up = 0;
@@ -393,9 +376,7 @@ int usb_ethernet_init(void)
 
     usb->dev.overhead = 0;
     usb->dev.send = pico_usbeth_send;
-#ifndef CONFIG_LOWPOWER
     usb->dev.poll = pico_usbeth_poll;
-#endif
     usb->dev.destroy = pico_usbeth_destroy;
     if (pico_device_init(&usb->dev,"usb0", mac_addr) < 0) {
         kfree(usb_buf);
