@@ -1831,8 +1831,6 @@ void __naked pend_sv_handler(void)
     if (in_kernel()) {
         asm volatile("msr " MSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        asm volatile("msr CONTROL, %0" ::"r"(0x00));
-        asm volatile("isb");
         restore_kernel_context();
         runnable = RUN_KERNEL;
     } else {
@@ -1840,13 +1838,17 @@ void __naked pend_sv_handler(void)
                              (sizeof(struct task_block) + F_MALLOC_OVERHEAD)));
         asm volatile("msr " PSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        if (_cur_task->tb.pid != 0) {
-            asm volatile("msr CONTROL, %0" ::"r"(0x01));
-            asm volatile("isb");
-        }
         restore_task_context();
         runnable = RUN_USER;
     }
+    
+    /* Set control bit for non-kernel threads */
+    if (_cur_task->tb.pid != 0) {
+        asm volatile("msr CONTROL, %0" ::"r"(0x01));
+    } else {
+        asm volatile("msr CONTROL, %0" ::"r"(0x00));
+    }
+    asm volatile("isb");
 
     /* Set return value selected by the restore procedure;
        RUN_KERNEL/RUN_USER are special values which inform
@@ -2543,8 +2545,6 @@ return_from_syscall:
     if (in_kernel()) {
         asm volatile("msr " MSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        asm volatile("msr CONTROL, %0" ::"r"(0x00));
-        asm volatile("isb");
         restore_kernel_context();
         runnable = RUN_KERNEL;
     } else {
@@ -2552,13 +2552,17 @@ return_from_syscall:
                              (sizeof(struct task_block) + F_MALLOC_OVERHEAD)));
         asm volatile("msr " PSP ", %0" ::"r"(_cur_task->tb.sp));
         asm volatile("isb");
-        if (_cur_task->tb.pid != 0) {
-            asm volatile("msr CONTROL, %0" ::"r"(0x01));
-            asm volatile("isb");
-        }
         restore_task_context();
         runnable = RUN_USER;
     }
+
+    /* Set control bit for non-kernel threads */
+    if (_cur_task->tb.pid != 0) {
+        asm volatile("msr CONTROL, %0" ::"r"(0x01));
+    } else {
+        asm volatile("msr CONTROL, %0" ::"r"(0x00));
+    }
+    asm volatile("isb");
 
     /* Set return value selected by the restore procedure */
     asm volatile("mov lr, %0" ::"r"(runnable));
