@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 
-printf "\nSetting up Frosted qemu env...";
+
+if [[ $- != *i* ]]; then
+    echo "You should dot me in" >&2;
+    exit 1;
+fi
+
+printf "\nSetting up Frosted qemu env...\n\n";
 path="$(pwd)";
 
 cd ~;
@@ -8,20 +14,26 @@ cd ~;
 mkdir frosted-qemu
 cd frosted-qemu;
 
-sudo apt-get install build-essential cmake libusb-1.0 libusb-1.0.0-dev git screen
+sudo apt-get install build-essential cmake libusb-1.0 libusb-1.0.0-dev git screen;
 
 wget http://archive.trexotech.com:8081/arm-frosted-eabi-latest.tar.bz2;
 tar xjf arm-frosted-eabi-latest.tar.bz2;
 export PATH="$(pwd)/arm-frosted-eabi/bin:$PATH";
 
-sudo apt-get build-dep qemu
-git clone git://github.com/insane-adding-machines/qemu.git
-cd qemu
-./configure --prefix="$(pwd)/../qemu-bin" --target-list=arm-softmmu
-make
-make install
-cd ..
-export PATH="$(pwd)/qemu-bin/bin:$PATH"
+sudo apt-get build-dep qemu;
+git clone git://github.com/insane-adding-machines/qemu.git;
+cd qemu;
+./configure --prefix="$(pwd)/../qemu-bin" --target-list=arm-softmmu;
+make;
+sudo make install;
+sudo chmod u+s "$(pwd)/../qemu-bin/libexec/qemu-bridge-helper";
+
+cd ..;
+export PATH="$(pwd)/qemu-bin/bin:$PATH";
+
+sudo mkdir qemu-bin/etc;
+sudo mkdir qemu-bin/etc/qemu;
+printf "allow br0\n" | sudo tee qemu-bin/etc/qemu/bridge.conf;
 
 cd "$path";
 
@@ -30,6 +42,10 @@ git submodule update;
 cd frosted-userland;
 git submodule init;
 git submodule update;
+cd ..;
 
+printf "\nFrosted qemu env setup in ~/frosted-qemu\n\n";
 
-printf " OK!\n\nFrosted qemu env setup in ~/frosted-qemu\n\n";
+printf "For adding the env path autmatically, update your PATH with:\n";
+printf "$HOME/frosted-qemu/arm-frosted-eabi/bin\n";
+printf "$HOME/frosted-qemu/qemu-bin\n\n";
