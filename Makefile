@@ -240,11 +240,17 @@ qemu: image.bin
 
 qemu2: qemu
 
-qemunetdbg:
-	qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333 -net nic,vlan=0 -net tap,helper=/home/brabo/frosted-qemu/qemu-bin/libexec/qemu-bridge-helper
-
 qemunet:
-	qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -net nic,vlan=0 -net tap,helper=/home/brabo/frosted-qemu/qemu-bin/libexec/qemu-bridge-helper
+	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
+
+qemunetdbg:
+	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333 -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
+
+qemubridgedbg:
+	qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333 -net nic,vlan=0 -net tap,helper=$(HOME)/frosted-qemu/qemu-bin/libexec/qemu-bridge-helper
+
+qemubridge:
+	qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -net nic,vlan=0 -net tap,helper=$(HOME)/frosted-qemu/qemu-bin/libexec/qemu-bridge-helper
 
 menuconfig:
 	@$(MAKE) -C kconfig/ menuconfig -f Makefile.frosted
