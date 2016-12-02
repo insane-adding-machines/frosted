@@ -225,6 +225,7 @@ static void pico_eth_start_deferred(uint32_t t, void *arg)
     const char nmstr[] = CONFIG_ETH_DEFAULT_NM;
     const char gwstr[] = CONFIG_ETH_DEFAULT_GW;
     struct pico_ip4 default_ip, default_nm, default_gw, zero;
+    zero.addr = 0U;
 
     (void)arg;
     (void)t;
