@@ -404,6 +404,7 @@ int usb_ethernet_init(void)
     const char ipstr[] = CONFIG_USB_DEFAULT_IP;
     const char nmstr[] = CONFIG_USB_DEFAULT_NM;
     const char gwstr[] = CONFIG_USB_DEFAULT_GW;
+    zero.addr = 0U;
 
 
     pico_string_to_ipv4(ipstr, &default_ip.addr);

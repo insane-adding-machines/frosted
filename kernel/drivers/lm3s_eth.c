@@ -94,7 +94,7 @@ int pico_eth_start(void)
     const char gwstr[] = CONFIG_ETH_DEFAULT_GW;
     struct pico_ip4 default_ip, default_nm, default_gw, zero;
 
-
+    zero.addr = 0U;
     pico_string_to_ipv4(ipstr, &default_ip.addr);
     pico_string_to_ipv4(nmstr, &default_nm.addr);
     pico_string_to_ipv4(gwstr, &default_gw.addr);
