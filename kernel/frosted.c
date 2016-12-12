@@ -249,8 +249,7 @@ void frosted_tcpip_wakeup(void)
 {
     if (picotcp) {
         irq_off();
-        task_preempt_all();
-        task_resume(picotcp);
+        task_wakeup(picotcp);
         irq_on();
     }
 }

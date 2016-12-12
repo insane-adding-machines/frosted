@@ -104,6 +104,7 @@ uint16_t this_task_getpid(void);
 /* Resume target task */
 void task_resume(struct task *t);
 void task_resume_lock(struct task *t);
+void task_wakeup(struct task *t);
 
 
 /* Functions targeting the Current (Running) task

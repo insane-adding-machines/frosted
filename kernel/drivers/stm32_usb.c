@@ -20,11 +20,12 @@
 
 #include "frosted.h"
 #include "device.h"
+#include "usb.h"
+#include "gpio.h"
 #include <unicore-mx/cm3/nvic.h>
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/usbd/usbd.h>
-#include "usb.h"
-#include "gpio.h"
+
 
 static struct module mod_usb = {
     .family = FAMILY_DEV,
@@ -54,7 +55,6 @@ int usbdev_start(usbd_device **_usbd_dev,
 
 int usb_init(struct usb_config *conf)
 {
-    int i;
     gpio_create(&mod_usb, &conf->pio_vbus);
     gpio_create(&mod_usb, &conf->pio_dm);
     gpio_create(&mod_usb, &conf->pio_dp);

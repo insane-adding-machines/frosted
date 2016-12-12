@@ -278,6 +278,7 @@ static void bulk_out_callback(usbd_device *dev,
             usbd_urb_id urb_id)
 {
     static int notified_link_up = 0;
+    static int fail_count = 0;
     (void)urb_id;
 
     if (status != USBD_SUCCESS) {
@@ -289,8 +290,12 @@ static void bulk_out_callback(usbd_device *dev,
         notify_link_up();
     }
 
-    rx_buffer->size = transfer->transferred;
-    rx_buffer->status = RX_STATUS_INCOMING;
+    if (rx_buffer->status == RX_STATUS_FREE) {
+        rx_buffer->size = transfer->transferred;
+        rx_buffer->status = RX_STATUS_INCOMING;
+    } else {
+        fail_count++;
+    }
     frosted_tcpip_wakeup();
 }
 
@@ -348,14 +353,7 @@ static void bulk_in_callback(usbd_device *dev,
 static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
 {
     struct pico_dev_usbeth *usbeth = (struct pico_dev_usbeth *) dev;
-
-    if (pico_usbeth->tx_status == TX_STATUS_COMPLETE) {
-        pico_usbeth->tx_status = TX_STATUS_FREE;
-        return len;
-    } else if (pico_usbeth->tx_status == TX_STATUS_PENDING) {
-        return 0;
-    }
-
+    static int fail_count = 0;
     const usbd_transfer transfer = {
         .ep_type = USBD_EP_BULK,
         .ep_addr = 0x81,
@@ -368,6 +366,13 @@ static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
         .callback = bulk_in_callback
     };
 
+    if (pico_usbeth->tx_status == TX_STATUS_COMPLETE) {
+        pico_usbeth->tx_status = TX_STATUS_FREE;
+        return len;
+    } else if (pico_usbeth->tx_status == TX_STATUS_PENDING) {
+        fail_count++;
+        return 0;
+    }
     usbd_transfer_submit(usbd_dev, &transfer);
     pico_usbeth->tx_status = TX_STATUS_PENDING;
     return 0;

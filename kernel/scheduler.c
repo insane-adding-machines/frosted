@@ -1935,6 +1935,7 @@ void task_preempt_all(void)
     schedule();
 }
 
+
 static void task_resume_real(struct task *t, int lock)
 {
     if ((t) && (t->tb.state == TASK_WAITING)) {
@@ -1951,10 +1952,19 @@ void task_resume_lock(struct task *t)
 {
     task_resume_real(t, 1);
 }
+
 void task_resume(struct task *t)
 {
     task_resume_real(t, 0);
 }
+
+void task_wakeup(struct task *t)
+{
+    task_preempt_all();
+    t->tb.timeslice = TIMESLICE(t);
+    task_resume(t);
+}
+
 void task_continue(struct task *t)
 {
     if ((t) && (t->tb.state == TASK_STOPPED)) {
