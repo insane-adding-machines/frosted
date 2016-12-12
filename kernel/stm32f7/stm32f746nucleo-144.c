@@ -255,6 +255,7 @@ static struct eth_config eth_config = {
         .mode=GPIO_MODE_OUTPUT,
         .optype=GPIO_OTYPE_PP,
     },
+    .has_phy_reset = 1
 };
 
 static struct usb_config usb_guest = {

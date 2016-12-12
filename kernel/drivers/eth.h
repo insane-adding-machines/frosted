@@ -7,6 +7,7 @@ struct eth_config {
     const struct gpio_config *pio_mii;
     const unsigned int n_pio_mii;
     const struct gpio_config pio_phy_reset;
+    const int has_phy_reset;
 };
 
 #ifdef CONFIG_DEVETH

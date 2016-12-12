@@ -209,7 +209,8 @@ struct gpio_config stm32eth_mii_pins[] = {
 static struct eth_config eth_config = {
     .pio_mii = stm32eth_mii_pins,
     .n_pio_mii = sizeof(stm32eth_mii_pins)/sizeof(struct gpio_config),
-    .pio_phy_reset = NULL,
+    .pio_phy_reset = {},
+    .has_phy_reset = 0
 };
 
 static struct usb_config usb_guest = {

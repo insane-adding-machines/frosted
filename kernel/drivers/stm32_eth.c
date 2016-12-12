@@ -289,14 +289,16 @@ static void ethernet_init_deferred(uint32_t t, void *arg)
     unsigned int i;
     (void)t;
     struct eth_config *conf = (struct eth_config *)arg;
-    /* Create PHY reset pin */
-    gpio_create(&mod_eth, &conf->pio_phy_reset);
     /* Create MII pins */
     for (i = 0; i < conf->n_pio_mii; i++)
         gpio_create(&mod_eth, &(conf->pio_mii[i]));
-    /* Reset PHY */
-    gpio_clear(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
-    gpio_set(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
+    /* Create PHY reset pin, if needed */
+    if (conf->has_phy_reset) {
+        gpio_create(&mod_eth, &conf->pio_phy_reset);
+        /* Reset PHY */
+        gpio_clear(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
+        gpio_set(conf->pio_phy_reset.base, conf->pio_phy_reset.pin);
+    }
 }
 
 int pico_eth_start(void) {

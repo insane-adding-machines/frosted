@@ -140,6 +140,7 @@ static const struct eth_config eth_config = {
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
+    .has_phy_reset = 1
 };
 
 
