@@ -378,7 +378,6 @@ static int pico_usbeth_poll(struct pico_device *dev, int loop_score)
 {
     if (rx_buffer->status == RX_STATUS_INCOMING) {
         pico_stack_recv(&pico_usbeth->dev, rx_buffer->buf, rx_buffer->size);
-        rx_buffer->status = RX_STATUS_FREE;
         bulk_out_submit();
         loop_score--;
     }
