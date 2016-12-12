@@ -38,7 +38,7 @@ struct pico_dev_usbeth {
 };
 
 struct usbeth_rx_buffer {
-    enum {
+    enum usbeth_rx_buffer_status {
         RX_STATUS_FREE, /**< Buffer is free */
         RX_STATUS_INCOMING, /**< We have unprocessed buffer */
         RX_STATUS_TCPIP /** PICO TCP is processing */
@@ -289,10 +289,9 @@ static void bulk_out_callback(usbd_device *dev,
         notify_link_up();
     }
 
-    /* Full frame. */
+    memcpy(rx_buffer->buf + rx_buffer->size, transfer->buffer, transfer->transferred);
     rx_buffer->size = transfer->transferred;
     rx_buffer->status = RX_STATUS_INCOMING;
-
     frosted_tcpip_wakeup();
 }
 
@@ -368,7 +367,7 @@ static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
         .length = len,
         .flags = USBD_FLAG_NONE,
         .timeout = USBD_TIMEOUT_NEVER,
-        .callback = NULL
+        .callback = bulk_in_callback
     };
 
     usbd_transfer_submit(usbd_dev, &transfer);
@@ -379,9 +378,9 @@ static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
 static int pico_usbeth_poll(struct pico_device *dev, int loop_score)
 {
     if (rx_buffer->status == RX_STATUS_INCOMING) {
-        pico_stack_recv_zerocopy_ext_buffer_notify(&pico_usbeth->dev,
-                        rx_buffer->buf, rx_buffer->size, bulk_out_submit);
-        rx_buffer->status = RX_STATUS_TCPIP;
+        pico_stack_recv(&pico_usbeth->dev, rx_buffer->buf, rx_buffer->size);
+        rx_buffer->status = RX_STATUS_FREE;
+        bulk_out_submit(NULL);
         loop_score--;
     }
     return loop_score;
