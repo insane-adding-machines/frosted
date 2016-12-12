@@ -289,7 +289,6 @@ static void bulk_out_callback(usbd_device *dev,
         notify_link_up();
     }
 
-    memcpy(rx_buffer->buf + rx_buffer->size, transfer->buffer, transfer->transferred);
     rx_buffer->size = transfer->transferred;
     rx_buffer->status = RX_STATUS_INCOMING;
     frosted_tcpip_wakeup();
