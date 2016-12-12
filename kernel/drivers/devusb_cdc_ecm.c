@@ -295,9 +295,8 @@ static void bulk_out_callback(usbd_device *dev,
     frosted_tcpip_wakeup();
 }
 
-static void bulk_out_submit(uint8_t *arg)
+static void bulk_out_submit(void)
 {
-    (void) arg;
     rx_buffer->size = 0;
     rx_buffer->status = RX_STATUS_FREE;
 
@@ -329,7 +328,7 @@ static void cdcecm_set_config(usbd_device *usbd_dev,
         rx_buffer = kalloc(sizeof(*rx_buffer));
     }
 
-    bulk_out_submit(NULL);
+    bulk_out_submit();
 }
 
 /**
@@ -380,7 +379,7 @@ static int pico_usbeth_poll(struct pico_device *dev, int loop_score)
     if (rx_buffer->status == RX_STATUS_INCOMING) {
         pico_stack_recv(&pico_usbeth->dev, rx_buffer->buf, rx_buffer->size);
         rx_buffer->status = RX_STATUS_FREE;
-        bulk_out_submit(NULL);
+        bulk_out_submit();
         loop_score--;
     }
     return loop_score;
