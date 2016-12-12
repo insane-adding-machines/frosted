@@ -305,7 +305,7 @@ static void bulk_out_submit(void)
         .ep_size = 64,
         .ep_interval = USBD_INTERVAL_NA,
         .buffer = rx_buffer->buf,
-        .length = sizeof(rx_buffer->buf),
+        .length = USBETH_MAX_FRAME,
         .flags = USBD_FLAG_SHORT_PACKET,
         .timeout = USBD_TIMEOUT_NEVER,
         .callback = bulk_out_callback
