@@ -74,7 +74,12 @@ int fpb_setbrk(int pid, void *bpoint, int n)
         return -1;
     bkpt[n].pid = pid;
     bkpt[n].b = bpoint;
-    FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_BOTH;
+    if (bpoint & 0x01)
+        return -1;
+    if (bpoint & 0x02) 
+        FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_HI; 
+    else
+        FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_LO; 
     return n;
 }
 
