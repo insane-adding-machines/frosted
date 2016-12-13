@@ -42,6 +42,7 @@ tags
 #kconfig
 kconfig/.config
 kconfig/.config.old
+kconfig/.depend
 
 #generated files
 apps/apps.ld
