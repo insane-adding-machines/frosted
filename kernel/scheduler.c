@@ -25,6 +25,7 @@
 #include "sys/wait.h"
 #include "vfs.h"
 #include "sys/pthread.h"
+#include "fpb.h"
 #include "poll.h"
 
 #include "sys/user.h"
@@ -316,6 +317,7 @@ void task_continue(struct task *t);
 void task_terminate(struct task *t);
 static void task_suspend_to(int newstate);
 void task_deliver_sigchld(void *arg);
+void task_deliver_sigtrap(void *arg);
 
 static void ftable_destroy(struct task *t);
 static void idling_to_running(struct task *t)
@@ -699,7 +701,7 @@ static int catch_signal(struct task *t, int signo, sigset_t orig_mask)
 
     /* If process is being traced, deliver SIGTRAP to tracer */
     if (t->tb.tracer != NULL) {
-        catch_signal(t->tb.tracer, SIGTRAP, t->tb.tracer->tb.sigmask);
+        tasklet_add(task_deliver_sigtrap,(void *)t->tb.tracer->tb.pid);
     }
 
     /* Reset signal, if pending, as it's going to be handled. */
@@ -714,7 +716,7 @@ static int catch_signal(struct task *t, int signo, sigset_t orig_mask)
 
     if ((h) && (signo != SIGKILL) && (signo != SIGSEGV)) {
         /* Handler is present */
-        if (h->hdlr == SIG_IGN)
+        if ((h->hdlr == NULL) || (h->hdlr == SIG_IGN))
             return 0;
 
         if (_cur_task == t) {
@@ -1909,6 +1911,7 @@ void task_suspend(void)
 {
     return task_suspend_to(TASK_WAITING);
 }
+
 void task_stop(struct task *t)
 {
     if (!t)
@@ -1918,6 +1921,14 @@ void task_stop(struct task *t)
     }
     t->tb.state = TASK_STOPPED;
     schedule();
+}
+
+void task_hit_breakpoint(struct task *t)
+{
+    if (t->tb.tracer) {
+        task_stop(t);
+        task_resume(t->tb.tracer);
+    }
 }
 
 void task_preempt(void)
@@ -1987,6 +1998,12 @@ void task_deliver_sigchld(void *arg)
 {
     int pid = (int)arg;
     task_kill(pid, SIGCHLD);
+}
+
+void task_deliver_sigtrap(void *arg)
+{
+    int pid = (int)arg;
+    task_kill(pid, SIGTRAP);
 }
 
 static void destroy_thread_group(struct thread_group *group, uint16_t tid)
@@ -2192,7 +2209,11 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
             return -ESRCH;
         if (t->tb.state == TASK_ZOMBIE)
             goto child_found;
-
+        if (t->tb.state == TASK_STOPPED)
+        {
+            /* TODO: set status */
+            return pid;
+        }
         if (options & WNOHANG)
             return 0;
         task_suspend();
@@ -2202,6 +2223,12 @@ int sys_waitpid_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     /* wait for all (pid = -1) */
     t = tasks_idling;
     while (t) {
+
+        if ((t->tb.state == TASK_STOPPED) && (t->tb.ppid == _cur_task->tb.pid))
+        {
+            /* TODO: set status */
+            return pid;
+        }
         if ((t->tb.state == TASK_ZOMBIE) && (t->tb.ppid == _cur_task->tb.pid))
             goto child_found;
         t = t->tb.next;
@@ -2297,6 +2324,14 @@ int ptrace_pokeuser(struct task *t, uint32_t addr, uint32_t data)
         cur_nvic[4] = data;
         return 0;
     }
+
+    /* Breakpoints */
+    if ((pos > 56) && (pos < 64)) {
+        pos -= 56;
+        if (data == 0)
+            return fpb_delbrk(pos);
+        return fpb_setbrk(t->tb.pid, (void *)data, pos);
+    }
     return -1;
 }
 
@@ -2319,9 +2354,6 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
     void *addr = (void *)arg3;
     void *data = (void *)arg4;
     struct task *tracee = NULL;
-
-    if (addr && task_ptr_valid(addr))
-        return -1;
 
     /* Prepare tracee based on pid */
     tracee = tasklist_get(&tasks_idling, pid);
@@ -2378,8 +2410,9 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         if (!tracee)
             return -1;
         tracee->tb.tracer = _cur_task;
-        if (request == PTRACE_ATTACH)
-            task_kill(pid, SIGSTOP);
+        if (request == PTRACE_ATTACH) {
+            task_stop(tracee);
+        }
         return 0;
 
     case PTRACE_DETACH:

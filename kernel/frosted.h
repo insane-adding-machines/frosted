@@ -106,6 +106,9 @@ void task_resume(struct task *t);
 void task_resume_lock(struct task *t);
 void task_wakeup(struct task *t);
 
+/* Called by FPB when a task hits a breakpoint */
+void task_hit_breakpoint(struct task *t);
+
 
 /* Functions targeting the Current (Running) task
  * */

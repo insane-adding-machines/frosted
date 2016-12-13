@@ -1,9 +1,26 @@
-#include "frosted.h"
-#include <libopencmsis/core_cm3.h>
-#define __ARM_ARCH_7M__ 1
-#define __ARM_ARCH_7EM__ 1
-#include <cm3/fpb.h>
+/*
+ *      This file is part of frosted.
+ *
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors: Daniele Lacamera
+ *
+ */
 
+
+#include "fpb.h"
+#include <libopencmsis/core_cm3.h>
 #define FPB_NUM_CODE2_OFF   12
 #define FPB_NUM_LIT_MASK_OFF 8
 #define FPB_NUM_CODE1_OFF    4
@@ -26,36 +43,53 @@
 #define FPB_REPLACE_BOTH (3 << 30)
 
 
+struct bkpt {
+    int pid;
+    void *b;
+};
 
+struct bkpt bkpt[8];
 
-
-#if 0
 void debug_monitor_handler(void)
 {
+    int pid;
     kprintf("TRAP!\r\n");
-    jiffies+=10000000;
-//    FPB_COMP[0] = 0;
     /* Exit debug state */
+    task_hit_breakpoint(this_task());
     DBG_DHCSR = DBG_DHCSR_KEY;
-
 }
 
-int fpb_setbrk(void *bpoint)
+int fpb_setbrk(int pid, void *bpoint, int n)
 {
-    FPB_COMP[0] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_BOTH;
+    int i;
+    if (n < 0) {
+        for (i = 0; i < 8; i++) {
+            if (bkpt[i].pid == 0) {
+                n = i;
+                break;
+            }
+        }
+    }
+    if (n < 0)
+        return -1;
+    bkpt[n].pid = pid;
+    bkpt[n].b = bpoint;
+    FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_BOTH;
+    return n;
 }
-#endif
+
+int fpb_delbrk(int n)
+{
+    bkpt[n].pid = 0;
+    FPB_COMP[n] = 0;
+}
 
 
 int fpb_init(void)
 {
-#if 0
     /* Enable Debug Monitor Exception */
     DBG_DEMCR = DBG_DEMCR_MON_EN;
     FPB_CTRL = FPB_CTRL_ENABLE | FPB_CTRL_KEY | (1 << FPB_NUM_CODE2_OFF) | (2 << FPB_NUM_LIT_MASK_OFF);
     nvic_enable_irq(DEBUG_MONITOR_IRQ);
-
-    fpb_setbrk(fno_unlink);
-#endif
 }
 
