@@ -193,6 +193,11 @@ menu "Platform Selection"
     bool "Enable external SDRAM"
     default y
 
+    config STM32F4_SDRAM
+    depends on ARCH_STM32F4
+    bool "Enable external SDRAM"
+    default y
+
 endmenu
 
 
@@ -531,8 +536,8 @@ menu "Device Drivers"
        endif
 
        menuconfig DEVFRAMEBUFFER
-           depends on (ARCH_STM32F7)
-           bool "STM32F7 Framebuffer driver"
+           depends on (ARCH_STM32F7 || ARCH_STM32F4)
+           bool "STM32 Framebuffer driver"
            default y
 
        config DEVFBCON
