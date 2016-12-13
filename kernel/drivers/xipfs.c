@@ -115,7 +115,7 @@ static void *xipfs_exe(struct fnode *fno, void *arg)
         return NULL;
 
     /* note: xip->init is bFLT load address! */
-    if (bflt_load((uint8_t*)xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, (uint32_t *)&vfsi->pic))
+    if (bflt_load((uint8_t*)xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, (uint32_t *)&vfsi->pic, &vfsi->text_size, &vfsi->data_size))
     {
         kprintf("xipfs: bFLT loading failed.\n");
         return NULL;

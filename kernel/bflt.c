@@ -212,11 +212,11 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long da
  */
 
 int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_bss,
-              void ** entry_point, size_t *stack_size, uint32_t *got_loc)
+              void ** entry_point, size_t *stack_size, uint32_t *got_loc, uint32_t *text_len, uint32_t *data_len)
 {
     struct flat_hdr hdr;
     void * mem = NULL;
-    uint32_t text_len, data_len, bss_len, stack_len, flags, alloc_len, entry_point_offset;
+    uint32_t bss_len, stack_len, flags, alloc_len, entry_point_offset;
     uint8_t *relocs_src, *text_src, *data_dest;
     uint8_t *address_zero = from;
     int32_t relocs, rev;
@@ -234,8 +234,8 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     }
 
     /* Calculate all the sizes */
-    text_len            = long_be(hdr.data_start) - sizeof(struct flat_hdr);
-    data_len            = long_be(hdr.data_end) - long_be(hdr.data_start);
+    *text_len           = long_be(hdr.data_start) - sizeof(struct flat_hdr);
+    *data_len           = long_be(hdr.data_end) - long_be(hdr.data_start);
     bss_len             = long_be(hdr.bss_end) - long_be(hdr.data_end);
     stack_len           = long_be(hdr.stack_size);
     relocs              = long_be(hdr.reloc_count);
@@ -255,7 +255,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
         alloc_len = relocs * sizeof(uint32_t);
     else
         alloc_len = bss_len;
-    alloc_len += data_len;
+    alloc_len += *data_len;
 
 
     /*
@@ -271,12 +271,12 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     if (flags & FLAT_FLAG_GOTPIC) {
         uint8_t  *mem, *copy_src;
         uint32_t data_offset = 0;
-        uint32_t copy_len = data_len;
+        uint32_t copy_len = *data_len;
 
         if (flags & FLAT_FLAG_RAM) {
-            alloc_len += text_len;
-            copy_len += text_len;
-            data_offset = text_len;
+            alloc_len += *text_len;
+            copy_len += *text_len;
+            data_offset = *text_len;
         }
 
         /* Allocate enough memory for .data, .bss and possibly .text */
@@ -293,19 +293,19 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
             copy_src = text_src;
         } else {
             *reloc_text = text_src;
-            copy_src = text_src + text_len;
+            copy_src = text_src + *text_len;
         }
         /* .data is always relocated */
         data_dest = mem + data_offset;
 
         *entry_point = *reloc_text + entry_point_offset;
         *reloc_data = data_dest;
-        *reloc_bss = data_dest + data_len;
+        *reloc_bss = data_dest + *data_len;
 
         /* copy segments .data segment and possibly .text */
         memcpy(mem, copy_src, copy_len);
         /* zero-init .bss */
-        memset(data_dest + data_len, 0, bss_len);
+        memset(data_dest + *data_len, 0, bss_len);
     } else {
         /* GZIP or FULL RAM bFLTs not supported for now */
         kprintf("bFLT: Only GOTPIC bFLT binaries are supported\r\n");

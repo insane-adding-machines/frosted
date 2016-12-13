@@ -10,6 +10,8 @@ struct vfs_info {
     int pic;
     void (*init)(void *);
     void * allocated;
+    uint32_t text_size;
+    uint32_t data_size;
 };
 
 

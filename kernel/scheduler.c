@@ -27,6 +27,8 @@
 #include "sys/pthread.h"
 #include "poll.h"
 
+#include "sys/user.h"
+
 #define __inl inline
 #define __naked __attribute__((naked))
 
@@ -2242,6 +2244,71 @@ enum __ptrace_request {
     PTRACE_SEIZE = 0x4206
 };
 
+int ptrace_getregs(struct task *t, struct user *u)
+{
+    struct extra_stack_frame *cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
+    struct nvic_stack_frame *cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
+    memcpy(&u->regs[0], cur_nvic, (4 * sizeof(uint32_t))); /* r0 - r3 */
+    memcpy(&u->regs[4], cur_extra, (8 * sizeof(uint32_t))); /* r4 - r11 */
+    u->regs[12] = cur_nvic->r12;
+    u->regs[13] = (uint32_t)(t->tb.sp);
+    u->regs[14] = cur_nvic->lr;
+    u->regs[15] = cur_nvic->pc;
+    u->regs[16] = cur_nvic->psr;
+    if (t->tb.vfsi) {
+        u->tsize = t->tb.vfsi->text_size;
+        u->dsize = t->tb.vfsi->data_size;
+        u->start_code = (uint32_t)t->tb.vfsi->init;
+    }
+    u->ssize = CONFIG_TASK_STACK_SIZE;
+    u->start_stack = (uint32_t)(t->tb.cur_stack);
+    u->signal = 0;
+    u->magic = 0xd0ab1e50;
+    return 0;
+}
+
+int ptrace_peekuser(struct task *t, uint32_t addr)
+{
+    struct user u;
+    if (ptrace_getregs(t, &u) == 0)
+        return *(int *)(((char *)(&u)) + addr);
+    else return -1;
+}
+
+int ptrace_pokeuser(struct task *t, uint32_t addr, uint32_t data)
+{
+    uint32_t *cur_extra = t->tb.sp + NVIC_FRAME_SIZE + EXTRA_FRAME_SIZE;
+    uint32_t *cur_nvic = t->tb.sp + EXTRA_FRAME_SIZE;
+    int pos = addr / 4;
+
+    if (addr > (16 * sizeof(uint32_t)))
+        return -1;
+    if ((addr % 4) != 0)
+        return -1;
+    if (pos < 4) {
+        cur_nvic[pos] = data;
+        return 0;
+    }
+    if (pos < 12) {
+        cur_extra[pos - 4] = data;
+        return 0;
+    }
+    if (pos == 12) {
+        cur_nvic[4] = data;
+        return 0;
+    }
+    return -1;
+}
+
+int ptrace_setregs(struct task *t, uint32_t *regs)
+{
+    int i;
+    for (i = 0; i < 13; i++) {
+        ptrace_pokeuser(t, i * 4, regs[i]);
+    }
+    return 0;
+}
+
 int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
                     uint32_t arg5)
 
@@ -2254,12 +2321,15 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
     struct task *tracee = NULL;
 
     if (addr && task_ptr_valid(addr))
-        return -EACCES;
+        return -1;
 
     /* Prepare tracee based on pid */
     tracee = tasklist_get(&tasks_idling, pid);
     if (!tracee)
         tracee = tasklist_get(&tasks_running, pid);
+    if (!tracee) {
+        return -1;
+    }
 
     switch (request) {
     case PTRACE_TRACEME:
@@ -2270,18 +2340,17 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         return *((uint32_t *)addr);
 
     case PTRACE_PEEKUSER:
-        break;
+        return ptrace_peekuser(tracee, (uint32_t)addr);
     case PTRACE_POKETEXT:
-        break;
     case PTRACE_POKEDATA:
         break;
     case PTRACE_POKEUSER:
-        break;
+        return ptrace_pokeuser(tracee, (uint32_t)addr, (uint32_t)data);
     case PTRACE_CONT:
         if (!tracee)
-            return -ENOENT;
+            return -1;
         if (tracee->tb.tracer != _cur_task)
-            return -ESRCH;
+            return -1;
         task_continue(tracee);
         if ((int)data != 0)
             task_kill(pid, (int)data);
@@ -2289,23 +2358,25 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
 
     case PTRACE_KILL:
         if (!tracee)
-            return -ENOENT;
+            return -1;
         if (tracee->tb.tracer != _cur_task)
-            return -ESRCH;
+            return -1;
         task_kill(pid, SIGKILL);
         return 0;
 
     case PTRACE_SINGLESTEP:
         break;
     case PTRACE_GETREGS:
+        return ptrace_getregs(tracee, (struct user *)data);
         break;
     case PTRACE_SETREGS:
+        return ptrace_setregs(tracee, (uint32_t *)data);
         break;
 
     case PTRACE_ATTACH:
     case PTRACE_SEIZE:
         if (!tracee)
-            return -ENOENT;
+            return -1;
         tracee->tb.tracer = _cur_task;
         if (request == PTRACE_ATTACH)
             task_kill(pid, SIGSTOP);
@@ -2313,17 +2384,17 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
 
     case PTRACE_DETACH:
         if (!tracee)
-            return -ENOENT;
+            return -1;
         if (tracee->tb.tracer != _cur_task)
-            return -ESRCH;
+            return -1;
         tracee->tb.tracer = NULL;
         task_kill(tracee->tb.pid, SIGCONT);
         return 0;
     case PTRACE_SYSCALL:
         if (!tracee)
-            return -ENOENT;
+            return -1;
         if (tracee->tb.tracer != _cur_task)
-            return -ESRCH;
+            return -1;
         tracee->tb.flags |= TASK_FLAG_SYSCALL_STOP;
         return 0;
     }
