@@ -507,10 +507,19 @@ menu "Device Drivers"
            if DEVSPI
                 config SPI_1
                 bool "SPI 1"
+
+                config SPI_5
+                bool "SPI 5"
+
            endif
 
            config DEVLIS3DSH
            tristate "LIS3DSH driver (3-Axis Accelerometer)"
+           depends on (DEVSPI)
+           default n
+
+           config DEVILI9341
+           tristate "ILI9341 driver (LCD Controller)"
            depends on (DEVSPI)
            default n
 
@@ -543,6 +552,11 @@ menu "Device Drivers"
        config DEVFBCON
            depends on DEVFRAMEBUFFER
            bool "Console on Framebuffer via /dev/fbcon"
+           default y
+
+       config DEVF7DISCOLTDC
+           depends on DEVFRAMEBUFFER
+           bool "F746 Discovery LTDC"
            default y
 
 endmenu

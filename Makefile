@@ -112,7 +112,12 @@ CFLAGS-$(DEVLM3SETH)+=-DCONFIG_DEVETH
 OBJS-$(DEVUART)+= kernel/drivers/uart.o
 CFLAGS-$(DEVUART)+=-DCONFIG_DEVUART
 
-OBJS-$(DEVFRAMEBUFFER)+= kernel/framebuffer.o kernel/drivers/stm32f7_ltdc.o
+OBJS-$(DEVILI9341)+= kernel/drivers/ili9341.o
+CFLAGS-$(DEVILI9341)+=-DCONFIG_DEVILI9341
+
+OBJS-$(DEVF7DISCOLTDC) += kernel/drivers/stm32f7_ltdc.o
+
+OBJS-$(DEVFRAMEBUFFER)+= kernel/framebuffer.o
 CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER
 OBJS-$(DEVFBCON)+= kernel/drivers/fbcon.o kernel/fonts/cga_8x8.o kernel/fonts/palette_256_xterm.o
 CFLAGS-$(DEVFBCON)+=-DCONFIG_DEVFBCON
