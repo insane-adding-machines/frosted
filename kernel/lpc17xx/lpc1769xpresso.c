@@ -20,78 +20,167 @@
 #include "frosted.h"
 #include "unicore-mx/cm3/systick.h"
 #include <unicore-mx/lpc17xx/clock.h>
-#ifdef CONFIG_DEVUART
-#include "uart.h"
-#endif
-
-#ifdef CONFIG_DEVGPIO
+#include <unicore-mx/lpc17xx/nvic.h>
+#include <unicore-mx/lpc17xx/pwr.h>
+#include <unicore-mx/lpc17xx/uart.h>
 #include <unicore-mx/lpc17xx/gpio.h>
-#include <unicore-mx/lpc17xx/exti.h>
 #include "gpio.h"
-#endif
+#include "uart.h"
 
-static const struct gpio_addr gpio_addrs[] = {   {.port=GPIO0, .pin=GPIOPIN22, .mode=GPIO_MODE_OUTPUT, .name="gpio_0_22"} ,
-                                                                                {.port=GPIO2, .pin=GPIOPIN10, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
-                                                                                {.port=GPIO2, .pin=GPIOPIN11, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
-                                                                                {.port=GPIO2, .pin=GPIOPIN12, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
-                                                                                {.port=GPIO2, .pin=GPIOPIN13, .mode=GPIO_MODE_AF, .af=GPIO_AF1, .exti=1, .trigger=EXTI_TRIGGER_RISING},
-#ifdef CONFIG_DEVUART
-#ifdef CONFIG_UART_0
+static const struct gpio_config Leds[] = {
+    {.base=GPIO0, .pin=GPIOPIN22, .mode=GPIO_MODE_OUTPUT, .name="led0" },
+};
+#define NUM_LEDS (sizeof(Leds) / sizeof(struct gpio_config))
+
+static const struct uart_config uart_configs[] = {
+#ifdef CONFIG_USART_0
+    {
+        .devidx = 0,
+        .base = UART0_BASE,
+        .irq = NVIC_UART0_IRQ,
+        .rcc = PWR_PCONP_UART0,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+        .pio_rx = {.base=GPIO0, .pin=GPIOPIN3,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+        .pio_tx = {.base=GPIO0, .pin=GPIOPIN2,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .name=NULL,},
+
+    },
 #endif
-#ifdef CONFIG_UART_1
+#ifdef CONFIG_USART_1
+    {
+        .devidx = 1,
+        .base = UART1_BASE,
+        .irq = NVIC_UART1_IRQ,
+        .rcc = PWR_PCONP_UART1,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+        .pio_rx = {.base=GPIO0, .pin=GPIOPIN16,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+        .pio_tx = {.base=GPIO0, .pin=GPIOPIN15,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .name=NULL,},
+
+    },
 #endif
-#ifdef CONFIG_UART_2
+#ifdef CONFIG_USART_2
+    {
+        .devidx = 2,
+        .base = UART2_BASE,
+        .irq = NVIC_UART2_IRQ,
+        .rcc = PWR_PCONP_UART2,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+        .pio_rx = {.base=GPIO0, .pin=GPIOPIN11,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+        .pio_tx = {.base=GPIO0, .pin=GPIOPIN10,.mode=GPIO_MODE_AF,.af=GPIO_AF1, .name=NULL,},
+    },
 #endif
-#ifdef CONFIG_UART_3
-#endif
+#ifdef CONFIG_USART_3
+    {
+        .devidx = 3,
+        .base = UART3_BASE,
+        .irq = NVIC_UART3_IRQ,
+        .rcc = PWR_PCONP_UART3,
+        .baudrate = 115200,
+        .stop_bits = USART_STOPBITS_1,
+        .data_bits = 8,
+        .parity = USART_PARITY_NONE,
+        .flow = USART_FLOWCONTROL_NONE,
+        .pio_rx = {.base=GPIO0, .pin=GPIOPIN1,.mode=GPIO_MODE_AF,.af=GPIO_AF2, .pullupdown=GPIO_PUPD_NONE, .name=NULL,},
+        .pio_tx = {.base=GPIO0, .pin=GPIOPIN0,.mode=GPIO_MODE_AF,.af=GPIO_AF2, .name=NULL,},
+    },
 #endif
 };
-#define NUM_GPIOS (sizeof(gpio_addrs) / sizeof(struct gpio_addr))
+#define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
-#ifdef CONFIG_DEVUART
-static const struct uart_addr uart_addrs[] = {
-#ifdef CONFIG_UART_0
-        { .base = UART0_BASE, .irq = NVIC_UART0_IRQ, },
-#endif
-#ifdef CONFIG_UART_1
-        { .base = UART1_BASE, .irq = NVIC_UART1_IRQ, },
-#endif
-#ifdef CONFIG_UART_2
-        { .base = UART2_BASE, .irq = NVIC_UART2_IRQ, },
-#endif
-#ifdef CONFIG_UART_3
-        { .base = UART3_BASE, .irq = NVIC_UART3_IRQ, },
-#endif
-};
+/* TODO: Move to unicore-mx when implemented */
 
-#define NUM_UARTS (sizeof(uart_addrs) / sizeof(struct uart_addr))
+void usart_set_baudrate(uint32_t usart, uint32_t baud)
+{
+    /* TODO */
+    (void)usart;
+    (void)baud;
+}
 
-static void uart_init(struct fnode * dev)
+void usart_set_databits(uint32_t usart, int bits)
+{
+    /* TODO */
+    (void)usart;
+    (void)bits;
+}
+
+void usart_set_stopbits(uint32_t usart, enum usart_stopbits sb)
+{
+    /* TODO */
+    (void)usart;
+    (void)sb;
+}
+
+void usart_set_parity(uint32_t usart, enum usart_parity par)
+{
+    /* TODO */
+    (void)usart;
+    (void)par;
+}
+
+void usart_set_mode(uint32_t usart, enum usart_mode mode)
+{
+    /* TODO */
+    (void)usart;
+    (void)mode;
+}
+
+void usart_set_flow_control(uint32_t usart, enum usart_flowcontrol fc)
+{
+    /* TODO */
+    (void)usart;
+    (void)fc;
+}
+
+
+/* TODO: Move to unicore-mx when implemented */
+int exti_init(void)
+{
+    return 0;
+}
+
+int exti_enable(void)
+{
+    return 0;
+}
+
+int exti_register(void)
+{
+    return 0;
+}
+
+void usart_enable(uint32_t usart)
+{
+       (void)usart;
+}
+
+void usart_disable(uint32_t usart)
+{
+       (void)usart;
+}
+
+
+int machine_init(void)
 {
     int i;
-    struct module * devuart = devuart_init(dev);
+    clock_setup(&clock_scale[CLOCK_120MHZ]);
 
-    for (i = 0; i < NUM_UARTS; i++)
-        uart_fno_init(dev, i, &uart_addrs[i]);
+    /* Leds */
+    gpio_create(NULL, &Leds[0]);
 
-    register_module(devuart);
+    /* Uarts */
+    for (i = 0; i < NUM_UARTS; i++) {
+        uart_create(&uart_configs[i]);
+    }
+    return 0;
 }
-#endif
-
-void machine_init(struct fnode * dev)
-{
-
-#if CONFIG_SYS_CLOCK == 100000000
-clock_setup(&clock_scale[CLOCK_96MHZ]);
-#elif CONFIG_SYS_CLOCK == 120000000
-clock_setup(&clock_scale[CLOCK_120MHZ]);
-#else
-#error No valid clock speed selected for lpc1768mbed
-#endif
-    gpio_init(dev, gpio_addrs, NUM_GPIOS);
-#ifdef CONFIG_DEVUART
-    uart_init(dev);
-#endif
-
-}
-
