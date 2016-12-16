@@ -151,16 +151,16 @@ int devspi_create(const struct spi_config *conf)
 
     /**********************************/
 	/* reset SPI1 */
-	spi_reset(SPI1);
+	spi_reset(conf->base);
 	/* init SPI1 master */
-	spi_init_master(SPI1,
+	spi_init_master(conf->base,
 					SPI_CR1_BAUDRATE_FPCLK_DIV_64,
 					SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
 					SPI_CR1_CPHA_CLK_TRANSITION_1,
 					SPI_CR1_DFF_8BIT,
 					SPI_CR1_MSBFIRST);
 	/* enable SPI1 first */
-	spi_enable(SPI1);
+	spi_enable(conf->base);
     /**********************************/
 
 #if 0
