@@ -24,12 +24,14 @@
 #include "unicore-mx/cm3/nvic.h"
 #include <unicore-mx/stm32/gpio.h>
 #include <unicore-mx/stm32/i2c.h>
+#include <unicore-mx/stm32/spi.h>
 #include <unicore-mx/stm32/dma.h>
 #include "gpio.h"
 #include "stmpe811.h"
 #include "uart.h"
 #include "rng.h"
 #include "i2c.h"
+#include "spi.h"
 
 
 
@@ -184,6 +186,66 @@ static const struct i2c_config i2c_configs[] = {
 };
 #define NUM_I2CS (sizeof(i2c_configs) / sizeof(struct i2c_config))
 
+static const struct spi_config spi_configs[] = {
+#ifdef CONFIG_SPI_5
+    {
+        .idx  = 1,
+        .base = SPI5,
+        .irq = NVIC_SPI5_IRQ,
+        .rcc = RCC_SPI5,
+        .baudrate = 0, /* TODO: SPI baudrate */
+        .polarity = 1,
+        .phase = 1,
+        .rx_only = 0,
+        .bidir_mode = 0,
+        .dff_16 = 0,
+        .enable_software_slave_management = 1,
+        .send_msb_first = 1,
+
+        .tx_dma = {
+            .base = DMA2,
+            .stream = DMA_STREAM4,
+            .channel = DMA_SxCR_CHSEL_2,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+            .prio = DMA_SxCR_PL_MEDIUM,
+            .paddr =  (uint32_t) &SPI_DR(SPI5),
+            .irq = 0,
+        },
+        .rx_dma = {
+            .base = DMA2,
+            .stream = DMA_STREAM3,
+            .channel = DMA_SxCR_CHSEL_2,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+            .prio = DMA_SxCR_PL_VERY_HIGH,
+            .paddr =  (uint32_t) &SPI_DR(SPI5),
+            .irq = NVIC_DMA2_STREAM3_IRQ,
+        },
+        .dma_rcc = RCC_DMA1,
+        .pio_sck = {
+            .base=GPIOF,
+            .pin=GPIO7,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF5,
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
+        },
+        .pio_mosi = {
+            .base=GPIOF,
+            .pin=GPIO9,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF5,
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
+        },
+    },
+#endif
+};
+#define NUM_SPIS (sizeof(spi_configs) / sizeof(struct spi_config))
+
 #ifdef CONFIG_DEVSTMPE811
 static const struct ts_config ts_conf = {
     {
@@ -212,6 +274,12 @@ int machine_init(void)
     for (i = 0; i < NUM_I2CS; i++) {
         i2c_create(&i2c_configs[i]);
     }
+
+    /* SPIs */
+    for (i = 0; i < NUM_SPIS; i++) {
+        devspi_create(&spi_configs[i]);
+    }
+
 
 #ifdef CONFIG_DEVSTMPE811
     stmpe811_init(&ts_conf);
