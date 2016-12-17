@@ -33,6 +33,10 @@
 #   define CLOCK_ENABLE(C)
 #   define USART_SR_RXNE  USART_IC_RX
 #   define USART_SR_TXE   USART_IC_TX
+static inline uint32_t get_interrupt_source(uint32_t base)
+{
+    return USART_RIS(usart);
+}
 #endif
 #ifdef STM32F4
 #   include "unicore-mx/stm32/usart.h"
@@ -40,18 +44,40 @@
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
 #   define usart_clear_rx_interrupt(x) do{}while(0)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
+static inline uint32_t get_interrupt_source(uint32_t base)
+{
+	uint32_t flag_set = USART_SR(base);
+    uint32_t ret =0;
+    if (flag_set & USART_CR1(base)) 
+        ret |= USART_SR_TXE;
+    if ((flag_set != 0) && ((USART_CR3(base) & USART_CR3_CTSIE)!= 0))
+        ret |= USART_SR_RXNE;
+    return ret;
+}
 #endif
 #ifdef STM32F7
 #   include "unicore-mx/stm32/usart.h"
 #   include "unicore-mx/stm32/rcc.h"
 #   define CLOCK_ENABLE(C)                 rcc_periph_clock_enable(C);
-#   define usart_clear_rx_interrupt(x) do{}while(0)
-#   define usart_clear_tx_interrupt(x) do{}while(0)
+static inline uint32_t get_interrupt_source(uint32_t base)
+{
+	uint32_t flag_set = USART_ISR(base);
+    uint32_t ret =0;
+    if (flag_set & USART_ISR_TXE)
+        ret |= USART_SR_TXE;
+    if ((flag_set != 0) && USART_ISR_RXNE)
+        ret |= USART_SR_RXNE;
+    return ret;
+}
 #endif
 #ifdef LPC17XX
 #   include "unicore-mx/lpc17xx/uart.h"
 #   include "unicore-mx/lpc17xx/pwr.h"
 #   define CLOCK_ENABLE(C) pwr_enable_peripherals(C)
+static inline uint32_t get_interrupt_source(uint32_t base)
+{
+    return UART_IIR(base);
+}
 #endif
 
 struct dev_uart {
@@ -101,10 +127,12 @@ static void devuart_tty_attach(struct fnode *fno, int pid)
 
 void uart_isr(struct dev_uart *uart)
 {
+    uint32_t req;
     if (!uart)
         return;
+    req = get_interrupt_source(uart->base);
     /* TX interrupt */
-    if (usart_get_interrupt_source(uart->base, USART_SR_TXE)) {
+    if (req & USART_SR_TXE) {
         usart_clear_tx_interrupt(uart->base);
 
 //        if (this_task() != NULL) /* cannot spinlock in ISR! */
@@ -126,7 +154,7 @@ void uart_isr(struct dev_uart *uart)
     }
 
     /* RX interrupt */
-    if (usart_get_interrupt_source(uart->base, USART_SR_RXNE)) {
+    if (req & USART_SR_RXNE) {
         usart_clear_rx_interrupt(uart->base);
         /* if data available */
         if (usart_is_recv_ready(uart->base))
@@ -147,7 +175,6 @@ void uart_isr(struct dev_uart *uart)
         if (uart->dev->task != NULL)
             task_resume(uart->dev->task);
     }
-
 }
 
 void uart0_isr(void)
@@ -376,6 +403,9 @@ int uart_create(const struct uart_config *uart)
     usart_set_mode(uart->base, USART_MODE_TX_RX);
     usart_set_parity(uart->base, uart->parity);
     usart_set_flow_control(uart->base, uart->flow);
+#ifdef STM32F7
+    USART_CR1(uart->base) &= ~(USART_CR1_TCIE);
+#endif
     usart_enable_rx_interrupt(uart->base);
     nvic_enable_irq(uart->irq);
     usart_enable(uart->base);
