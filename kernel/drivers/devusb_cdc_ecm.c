@@ -27,14 +27,9 @@
 #include "usb.h"
 
 #define USBETH_MAX_FRAME 1514
+
 struct pico_dev_usbeth {
     struct pico_device dev;
-
-    enum {
-        TX_STATUS_FREE,
-        TX_STATUS_PENDING,
-        TX_STATUS_COMPLETE
-    } tx_status;
 };
 
 struct usbeth_rx_buffer {
@@ -48,8 +43,20 @@ struct usbeth_rx_buffer {
     uint8_t buf[USBETH_MAX_FRAME];
 };
 
+struct usbeth_tx_buffer {
+    enum usbeth_tx_buffer_status {
+        TX_STATUS_FREE,
+        TX_STATUS_PENDING,
+        TX_STATUS_COMPLETE
+    } status;
+
+    uint16_t size;
+    uint8_t buf[USBETH_MAX_FRAME];
+};
+
 static struct pico_dev_usbeth *pico_usbeth = NULL;
 static struct usbeth_rx_buffer *rx_buffer = NULL;
+static struct usbeth_tx_buffer *tx_buffer = NULL;
 
 static const struct usb_endpoint_descriptor comm_endp[] = {{
     .bLength = USB_DT_ENDPOINT_SIZE,
@@ -223,7 +230,7 @@ static void cdcecm_setup_request(usbd_device *usbd_dev, uint8_t ep_addr,
     case USB_CDC_REQ_SET_ETHERNET_PM_PATTERN_FILTER:
     case USB_CDC_REQ_SET_CONTROL_LINE_STATE:
         usbd_ep0_transfer(usbd_dev, setup_data, NULL, 0, NULL);
-    return;
+        return;
     case USB_CDC_REQ_SET_LINE_CODING:
         if (setup_data->wLength < sizeof(struct usb_cdc_line_coding)) {
             break;
@@ -294,7 +301,9 @@ static void bulk_out_callback(usbd_device *dev,
         rx_buffer->size = transfer->transferred;
         rx_buffer->status = RX_STATUS_INCOMING;
     } else {
-        fail_count++;
+        if(++fail_count > 100) {
+            rx_buffer->status = RX_STATUS_FREE;
+        }
     }
     frosted_tcpip_wakeup();
 }
@@ -328,10 +337,6 @@ static void cdcecm_set_config(usbd_device *usbd_dev,
     usbd_ep_prepare(usbd_dev, 0x81, USBD_EP_BULK, 64, USBD_INTERVAL_NA, USBD_EP_NONE);
     usbd_ep_prepare(usbd_dev, 0x82, USBD_EP_INTERRUPT, 16, 0, USBD_EP_NONE);
 
-    if (!rx_buffer) {
-        rx_buffer = kalloc(sizeof(*rx_buffer));
-    }
-
     bulk_out_submit();
 }
 
@@ -346,7 +351,7 @@ static void bulk_in_callback(usbd_device *dev,
     (void)transfer;
     (void)urb_id;
 
-    pico_usbeth->tx_status = TX_STATUS_COMPLETE;
+    tx_buffer->status = TX_STATUS_COMPLETE;
     frosted_tcpip_wakeup();
 }
 
@@ -359,23 +364,25 @@ static int pico_usbeth_send(struct pico_device *dev, void *buf, int len)
         .ep_addr = 0x81,
         .ep_size = 64,
         .ep_interval = USBD_INTERVAL_NA,
-        .buffer = buf,
+        .buffer = tx_buffer->buf,
         .length = len,
         .flags = USBD_FLAG_NONE,
         .timeout = USBD_TIMEOUT_NEVER,
         .callback = bulk_in_callback
     };
 
-    if (pico_usbeth->tx_status == TX_STATUS_COMPLETE) {
-        pico_usbeth->tx_status = TX_STATUS_FREE;
-        return len;
-    } else if (pico_usbeth->tx_status == TX_STATUS_PENDING) {
-        fail_count++;
+    if (tx_buffer->status == TX_STATUS_PENDING) {
+        if (++fail_count > 100)
+            tx_buffer->status == TX_STATUS_FREE;
         return 0;
     }
+    tx_buffer->status = TX_STATUS_PENDING;
+    if (len > USBETH_MAX_FRAME)
+        len = USBETH_MAX_FRAME;
+    memcpy(tx_buffer->buf, buf, len);
+    tx_buffer->size = len;
     usbd_transfer_submit(usbd_dev, &transfer);
-    pico_usbeth->tx_status = TX_STATUS_PENDING;
-    return 0;
+    return len;
 }
 
 static int pico_usbeth_poll(struct pico_device *dev, int loop_score)
@@ -392,9 +399,11 @@ static void pico_usbeth_destroy(struct pico_device *dev)
 {
     struct pico_dev_usbeth *usbeth = (struct pico_dev_usbeth *) dev;
     kfree(rx_buffer);
+    kfree(tx_buffer);
     kfree(usbeth);
     usbeth = NULL;
     rx_buffer = NULL;
+    tx_buffer = NULL;
 }
 
 int usb_ethernet_init(void)
@@ -406,7 +415,19 @@ int usb_ethernet_init(void)
     const char nmstr[] = CONFIG_USB_DEFAULT_NM;
     const char gwstr[] = CONFIG_USB_DEFAULT_GW;
     zero.addr = 0U;
-
+    
+    if (!rx_buffer) {
+        rx_buffer = kalloc(sizeof(*rx_buffer));
+        if (!rx_buffer)
+            return -1;
+    }
+    if (!tx_buffer) {
+        tx_buffer = kalloc(sizeof(*tx_buffer));
+        if (!tx_buffer) {
+            kfree(rx_buffer);
+            return -1;
+        }
+    }
 
     pico_string_to_ipv4(ipstr, &default_ip.addr);
     pico_string_to_ipv4(nmstr, &default_nm.addr);
@@ -428,7 +449,7 @@ int usb_ethernet_init(void)
     pico_ipv4_link_add(&usb->dev, default_ip, default_nm);
     /* Set default gateway */
     pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
-    pico_usbeth->tx_status = TX_STATUS_FREE;
+    tx_buffer->status = TX_STATUS_FREE;
     if (usbdev_start(&usbd_dev, &cdc_ecm_dev, usbdev_buffer,
                                     sizeof(usbdev_buffer)) < 0) {
         return -EBUSY;
