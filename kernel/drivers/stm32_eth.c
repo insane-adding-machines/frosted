@@ -23,6 +23,7 @@
 #include "gpio.h"
 #include "eth.h"
 
+#include <pico_stack.h>
 #include <pico_device.h>
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/stm32/gpio.h>
@@ -63,6 +64,7 @@ static struct module mod_eth = {
 };
 
 static struct dev_eth * dev_eth_stm = NULL;
+static uint8_t eth_rx_buf[ETH_MAX_FRAME];
 
 #ifdef STM32F4
 static const uint8_t default_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x54};
@@ -119,23 +121,27 @@ static int8_t find_phy(uint32_t clk_div)
     return -1;
 }
 
-// XXX: Remove extra memcpy
-static uint8_t temp_rx_buf[ETH_MAX_FRAME];
+
 static int stm_eth_poll(struct pico_device *dev, int loop_score)
 {
     uint32_t rx_len = 0;
-    /* add eth_rx_peek, then dynamically alloc + zerocopy */
-    while ((loop_score > 0) && eth_rx(temp_rx_buf, &rx_len, ETH_MAX_FRAME))
+    /* Possible optimization: 
+     * add eth_rx_peek, then dynamically alloc + zerocopy 
+     */
+    while ((loop_score > 0) && eth_rx(eth_rx_buf, &rx_len, ETH_MAX_FRAME))
     {
-        pico_stack_recv(dev, temp_rx_buf, rx_len);
+        pico_stack_recv(dev, eth_rx_buf, rx_len);
         rx_len = 0;
         loop_score--;
     }
     return loop_score;
 }
 
+
 static int stm_eth_send(struct pico_device *dev, void * buf, int len)
 {
+    if (len > ETH_MAX_FRAME)
+        len = ETH_MAX_FRAME;
     if (eth_tx(buf, len))
         return len;
     else
