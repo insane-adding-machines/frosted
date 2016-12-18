@@ -191,7 +191,7 @@ static unsigned char * heap_limit_user;
 static unsigned char * heap_limit_kernel;
 
 #ifdef CONFIG_TCPIP_MEMPOOL
-    static char * heap_end_tcpip = CONFIG_TCPIP_MEMPOOL;
+    static char * heap_end_tcpip = (char *)CONFIG_TCPIP_MEMPOOL;
 #else
     static char * heap_end_tcpip = NULL;
 #endif
@@ -479,6 +479,7 @@ static void blk_rearrange(void *arg)
 void f_free(void * ptr)
 {
     struct f_malloc_block * blk;
+    int pid = this_task_getpid();
 
     if (!ptr) {
         return;
@@ -487,10 +488,20 @@ void f_free(void * ptr)
     blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
     if (block_valid(blk))
     {
-        if (mutex_trylock(mlock) < 0) {
-            /* Try again later. */
-            tasklet_add(f_free, ptr);
-            return;
+        /* Userspace task takes mlock in the syscall handler */
+        /* kernelspace calls: pid=0 (kernel, kthreads */
+        if (pid == 0) {
+            /*  kernel task == NULL */
+            if (this_task() == NULL) {
+                if (mutex_trylock(mlock) < 0) {
+                    /* Kernel cannot block. Schedule a tasklet to execute this free later. */
+                    tasklet_add(f_free, ptr);
+                    return;
+                }
+            } else {
+                /* ktrheads can block. */
+                mutex_lock(mlock);
+            }
         }
 
         if (!in_use(blk)) {
@@ -505,7 +516,9 @@ void f_free(void * ptr)
         if ((blk->flags & MEM_TASK) == 0)
             blk_rearrange(blk);
 
-        mutex_unlock(mlock);
+        /* Userspace tasks release mlock in the syscall handler */
+        if (this_task_getpid() == 0)
+            mutex_unlock(mlock);
     } else {
         dbg_malloc("FREE ERR: %p is not a valid allocated pointer!\n", blk);
     }
@@ -577,7 +590,10 @@ void *sys_malloc_hdlr(int size)
 
 int sys_free_hdlr(void *addr)
 {
+    if (suspend_on_mutex_lock(mlock) < 0)
+        return SYS_CALL_AGAIN;
     f_free(addr);
+    mutex_unlock(mlock);
     return 0;
 }
 
