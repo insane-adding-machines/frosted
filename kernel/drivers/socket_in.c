@@ -109,7 +109,9 @@ static int sock_close(struct fnode *fno)
     s = (struct frosted_inet_socket *)fno->priv;
     if (!s)
         return -1;
-    pico_lock();
+    if (pico_trylock() < 0) {
+        return SYS_CALL_AGAIN;
+    }
     pico_socket_close(s->sock);
     pico_unlock();
     //kprintf("## Closed INET socket!\n");
@@ -152,7 +154,9 @@ static int sock_socket(int domain, int type_flags, int protocol)
     if (type == 2)
         type = PICO_PROTO_UDP;
 
-    pico_lock();
+    if (pico_trylock() < 0) {
+        return SYS_CALL_AGAIN;
+    }
     s->sock = pico_socket_open(domain, type, pico_socket_event);
     pico_unlock();
     if (!s->sock) {
@@ -182,11 +186,15 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
         return -EINVAL;
     while (s->bytes < len) {
         if ((addr) && ((*addrlen) > 0)) {
-            pico_lock();
+            if (pico_trylock() < 0) {
+                return SYS_CALL_AGAIN;
+            }
             ret = pico_socket_recvfrom(s->sock, buf + s->bytes, len - s->bytes, &paddr, &port);
             pico_unlock();
         } else {
-            pico_lock();
+            if (pico_trylock() < 0) {
+                return SYS_CALL_AGAIN;
+            }
             ret = pico_socket_read(s->sock, buf + s->bytes, len - s->bytes);
             pico_unlock();
         }
@@ -235,13 +243,17 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
     while (len > s->bytes) {
         if ((addr) && (addrlen >0))
         {
+            if (pico_trylock() < 0) {
+                return SYS_CALL_AGAIN;
+            }
             paddr.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
             port = ((struct sockaddr_in *)addr)->sin_port;
-            pico_lock();
             ret = pico_socket_sendto(s->sock, buf + s->bytes, len - s->bytes, &paddr, port);
             pico_unlock();
         } else {
-            pico_lock();
+            if (pico_trylock() < 0) {
+                return SYS_CALL_AGAIN;
+            }
             ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes);
             pico_unlock();
         }
@@ -281,7 +293,9 @@ static int sock_bind(int fd, struct sockaddr *addr, unsigned int addrlen)
         return -EINVAL;
     paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
     port = ((struct sockaddr_in *)addr)->sin_port;
-    pico_lock();
+    if (pico_trylock() < 0) {
+        return SYS_CALL_AGAIN;
+    }
     ret = pico_socket_bind(s->sock, &paddr, &port);
     pico_unlock();
     if (ret == 0) {
@@ -304,7 +318,9 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
         return -EINVAL;
     l->events = PICO_SOCK_EV_CONN;
 
-    pico_lock();
+    if (pico_trylock() < 0) {
+        return SYS_CALL_AGAIN;
+    }
     cli = pico_socket_accept(l->sock, &paddr, &port);
     pico_unlock();
     if ((cli == NULL) && (pico_err != PICO_ERR_EAGAIN))
@@ -314,7 +330,9 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
     if (cli) {
         s = inet_socket_new(0);
         if (!s) {
-            pico_lock();
+            if (pico_trylock() < 0) {
+                return SYS_CALL_AGAIN;
+            }
             pico_socket_close(cli);
             pico_unlock();
             return -ENOMEM;
@@ -356,12 +374,13 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
     if ((s->revents & PICO_SOCK_EV_CONN) == 0) {
         paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
         port = ((struct sockaddr_in *)addr)->sin_port;
-        pico_lock();
+        if (pico_trylock() < 0) {
+            return SYS_CALL_AGAIN;
+        }
         ret = pico_socket_connect(s->sock, &paddr, port);
         pico_unlock();
         if (SOCK_BLOCKING(s)) {
             s->task = this_task();
-            task_suspend();
             return SYS_CALL_AGAIN;
         } else {
             return -EAGAIN;
@@ -379,7 +398,9 @@ static int sock_listen(int fd, int backlog)
     s = fd_inet(fd);
     if (!s)
         return -EINVAL;
-    pico_lock();
+    if (pico_trylock() < 0) {
+        return SYS_CALL_AGAIN;
+    }
     ret = pico_socket_listen(s->sock, backlog);
     pico_unlock();
     s->events |= PICO_SOCK_EV_CONN;
@@ -393,7 +414,9 @@ static int sock_shutdown(int fd, uint16_t how)
     s = fd_inet(fd);
     if (!s)
         return -EINVAL;
-    pico_lock();
+    if (pico_trylock() < 0) {
+        return SYS_CALL_AGAIN;
+    }
     ret =  pico_socket_shutdown(s->sock, how);
     pico_unlock();
     return ret;

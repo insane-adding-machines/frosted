@@ -44,8 +44,10 @@
 
 static inline int MEMPOOL(int x)
 {
+#ifdef CONFIG_TCPIP_MEMPOOL
     if (x == MEM_TCPIP)
         return 3;
+#endif
     if (x == MEM_EXTRA)
         return 4;
     if (x == MEM_TASK)
@@ -78,7 +80,7 @@ struct f_malloc_stats f_malloc_stats[4] = {};
 
 /* Mlock is a special lock, so initialization is made static */
 static struct task *_m_listeners[16] = {};
-static struct semaphore _mlock = { .signature = 0xCAFEC0C0, .value = 1, .listeners=16, .listener=_m_listeners};
+static struct semaphore _mlock = { .signature = 0xCAFEC0C0, .value = 1, .listeners=16, .last=-1, .listener=_m_listeners};
 static mutex_t *mlock = (mutex_t *)(&_mlock);
 
 #define KMEM_SIZE   (CONFIG_KRAM_SIZE << 10)
@@ -378,13 +380,20 @@ void * f_malloc(int flags, size_t size)
         size++;
     } 
 
+    /* kernelspace calls: pid=0 (kernel, kthreads */
     if (this_task_getpid() == 0) {
-        if (mutex_trylock(mlock) < 0) {
-            return NULL;
+
+        /* kernel receives a null (no blocking) */
+        if (this_task() == NULL) {
+            if (mutex_trylock(mlock) < 0) {
+                return NULL;
+            }
+        } else {
+            /* ktrheads can block. */
+            mutex_lock(mlock);
         }
-    } else {
-        mutex_lock(mlock);
     }
+    /* Userspace calls acquire mlock in the syscall handler. */
 
     /* update stats */
     f_malloc_stats[MEMPOOL(flags)].malloc_calls++;
@@ -441,7 +450,10 @@ void * f_malloc(int flags, size_t size)
     f_malloc_stats[MEMPOOL(flags)].mem_allocated += ((uint32_t)blk->size + sizeof(struct f_malloc_block));
 
     ret = (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
-    mutex_unlock(mlock);
+
+    /* Userspace calls release mlock in the syscall handler. */
+    if (this_task_getpid() == 0)
+        mutex_unlock(mlock);
     return ret;
 }
 
@@ -550,30 +562,43 @@ int fmalloc_chown(const void *ptr, uint16_t pid)
 /* Syscalls back-end (for userspace memory call handling) */
 void *sys_malloc_hdlr(int size)
 {
-    void *addr = f_malloc(MEM_USER, size);
-    #ifdef CONFIG_SRAM_EXTRA
+    void *addr;
+    if (suspend_on_mutex_lock(mlock) < 0)
+        return (void *)SYS_CALL_AGAIN;
+
+    addr = f_malloc(MEM_USER, size);
+#ifdef CONFIG_SRAM_EXTRA
     if (!addr)
         addr = f_malloc(MEM_EXTRA, size);
-    #endif
+#endif
+    mutex_unlock(mlock);
     return addr;
 }
 
-int sys_free_hdlr(int addr)
+int sys_free_hdlr(void *addr)
 {
-    f_free((void *)addr);
+    f_free(addr);
     return 0;
 }
 
-int sys_calloc_hdlr(int n, int size)
+void *sys_calloc_hdlr(int n, int size)
 {
-    return (int)f_calloc(MEM_USER, n, size);
+    void *addr;
+    if (suspend_on_mutex_lock(mlock) < 0)
+        return (void *)SYS_CALL_AGAIN;
+    addr = f_calloc(MEM_USER, n, size);
+    mutex_unlock(mlock);
+    return addr;
 }
 
-int sys_realloc_hdlr(int addr, int size)
+void *sys_realloc_hdlr(void *addr, int size)
 {
-    if (task_ptr_valid((void *)addr))
-        return -EACCES;
-    return (int)f_realloc(MEM_USER, (void *)addr, size);
+    void *naddr;
+    if (suspend_on_mutex_lock(mlock) < 0)
+        return (void *)SYS_CALL_AGAIN;
+    naddr = f_realloc(MEM_USER, addr, size);
+    mutex_unlock(mlock);
+    return naddr;
 }
 
 /*------------------*/

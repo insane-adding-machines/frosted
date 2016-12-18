@@ -4,12 +4,10 @@ struct semaphore {
     int value;
     uint32_t signature;
     int listeners;
+    int last;
     struct task **listener;
 };
 
 
-int _mutex_lock(void *);
-int _mutex_unlock(void *);
-
-int _sem_wait(void *);
-int _sem_post(void *);
+int suspend_on_sem_wait(sem_t *s);
+int suspend_on_mutex_lock(mutex_t *s);

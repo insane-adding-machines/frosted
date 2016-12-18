@@ -23,18 +23,35 @@
 #define SIGN_MUTEX (0xCAFEC0C0)
 #define SIGN_SEMAP (0xCAFECAFE)
 
+extern int _mutex_lock(void *);
+extern int _mutex_unlock(void *);
+extern int _sem_wait(void *);
+extern int _sem_post(void *);
+
 
 /* Semaphore: internal functions */
 static void _add_listener(sem_t *s)
 {
     int i;
     struct task *t = this_task();
-    for (i = 0; i < s->listeners; i++) {
-        if (s->listener[i] == t)
+
+    if (s->last >= 0) {
+        if (t == s->listener[s->last])
             return;
+    }
+
+    for (i = s->last + 1; i < s->listeners; i++) {
         if (s->listener[i] == NULL) {
             s->listener[i] = t;
-            break;
+            s->last = i;
+            return;
+        }
+    }
+    for (i = 0; i < s->last; i++) {
+        if (s->listener[i] == NULL) {
+            s->listener[i] = t;
+            s->last = i;
+            return;
         }
     }
 }
@@ -94,10 +111,18 @@ int sem_post(sem_t *s)
         return -EINVAL;
     if (_sem_post(s) > 0) {
         int i;
-        for(i = 0; i < s->listeners; i++) {
+        for(i = s->last+1; i < s->listeners; i++) {
             struct task *t = s->listener[i];
             if (t) {
                 task_resume_lock(t);
+                s->listener[i] = NULL;
+            }
+        }
+        for(i = 0; i <= s->last; i++) {
+            struct task *t = s->listener[i];
+            if (t) {
+                task_resume_lock(t);
+                s->listener[i] = NULL;
             }
         }
     }
@@ -120,6 +145,7 @@ sem_t *sem_init(int val)
         s->signature = SIGN_SEMAP;
         s->value = val;
         s->listeners = 8;
+        s->last = -1;
         s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
         for (i = 0; i < s->listeners; i++)
             s->listener[i] = NULL;
@@ -158,6 +184,19 @@ int sys_sem_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     return sem_destroy((sem_t *)arg1);
 }
 
+int suspend_on_sem_wait(sem_t *s)
+{
+    int ret;
+    if (!s)
+        return -EINVAL;
+    ret = _sem_wait(s);
+    if (ret != 0) {
+        _add_listener(s);
+        return EAGAIN;
+    }
+    return 0;
+}
+
 /* Mutex: API */
 mutex_t *mutex_init()
 {
@@ -167,6 +206,7 @@ mutex_t *mutex_init()
         s->signature = SIGN_MUTEX;
         s->value = 1; /* Unlocked. */
         s->listeners = 8;
+        s->last = -1;
         s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
         for (i = 0; i < s->listeners; i++)
             s->listener[i] = NULL;
@@ -221,15 +261,38 @@ int mutex_unlock(mutex_t *s)
         return -EINVAL;
     if (_mutex_unlock(s) == 0) {
         int i;
-        for(i = 0; i < s->listeners; i++) {
+        for(i = s->last+1; i < s->listeners; i++) {
             struct task *t = s->listener[i];
             if (t) {
                 task_resume_lock(t);
+                s->listener[i] = NULL;
+                return 0;
+            }
+        }
+        for(i = 0; i <= s->last; i++) {
+            struct task *t = s->listener[i];
+            if (t) {
+                task_resume_lock(t);
+                s->listener[i] = NULL;
+                return 0;
             }
         }
         return 0;
     }
     return -EAGAIN;
+}
+
+int suspend_on_mutex_lock(mutex_t *s)
+{
+    int ret;
+    if (!s)
+        return -EINVAL;
+    ret = _mutex_lock(s);
+    if (ret != 0) {
+        _add_listener(s);
+        return EAGAIN;
+    }
+    return 0;
 }
 
 

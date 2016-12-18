@@ -1173,6 +1173,7 @@ int task_create(struct vfs_info *vfsi, void *arg, unsigned int nice)
     if (!new) {
         return -ENOMEM;
     }
+    memset(&new->tb, 0, sizeof(struct task_block));
     new->tb.pid = next_pid();
     new->tb.tid = 1;
     new->tb.tgroup = NULL;
@@ -1236,6 +1237,7 @@ int sys_vfork_hdlr(void)
     if (!new) {
         return -ENOMEM;
     }
+    memset(&new->tb, 0, sizeof(struct task_block));
     vpid = next_pid();
     new->tb.pid = vpid;
     new->tb.tid = 1;
@@ -1465,6 +1467,7 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
     if (!new) {
         return -ENOMEM;
     }
+    memset(&new->tb, 0, sizeof(struct task_block));
 
     new->tb.tid = pthread_add(_cur_task, new);
     if (new->tb.tid < 0) {
@@ -1499,6 +1502,7 @@ struct task *kthread_create(void(routine)(void *), void *arg)
         return NULL;
     }
     irq_off();
+    memset(&new->tb, 0, sizeof(struct task_block));
     new->tb.tid = pthread_add(kernel, new);
     if (new->tb.tid < 0) {
         task_space_free(new);
@@ -2384,8 +2388,6 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         if (tracee->tb.tracer != _cur_task)
             return -1;
         task_continue(tracee);
-        if ((int)data != 0)
-            task_kill(pid, (int)data);
         return 0;
 
     case PTRACE_KILL:
@@ -2397,6 +2399,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         return 0;
 
     case PTRACE_SINGLESTEP:
+        /* TODO */
         break;
     case PTRACE_GETREGS:
         return ptrace_getregs(tracee, (struct user *)data);
@@ -2421,7 +2424,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         if (tracee->tb.tracer != _cur_task)
             return -1;
         tracee->tb.tracer = NULL;
-        task_kill(tracee->tb.pid, SIGCONT);
+        task_continue(tracee);
         return 0;
     case PTRACE_SYSCALL:
         if (!tracee)
