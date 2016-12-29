@@ -417,8 +417,8 @@ void * f_malloc(int flags, size_t size)
         /* No first fit found: ask for new memory */
         blk = (struct f_malloc_block *)f_sbrk(flags, size + sizeof(struct f_malloc_block));  // can OS give us more memory?
         if ((long)blk == -1) {
-            mutex_unlock(mlock);
-            return NULL;
+            ret = NULL;
+            goto out;
         }
 
         /* first call -> set entrypoint */
@@ -451,9 +451,11 @@ void * f_malloc(int flags, size_t size)
 
     ret = (void *)(((uint8_t *)blk) + sizeof(struct f_malloc_block)); // pointer to newly allocated mem
 
+out:
     /* Userspace calls release mlock in the syscall handler. */
-    if (this_task_getpid() == 0)
+    if (this_task_getpid() == 0) {
         mutex_unlock(mlock);
+    }
     return ret;
 }
 
@@ -480,22 +482,24 @@ void f_free(void * ptr)
 {
     struct f_malloc_block * blk;
     int pid = this_task_getpid();
+    blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
 
     if (!ptr) {
         return;
     }
-
-    blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
     if (block_valid(blk))
     {
+        if (!in_use(blk)) {
+            task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
+        }
+        blk->flags &= ~F_IN_USE;
+
         /* Userspace task takes mlock in the syscall handler */
         /* kernelspace calls: pid=0 (kernel, kthreads */
         if (pid == 0) {
             /*  kernel task == NULL */
             if (this_task() == NULL) {
                 if (mutex_trylock(mlock) < 0) {
-                    /* Kernel cannot block. Schedule a tasklet to execute this free later. */
-                    tasklet_add(f_free, ptr);
                     return;
                 }
             } else {
@@ -504,21 +508,17 @@ void f_free(void * ptr)
             }
         }
 
-        if (!in_use(blk)) {
-            task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
-        }
-
-        blk->flags &= ~F_IN_USE;
         /* stats */
         f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
         f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
         f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
-        if ((blk->flags & MEM_TASK) == 0)
-            blk_rearrange(blk);
+        //if ((blk->flags & MEM_TASK) == 0)
+        //    blk_rearrange(blk);
 
         /* Userspace tasks release mlock in the syscall handler */
-        if (this_task_getpid() == 0)
+        if (pid == 0) {
             mutex_unlock(mlock);
+        }
     } else {
         dbg_malloc("FREE ERR: %p is not a valid allocated pointer!\n", blk);
     }

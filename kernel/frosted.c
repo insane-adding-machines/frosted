@@ -225,33 +225,8 @@ int frosted_init(void)
 static void ktimer_tcpip(uint32_t time, void *arg);
 
 #ifdef CONFIG_PICOTCP
-static void picotcp_kthread(void *arg)
-{
-    pico_stack_init();
-    socket_in_init();
-    pico_lock_init();
-    
-    /* Network devices initialization */
-    usb_ethernet_init();
-    pico_loop_create();
-    pico_eth_start();
-
-    while(1) {
-        pico_lock();
-        pico_stack_tick();
-        pico_unlock();
-        kthread_yield();
-    }
-}
-
-struct task *picotcp = NULL;
 void frosted_tcpip_wakeup(void)
 {
-    if (picotcp) {
-        irq_off();
-        task_wakeup(picotcp);
-        irq_on();
-    }
 }
 #endif
 
@@ -283,11 +258,24 @@ void frosted_kernel(int xipfs_mounted)
         IDLE();
     }
 #ifdef CONFIG_PICOTCP
-    picotcp = kthread_create(picotcp_kthread, NULL);
+    pico_stack_init();
+    socket_in_init();
+    pico_lock_init();
+
+    /* Network devices initialization */
+    usb_ethernet_init();
+    pico_loop_create();
+    pico_eth_start();
 #endif
+
 
     while(1) {
         check_tasklets();
+#ifdef CONFIG_PICOTCP
+        pico_lock();
+        pico_stack_tick();
+        pico_unlock();
+#endif
         __WFI();
     }
 }
