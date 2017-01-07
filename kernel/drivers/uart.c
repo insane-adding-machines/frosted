@@ -35,7 +35,7 @@
 #   define USART_SR_TXE   USART_IC_TX
 static inline uint32_t get_interrupt_source(uint32_t base)
 {
-    return USART_RIS(usart);
+    return USART_RIS(base);
 }
 #endif
 #ifdef STM32F4
