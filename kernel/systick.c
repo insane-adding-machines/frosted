@@ -105,6 +105,7 @@ static void ktimers_check_tasklet(void *arg)
     struct ktimer *t;
     struct ktimer t_previous;
     int next_t;
+    uint32_t this_timeslice;
 
     next_t = -1;
 
