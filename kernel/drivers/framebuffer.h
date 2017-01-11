@@ -3,38 +3,10 @@
 
 #include <stdint.h>
 #include "frosted.h"
+#include <sys/frosted-io.h>
 
 struct fb_ops;
 
-enum fb_pixel_format {
-    FB_PF_ARGB8888,
-    FB_PF_RGB888,
-    FB_PF_RGB565,
-    FB_PF_ARGB15555,
-    FB_PF_ARGB4444,
-    FB_PF_CMAP256
-};
-
-struct fb_var_screeninfo {
-    uint32_t xres; /* visible resolution */ 
-    uint32_t yres; 
-    uint32_t xoffset; /* offset from virtual to visible */ 
-    uint32_t yoffset; /* resolution */ 
-
-    uint32_t bits_per_pixel;
-    enum fb_pixel_format pixel_format;
-
-    /* Timing: All values in pixclocks, except pixclock (of course) */ 
-    // __u32 pixclock; /* pixel clock in ps (pico seconds) */ 
-    // __u32 left_margin; /* time from sync to picture */ 
-    // __u32 right_margin; /* time from picture to sync */ 
-    // __u32 upper_margin; /* time from sync to picture */ 
-    // __u32 lower_margin; 
-    // __u32 hsync_len; /* length of horizontal sync */ 
-    // __u32 vsync_len; /* length of vertical sync */ 
-    // __u32 sync; /* see FB_SYNC_* */ 
-    // __u32 vmode; /* see FB_VMODE_* */ 
-};
 
 struct fb_info {
         struct fb_var_screeninfo var;   /* Current var */
@@ -44,7 +16,7 @@ struct fb_info {
 
         struct fb_ops *fbops;
         struct device *dev;             /* This is this fb device */
-        volatile uint8_t *screen_buffer;   /* Framebuffer address */
+        uint8_t *screen_buffer;   /* Framebuffer address */
 };
 
 struct fb_ops {

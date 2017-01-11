@@ -172,11 +172,17 @@ static int fb_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
 
     (void)arg;
     if (cmd == IOCTL_FB_GETCMAP) {
-        //return exti_enable(fno, 0);
         return 0;
     }
     if (cmd == IOCTL_FB_PUTCMAP) {
         return fb->fbops->fb_setcmap((uint32_t *)arg, fb);
+    }
+    if (cmd == IOCTL_FB_GET_FSCREENINFO) {
+        struct fb_fix_screeninfo *fbi = (struct fb_fix_screeninfo *)arg;
+        if (!arg)
+            return -1;
+        memcpy(arg, &fb->var, sizeof(struct fb_fix_screeninfo));
+        return 0;
     }
     return -1;
 }

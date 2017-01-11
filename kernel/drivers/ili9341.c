@@ -87,13 +87,16 @@ static int ltdc_config_layer(struct fb_info *fb)
   fb->var.bits_per_pixel = FB_BPP;
   //fb->var.pixel_format = FB_PF_RGB565;
   fb->var.pixel_format = FB_PF_ARGB8888;
+  fb->var.smem_len = fb->var.xres * fb->var.yres * (fb->var.bits_per_pixel/8);
+  fb->var.type = FB_TYPE_PIXELMAP;
 
   /* Allocate framebuffer memory */
-  fb->screen_buffer = f_malloc(MEM_USER, fb->var.xres * fb->var.yres * (fb->var.bits_per_pixel/8));
+  fb->screen_buffer = f_malloc(MEM_USER, fb->smem_len);
   if (!fb->screen_buffer)
   {
       return -1;
   }
+  fb->smem_start = fb->screen_buffer;
 
   /* Windowing configuration */ 
   ltdc_setup_windowing(LTDC_LAYER_2, fb->var.xres, fb->var.xres);
