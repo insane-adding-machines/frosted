@@ -33,6 +33,8 @@ struct i2c_slave {
 int i2c_create(const struct i2c_config *i2c_config);
 int i2c_init_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t len);
 int i2c_init_write(struct i2c_slave *sl, uint8_t reg, const uint8_t *buf, uint32_t len);
+int i2c_kthread_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t len);
+int i2c_kthread_write(struct i2c_slave *sl, uint8_t reg, const uint8_t *buf, uint32_t len);
 
 #endif
 

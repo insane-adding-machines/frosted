@@ -79,6 +79,7 @@ struct dev_i2c {
     mutex_t *mutex;
 
     uint8_t dirn;
+    uint8_t kthread_transfer_complete;
     volatile enum i2c_state state;
 };
 
@@ -341,6 +342,68 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
     }
 }
 
+static void isr_kthread(struct i2c_slave *sl)
+{
+    struct dev_i2c *i2c;
+    i2c = DEV_I2C[sl->bus];
+    if (!i2c)
+        return;
+    i2c->kthread_transfer_complete++;
+}
+
+int i2c_kthread_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t len)
+{
+    struct dev_i2c *i2c;
+
+    if (len <= 0)
+        return len;
+
+    i2c = DEV_I2C[sl->bus];
+    if (!i2c)
+        return -ENOENT;
+
+    mutex_lock(i2c->mutex);
+    i2c->dirn = 1;
+    i2c->slv_register = reg;
+    i2c->isr = isr_kthread;
+    i2c->sl = sl;
+    i2c->kthread_transfer_complete = 0;
+    init_dma(i2c->rx_dma_config, (uint32_t)buf, len);
+    dma_enable_transfer_complete_interrupt(i2c->rx_dma_config->base, i2c->rx_dma_config->stream);
+    nvic_set_priority(i2c->rx_dma_config->irq, 1);
+    nvic_enable_irq(i2c->rx_dma_config->irq);
+    state_machine(i2c, I2C_STIM_START);
+    while(i2c->kthread_transfer_complete == 0)
+       kthread_yield();
+    return len;
+}
+
+int i2c_kthread_write(struct i2c_slave *sl, uint8_t reg, const uint8_t *buf, uint32_t len)
+{
+    struct dev_i2c *i2c;
+
+    if (len <= 0)
+        return len;
+
+    i2c = DEV_I2C[sl->bus];
+    if (!i2c)
+        return -ENOENT;
+
+    mutex_lock(i2c->mutex);
+    i2c->dirn = 0;
+    i2c->slv_register = reg;
+    i2c->isr = isr_kthread;
+    i2c->sl = sl;
+    init_dma(i2c->tx_dma_config, (uint32_t)buf, len);
+    dma_enable_transfer_complete_interrupt(i2c->tx_dma_config->base, i2c->tx_dma_config->stream);
+    nvic_set_priority(i2c->tx_dma_config->irq, 1);
+    nvic_enable_irq(i2c->tx_dma_config->irq);
+    state_machine(i2c, I2C_STIM_START);
+    while(i2c->kthread_transfer_complete == 0)
+       kthread_yield();
+    return len;
+}
+
 int i2c_init_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t len)
 {
     struct dev_i2c *i2c;
@@ -440,6 +503,7 @@ int i2c_create(const struct i2c_config *conf)
     i2c_nack_current(conf->base);
     i2c_disable_ack(conf->base);
     i2c_clear_stop(conf->base);
+    i2c_peripheral_enable(conf->base);
 
     /* Set up device struct */
     i2c->base = conf->base;

@@ -485,11 +485,16 @@ menu "Device Drivers"
            depends on (DEVSTM32I2C)
            default n
 
+
            config DEVLSM303DLHC
            tristate "LSM303DLHC driver (Accelerometer & Magnetometer)"
            depends on (DEVSTM32I2C)
            default n
            
+           config DEVFT5336
+           tristate "FT5336 driver (Touchscreen STM32F746)"
+           depends on (DEVSTM32I2C)
+           default n
 
            config DEVSTMPE811
            tristate "STMPE811 driver (Touchscreen)"

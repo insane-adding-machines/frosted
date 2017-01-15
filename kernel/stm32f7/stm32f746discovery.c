@@ -263,27 +263,27 @@ static const struct i2c_config i2c_configs[] = {
         .rise_time = 11,
         .bus_clk_frequency = 10,
 
-        .tx_dma = {
-            .base = DMA1,
-            .stream = DMA_STREAM6,
-            .channel = DMA_SxCR_CHSEL_1,
-            .psize =  DMA_SxCR_PSIZE_8BIT,
-            .msize = DMA_SxCR_MSIZE_8BIT,
-            .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
-            .prio = DMA_SxCR_PL_MEDIUM,
-            .paddr =  (uint32_t) &I2C_DR(I2C3),
-            .irq = NVIC_DMA1_STREAM6_IRQ,
-        },
         .rx_dma = {
             .base = DMA1,
-            .stream = DMA_STREAM0,
-            .channel = DMA_SxCR_CHSEL_1,
+            .stream = DMA_STREAM2,
+            .channel = DMA_SxCR_CHSEL_3,
             .psize =  DMA_SxCR_PSIZE_8BIT,
             .msize = DMA_SxCR_MSIZE_8BIT,
             .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
             .prio = DMA_SxCR_PL_VERY_HIGH,
             .paddr =  (uint32_t) &I2C_DR(I2C3),
-            .irq = NVIC_DMA1_STREAM0_IRQ,
+            .irq = NVIC_DMA1_STREAM2_IRQ,
+        },
+        .tx_dma = {
+            .base = DMA1,
+            .stream = DMA_STREAM4,
+            .channel = DMA_SxCR_CHSEL_3,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+            .prio = DMA_SxCR_PL_MEDIUM,
+            .paddr =  (uint32_t) &I2C_DR(I2C3),
+            .irq = NVIC_DMA1_STREAM4_IRQ,
         },
         .dma_rcc = RCC_DMA1,
         .pio_scl = {
@@ -309,6 +309,8 @@ static const struct i2c_config i2c_configs[] = {
 };
 #define NUM_I2CS (sizeof(i2c_configs) / sizeof(struct i2c_config))
 
+extern int ft5336_init(uint32_t);
+
 int machine_init(void)
 {
     int i = 0;
@@ -329,6 +331,10 @@ int machine_init(void)
     sdio_init(&sdio_conf);
     usb_init(&usb_guest);
     ethernet_init(&eth_config);
+
+    #ifdef CONFIG_DEVFT5336
+    ft5336_init(3); /* FT5336 touch screen on I2C-3 */
+    #endif
     return 0;
 }
 
