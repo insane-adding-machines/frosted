@@ -701,7 +701,7 @@ static int catch_signal(struct task *t, int signo, sigset_t orig_mask)
 
     /* If process is being traced, deliver SIGTRAP to tracer */
     if (t->tb.tracer != NULL) {
-        tasklet_add(task_deliver_sigtrap,(void *)t->tb.tracer->tb.pid);
+        tasklet_add(task_deliver_sigtrap, t->tb.tracer);
     }
 
     /* Reset signal, if pending, as it's going to be handled. */
@@ -2000,14 +2000,16 @@ static void task_resume_vfork(struct task *t)
 
 void task_deliver_sigchld(void *arg)
 {
-    int pid = (int)arg;
-    task_kill(pid, SIGCHLD);
+    struct task *t = (struct task *)arg;
+    if (t)
+    task_kill(t->tb.pid, SIGCHLD);
 }
 
 void task_deliver_sigtrap(void *arg)
 {
-    int pid = (int)arg;
-    task_kill(pid, SIGTRAP);
+    struct task *t = (struct task *)arg;
+    if (t)
+        task_kill(t->tb.pid, SIGTRAP);
 }
 
 static void destroy_thread_group(struct thread_group *group, uint16_t tid)
@@ -2038,10 +2040,10 @@ void task_terminate(struct task *t)
         t->tb.timeslice = 0;
 
         if (t->tb.ppid > 0) {
+            struct task *pt = tasklist_get(&tasks_idling, t->tb.ppid);
+            if (!pt)
+                pt = tasklist_get(&tasks_running, t->tb.ppid);
             if (t->tb.flags & TASK_FLAG_VFORK) {
-                struct task *pt = tasklist_get(&tasks_idling, t->tb.ppid);
-                if (!pt)
-                    pt = tasklist_get(&tasks_running, t->tb.ppid);
                 /* Restore parent's stack */
                 if (pt) {
                     memcpy((void *)pt->tb.cur_stack, (void *)&_cur_task->stack,
@@ -2050,7 +2052,8 @@ void task_terminate(struct task *t)
                 }
                 task_resume_vfork(t);
             }
-            tasklet_add(task_deliver_sigchld, ((void *)(int)t->tb.ppid));
+            if (pt)
+                tasklet_add(task_deliver_sigchld, pt);
             task_preempt();
         }
     }
@@ -2634,13 +2637,16 @@ sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
 #endif
 
     /* Execute syscall */
-    volatile int retval;
     int (*call)(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
                 uint32_t arg5) = NULL;
 
     _cur_task->tb.flags |= TASK_FLAG_IN_SYSCALL;
     call = sys_syscall_handlers[n];
-    retval = call(arg1, arg2, arg3, *a4, *a5);
+    if (!call) {
+        irq_on();
+        goto return_from_syscall;
+    }
+    call(arg1, arg2, arg3, *a4, *a5);
 
     /* Exec does not have a return value, and will use r0 as args for main()*/
     if (call != sys_syscall_handlers[SYS_EXEC])
