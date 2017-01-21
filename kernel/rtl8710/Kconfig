@@ -1,0 +1,11 @@
+if ARCH_RTL8710
+
+choice 
+    prompt "MCU"
+    default RTL8710AF
+config ARCH_RTL8710AF
+    bool "RTL8710AF System on chip (Pine64 IoT PADI)"
+    select FLASH_SIZE_1M
+    select RAM_SIZE_448KB
+endchoice
+endif

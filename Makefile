@@ -191,11 +191,15 @@ OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_LPC1679XPRESSO)+=kernel/$(BOARD)/lpc1769xpresso.o
 OBJS-$(MACH_LM3S6965EVB)+=kernel/$(BOARD)/lm3s6965evb.o
 OBJS-$(MACH_LM3SVIRT)+=kernel/$(BOARD)/lm3s6965evb.o
+OBJS-$(MACH_PINE64_IoT_PADI)+=kernel/$(BOARD)/rtl8710af.o
 
 
 LIB-y:=
 LIB-$(PICOTCP)+=$(PREFIX)/lib/libpicotcp.a
-LIB-y+=kernel/unicore-mx/lib/libucmx_$(BOARD).a
+
+ifneq ($(MACH_PINE64_IoT_PADI),y)
+  LIB-y+=kernel/unicore-mx/lib/libucmx_$(BOARD).a
+endif
 OBJS-$(PICOTCP)+=kernel/net/pico_lock.o
 
 CFLAGS+=$(CFLAGS-y)
