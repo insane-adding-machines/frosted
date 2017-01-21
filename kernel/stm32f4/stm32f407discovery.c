@@ -184,12 +184,12 @@ static const struct i2c_config i2c_configs[] = {
         .dma_rcc = RCC_DMA1,
         .pio_scl = {
             .base=GPIOB,
-            .pin=GPIO6,
+            .pin=GPIO8,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF4,
             .speed=GPIO_OSPEED_50MHZ,
             .optype=GPIO_OTYPE_OD,
-            .pullupdown=GPIO_PUPD_PULLUP
+            .pullupdown = GPIO_PUPD_NONE
         },
         .pio_sda = {
             .base=GPIOB,
@@ -198,7 +198,7 @@ static const struct i2c_config i2c_configs[] = {
             .af=GPIO_AF4,
             .speed=GPIO_OSPEED_50MHZ,
             .optype=GPIO_OTYPE_OD,
-            .pullupdown=GPIO_PUPD_PULLUP
+            .pullupdown = GPIO_PUPD_NONE
         },
     },
 #endif
@@ -509,5 +509,8 @@ int machine_init(void)
     usb_init(&usb_guest);
     ethernet_init(&eth_config);
     dsp_init();
+    #ifdef CONFIG_DEVMCCOG21
+    mccog21_init(1);
+    #endif
     return 0;
 }

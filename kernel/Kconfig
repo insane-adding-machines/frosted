@@ -491,6 +491,11 @@ menu "Device Drivers"
            depends on (DEVSTM32I2C)
            default n
            
+           config DEVMCCOG21
+           tristate "MCCOG21 driver (2-lines B/W display)"
+           depends on (DEVSTM32I2C)
+           default n
+           
            config DEVFT5336
            tristate "FT5336 driver (Touchscreen STM32F746)"
            depends on (DEVSTM32I2C)

@@ -50,20 +50,22 @@ enum i2c_state
     I2C_STATE_DMA_COMPLETE,
     I2C_STATE_BTF,
     I2C_STATE_ERROR,
+    I2C_STATE_MAX
 };
 
-enum i2c_stim
+enum i2c_ev
 {
-    I2C_STIM_START,
-    I2C_STIM_TIMEOUT,
-    I2C_STIM_MASTER_MODE_SELECT,
-    I2C_STIM_MASTER_MODE_ADDRESS10,
-    I2C_STIM_MASTER_TRANSMITTER_MODE_SELECTED,
-    I2C_STIM_MASTER_RECEIVER_MODE_SELECTED,
-    I2C_STIM_DMA_COMPLETE_TX,
-    I2C_STIM_DMA_COMPLETE_RX,
-    I2C_STIM_BTF,
-    I2C_STIM_TXE,
+    I2C_EV_START,
+    I2C_EV_TIMEOUT,
+    I2C_EV_MASTER_MODE_SELECT,
+    I2C_EV_MASTER_MODE_ADDRESS10,
+    I2C_EV_MASTER_TRANSMITTER_MODE_SELECTED,
+    I2C_EV_MASTER_RECEIVER_MODE_SELECTED,
+    I2C_EV_DMA_COMPLETE_TX,
+    I2C_EV_DMA_COMPLETE_RX,
+    I2C_EV_BTF,
+    I2C_EV_TXE,
+    I2C_EV_MAX
 };
 
 struct dev_i2c {
@@ -76,6 +78,7 @@ struct dev_i2c {
     uint8_t slv_register;
     const struct dma_config * tx_dma_config;
     const struct dma_config * rx_dma_config;
+    uint8_t *dma_buffer;
     mutex_t *mutex;
 
     uint8_t dirn;
@@ -87,7 +90,7 @@ struct dev_i2c {
 
 static struct dev_i2c *DEV_I2C[MAX_I2CS] = { };
 
-static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim);
+static void state_machine(struct dev_i2c *i2c, enum i2c_ev ev);
 
 /*****************************
     MASTER_MODE_SELECT                                   SR2: BUSY|MSL              SR1: SB
@@ -97,29 +100,33 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim);
 *****************************/
 static void i2c_ev(struct dev_i2c * i2c)
 {
+    uint32_t sr1 = I2C_SR1(i2c->base);
+    uint32_t sr2 = I2C_SR2(i2c->base);
     /* MASTER_MODE_SELECT */
-    if(    ((I2C_SR1(i2c->base) & (I2C_SR1_SB)) == (I2C_SR1_SB)) &&
-            ((I2C_SR2(i2c->base) & (I2C_SR2_BUSY | I2C_SR2_MSL)) == (I2C_SR2_BUSY | I2C_SR2_MSL))   )
-        state_machine(i2c, I2C_STIM_MASTER_MODE_SELECT);
+    if ((sr1 & (I2C_SR1_SB)) == (I2C_SR1_SB))
+        state_machine(i2c, I2C_EV_MASTER_MODE_SELECT);
     /* MASTER_MODE_ADDRESS10 */
-    else if(    ((I2C_SR1(i2c->base) & (I2C_SR1_ADD10)) == (I2C_SR1_ADD10)) &&
-            ((I2C_SR2(i2c->base) & (I2C_SR2_BUSY | I2C_SR2_MSL)) == (I2C_SR2_BUSY | I2C_SR2_MSL))   )
-        state_machine(i2c, I2C_STIM_MASTER_MODE_ADDRESS10);
+    else if((((sr1 & (I2C_SR1_ADD10)) == (I2C_SR1_ADD10)) &&
+            (sr2 & (I2C_SR2_BUSY | I2C_SR2_MSL)) == (I2C_SR2_BUSY | I2C_SR2_MSL))   )
+        state_machine(i2c, I2C_EV_MASTER_MODE_ADDRESS10);
     /* MASTER_TRANSMITTER_MODE_SELECTED */
-    else if(    ((I2C_SR1(i2c->base) & (I2C_SR1_TxE | I2C_SR1_ADDR)) == (I2C_SR1_TxE | I2C_SR1_ADDR)) &&
-            ((I2C_SR2(i2c->base) & (I2C_SR2_BUSY | I2C_SR2_MSL | I2C_SR2_TRA)) == (I2C_SR2_BUSY | I2C_SR2_MSL | I2C_SR2_TRA))   )
-        state_machine(i2c, I2C_STIM_MASTER_TRANSMITTER_MODE_SELECTED);
+    else if((((sr1 & (I2C_SR1_TxE | I2C_SR1_ADDR)) == (I2C_SR1_TxE | I2C_SR1_ADDR)) &&
+            (sr2 & (I2C_SR2_BUSY | I2C_SR2_MSL | I2C_SR2_TRA)) == (I2C_SR2_BUSY | I2C_SR2_MSL | I2C_SR2_TRA))   )
+        state_machine(i2c, I2C_EV_MASTER_TRANSMITTER_MODE_SELECTED);
     /* MASTER_RECEIVER_MODE_SELECTED */
-    else if(    ((I2C_SR1(i2c->base) & (I2C_SR1_ADDR)) == (I2C_SR1_ADDR)) &&
-            ((I2C_SR2(i2c->base) & (I2C_SR2_BUSY | I2C_SR2_MSL)) == (I2C_SR2_BUSY | I2C_SR2_MSL))   )
-        state_machine(i2c, I2C_STIM_MASTER_RECEIVER_MODE_SELECTED);
-    else if(    (I2C_SR1(i2c->base) & (I2C_SR1_BTF)) == (I2C_SR1_BTF)   )
-        state_machine(i2c, I2C_STIM_BTF);
-    else if(    (I2C_SR1(i2c->base) & (I2C_SR1_TxE)) == (I2C_SR1_TxE)   )
-        state_machine(i2c, I2C_STIM_TXE);
+    else if(((sr1 & (I2C_SR1_ADDR)) == (I2C_SR1_ADDR)) &&
+            ((sr2 &(I2C_SR2_BUSY | I2C_SR2_MSL)) == (I2C_SR2_BUSY | I2C_SR2_MSL))   )
+        state_machine(i2c, I2C_EV_MASTER_RECEIVER_MODE_SELECTED);
+
+    /* TxE / BTF */
+    if(    (sr1 & (I2C_SR1_TxE)) == (I2C_SR1_TxE)   )
+        state_machine(i2c, I2C_EV_TXE);
+    if(    (sr1 & (I2C_SR1_BTF)) == (I2C_SR1_BTF)   )
+        state_machine(i2c, I2C_EV_BTF);
 
 }
 
+static void restart_state_machine(struct dev_i2c *i2c);
 
 /*****************************
     BERR             I2C_SR1_BERR
@@ -131,23 +138,31 @@ static void i2c_ev(struct dev_i2c * i2c)
 *****************************/
 static void i2c_er(struct dev_i2c * i2c)
 {
+    volatile uint32_t er;
     if (!i2c)
         return;
-    if(I2C_SR1(i2c->base) & (I2C_SR1_TIMEOUT) == (I2C_SR1_TIMEOUT))
-        state_machine(i2c, I2C_STIM_TIMEOUT);
+    er = I2C_SR1(i2c->base);
+    if(er & (I2C_SR1_TIMEOUT) == (I2C_SR1_TIMEOUT))
+        state_machine(i2c, I2C_EV_TIMEOUT);
+    else {
+        i2c_send_stop(i2c->base);
+        i2c_peripheral_disable(i2c->base);
+        restart_state_machine(i2c);
+        i2c->kthread_transfer_complete++;
+    }
 }
 
 static void i2c_rx_dma_complete(struct dev_i2c * i2c)
 {
     if (!i2c)
         return;
-    state_machine(i2c, I2C_STIM_DMA_COMPLETE_RX);
+    state_machine(i2c, I2C_EV_DMA_COMPLETE_RX);
 }
 static void i2c_tx_dma_complete(struct dev_i2c * i2c)
 {
     if (!i2c)
         return;
-    state_machine(i2c, I2C_STIM_DMA_COMPLETE_TX);
+    state_machine(i2c, I2C_EV_DMA_COMPLETE_TX);
 }
 
 #ifdef CONFIG_I2C1
@@ -196,10 +211,11 @@ void dma1_stream4_isr()
 static void restart_state_machine(struct dev_i2c *i2c)
 {
     mutex_unlock(i2c->mutex);
+    i2c_peripheral_enable(i2c->base);
     i2c->state = I2C_STATE_READY;
 }
 
-static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
+static void state_machine(struct dev_i2c *i2c, enum i2c_ev ev)
 {
     volatile uint16_t cr1;
     volatile uint16_t cr2;
@@ -208,20 +224,22 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
     switch(i2c->state)
     {
         case I2C_STATE_READY:
-            i2c_peripheral_enable(i2c->base);
-            i2c_enable_interrupt(i2c->base, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN);
-            i2c->state = I2C_STATE_ADDRESS;
-            i2c_set_dma_last_transfer(i2c->base);
-            i2c_send_start(i2c->base);
+            if (ev == I2C_EV_START) {
+                i2c_peripheral_enable(i2c->base);
+                i2c_enable_interrupt(i2c->base, I2C_CR2_ITEVTEN | I2C_CR2_ITERREN);
+                i2c->state = I2C_STATE_ADDRESS;
+                i2c_set_dma_last_transfer(i2c->base);
+                i2c_send_start(i2c->base);
+            }
             break;
 
         case I2C_STATE_ADDRESS:
-            switch(stim)
+            switch(ev)
             {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_MASTER_MODE_SELECT:
+                case I2C_EV_MASTER_MODE_SELECT:
                     i2c->state = I2C_STATE_REGISTER;
                     i2c_send_7bit_address(i2c->base, i2c->sl->address >> 1, 0);
                     break;
@@ -229,12 +247,12 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
             break;
 
         case I2C_STATE_REGISTER:
-            switch(stim)
+            switch(ev)
                 {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_MASTER_TRANSMITTER_MODE_SELECTED:
+                case I2C_EV_MASTER_TRANSMITTER_MODE_SELECTED:
                     if(i2c->dirn)
                     {
                         i2c->state = I2C_STATE_READ;
@@ -249,13 +267,12 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
             break;
 
         case I2C_STATE_READ:
-            switch(stim)
+            switch(ev)
             {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_TXE:
-                case I2C_STIM_BTF:
+                case I2C_EV_TXE:
                     i2c->state = I2C_STATE_READ_ADDRESS;
                     i2c_send_start(i2c->base);
                     break;
@@ -263,12 +280,12 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
             break;
 
         case I2C_STATE_READ_ADDRESS:
-            switch(stim)
+            switch(ev)
             {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_MASTER_MODE_SELECT:
+                case I2C_EV_MASTER_MODE_SELECT:
                     i2c->state = I2C_STATE_READ_DATA;
                     i2c_send_7bit_address(i2c->base, i2c->sl->address >> 1, 1);
                     break;
@@ -276,12 +293,12 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
             break;
 
         case I2C_STATE_READ_DATA:
-            switch(stim)
+            switch(ev)
             {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_MASTER_RECEIVER_MODE_SELECTED:
+                case I2C_EV_MASTER_RECEIVER_MODE_SELECTED:
                     i2c->state = I2C_STATE_DMA_COMPLETE;
                     i2c_enable_dma(i2c->base);
                     break;
@@ -289,13 +306,12 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
             break;
 
         case I2C_STATE_DATA:
-            switch(stim)
+            switch(ev)
             {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_TXE:
-                case I2C_STIM_BTF:
+                case I2C_EV_TXE:
                     i2c->state = I2C_STATE_DMA_COMPLETE;
                     i2c_enable_dma(i2c->base);
                     break;
@@ -303,19 +319,19 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
             break;
 
         case I2C_STATE_DMA_COMPLETE:
-            switch(stim)
+            switch(ev)
             {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_DMA_COMPLETE_RX:
+                case I2C_EV_DMA_COMPLETE_RX:
                     i2c_disable_dma(i2c->base);
                     i2c_send_stop(i2c->base);
                     i2c_peripheral_disable(i2c->base);
                     i2c->isr(i2c->sl);
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_DMA_COMPLETE_TX:
+                case I2C_EV_DMA_COMPLETE_TX:
                     i2c_disable_dma(i2c->base);
                     i2c->state = I2C_STATE_BTF;
                     break;
@@ -323,12 +339,13 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_stim stim)
             break;
 
         case I2C_STATE_BTF:
-            switch(stim)
+            switch(ev)
             {
-                case  I2C_STIM_TIMEOUT:
+                case  I2C_EV_TIMEOUT:
                     restart_state_machine(i2c);
                     break;
-                case I2C_STIM_BTF:
+                case I2C_EV_TXE:
+                case I2C_EV_BTF:
                     i2c_send_stop(i2c->base);
                     i2c_peripheral_disable(i2c->base);
                     i2c->isr(i2c->sl);
@@ -348,7 +365,6 @@ static void isr_kthread(struct i2c_slave *sl)
     i2c = DEV_I2C[sl->bus];
     if (!i2c)
         return;
-    i2c->kthread_transfer_complete++;
 }
 
 int i2c_kthread_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t len)
@@ -372,9 +388,10 @@ int i2c_kthread_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t l
     dma_enable_transfer_complete_interrupt(i2c->rx_dma_config->base, i2c->rx_dma_config->stream);
     nvic_set_priority(i2c->rx_dma_config->irq, 1);
     nvic_enable_irq(i2c->rx_dma_config->irq);
-    state_machine(i2c, I2C_STIM_START);
+    state_machine(i2c, I2C_EV_START);
     while(i2c->kthread_transfer_complete == 0)
        kthread_yield();
+    kthread_sleep_ms(10);
     return len;
 }
 
@@ -398,9 +415,10 @@ int i2c_kthread_write(struct i2c_slave *sl, uint8_t reg, const uint8_t *buf, uin
     dma_enable_transfer_complete_interrupt(i2c->tx_dma_config->base, i2c->tx_dma_config->stream);
     nvic_set_priority(i2c->tx_dma_config->irq, 1);
     nvic_enable_irq(i2c->tx_dma_config->irq);
-    state_machine(i2c, I2C_STIM_START);
+    state_machine(i2c, I2C_EV_START);
     while(i2c->kthread_transfer_complete == 0)
        kthread_yield();
+    kthread_sleep_ms(10);
     return len;
 }
 
@@ -426,7 +444,7 @@ int i2c_init_read(struct i2c_slave *sl, uint8_t reg, uint8_t *buf, uint32_t len)
     dma_enable_transfer_complete_interrupt(i2c->rx_dma_config->base, i2c->rx_dma_config->stream);
     nvic_set_priority(i2c->rx_dma_config->irq, 1);
     nvic_enable_irq(i2c->rx_dma_config->irq);
-    state_machine(i2c, I2C_STIM_START);
+    state_machine(i2c, I2C_EV_START);
     return 0;
 }
 
@@ -452,7 +470,7 @@ int i2c_init_write(struct i2c_slave *sl, uint8_t reg, const uint8_t *buf, uint32
     dma_enable_transfer_complete_interrupt(i2c->tx_dma_config->base, i2c->tx_dma_config->stream);
     nvic_set_priority(i2c->tx_dma_config->irq, 1);
     nvic_enable_irq(i2c->tx_dma_config->irq);
-    state_machine(i2c, I2C_STIM_START);
+    state_machine(i2c, I2C_EV_START);
     return 0;
 }
 
@@ -500,7 +518,7 @@ int i2c_create(const struct i2c_config *conf)
 
     i2c_set_speed(conf->base, 0);
 
-    i2c_nack_current(conf->base);
+    //i2c_nack_current(conf->base);
     i2c_disable_ack(conf->base);
     i2c_clear_stop(conf->base);
     i2c_peripheral_enable(conf->base);

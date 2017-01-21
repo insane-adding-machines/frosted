@@ -46,13 +46,7 @@ static inline uint32_t get_interrupt_source(uint32_t base)
 #   define usart_clear_tx_interrupt(x) do{}while(0)
 static inline uint32_t get_interrupt_source(uint32_t base)
 {
-	uint32_t flag_set = USART_SR(base);
-    uint32_t ret =0;
-    if (flag_set & USART_CR1(base)) 
-        ret |= USART_SR_TXE;
-    if ((flag_set != 0) && ((USART_CR3(base) & USART_CR3_CTSIE)!= 0))
-        ret |= USART_SR_RXNE;
-    return ret;
+    return USART_SR(base);
 }
 #endif
 #ifdef STM32F7

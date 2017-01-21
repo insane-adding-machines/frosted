@@ -250,6 +250,62 @@ static struct usb_config usb_guest = {
  *    Address = 01110000
  */
 static const struct i2c_config i2c_configs[] = {
+#ifdef CONFIG_I2C1
+    {
+        .idx  = 1,
+        .base = I2C1,
+        .ev_irq = NVIC_I2C1_EV_IRQ,
+        .er_irq = NVIC_I2C1_ER_IRQ,
+        .rcc = RCC_I2C1,
+
+        .clock_f = I2C_CR2_FREQ_42MHZ,
+        .fast_mode = 1,
+        .rise_time = 11,
+        .bus_clk_frequency = 10,
+
+        .rx_dma = {
+            .base = DMA1,
+            .stream = DMA_STREAM0,
+            .channel = DMA_SxCR_CHSEL_1,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+            .prio = DMA_SxCR_PL_VERY_HIGH,
+            .paddr =  (uint32_t) &I2C_DR(I2C1),
+            .irq = NVIC_DMA1_STREAM0_IRQ,
+        },
+        .tx_dma = {
+            .base = DMA1,
+            .stream = DMA_STREAM6,
+            .channel = DMA_SxCR_CHSEL_1,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+            .prio = DMA_SxCR_PL_MEDIUM,
+            .paddr =  (uint32_t) &I2C_DR(I2C1),
+            .irq = NVIC_DMA1_STREAM6_IRQ,
+        },
+        .dma_rcc = RCC_DMA1,
+        .pio_scl = {
+            .base=GPIOB,
+            .pin=GPIO8,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF4,
+            .speed=GPIO_OSPEED_50MHZ,
+            .optype=GPIO_OTYPE_OD,
+            .pullupdown=GPIO_PUPD_PULLUP
+        },
+        .pio_sda = {
+            .base=GPIOB,
+            .pin=GPIO9,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF4,
+            .speed=GPIO_OSPEED_50MHZ,
+            .optype=GPIO_OTYPE_OD,
+            .pullupdown=GPIO_PUPD_PULLUP
+        },
+    },
+#endif
 #ifdef CONFIG_I2C3
     {
         .idx  = 3,
@@ -258,7 +314,7 @@ static const struct i2c_config i2c_configs[] = {
         .er_irq = NVIC_I2C3_ER_IRQ,
         .rcc = RCC_I2C3,
 
-        .clock_f = I2C_CR2_FREQ_36MHZ,
+        .clock_f = I2C_CR2_FREQ_42MHZ,
         .fast_mode = 1,
         .rise_time = 11,
         .bus_clk_frequency = 10,
@@ -310,6 +366,7 @@ static const struct i2c_config i2c_configs[] = {
 #define NUM_I2CS (sizeof(i2c_configs) / sizeof(struct i2c_config))
 
 extern int ft5336_init(uint32_t);
+extern int mccog21_init(uint32_t);
 
 int machine_init(void)
 {
@@ -334,6 +391,9 @@ int machine_init(void)
 
     #ifdef CONFIG_DEVFT5336
     ft5336_init(3); /* FT5336 touch screen on I2C-3 */
+    #endif
+    #ifdef CONFIG_DEVMCCOG21
+    mccog21_init(1);
     #endif
     return 0;
 }
