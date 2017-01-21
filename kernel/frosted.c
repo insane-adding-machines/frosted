@@ -182,6 +182,10 @@ int frosted_init(void)
 {
     extern void * _k__syscall__;
     int xip_mounted;
+    /* ktimers must be enabled before systick */
+    ktimer_init();
+
+    kernel_task_init();
 
     fpb_init();
 
@@ -190,8 +194,6 @@ int frosted_init(void)
 
     /* Set up system */
 
-    /* ktimers must be enabled before systick */
-    ktimer_init();
 
     hw_init();
     mpu_init();
@@ -211,7 +213,6 @@ int frosted_init(void)
     vfs_mount(NULL, "/sys", "sysfs", 0, NULL);
 
     klog_init();
-    kernel_task_init();
 
 
 #ifdef UNIX
