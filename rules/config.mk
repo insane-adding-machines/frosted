@@ -50,17 +50,6 @@ ifeq ($(MACH_STM32F429Discovery),y)
 	CFLAGS+=-DF429DISCO
 endif
 
-ifeq ($(MACH_PINE64_IoT_PADI),y)
-	CPU=cortex-m
-	BOARD=rtl8710
-	RAM_BASE=0x10000000
-	FLASH_ORIGIN=0x00000000
-	CFLAGS=-DRTL8710AF -mcpu=cortex-m3
-	KRAMMEM_SIZE=64 # Fixed system memory area
-	SYS_CLOCK=83000000
-	ARCH=RTL8710
-endif
-
 ifeq ($(FLASH_SIZE_2MB),y)
 	FLASH_SIZE=2048
 endif
@@ -80,9 +69,6 @@ ifeq ($(FLASH_SIZE_128KB),y)
 	FLASH_SIZE=128
 endif
 
-ifeq ($(RAM_SIZE_448KB),y)
-	RAM_SIZE=448
-endif
 ifeq ($(RAM_SIZE_368KB),y)
 	RAM_SIZE=368
 endif

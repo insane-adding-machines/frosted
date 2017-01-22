@@ -29,16 +29,11 @@ menu "Platform Selection"
         bool "LM3S"
         help
             Enable support for Stellaris LM3S systems
-        
+
         config ARCH_LPC17XX
         bool "LPC17XX"
         help
             Enable support for NXP LPC17xx systems
-        
-        config ARCH_RTL8710
-        bool "Realtek RTL8710 SoC"
-        help
-            Enable support for System-on-chip boards based on RTL8710
 
         config ARCH_STM32F4
         bool "STM32F4"
@@ -56,7 +51,6 @@ menu "Platform Selection"
     source "../kernel/stm32f4/Kconfig"
     source "../kernel/lpc17xx/Kconfig"
     source "../kernel/lm3s/Kconfig"
-    source "../kernel/rtl8710/Kconfig"
 
     config FLASH_SIZE_2MB
             bool
@@ -71,8 +65,6 @@ menu "Platform Selection"
     config FLASH_SIZE_128KB
             bool
 
-    config RAM_SIZE_448KB
-            bool
     config RAM_SIZE_368KB
             bool
     config RAM_SIZE_320KB
@@ -193,11 +185,6 @@ menu "Platform Selection"
         bool "lm3s-qemu"
         depends on ARCH_LM3SVIRT
         default y
-    
-    config MACH_PINE64_IoT_PADI
-        bool "Pine64 IoT PADI SoC"
-        depends on (ARCH_RTL8710)
-        default y
 
     endchoice
 
@@ -222,12 +209,7 @@ config KFLASHMEM_SIZE
 
 config KRAMMEM_SIZE
     int "Kernel RAM size (KB)"
-    depends on !ARCH_RTL8710
     default 64
-
-if ARCH_RTL8710
-    comment "Kernel RAM has a fixed 64KB area on this architecture."
-endif
 
 choice
 prompt "Tasks Stack Size"
