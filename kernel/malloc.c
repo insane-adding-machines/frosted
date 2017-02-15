@@ -41,6 +41,7 @@
 #define F_IN_USE 0x20
 #define in_use(x) (((x->flags) & F_IN_USE) == F_IN_USE)
 #define block_valid(b) ((b) && (b->magic == F_MALLOC_MAGIC))
+static void blk_rearrange(void *arg);
 
 static inline int MEMPOOL(int x)
 {
@@ -353,6 +354,7 @@ void f_proc_heap_free(int pid)
             while(1); /* corrupt block! */
         if ((blk->pid == pid) && in_use(blk)) {
             f_free(blk);
+            blk_rearrange(blk);
         }
         blk = blk->next;
     }
@@ -493,6 +495,10 @@ void f_free(void * ptr)
             task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
         }
         blk->flags &= ~F_IN_USE;
+        /* stats */
+        f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
+        f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
+        f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
 
         /* Userspace task takes mlock in the syscall handler */
         /* kernelspace calls: pid=0 (kernel, kthreads */
@@ -507,13 +513,6 @@ void f_free(void * ptr)
                 mutex_lock(mlock);
             }
         }
-
-        /* stats */
-        f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
-        f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
-        f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
-        //if ((blk->flags & MEM_TASK) == 0)
-        //    blk_rearrange(blk);
 
         /* Userspace tasks release mlock in the syscall handler */
         if (pid == 0) {
@@ -590,9 +589,13 @@ void *sys_malloc_hdlr(int size)
 
 int sys_free_hdlr(void *addr)
 {
+    struct f_malloc_block * blk;
+    blk = (struct f_malloc_block *)((uint8_t *)addr - sizeof(struct f_malloc_block));
+
     if (suspend_on_mutex_lock(mlock) < 0)
         return SYS_CALL_AGAIN;
     f_free(addr);
+    blk_rearrange(blk);
     mutex_unlock(mlock);
     return 0;
 }
