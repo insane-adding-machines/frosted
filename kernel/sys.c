@@ -64,7 +64,7 @@ int sys_gettimeofday_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t 
     if (arg1) {
         struct timeval_kernel *now = (struct timeval_kernel *)arg1;
         now->tv_sec = jiffies / 1000;
-        now->tv_usec = jiffies * 1000;
+        now->tv_usec = (jiffies % 1000) * 1000;
     }
     return 0;
 }
