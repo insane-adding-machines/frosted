@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 
 /* Types */
@@ -130,13 +131,21 @@ int task_timeslice(void);
 struct fnode *task_getcwd(void);
 void task_chdir(struct fnode *f);
 
+/* Naming is not nice, implications of renaming is refactoring */
+void sleepy_task_wakeup(uint32_t now, void *arg);
 
-int sem_wait(sem_t *s);
+/* Manage timer IDs */
+int task_get_timer_id(void);
+void task_set_timer_id(int id);
+
+/* Semaphores */
+int sem_wait(sem_t *s, struct timespec *t);
 int sem_trywait(sem_t *s);
 int sem_post(sem_t *s);
 int sem_init(sem_t *s, int val);
 int sem_destroy(sem_t *s);
 
+/* Mutexen */
 int mutex_lock(mutex_t *s);
 int mutex_trylock(mutex_t *s);
 int mutex_unlock(mutex_t *s);

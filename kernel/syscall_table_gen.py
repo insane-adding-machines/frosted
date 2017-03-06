@@ -38,7 +38,7 @@ syscalls = [
     ["getcwd", 2, "sys_getcwd_hdlr"],
     ["sem_init", 2, "sys_sem_init_hdlr"],
     ["sem_post", 1, "sys_sem_post_hdlr"],
-    ["sem_wait", 1, "sys_sem_wait_hdlr"],
+    ["sem_wait", 2, "sys_sem_wait_hdlr"],
     ["sem_trywait", 1, "sys_sem_trywait_hdlr"],
     ["sem_destroy", 1, "sys_sem_destroy_hdlr"],
     ["mutex_init", 0, "sys_mutex_init_hdlr"],

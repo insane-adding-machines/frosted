@@ -19,15 +19,16 @@
  */
 #include "frosted.h"
 #include "locks.h"
+#include <sys/time.h>
 
 #define SIGN_MUTEX (0xCAFEC0C0)
 #define SIGN_SEMAP (0xCAFECAFE)
+
 
 extern int _mutex_lock(void *);
 extern int _mutex_unlock(void *);
 extern int _sem_wait(void *);
 extern int _sem_post(void *);
-
 
 /* Semaphore: internal functions */
 static void _add_listener(sem_t *s)
@@ -89,7 +90,36 @@ int sem_trywait(sem_t *s)
     return 0;
 }
 
-int sem_wait(sem_t *s)
+int sem_wait(sem_t *s, struct timespec *timeout)
+{
+    if (this_task() == NULL)
+        return sem_spinwait(s);
+    if (!s)
+        return -EINVAL;
+    if(_sem_wait(s) != 0) {
+        if (timeout) {
+            long time_left = (timeout->tv_sec * 1000) + (timeout->tv_nsec / 1000 / 1000) - jiffies;
+            if ((time_left > 0) && (get_tb_timer_id() < 0)) {
+                set_tb_timer_id(ktimer_add(time_left, sleepy_task_wakeup, NULL));
+            } else {
+                if (time_left < 0) {
+                    return -ETIMEDOUT;
+                }
+                return SYS_CALL_AGAIN;
+            }
+        }
+        _add_listener(s);
+        task_suspend();
+        return SYS_CALL_AGAIN;
+    }
+    _del_listener(s);
+    return 0;
+}
+
+
+
+#if 0
+int sem_wait(sem_t *s, struct timespec *t)
 {
     if (this_task() == NULL)
         return sem_spinwait(s);
@@ -103,7 +133,7 @@ int sem_wait(sem_t *s)
     _del_listener(s);
     return 0;
 }
-
+#endif
 
 int sem_post(sem_t *s)
 {
@@ -154,7 +184,7 @@ int sem_init(sem_t *s, int val)
 /* Semaphore: Syscalls */
 int sys_sem_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    if (task_ptr_valid(arg1)) {
+    if (task_ptr_valid((sem_t *)arg1)) {
         return -EACCES;
     }
     struct semaphore *s = (struct semaphore *)arg1;
@@ -176,7 +206,7 @@ int sys_sem_wait_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     struct semaphore *s = (struct semaphore *)arg1;
     if (!s || s->signature != SIGN_SEMAP)
         return -EACCES;
-    return sem_wait((sem_t *)arg1);
+    return sem_wait((sem_t *)arg1, (struct timespec *)arg2);
 }
 
 int sys_sem_trywait_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
