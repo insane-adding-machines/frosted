@@ -11,7 +11,7 @@
    #
 
 syscalls = [
-    ["sleep", 1, "sys_sleep_hdlr"],
+    ["sleep", 2, "sys_sleep_hdlr"],
     ["suspend", 1, "sys_suspend_hdlr"],
     ["getpid", 0, "sys_getpid_hdlr"],
     ["getppid", 0, "sys_getppid_hdlr"],
