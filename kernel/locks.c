@@ -179,6 +179,14 @@ int sys_sem_wait_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
     return sem_wait((sem_t *)arg1);
 }
 
+int sys_sem_trywait_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s || s->signature != SIGN_SEMAP)
+        return -EACCES;
+    return sem_trywait((sem_t *)arg1);
+}
+
 int sys_sem_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
     struct semaphore *s = (struct semaphore *)arg1;
