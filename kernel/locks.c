@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "locks.h"
 
@@ -137,27 +137,25 @@ int sem_destroy(sem_t *sem)
     return 0;
 }
 
-sem_t *sem_init(int val)
+int sem_init(sem_t *s, int val)
 {
-    sem_t *s = kalloc(sizeof(sem_t));
-    if (s) {
-        int i;
-        s->signature = SIGN_SEMAP;
-        s->value = val;
-        s->listeners = 8;
-        s->last = -1;
-        s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
-        for (i = 0; i < s->listeners; i++)
-            s->listener[i] = NULL;
 
-    }
-    return s;
+    int i;
+    s->signature = SIGN_SEMAP;
+    s->value = val;
+    s->listeners = 8;
+    s->last = -1;
+    s->listener = kalloc(sizeof(struct task *) * (s->listeners + 1));
+    for (i = 0; i < s->listeners; i++)
+        s->listener[i] = NULL;
+
+    return 0;
 }
 
 /* Semaphore: Syscalls */
 int sys_sem_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-    return (int)sem_init(arg1);
+    return sem_init((sem_t *)arg1, arg2);
 }
 
 int sys_sem_post_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)

@@ -134,7 +134,7 @@ void task_chdir(struct fnode *f);
 int sem_wait(sem_t *s);
 int sem_trywait(sem_t *s);
 int sem_post(sem_t *s);
-sem_t *sem_init(int val);
+int sem_init(sem_t *s, int val);
 int sem_destroy(sem_t *s);
 
 int mutex_lock(mutex_t *s);
