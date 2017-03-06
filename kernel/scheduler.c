@@ -2099,25 +2099,27 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
                    uint32_t arg5)
 {
     uint32_t timeout = jiffies + arg1;
-    uint32_t *remainings = (uint32_t *)arg2;
+    uint32_t *rem = (uint32_t *)arg2;
 
-    if (task_ptr_valid((void *)arg2))
+    if (task_ptr_valid(rem))
        return -EACCES;
 
     if (arg1 < 0)
         return -EINVAL;
 
     if (timeout < jiffies) {
-        *remainings = 0;
+        if (rem)
+            *rem = 0;
         return 0;
     }
     _cur_task->tb.timer_id = ktimer_add(arg1, sleepy_task_wakeup, this_task());
     task_suspend();
 
     if (timeout > jiffies) {
-        *remainings = timeout - jiffies;
-        return 0;
+        if (rem)
+            *rem = timeout - jiffies;
     }
+    return 0;
 }
 
 void kthread_sleep_ms(uint32_t ms)
