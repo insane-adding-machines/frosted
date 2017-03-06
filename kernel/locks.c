@@ -139,7 +139,6 @@ int sem_destroy(sem_t *sem)
 
 int sem_init(sem_t *s, int val)
 {
-
     int i;
     s->signature = SIGN_SEMAP;
     s->value = val;
@@ -155,6 +154,12 @@ int sem_init(sem_t *s, int val)
 /* Semaphore: Syscalls */
 int sys_sem_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
 {
+    if (task_ptr_valid(arg1)) {
+        return -EACCES;
+    }
+    struct semaphore *s = (struct semaphore *)arg1;
+    if (!s)
+        return -EACCES;
     return sem_init((sem_t *)arg1, arg2);
 }
 
