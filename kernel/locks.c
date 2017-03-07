@@ -116,25 +116,6 @@ int sem_wait(sem_t *s, struct timespec *timeout)
     return 0;
 }
 
-
-
-#if 0
-int sem_wait(sem_t *s, struct timespec *t)
-{
-    if (this_task() == NULL)
-        return sem_spinwait(s);
-    if (!s)
-        return -EINVAL;
-    if(_sem_wait(s) != 0) {
-        _add_listener(s);
-        task_suspend();
-        return SYS_CALL_AGAIN;
-    }
-    _del_listener(s);
-    return 0;
-}
-#endif
-
 int sem_post(sem_t *s)
 {
     if (!s)
