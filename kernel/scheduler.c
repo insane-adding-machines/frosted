@@ -1508,12 +1508,12 @@ int sys_pthread_kill_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
                      uint32_t arg4, uint32_t arg5)
 {
 
-    pthread_t *thread = (pthread_t *)arg1;
+    pthread_t thread = (pthread_t )arg1;
     int sig = (int)arg2;
     struct task *t;
-    if (!thread || (task_ptr_valid(thread) < 0))
+    if (!thread)
         return -EINVAL;
-    t = pthread_get_task((*thread & 0xFFFF0000) >> 16, (*thread & 0xFFFF));
+    t = pthread_get_task((thread & 0xFFFF0000) >> 16, (thread & 0xFFFF));
     if (!t)
         return -ESRCH;
     pthread_destroy_task(t);
