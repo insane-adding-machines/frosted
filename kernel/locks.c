@@ -99,8 +99,8 @@ int sem_wait(sem_t *s, struct timespec *timeout)
     if(_sem_wait(s) != 0) {
         if (timeout) {
             long time_left = (timeout->tv_sec * 1000) + (timeout->tv_nsec / 1000 / 1000) - jiffies;
-            if ((time_left > 0) && (get_tb_timer_id() < 0)) {
-                set_tb_timer_id(ktimer_add(time_left, sleepy_task_wakeup, NULL));
+            if ((time_left > 0) && (task_get_timer_id() < 0)) {
+                task_set_timer_id(ktimer_add(time_left, sleepy_task_wakeup, NULL));
             } else {
                 if (time_left < 0) {
                     return -ETIMEDOUT;

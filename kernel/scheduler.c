@@ -430,12 +430,12 @@ struct task *this_task(void)
     return _cur_task;
 }
 
-int get_tb_timer_id(void)
+int task_get_timer_id(void)
 {
     return _cur_task->tb.timer_id;
 }
 
-void set_tb_timer_id(int id)
+void task_set_timer_id(int id)
 {
     _cur_task->tb.timer_id = id;
 }
