@@ -14,7 +14,7 @@
  *      You should have received a copy of the GNU General Public License
  *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
  *
- *      Authors: Daniele Lacamera, Maxime Vincent
+ *      Authors: Daniele Lacamera, Maxime Vincent, brabo
  *
  */
 #include "frosted.h"
