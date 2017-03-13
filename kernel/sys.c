@@ -20,6 +20,7 @@
 
 #include "frosted.h"
 #include "sys/frosted.h"
+#include <time.h>
 #include <unicore-mx/cm3/scb.h>
 
 struct timeval_kernel
@@ -59,22 +60,30 @@ int sys_execb_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 }
 
 
-int sys_gettimeofday_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+int sys_clock_gettime_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    if (arg1) {
-        struct timeval_kernel *now = (struct timeval_kernel *)arg1;
-        now->tv_sec = jiffies / 1000;
-        now->tv_usec = (jiffies % 1000) * 1000;
+    if (arg2) {
+        struct timeval_kernel *now = (struct timeval_kernel *)arg2;
+        if ((clockid_t)arg1 == CLOCK_MONOTONIC) {
+            now->tv_sec = jiffies / 1000;
+            now->tv_usec = (jiffies % 1000) * 1000;
+        } else if ((clockid_t)arg1 == CLOCK_REALTIME) {
+            now->tv_sec = (rt_offset + jiffies) / 1000;
+            now->tv_usec = ((rt_offset + jiffies) % 1000) * 1000;
+        }
     }
     return 0;
 }
 
 int sys_clock_settime_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    if (arg1) {
-        struct timeval_kernel *now = (struct timeval_kernel *)arg1;
+    if ((clockid_t)arg1 == CLOCK_MONOTONIC) {
+        return -EPERM;
+    }
+    if (arg2 && ((clockid_t)arg1 == CLOCK_REALTIME)) {
+        struct timeval_kernel *now = (struct timeval_kernel *)arg2;
         unsigned int temp = (now->tv_sec * 1000) + (now->tv_usec / 1000 / 1000);
-        jiffies = temp;
+        rt_offset = temp - jiffies;
     }
     return 0;
 }

@@ -44,6 +44,7 @@ typedef uint32_t sigset_t;
 
 /* generics */
 volatile unsigned int jiffies;
+volatile unsigned int rt_offset;
 volatile int _syscall_retval;
 
 /* Mach-specific initialization */

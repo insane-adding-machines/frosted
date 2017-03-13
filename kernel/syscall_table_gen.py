@@ -22,7 +22,6 @@ syscalls = [
     ["seek", 3, "sys_seek_hdlr"],
     ["mkdir", 2, "sys_mkdir_hdlr"],
     ["unlink", 1, "sys_unlink_hdlr"],
-    ["gettimeofday",1, "sys_gettimeofday_hdlr"],
     ["malloc", 1, "sys_malloc_hdlr"],
     ["free", 1, "sys_free_hdlr"],
     ["calloc", 2, "sys_calloc_hdlr"],
@@ -103,7 +102,8 @@ syscalls = [
     ["pthread_mutex_trylock", 1, "sys_pthread_mutex_trylock_hdlr"],
     ["pthread_mutex_unlock", 1, "sys_pthread_mutex_unlock_hdlr"],
     ["pthread_kill", 2, "sys_pthread_kill_hdlr"],
-    ["clock_settime", 1, "sys_clock_settime_hdlr"],
+    ["clock_settime", 2, "sys_clock_settime_hdlr"],
+    ["clock_gettime", 2, "sys_clock_gettime_hdlr"],
 ]
 
    #
