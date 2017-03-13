@@ -340,8 +340,12 @@ void * f_realloc(int flags, void* ptr, size_t size)
     }
 
 realloc_free:
-    if (ptr)
+    if (ptr) {
+        struct f_malloc_block * blk;
+        blk = (struct f_malloc_block *)((uint8_t *)ptr - sizeof(struct f_malloc_block));
         f_free(ptr);
+        blk_rearrange(blk);
+    }
     return out;
 }
 
