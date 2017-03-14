@@ -23,6 +23,10 @@
 #include <time.h>
 #include <unicore-mx/cm3/scb.h>
 
+#ifndef CLOCK_MONOTONIC
+# define CLOCK_MONOTONIC (4)
+#endif
+
 struct timeval_kernel
 {
     /* Assuming newlib time_t is long */

@@ -104,6 +104,9 @@ syscalls = [
     ["pthread_kill", 2, "sys_pthread_kill_hdlr"],
     ["clock_settime", 2, "sys_clock_settime_hdlr"],
     ["clock_gettime", 2, "sys_clock_gettime_hdlr"],
+    ["pthread_key_create", 2, "sys_pthread_key_create_hdlr"],
+    ["pthread_setspecific", 2, "sys_pthread_setspecific_hdlr"],
+    ["pthread_getspecific", 2, "sys_pthread_getspecific_hdlr"]
 ]
 
    #

@@ -214,6 +214,7 @@ struct thread_group {
     uint16_t active_threads;
     uint16_t n_threads;
     uint16_t max_tid;
+    pthread_key_t max_key;
 };
 
 struct __attribute__((packed)) task_block {
@@ -248,6 +249,8 @@ struct __attribute__((packed)) task_block {
     struct task *next;
     struct vfs_info *vfsi;
     int timer_id;
+    uint32_t *specifics;
+    uint32_t n_specifics;
 };
 
 struct __attribute__((packed)) task {
@@ -404,6 +407,10 @@ static void task_destroy(void *arg)
         /* Remove heap allocations spawned by this pid. */
         f_proc_heap_free(t->tb.pid);
     }
+
+    /* Free any pthread-specific key value */
+    if (t->tb.specifics)
+        kfree(t->tb.specifics);
 
     /* Get rid of stack space allocation, timer. */
     if (t->tb.timer_id > 0)
@@ -1135,6 +1142,8 @@ static void task_create_real(struct task *new, struct vfs_info *vfsi, void *arg,
     new->tb.sigmask = 0;
     new->tb.tracer = NULL;
     new->tb.timer_id = -1;
+    new->tb.specifics = NULL;
+    new->tb.n_specifics = 0;
 
     if ((new->tb.flags &TASK_FLAG_VFORK) != 0) {
         struct task *pt = tasklist_get(&tasks_idling, new->tb.ppid);
@@ -1260,6 +1269,8 @@ int sys_vfork_hdlr(void)
     new->tb.flags = TASK_FLAG_VFORK;
     new->tb.cwd = task_getcwd();
     new->tb.timer_id = -1;
+    new->tb.specifics = NULL;
+    new->tb.n_specifics = 0;
 
     /* Inherit cwd, file descriptors from parent */
     if (new->tb.ppid > 1) { /* Start from parent #2 */
@@ -1499,6 +1510,15 @@ int sys_pthread_create_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
     new->tb.sighdlr = _cur_task->tb.sighdlr;
     new->tb.tracer = NULL;
     new->tb.timer_id = -1;
+    new->tb.n_specifics = _cur_task->tb.n_specifics;
+    if (new->tb.n_specifics > 0) {
+        new->tb.specifics = kalloc(new->tb.n_specifics * (sizeof(pthread_key_t)));
+        if (new->tb.specifics) {
+            memcpy(new->tb.specifics, _cur_task->tb.specifics, new->tb.n_specifics * (sizeof(pthread_key_t)));
+        } else {
+            new->tb.n_specifics = 0;
+        }
+    }
     thread_create(new, start_routine, arg);
     *thread = ((new->tb.pid << 16) | (new->tb.tid & 0xFFFF));
     return 0;
@@ -1760,6 +1780,41 @@ int sys_pthread_mutex_unlock_hdlr(int arg1, int arg2, int arg3, int arg4,
         return -EINVAL;
     return mutex_unlock(mutex);
 }
+
+
+int sys_pthread_key_create_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    struct task *t = this_task();
+    void *newarray = krealloc(t->tb.specifics, sizeof(pthread_key_t) * (t->tb.n_specifics + 1));
+    pthread_key_t *key = (pthread_key_t *)arg1;
+    if (newarray) {
+        t->tb.specifics = newarray;
+        t->tb.n_specifics++;
+        *key = t->tb.n_specifics;
+    }
+    return 0;
+}
+
+int sys_pthread_setspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    struct task *t = this_task();
+    pthread_key_t key = (pthread_key_t)arg1;
+    if (key < 0 || key >= t->tb.n_specifics)
+        return -EINVAL;
+    t->tb.specifics[key] = (uint32_t)arg2;
+    return 0;
+}
+
+int sys_pthread_getspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    struct task *t = this_task();
+    pthread_key_t key = (pthread_key_t)arg1;
+    if (key < 0 || key >= t->tb.n_specifics)
+        return -EINVAL;
+    (*(uint32_t*)arg2) = t->tb.specifics[key];
+    return 0;
+}
+
 
 /********************************/
 /*         Task switching       */
