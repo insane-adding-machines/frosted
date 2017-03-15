@@ -15,7 +15,7 @@ include  rules/picotcp.mk
 include  rules/userspace.mk
 
 #kernel headers
-CFLAGS+=-Ikernel/frosted-headers/include
+CFLAGS+=-Ikernel/frosted-headers/include -nostdlib 
 
 #drivers headers
 CFLAGS+=-Ikernel/drivers
