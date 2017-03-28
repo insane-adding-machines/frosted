@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
@@ -29,7 +29,7 @@
 /*------------------*/
 /* Defines          */
 /*------------------*/
-#define F_MALLOC_MAGIC    (0xDECEA5ED) 
+#define F_MALLOC_MAGIC    (0xDECEA5ED)
 
 
 #if defined __linux__ || defined _WIN32 /* test application */
@@ -66,7 +66,7 @@ struct f_malloc_block {
     struct f_malloc_block * prev;   /* previous block */
     struct f_malloc_block * next;   /* next, or last block? */
     size_t size;                    /* malloc size excluding this block - next block is adjacent, if !last_block */
-    uint32_t flags; 
+    uint32_t flags;
     int pid;
 };
 
@@ -121,11 +121,11 @@ static struct f_malloc_block * split_block(struct f_malloc_block * blk, size_t s
 {
     size_t free_size;
     struct f_malloc_block * free_blk;
-  
+
     /* does it fit? */
     if ((blk->size - sizeof(struct f_malloc_block)) <= size)
         return NULL;
-  
+
     /* shrink the block to requested size */
     free_size = blk->size - sizeof(struct f_malloc_block) - size;
     blk->size = size;
@@ -155,7 +155,7 @@ static int block_fits(struct f_malloc_block *blk, size_t size, int flags)
 
     if (size > blk->size)
         return 0;
-    
+
     return 1;
 }
 
@@ -227,7 +227,7 @@ static void * f_sbrk(int flags, int incr)
 #endif
 
         /* task/stack memory */
-        heap_stack = &_stack - 4096; 
+        heap_stack = &_stack - 4096;
     }
 
     if (flags & MEM_USER) {
@@ -305,7 +305,7 @@ void * f_realloc(int flags, void* ptr, size_t size)
     /* size zero and valid ptr -> act as regular free() */
     if (!size && ptr)
         goto realloc_free;
-    
+
     blk = (struct f_malloc_block *)(((uint8_t*)ptr) - sizeof(struct f_malloc_block));
 
     if (!ptr)
@@ -384,7 +384,7 @@ void * f_malloc(int flags, size_t size)
     void *ret = NULL;
     while((size % 4) != 0) {
         size++;
-    } 
+    }
 
     /* kernelspace calls: pid=0 (kernel, kthreads */
     if (this_task_getpid() == 0) {
@@ -533,12 +533,12 @@ uint32_t mem_stats_frag(int pool)
 {
     uint32_t frag_size = 0u;
     struct f_malloc_block *blk;
-        
-    mutex_lock(mlock);    
+
+    mutex_lock(mlock);
     blk = malloc_entry[pool];
     while (blk) {
-        if (!in_use(blk)) 
-            frag_size += blk->size + sizeof(struct f_malloc_block); 
+        if (!in_use(blk))
+            frag_size += blk->size + sizeof(struct f_malloc_block);
         blk = blk->next;
     }
     mutex_unlock(mlock);
@@ -558,9 +558,9 @@ int fmalloc_owner(const void *_ptr)
 
 
         if ( (ptr >= mem_start) && (ptr < mem_end) ) {
-            if (block_valid(blk) && in_use(blk)) 
+            if (block_valid(blk) && in_use(blk))
                 return blk->pid;
-            else 
+            else
                 return -1;
         }
         blk = blk->next;
@@ -594,6 +594,9 @@ void *sys_malloc_hdlr(int size)
 int sys_free_hdlr(void *addr)
 {
     struct f_malloc_block * blk;
+    if ((task_ptr_valid(addr) != 0) || (addr == NULL))
+        return -1;
+
     blk = (struct f_malloc_block *)((uint8_t *)addr - sizeof(struct f_malloc_block));
 
     if (suspend_on_mutex_lock(mlock) < 0)
@@ -644,12 +647,12 @@ void *sys_realloc_hdlr(void *addr, int size)
         dbg_malloc("--> memory  allocated: %d\n", f_malloc_stats[0].mem_allocated);
         dbg_malloc("=== FROSTED MALLOC STATS ===\n\n");
     }
-    
+
     void print_malloc_entries(void)
     {
         struct f_malloc_block *blk = malloc_entry[0];
         uint32_t i = 0;
-    
+
         /* See if we can find a free block that fits */
         while (blk) /* last entry will break the loop */
         {
@@ -676,13 +679,13 @@ void *sys_realloc_hdlr(void *addr, int size)
         f_free(test10);
         print_malloc_stats();
         print_malloc_entries();
-    
+
         dbg_malloc("\nTrying to re-use freed memory + allocate more\n");
         test10 = f_malloc(0, 10); // this should re-use exisiting entry
         test100 = f_malloc(0, 100); // this should alloc more memory through sbrk
         print_malloc_stats();
         print_malloc_entries();
-    
+
         dbg_malloc("\nFreeing all of the memory\n");
         f_free(test10);
         f_free(test200);
@@ -730,7 +733,7 @@ void *sys_realloc_hdlr(void *addr, int size)
         f_free(test100);
         print_malloc_stats();
         print_malloc_entries();
-    
+
         return 0;
     }
 #endif
