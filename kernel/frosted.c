@@ -264,7 +264,7 @@ void frosted_kernel(int xipfs_mounted)
     pico_lock_init();
 
     /* Network devices initialization */
-    usb_ethernet_init();
+    usb_ethernet_init(USB_DEV_FS);
     pico_loop_create();
     pico_eth_start();
 #endif

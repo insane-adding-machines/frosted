@@ -258,8 +258,7 @@ static struct eth_config eth_config = {
     .has_phy_reset = 1
 };
 
-static struct usb_config usb_guest = {
-    .otg_mode = USB_MODE_GUEST,
+static struct usb_pio_config_fs pio_usbfs = {
     .pio_vbus = {
         .base=GPIOA,
         .pin=GPIO8,
@@ -281,6 +280,12 @@ static struct usb_config usb_guest = {
         .af=GPIO_AF10,
         .pullupdown=GPIO_PUPD_NONE,
     }
+};
+
+static struct usb_config usb_guest = {
+    .dev_type = USB_DEV_FS,
+    .otg_mode = USB_MODE_GUEST,
+    .pio.fs = &pio_usbfs
 };
 
 int machine_init(void)

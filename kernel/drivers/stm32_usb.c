@@ -27,36 +27,74 @@
 #include <unicore-mx/usbd/usbd.h>
 
 
-static struct module mod_usb = {
+static struct module mod_usb_guest = {
     .family = FAMILY_DEV,
     .name = "usb-otg-guest",
 };
 
+static struct module mod_usb_host = {
+    .family = FAMILY_DEV,
+    .name = "usb-otg-host",
+};
+
+
 static struct usbd_device *usbd_dev = NULL;
+static struct usbh_device *usbh_dev = NULL;
 
 void otg_fs_isr(void)
 {
     usbd_poll(usbd_dev, 0);
 }
 
-int usbdev_start(usbd_device **_usbd_dev,
+void otg_hs_isr(void)
+{
+    usbd_poll(usbd_dev, 0);
+}
+
+int usbdev_start(usbd_device **_usbd_dev, unsigned int dev,
           const struct usb_device_descriptor *dev_desc,
           void *buffer, size_t buffer_size)
 {
     if (usbd_dev)
         return -EBUSY;
 
-    usbd_dev = usbd_init(USBD_STM32_OTG_FS, NULL, dev_desc, buffer,
-                            buffer_size);
+    if (dev == USB_DEV_FS) {
+        usbd_dev = usbd_init(USBD_STM32_OTG_FS, NULL, dev_desc, buffer,
+                                buffer_size);
+        nvic_enable_irq(NVIC_OTG_FS_IRQ);
+    } else {
+        usbd_dev = usbd_init(USBD_STM32_OTG_HS, NULL, dev_desc, buffer,
+                                buffer_size);
+        nvic_enable_irq(NVIC_OTG_HS_IRQ);
+    }
+    
     *_usbd_dev = usbd_dev;
-    nvic_enable_irq(NVIC_OTG_FS_IRQ);
     return 0;
 }
 
 int usb_init(struct usb_config *conf)
 {
-    gpio_create(&mod_usb, &conf->pio_vbus);
-    gpio_create(&mod_usb, &conf->pio_dm);
-    gpio_create(&mod_usb, &conf->pio_dp);
+    struct module *mod = &mod_usb_guest;
+    if (conf->otg_mode == USB_MODE_HOST) {
+        mod = &mod_usb_host;
+    }
+    if (conf->dev_type == USB_DEV_FS) {
+        rcc_periph_clock_enable(RCC_OTGFS);
+        gpio_create(mod, &conf->pio.fs->pio_vbus);
+        gpio_create(mod, &conf->pio.fs->pio_dm);
+        gpio_create(mod, &conf->pio.fs->pio_dp);
+    } else if (conf->dev_type == USB_DEV_HS) {
+        int i = 0;
+        rcc_periph_clock_enable(RCC_OTGHS);
+        rcc_periph_clock_enable(RCC_OTGHSULPI);
+        for (i = 0; i < 8; i++)
+            gpio_create(mod, &conf->pio.hs->ulpi_data[i]);
+        gpio_create(mod, &conf->pio.hs->ulpi_clk);
+        gpio_create(mod, &conf->pio.hs->ulpi_dir);
+        gpio_create(mod, &conf->pio.hs->ulpi_next);
+        gpio_create(mod, &conf->pio.hs->ulpi_step);
+    } else {
+        return -1;
+    }
     return 0;
 }

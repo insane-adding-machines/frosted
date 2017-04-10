@@ -213,8 +213,7 @@ static struct eth_config eth_config = {
     .has_phy_reset = 0
 };
 
-static struct usb_config usb_guest = {
-    .otg_mode = USB_MODE_GUEST,
+static struct usb_pio_config_fs pio_usbfs = {
     .pio_vbus = {
         .base=GPIOA,
         .pin=GPIO8,
@@ -236,6 +235,30 @@ static struct usb_config usb_guest = {
         .af=GPIO_AF10,
         .pullupdown=GPIO_PUPD_NONE,
     }
+};
+
+static struct usb_pio_config_hs pio_usbhs = {
+    .ulpi_data = {
+        { .base=GPIOA, .pin=GPIO3, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .speed=GPIO_OSPEED_100MHZ},
+        { .base=GPIOB, .pin=GPIO0, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE ,.speed=GPIO_OSPEED_100MHZ},
+        { .base=GPIOB, .pin=GPIO1, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE , .speed=GPIO_OSPEED_100MHZ},
+        { .base=GPIOB, .pin=GPIO10, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .speed=GPIO_OSPEED_100MHZ},
+        { .base=GPIOB, .pin=GPIO11, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .speed=GPIO_OSPEED_100MHZ},
+        { .base=GPIOB, .pin=GPIO12, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .speed=GPIO_OSPEED_100MHZ},
+        { .base=GPIOB, .pin=GPIO13, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE, .speed=GPIO_OSPEED_100MHZ},
+        { .base=GPIOB, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE , .speed=GPIO_OSPEED_100MHZ},
+    },
+    .ulpi_clk  = { .base=GPIOA, .pin=GPIO5, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE},
+    .ulpi_dir  = { .base=GPIOC, .pin=GPIO2, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE},
+    .ulpi_next = { .base=GPIOH, .pin=GPIO4, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE},
+    .ulpi_step = { .base=GPIOC, .pin=GPIO0, .mode=GPIO_MODE_AF, .af=GPIO_AF10, .pullupdown=GPIO_PUPD_NONE}
+
+};
+
+static struct usb_config usb_fs_guest = {
+    .dev_type = USB_DEV_FS,
+    .otg_mode = USB_MODE_GUEST,
+    .pio.fs = &pio_usbfs
 };
 
 /** I2C: 
@@ -386,7 +409,9 @@ int machine_init(void)
     sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
     sdio_conf.rcc_en  = RCC_APB2ENR_SDMMC1EN;
     sdio_init(&sdio_conf);
-    usb_init(&usb_guest);
+
+    /* Initialize USB OTG guest in full-speed mode */
+    usb_init(&usb_fs_guest);
     ethernet_init(&eth_config);
 
     #ifdef CONFIG_DEVFT5336

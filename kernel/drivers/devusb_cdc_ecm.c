@@ -406,7 +406,7 @@ static void pico_usbeth_destroy(struct pico_device *dev)
     tx_buffer = NULL;
 }
 
-int usb_ethernet_init(void)
+int usb_ethernet_init(unsigned int dev)
 {
     struct pico_dev_usbeth *usb = kalloc(sizeof(*usb));
     uint8_t *usb_buf;
@@ -450,7 +450,7 @@ int usb_ethernet_init(void)
     /* Set default gateway */
     pico_ipv4_route_add(zero, zero, default_gw, 1, NULL);
     tx_buffer->status = TX_STATUS_FREE;
-    if (usbdev_start(&usbd_dev, &cdc_ecm_dev, usbdev_buffer,
+    if (usbdev_start(&usbd_dev, dev, &cdc_ecm_dev, usbdev_buffer,
                                     sizeof(usbdev_buffer)) < 0) {
         return -EBUSY;
     }

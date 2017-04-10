@@ -247,31 +247,11 @@ static struct eth_config eth_config = {
     .has_phy_reset = 0
 };
 
-/* HS is there, not FS ? */
+/* TODO:  HS pios */
 /*
 static struct usb_config usb_guest = {
+    .dev_type = USB_DEV_HS,
     .otg_mode = USB_MODE_GUEST,
-    .pio_vbus = {
-        .base=GPIOA,
-        .pin=GPIO8,
-        .mode=GPIO_MODE_AF,
-        .af=GPIO_AF10,
-        .pullupdown=GPIO_PUPD_NONE,
-    },
-    .pio_dm =   {
-        .base=GPIOA,
-        .pin=GPIO11,
-        .mode=GPIO_MODE_AF,
-        .af=GPIO_AF10,
-        .pullupdown=GPIO_PUPD_NONE,
-    },
-    .pio_dp =   {
-        .base=GPIOA,
-        .pin=GPIO12,
-        .mode=GPIO_MODE_AF,
-        .af=GPIO_AF10,
-        .pullupdown=GPIO_PUPD_NONE,
-    }
 };
 */
 
