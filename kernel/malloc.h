@@ -26,6 +26,7 @@ struct f_malloc_stats {
     uint32_t mem_allocated;
 };
 
+void * u_malloc(size_t size);
 void * f_malloc(int flags, size_t size);
 void * f_calloc(int flags, size_t num, size_t size);
 void* f_realloc(int flags, void* ptr, size_t size);
