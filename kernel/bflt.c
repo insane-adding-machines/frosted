@@ -230,7 +230,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
     load_header(&hdr, (struct flat_hdr *)address_zero);
     if (check_header(&hdr) != 0) {
         kprintf("bFLT: Bad FLT header\r\n");
-        goto error;    
+        goto error;
     }
 
     /* Calculate all the sizes */
@@ -280,7 +280,7 @@ int bflt_load(uint8_t* from, void **reloc_text, void **reloc_data, void **reloc_
         }
 
         /* Allocate enough memory for .data, .bss and possibly .text */
-        mem = f_malloc(MEM_USER, alloc_len);
+        mem = u_malloc(alloc_len);
         if (!mem)
         {
             kprintf("bFLT: Could not allocate enough memory for process\r\n");

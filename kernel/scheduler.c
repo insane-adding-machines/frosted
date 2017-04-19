@@ -1101,7 +1101,7 @@ static void *task_pass_args(void *_args)
     while (args[n] != NULL) {
         n++;
     }
-    new = f_malloc(MEM_USER, (n + 1) * (sizeof(char *)));
+    new = u_malloc((n + 1) * (sizeof(char *)));
 
     if (!new)
         return NULL;
@@ -1111,7 +1111,7 @@ static void *task_pass_args(void *_args)
     for (i = 0; i < n; i++) {
         size_t l = strlen(args[i]);
         if (l > 0) {
-            new[i] = f_malloc(MEM_USER, l + 1);
+            new[i] = u_malloc(l + 1);
             if (!new[i])
                 break;
             memcpy(new[i], args[i], l + 1);

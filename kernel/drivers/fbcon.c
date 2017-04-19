@@ -273,12 +273,12 @@ int fbcon_init(void)
 
     memset(fbcon, 0, sizeof(struct dev_fbcon));
 
-    fbcon->buffer = f_malloc(MEM_USER, FBCON_L * FBCON_H);
+    fbcon->buffer = u_malloc(FBCON_L * FBCON_H);
     if (!fbcon->buffer) {
         kfree(fbcon);
         return -1;
     }
-    fbcon->colormap = f_malloc(MEM_USER, FBCON_L * FBCON_H);
+    fbcon->colormap = u_malloc(FBCON_L * FBCON_H);
     if (!fbcon->colormap) {
         kfree(fbcon->buffer);
         kfree(fbcon);

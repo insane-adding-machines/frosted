@@ -91,7 +91,7 @@ static int ltdc_config_layer(struct fb_info *fb)
   fb->var.type = FB_TYPE_PIXELMAP;
 
   /* Allocate framebuffer memory */
-  fb->screen_buffer = f_malloc(MEM_USER, fb->smem_len);
+  fb->screen_buffer = u_malloc(fb->smem_len);
   if (!fb->screen_buffer)
   {
       return -1;
