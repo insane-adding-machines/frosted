@@ -235,11 +235,16 @@ kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 	export KRAMMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KRAMMEM_SIZE) * 1024)"`;	\
 	export KFLASHMEM_SIZE_B=`python2 -c "print '0x%X' % ( $(KFLASHMEM_SIZE) * 1024)"`;	\
 	export RAM_SIZE_B=`python2 -c "print '0x%X' % ( $(RAM_SIZE) * 1024)"`;	\
+	export RAM1_SIZE_B=`python2 -c "print '0x%X' % ( $(RAM1_SIZE) * 1024)"`;	\
+	export RAM2_SIZE_B=`python2 -c "print '0x%X' % ( $(RAM2_SIZE) * 1024)"`;	\
 	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
 			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
 			 sed -e "s/__RAM_BASE/$(RAM_BASE)/g" |\
 			 sed -e "s/__KRAMMEM_SIZE/$$KRAMMEM_SIZE_B/g" |\
-			 sed -e "s/__RAM_SIZE/$$RAM_SIZE_B/g" \
+			 sed -e "s/__RAM1_BASE/$(RAM1_BASE)/g" |\
+			 sed -e "s/__RAM2_BASE/$(RAM2_BASE)/g" |\
+			 sed -e "s/__RAM1_SIZE/$$RAM1_SIZE_B/g" |\
+			 sed -e "s/__RAM2_SIZE/$$RAM2_SIZE_B/g" \
 			 >$@
 
 kernel.elf: $(LIB-y) $(OBJS-y) kernel/$(BOARD)/$(BOARD).ld
