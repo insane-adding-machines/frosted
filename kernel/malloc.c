@@ -74,10 +74,10 @@ struct f_malloc_block {
 /*------------------*/
 /* Local variables  */
 /*------------------*/
-static struct f_malloc_block *malloc_entry[4] = {NULL, NULL, NULL, NULL};
+static struct f_malloc_block *malloc_entry[5] = {NULL, NULL, NULL, NULL, NULL};
 
 /* Globals */
-struct f_malloc_stats f_malloc_stats[4] = {};
+struct f_malloc_stats f_malloc_stats[5] = {};
 
 /* Mlock is a special lock, so initialization is made static */
 static struct task *_m_listeners[16] = {};
@@ -190,6 +190,7 @@ static unsigned char * heap_end_extra;
 
 static unsigned char * heap_limit_user;
 static unsigned char * heap_limit_kernel;
+static unsigned char * heap_limit_extra;
 
 #ifdef CONFIG_TCPIP_MEMPOOL
     static char * heap_end_tcpip = (char *)CONFIG_TCPIP_MEMPOOL;
@@ -203,7 +204,11 @@ static void * f_sbrk(int flags, int incr)
     extern char   _stack;           /* Set by linker */
     extern char   _user_heap_start; /* Set by linker */
     extern char   _user_heap_end;   /* Set by linker */
-#if defined(CONFIG_SRAM_EXTRA) || defined(CONFIG_SDRAM)
+#ifdef CONFIG_SDRAM
+    extern char   _external_heap_start; /* Set by linker */
+    extern char   _external_heap_end;   /* Set by linker */
+#endif
+#ifdef CONFIG_SRAM_EXTRA
     extern char   _extra_heap_start; /* Set by linker */
     extern char   _extra_heap_end;   /* Set by linker */
 #endif
@@ -216,10 +221,15 @@ static void * f_sbrk(int flags, int incr)
         heap_end_kernel = &end;
         heap_limit_kernel = &end + KMEM_SIZE;
 
+#ifdef CONFIG_SRAM_EXTRA
+        /* extra memory */
+        heap_end_extra = &_extra_heap_start;
+        heap_limit_extra = &_extra_heap_end;
+#endif
 #ifdef CONFIG_SDRAM
         /* user memory  = external ram*/
-        heap_end_user = &_extra_heap_start; /* Start at beginning of heap */
-        heap_limit_user = &_extra_heap_end;
+        heap_end_user = &_external_heap_start; /* Start at beginning of heap */
+        heap_limit_user = &_external_heap_end;
 #else
         /* user memory */
         heap_end_user = &_user_heap_start; /* Start at beginning of heap */
@@ -230,38 +240,38 @@ static void * f_sbrk(int flags, int incr)
         heap_stack = &_stack - 4096;
     }
 
-    if (flags & MEM_USER) {
+    if ((flags & MEM_USER) == MEM_USER) {
         if (!heap_end_user)
             return (void *)(0 - 1);
         /* Do not over-commit */
-        if ((heap_end_user + incr) > heap_limit_user)
+        if ((heap_end_user + incr) >= heap_limit_user)
             return (void *)(0 - 1);
         prev_heap_end = heap_end_user;
         heap_end_user += incr;
         memset(prev_heap_end, 0, incr);
 #ifdef CONFIG_SRAM_EXTRA
-    } else if (flags & MEM_EXTRA) {
+    } else if ((flags & MEM_EXTRA) == MEM_EXTRA) {
         if (!heap_end_extra)
             return (void *)(0 - 1);
         /* Do not over-commit */
-        if ((heap_end_extra + incr) > &_extra_heap_end)
+        if ((heap_end_extra + incr) >= heap_limit_extra)
             return (void *)(0 - 1);
         prev_heap_end = heap_end_extra;
         heap_end_extra += incr;
         memset(prev_heap_end, 0, incr);
 #endif
-    }else if (flags & MEM_TASK) {
+    }else if ((flags & MEM_TASK) == MEM_TASK) {
         if ((heap_stack - incr) < heap_end_kernel)
             return (void *)(0 - 1);
         heap_stack -= incr;
         prev_heap_end = heap_stack;
-    } else if (flags & MEM_TCPIP) {
+    } else if ((flags & MEM_TCPIP) == MEM_TCPIP && (flags != MEM_KERNEL)) {
         if (!heap_end_tcpip)
             return (void *)(0 - 1);
         prev_heap_end = heap_end_tcpip;
         heap_end_tcpip += incr;
     } else {
-        if (((heap_end_kernel + incr) > heap_limit_kernel) ||
+        if (((heap_end_kernel + incr) >= heap_limit_kernel) ||
             ((heap_end_kernel + incr) > heap_stack))
             return (void*)(0 - 1);
         prev_heap_end = heap_end_kernel;
@@ -376,6 +386,17 @@ uint32_t f_proc_heap_count(int pid)
         blk = blk->next;
     }
     return size;
+}
+
+void * u_malloc(size_t size)
+{
+  void *addr;
+  addr = f_malloc(MEM_USER, size);
+#ifdef CONFIG_SRAM_EXTRA
+  if (!addr)
+    addr = f_malloc(MEM_EXTRA, size);
+#endif
+  return addr;
 }
 
 void * f_malloc(int flags, size_t size)
@@ -581,12 +602,7 @@ void *sys_malloc_hdlr(int size)
     void *addr;
     if (suspend_on_mutex_lock(mlock) < 0)
         return (void *)SYS_CALL_AGAIN;
-
-    addr = f_malloc(MEM_USER, size);
-#ifdef CONFIG_SRAM_EXTRA
-    if (!addr)
-        addr = f_malloc(MEM_EXTRA, size);
-#endif
+    addr = u_malloc(size);
     mutex_unlock(mlock);
     return addr;
 }
