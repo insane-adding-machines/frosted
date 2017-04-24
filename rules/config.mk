@@ -1,4 +1,7 @@
 #Common code used to read the .config
+RAM1_SIZE=0
+RAM2_SIZE=0
+
 ifeq ($(ARCH_LPC17XX),y)
 	CPU=cortex-m
 	BOARD=lpc17xx
