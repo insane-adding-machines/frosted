@@ -6,6 +6,7 @@
 #include <unicore-mx/usb/class/cdc.h>
 #include <unicore-mx/cm3/scb.h>
 #include <unicore-mx/cm3/nvic.h>
+#include <unicore-mx/usbh/usbh.h>
 
 #define USB_DEV_FS 0
 #define USB_DEV_HS 1

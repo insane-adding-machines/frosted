@@ -235,6 +235,10 @@ void frosted_tcpip_wakeup(void)
 static const char init_path[] = "/bin/init";
 static const char *const init_args[2] = { init_path, NULL };
 
+#ifdef CONFIG_USBHOST
+struct usbh_host *USBHost = NULL;
+#endif
+
 void frosted_kernel(int xipfs_mounted)
 {
     struct vfs_info *vfsi = NULL;
@@ -258,6 +262,8 @@ void frosted_kernel(int xipfs_mounted)
     } else {
         IDLE();
     }
+
+
 #ifdef CONFIG_PICOTCP
     pico_stack_init();
     socket_in_init();

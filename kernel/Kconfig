@@ -391,39 +391,64 @@ menu "Device Drivers"
     
        config DEVSTM32USB
        bool
-
+       
        menuconfig DEVSTM32USBFS
-       bool "Support for Full Speed USB OTG guest"
-       depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || \
+       bool "Support for Full Speed USB OTG"
+       depends on (!DEVSTM32USBHFS) && (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || \
                    ARCH_STM32F746)
        default n
+       select DEVSTM32USB
        if DEVSTM32USBFS
-           config DEV_USB_ETH
-           depends on PICOTCP && DEVSTM32USBFS
-           select DEVSTM32USB
-           bool "Ethernet over USB (CDC-ECM)"
-           default n
+          choice
+            prompt "USB FS OTG mode"
+            config USBFS_HOST
+            bool "Host mode"
 
-           if DEV_USB_ETH
-               config USB_DEFAULT_IP
-               string "Default (boot-up) address for usb0"
-               default 192.168.6.150
-    
-               config USB_DEFAULT_NM
-               string "Default (boot-up) netmask for usb0"
-               default 255.255.255.0
-    
-               config USB_DEFAULT_GW
-               string "Default (boot-up) gateway for usb0"
-               default 192.168.6.1
-           endif
+            config USBFS_GUEST
+            bool "Device mode"
+
+            default USBFS_GUEST
+          endchoice
        endif
 
        menuconfig DEVSTM32USBHS
-       bool "Support for High Speed USB OTG guest"
+       bool "Support for High Speed USB OTG"
        depends on (ARCH_STM32F746 || ARCH_STM32F769)
        select DEVSTM32USB
        default n
+       if DEVSTM32USBHS
+          choice
+            prompt "USB HS OTG mode"
+            config USBHS_HOST
+            bool "Host mode"
+
+            config USBHS_GUEST
+            bool "Device mode"
+
+            default USBHS_GUEST
+          endchoice
+
+        endif
+
+      config DEV_USB_ETH
+      depends on PICOTCP && ( (DEVSTM32USBHS && USBHS_GUEST) || (DEVSTM32USBFS && USBFS_GUEST) )
+      select DEVSTM32USB
+      bool "Ethernet over USB (CDC-ECM)"
+      default n
+
+      if DEV_USB_ETH
+      config USB_DEFAULT_IP
+      string "Default (boot-up) address for usb0"
+      default 192.168.6.150
+
+      config USB_DEFAULT_NM
+      string "Default (boot-up) netmask for usb0"
+      default 255.255.255.0
+
+      config USB_DEFAULT_GW
+      string "Default (boot-up) gateway for usb0"
+      default 192.168.6.1
+      endif
 
 
        config DEVTIM
