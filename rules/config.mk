@@ -1,12 +1,46 @@
 #Common code used to read the .config
 RAM1_SIZE=0
 RAM2_SIZE=0
+RAM3_SIZE=0
+SDRAM_SIZE=0
+
+ifeq ($(RAM_SIZE_368KB),y)
+	RAM1_SIZE=368
+endif
+ifeq ($(RAM_SIZE_320KB),y)
+	RAM1_SIZE=320
+endif
+ifeq ($(RAM_SIZE_256KB),y)
+	RAM1_SIZE=256
+endif
+ifeq ($(RAM_SIZE_192KB),y)
+	RAM1_SIZE=192
+endif
+ifeq ($(RAM_SIZE_128KB),y)
+	RAM1_SIZE=128
+endif
+ifeq ($(RAM_SIZE_96KB),y)
+	RAM1_SIZE=96
+endif
+ifeq ($(RAM_SIZE_64KB),y)
+	RAM1_SIZE=64
+endif
+ifeq ($(RAM_SIZE_32KB),y)
+	RAM1_SIZE=32
+endif
+ifeq ($(RAM_SIZE_16KB),y)
+	RAM1_SIZE=16
+endif
 
 ifeq ($(ARCH_LPC17XX),y)
 	CPU=cortex-m
 	BOARD=lpc17xx
 	FLASH_ORIGIN=0x00000000
-	RAM_BASE=0x10000000
+	RAM1_BASE=0x10000000
+	RAM2_BASE=0x2007C000
+	RAM3_BASE=0x20080000
+	RAM2_SIZE=16
+	RAM3_SIZE=16
 	ARCH=LPC17XX
 	CFLAGS+=-DLPC17XX -mcpu=cortex-m3 -DCONFIG_SRAM_EXTRA
 	UNICOREMX_TARGET=lpc17xx
@@ -16,7 +50,7 @@ ifeq ($(ARCH_LM3S),y)
 	CPU=cortex-m
 	BOARD=lm3s
 	FLASH_ORIGIN=0x00000000
-	RAM_BASE=0x20000000
+	RAM1_BASE=0x20000000
 	SYS_CLOCK=50000000
 	ARCH=LM3S
 	CFLAGS+=-DLM3S -mcpu=cortex-m3
@@ -27,11 +61,12 @@ ifeq ($(ARCH_STM32F4),y)
 	CPU=cortex-m
 	BOARD=stm32f4
 	FLASH_ORIGIN=0x08000000
-	RAM_BASE=0x20000000
 	RAM1_BASE=0x20000000
 	RAM1_SIZE=128
 	RAM2_BASE=0x10000000
 	RAM2_SIZE=64
+	SDRAM_BASE=0xD0000000
+	SDRAM_SIZE=0x800000
 	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft -DCONFIG_SRAM_EXTRA
 	ARCH=STM32F4
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
@@ -42,7 +77,9 @@ ifeq ($(ARCH_STM32F7),y)
 	CPU=cortex-m
 	BOARD=stm32f7
 	FLASH_ORIGIN=0x08000000
-	RAM_BASE=0x20000000
+	RAM1_BASE=0x20000000
+	SDRAM_BASE=0xC0000000
+	SDRAM_SIZE=0x800000
 	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft
 	ARCH=STM32F7
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
@@ -74,34 +111,6 @@ ifeq ($(FLASH_SIZE_256KB),y)
 endif
 ifeq ($(FLASH_SIZE_128KB),y)
 	FLASH_SIZE=128
-endif
-
-ifeq ($(RAM_SIZE_368KB),y)
-	RAM_SIZE=368
-endif
-ifeq ($(RAM_SIZE_320KB),y)
-	RAM_SIZE=320
-endif
-ifeq ($(RAM_SIZE_256KB),y)
-	RAM_SIZE=256
-endif
-ifeq ($(RAM_SIZE_192KB),y)
-	RAM_SIZE=192
-endif
-ifeq ($(RAM_SIZE_128KB),y)
-	RAM_SIZE=128
-endif
-ifeq ($(RAM_SIZE_96KB),y)
-	RAM_SIZE=96
-endif
-ifeq ($(RAM_SIZE_64KB),y)
-	RAM_SIZE=64
-endif
-ifeq ($(RAM_SIZE_32KB),y)
-	RAM_SIZE=32
-endif
-ifeq ($(RAM_SIZE_16KB),y)
-	RAM_SIZE=16
 endif
 
 ifeq ($(CLK_48MHZ),y)
