@@ -240,42 +240,45 @@ static void * f_sbrk(int flags, int incr)
         heap_stack = &_stack - 4096;
     }
 
-    if ((flags & MEM_USER) == MEM_USER) {
-        if (!heap_end_user)
-            return (void *)(0 - 1);
-        /* Do not over-commit */
-        if ((heap_end_user + incr) >= heap_limit_user)
-            return (void *)(0 - 1);
-        prev_heap_end = heap_end_user;
-        heap_end_user += incr;
-        memset(prev_heap_end, 0, incr);
+    int mem_pool = MEMPOOL(flags);
+    if (mem_pool == MEMPOOL(MEM_USER)) {
+      if (!heap_end_user)
+        return (void *)(0 - 1);
+      /* Do not over-commit */
+      if ((heap_end_user + incr) >= heap_limit_user)
+        return (void *)(0 - 1);
+      prev_heap_end = heap_end_user;
+      heap_end_user += incr;
+      memset(prev_heap_end, 0, incr);
+    } else if (mem_pool == MEMPOOL(MEM_TASK)) {
+      if ((heap_stack - incr) < heap_end_kernel)
+        return (void *)(0 - 1);
+      heap_stack -= incr;
+      prev_heap_end = heap_stack;
 #ifdef CONFIG_SRAM_EXTRA
-    } else if ((flags & MEM_EXTRA) == MEM_EXTRA) {
-        if (!heap_end_extra)
-            return (void *)(0 - 1);
-        /* Do not over-commit */
-        if ((heap_end_extra + incr) >= heap_limit_extra)
-            return (void *)(0 - 1);
-        prev_heap_end = heap_end_extra;
-        heap_end_extra += incr;
-        memset(prev_heap_end, 0, incr);
+    } else if (mem_pool == MEMPOOL(MEM_EXTRA)) {
+      if (!heap_end_extra)
+        return (void *)(0 - 1);
+      /* Do not over-commit */
+      if ((heap_end_extra + incr) >= heap_limit_extra)
+        return (void *)(0 - 1);
+      prev_heap_end = heap_end_extra;
+      heap_end_extra += incr;
+      memset(prev_heap_end, 0, incr);
 #endif
-    }else if ((flags & MEM_TASK) == MEM_TASK) {
-        if ((heap_stack - incr) < heap_end_kernel)
-            return (void *)(0 - 1);
-        heap_stack -= incr;
-        prev_heap_end = heap_stack;
-    } else if ((flags & MEM_TCPIP) == MEM_TCPIP && (flags != MEM_KERNEL)) {
-        if (!heap_end_tcpip)
-            return (void *)(0 - 1);
-        prev_heap_end = heap_end_tcpip;
-        heap_end_tcpip += incr;
+#ifdef CONFIG_TCPIP_MEMPOOL
+    } else if (mem_pool == MEMPOOL(MEM_TCPIP)) {
+      if (!heap_end_tcpip)
+        return (void *)(0 - 1);
+      prev_heap_end = heap_end_tcpip;
+      heap_end_tcpip += incr;
+#endif
     } else {
-        if (((heap_end_kernel + incr) >= heap_limit_kernel) ||
-            ((heap_end_kernel + incr) > heap_stack))
-            return (void*)(0 - 1);
-        prev_heap_end = heap_end_kernel;
-        heap_end_kernel += incr;
+      if (((heap_end_kernel + incr) >= heap_limit_kernel) ||
+          ((heap_end_kernel + incr) > heap_stack))
+        return (void*)(0 - 1);
+      prev_heap_end = heap_end_kernel;
+      heap_end_kernel += incr;
     }
     return (void *) prev_heap_end;
 }
