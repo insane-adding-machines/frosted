@@ -4,7 +4,7 @@ ifeq ($(TCPIP_MEMPOOL_YN),y)
 endif
 
 ifeq ($(PICOTCP),y)
-	CFLAGS+=-DCONFIG_PICOTCP -I$(PREFIX)/include -Ikernel/net/socket 
+	CFLAGS+=-DCONFIG_PICOTCP -I$(PREFIX)/include -Ikernel/net/socket -nostdlib
     PICO_OPTIONS=CROSS_COMPILE=arm-frosted-eabi- ARCH=cortexm3 RTOS=1 PREFIX=$(PREFIX) \
     		 DHCP_CLIENT=0 DHCP_SERVER=0 MDNS=0 DNS_SD=0 \
     			 OLSR=0 SLAACV4=0 SNTP_CLIENT=0 PPP=0 TFTP=0 \
