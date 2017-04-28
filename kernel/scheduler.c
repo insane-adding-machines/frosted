@@ -27,6 +27,7 @@
 #include "sys/pthread.h"
 #include "fpb.h"
 #include "poll.h"
+#define CONFIG_PTHREADS 1
 
 #include "sys/user.h"
 
@@ -1314,6 +1315,8 @@ int sys_vfork_hdlr(void)
 /**/
 /**/
 
+#ifdef CONFIG_PTHREADS
+
 static struct task *pthread_get_task(int pid, int tid)
 {
     struct task *t = NULL;
@@ -1814,6 +1817,76 @@ int sys_pthread_getspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg
     (*(uint32_t*)arg2) = t->tb.specifics[key];
     return 0;
 }
+#else /* if !CONFIG_PTHREADS */
+int sys_pthread_create_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+
+int sys_pthread_exit_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+
+
+int sys_pthread_join_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_detach_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_cancel_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_self_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_setcancelstate_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_mutex_destroy_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_mutex_lock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_mutex_trylock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_mutex_unlock_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_kill_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_key_create_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_setspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+int sys_pthread_getspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5)
+{
+    return -EOPNOTSUPP;
+}
+
+#endif /* CONFIG_PTHREADS */
 
 
 /********************************/
