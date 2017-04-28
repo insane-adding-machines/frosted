@@ -569,13 +569,10 @@ uint32_t mem_stats_frag(int pool)
     return frag_size;
 }
 
-
-int fmalloc_owner(const void *_ptr)
+static int fmalloc_check_block_owner(int pool, const uint8_t *ptr)
 {
     struct f_malloc_block *blk;
-    uint8_t *ptr = (uint8_t *)_ptr;
-    blk = malloc_entry[MEM_USER];
-
+    blk = malloc_entry[MEMPOOL(pool)];
     while(blk) {
         uint8_t *mem_start = (uint8_t *)blk + sizeof(struct f_malloc_block);
         uint8_t *mem_end   = mem_start + blk->size;
@@ -590,6 +587,16 @@ int fmalloc_owner(const void *_ptr)
         blk = blk->next;
     }
     return -1;
+}
+
+int fmalloc_owner(const void *_ptr)
+{
+    int ret = fmalloc_check_block_owner(MEM_USER, (uint8_t *)_ptr);
+#ifdef CONFIG_SRAM_EXTRA
+    if (ret == -1)
+        ret = fmalloc_check_block_owner(MEM_EXTRA, (uint8_t *)_ptr);
+#endif
+    return ret;
 }
 
 int fmalloc_chown(const void *ptr, uint16_t pid)
