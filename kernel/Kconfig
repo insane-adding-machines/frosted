@@ -232,22 +232,26 @@ config MPU
 bool "Run-time Memory Protection"
 default y
 
+config PTHREADS
+bool "POSIX Threads (pthreads)"
+default y
+
+config SIGNALS
+bool "Process Signals"
+default y
+
+config PIPE
+bool "Pipe"
+default y
+
+config SOCK_UNIX
+bool "UNIX Sockets for IPC"
+default n
+
+
 endmenu
 
-menu "IPC features"
-    config SIGNALS
-    bool "Process Signals"
-    default y
 
-    config PIPE
-    bool "Pipe"
-    default y
-
-    config SOCK_UNIX
-    bool "UNIX Sockets for IPC"
-    default n
-
-endmenu
 
 menu "Debugging options"
 

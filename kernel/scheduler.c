@@ -27,7 +27,6 @@
 #include "sys/pthread.h"
 #include "fpb.h"
 #include "poll.h"
-#define CONFIG_PTHREADS 1
 
 #include "sys/user.h"
 
@@ -210,6 +209,7 @@ struct task_handler {
     struct task_handler *next;
 };
 
+#ifdef CONFIG_PTHREADS
 struct thread_group {
     struct task **threads;
     uint16_t active_threads;
@@ -217,6 +217,13 @@ struct thread_group {
     uint16_t max_tid;
     pthread_key_t max_key;
 };
+#else
+struct thread_group {
+    uint32_t _off;
+};
+#endif
+static void destroy_thread_group(struct thread_group *group, uint16_t tid);
+
 
 struct __attribute__((packed)) task_block {
     /* Watch out for alignment here
@@ -339,7 +346,7 @@ static void running_to_idling(struct task *t)
 }
 
 static int task_filedesc_del_from_task(struct task *t, int fd);
-static void destroy_thread_group(struct thread_group *group, uint16_t tid);
+
 
 /* Catch-all destroy functions for processes and threads.
  *
@@ -354,9 +361,10 @@ static void task_destroy(void *arg)
     struct thread_group *grp;
     if (!t)
         return;
-    grp = t->tb.tgroup;
     tasklist_del(&tasks_running, t);
     tasklist_del(&tasks_idling, t);
+#ifdef CONFIG_PTHREADS
+    grp = t->tb.tgroup;
     if ((grp) && (grp->active_threads > 0)) {
         /* if single sub-thread being destroyed, delete from
          * the group->threads array, so the position can
@@ -408,11 +416,37 @@ static void task_destroy(void *arg)
         /* Remove heap allocations spawned by this pid. */
         f_proc_heap_free(t->tb.pid);
     }
-
     /* Free any pthread-specific key value */
     if (t->tb.specifics)
         kfree(t->tb.specifics);
-
+#else
+    /* Get rid of allocated arguments */
+    if (t->tb.arg) {
+        char **arg = (char **)(t->tb.arg);
+        i = 0;
+        while (arg[i]) {
+            f_free(arg[i]);
+            i++;
+        }
+    }
+    f_free(t->tb.arg);
+    /* Close files & Destroy the file table */
+    ft = t->tb.filedesc_table;
+    for (i = 0; (ft) && (i < ft->n_files); i++) {
+        task_filedesc_del_from_task(t, i);
+    }
+    ftable_destroy(t);
+    /* free allocated VFS mem, e.g. by bflt_load */
+    if (t->tb.vfsi) {
+        // kprintf("Freeing VFS type %d allocated pointer 0x%p\r\n",
+        // t->tb.vfsi->type, t->tb.vfsi->allocated);
+        if ((t->tb.vfsi->type == VFS_TYPE_BFLT) && (t->tb.vfsi->allocated))
+            f_free(t->tb.vfsi->allocated);
+        f_free(t->tb.vfsi);
+    }
+    /* Remove heap allocations spawned by this pid. */
+    f_proc_heap_free(t->tb.pid);
+#endif
     /* Get rid of stack space allocation, timer. */
     if (t->tb.timer_id > 0)
         ktimer_del(t->tb.timer_id);
@@ -2169,8 +2203,10 @@ void task_deliver_sigtrap(void *arg)
         task_kill(t->tb.pid, SIGTRAP);
 }
 
+
 static void destroy_thread_group(struct thread_group *group, uint16_t tid)
 {
+#ifdef CONFIG_PTHREADS
     int i;
     /* Destroy the entire thread family */
     for (i = 0; i < group->n_threads; i++) {
@@ -2186,7 +2222,10 @@ static void destroy_thread_group(struct thread_group *group, uint16_t tid)
             }
         }
     }
+#endif
 }
+
+
 
 void task_terminate(struct task *t)
 {
@@ -2417,8 +2456,10 @@ child_found:
     pid = t->tb.pid;
     /* if this is a thread this is the last active one because it sent a SIGCHLD
      */
+#ifdef CONFIG_PTHREADS
     if (t->tb.tgroup)
         t->tb.tgroup->active_threads = 0;
+#endif
     tasklet_add(task_destroy, t);
     t->tb.state = TASK_OVER;
     return pid;
