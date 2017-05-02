@@ -355,6 +355,7 @@ void * f_realloc(int flags, void* ptr, size_t size)
             /* Grow to requested size by copying the content */
             new_size = size;
             copy_size = blk->size;
+            blk->size = new_size;
         } else {
             /* Shrink  (Ignore for now) */
             return ptr;
