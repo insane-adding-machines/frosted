@@ -288,11 +288,14 @@ static void f_compact(struct f_malloc_block *blk)
     if (!blk->prev)
         return;
     blk->prev->next = NULL;
-    if (blk->flags & MEM_USER) {
+    int mem_pool = MEMPOOL(blk->flags);
+    if (mem_pool == MEMPOOL(MEM_USER)) {
         heap_end_user -= (blk->size + sizeof(struct f_malloc_block));
-    } else if (blk->flags & MEM_TASK) {
+    } else if (mem_pool == MEMPOOL(MEM_EXTRA)) {
+        heap_end_extra -= (blk->size + sizeof(struct f_malloc_block));
+    } else if (mem_pool == MEMPOOL(MEM_TASK)) {
         heap_stack += (blk->size + sizeof(struct f_malloc_block));
-    } else if (blk->flags & MEM_TCPIP) {
+    } else if (mem_pool == MEMPOOL(MEM_TCPIP)) {
         heap_end_tcpip -= (blk->size + sizeof(struct f_malloc_block));
     } else {
         heap_end_kernel -= (blk->size + sizeof(struct f_malloc_block));
@@ -308,6 +311,17 @@ void * f_calloc(int flags, size_t num, size_t size)
     if (ptr)
         memset(ptr, 0, num * size);
     return ptr;
+}
+
+void * u_calloc(size_t num, size_t size)
+{
+    void *addr;
+    addr = f_calloc(MEM_USER, num, size);
+#ifdef CONFIG_SRAM_EXTRA
+    if (!addr)
+        addr = f_calloc(MEM_EXTRA, num, size);
+#endif
+    return addr;
 }
 
 void * f_realloc(int flags, void* ptr, size_t size)
@@ -362,11 +376,21 @@ realloc_free:
     return out;
 }
 
-void f_proc_heap_free(int pid)
+void *u_realloc(void *ptr, size_t size)
 {
-    struct f_malloc_block *blk = malloc_entry[MEM_USER];
-    while (blk)
-    {
+    void *addr;
+    addr = f_realloc(MEM_USER, ptr, size);
+#ifdef CONFIG_SRAM_EXTRA
+    if (!addr)
+        addr = f_realloc(MEM_EXTRA, ptr, size);
+#endif
+    return addr;
+}
+
+static void f_proc_heap_free_pool(int pid, int mempool)
+{
+    struct f_malloc_block *blk = malloc_entry[MEMPOOL(mempool)];
+    while (blk) {
         if (!block_valid(blk))
             while(1); /* corrupt block! */
         if ((blk->pid == pid) && in_use(blk)) {
@@ -377,29 +401,42 @@ void f_proc_heap_free(int pid)
     }
 }
 
-uint32_t f_proc_heap_count(int pid)
+void f_proc_heap_free(int pid)
 {
-    struct f_malloc_block *blk = malloc_entry[MEM_USER];
+    f_proc_heap_free_pool(pid, MEM_USER);
+    f_proc_heap_free_pool(pid, MEM_EXTRA);
+}
+
+uint32_t f_proc_heap_count_pool(int pid, int mempool)
+{
+    struct f_malloc_block *blk = malloc_entry[MEMPOOL(mempool)];
     uint32_t size = 0;
     while (blk)
-    {
-        if ((blk->pid == pid) && in_use(blk)) {
-            size += blk->size;
+        {
+            if ((blk->pid == pid) && in_use(blk)) {
+                size += blk->size;
+            }
+            blk = blk->next;
         }
-        blk = blk->next;
-    }
+    return size;
+}
+
+uint32_t f_proc_heap_count(int pid)
+{
+    uint32_t size = f_proc_heap_count_pool(pid, MEM_USER);
+    size += f_proc_heap_count_pool(pid, MEM_EXTRA);
     return size;
 }
 
 void * u_malloc(size_t size)
 {
-  void *addr;
-  addr = f_malloc(MEM_USER, size);
+    void *addr;
+    addr = f_malloc(MEM_USER, size);
 #ifdef CONFIG_SRAM_EXTRA
-  if (!addr)
-    addr = f_malloc(MEM_EXTRA, size);
+    if (!addr)
+        addr = f_malloc(MEM_EXTRA, size);
 #endif
-  return addr;
+    return addr;
 }
 
 void * f_malloc(int flags, size_t size)
@@ -638,7 +675,7 @@ void *sys_calloc_hdlr(int n, int size)
     void *addr;
     if (suspend_on_mutex_lock(mlock) < 0)
         return (void *)SYS_CALL_AGAIN;
-    addr = f_calloc(MEM_USER, n, size);
+    addr = u_calloc(n, size);
     mutex_unlock(mlock);
     return addr;
 }
@@ -648,7 +685,7 @@ void *sys_realloc_hdlr(void *addr, int size)
     void *naddr;
     if (suspend_on_mutex_lock(mlock) < 0)
         return (void *)SYS_CALL_AGAIN;
-    naddr = f_realloc(MEM_USER, addr, size);
+    naddr = u_realloc(addr, size);
     mutex_unlock(mlock);
     return naddr;
 }
