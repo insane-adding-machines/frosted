@@ -2136,8 +2136,16 @@ void task_terminate(struct task *t)
                 }
                 task_resume_vfork(t);
             }
+            if (!pt || (pt->tb.state == TASK_ZOMBIE) || (pt->tb.state == TASK_OVER)) {
+                /* Parent task is not there anymore. Init tries to adopt orphan child. */
+                t->tb.ppid = 1;
+                pt = tasklist_get(&tasks_running, 1);
+                if (!pt)
+                    pt = tasklist_get(&tasks_idling, 1);
+            }
             if (pt)
                 tasklet_add(task_deliver_sigchld, pt);
+
             task_preempt();
         }
     }
