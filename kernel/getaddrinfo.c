@@ -102,14 +102,14 @@ static int add_to_waiting_list(void)
 static void dns_ip6_cb(char *ip, void *arg)
 {
     if (ip) {
-        new = f_calloc(MEM_USER, 1, sizeof(struct addrinfo));
+        new = u_calloc(1, sizeof(struct addrinfo));
         if (!new) {
             ck6.state= DNSQUERY_FAIL;
             task_resume(ck6.task);
             return;
         }
         new->ai_family = AF_INET6;
-        new->ai_addr = f_calloc(MEM_USER, 1, sizeof(struct sockaddr_in6));
+        new->ai_addr = u_calloc(1, sizeof(struct sockaddr_in6));
         if (!new->ai_addr) {
             f_free(new);
             ck6.state = DNSQUERY_FAIL;
@@ -134,14 +134,14 @@ static void dns_ip4_cb(char *ip, void *arg)
 {
     struct addrinfo *new;
     if (ip) {
-        new = f_calloc(MEM_USER, 1, sizeof(struct addrinfo));
+        new = u_calloc(1, sizeof(struct addrinfo));
         if (!new) {
             ck4.state = DNSQUERY_FAIL;
             task_resume(ck4.task);
             return;
         }
         new->ai_family = AF_INET;
-        new->ai_addr = f_calloc(MEM_USER, 1, sizeof(struct sockaddr_in));
+        new->ai_addr = u_calloc(1, sizeof(struct sockaddr_in));
         if (!new->ai_addr) {
             f_free(new);
             ck4.state = DNSQUERY_FAIL;
@@ -184,11 +184,11 @@ static int pico_getaddrinfo(const char *node, const char *service, const struct 
     /* If an IP address was passed in the string, resolve immediately */
 #ifdef CONFIG_IPV6
     if (pico_string_to_ipv6(node, sa6.sin6_addr.s6_addr) == 0) {
-        struct addrinfo *ai = f_calloc(MEM_USER, 1, sizeof(struct addrinfo));
+        struct addrinfo *ai = u_calloc(1, sizeof(struct addrinfo));
         if (!ai)
             return -ENOMEM;
         ai->ai_family = AF_INET6;
-        ai->ai_addr = f_calloc(MEM_USER, 1, sizeof(struct sockaddr_in6));
+        ai->ai_addr = u_calloc(1, sizeof(struct sockaddr_in6));
         ai->ai_addrlen = sizeof(struct sockaddr_in6);
         ai->ai_next = NULL;
         sa6.sin6_family = AF_INET6;
@@ -200,11 +200,11 @@ static int pico_getaddrinfo(const char *node, const char *service, const struct 
 #endif
 
     if (pico_string_to_ipv4(node, &sa4.sin_addr.s_addr) == 0) {
-        struct addrinfo *ai = f_calloc(MEM_USER, 1, sizeof(struct addrinfo));
+        struct addrinfo *ai = u_calloc(1, sizeof(struct addrinfo));
         if (!ai)
             return -ENOMEM;
         ai->ai_family = AF_INET;
-        ai->ai_addr = f_calloc(MEM_USER, 1, sizeof(struct sockaddr_in));
+        ai->ai_addr = u_calloc(1, sizeof(struct sockaddr_in));
         ai->ai_addrlen = sizeof(struct sockaddr_in);
         ai->ai_next = NULL;
         sa4.sin_family = AF_INET;
