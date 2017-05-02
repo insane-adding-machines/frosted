@@ -413,7 +413,7 @@ static void task_destroy(void *arg)
         kfree(t->tb.specifics);
 
     /* Get rid of stack space allocation, timer. */
-    if (t->tb.timer_id > 0)
+    if (t->tb.timer_id >= 0)
         ktimer_del(t->tb.timer_id);
     task_space_free(t);
     number_of_tasks--;
@@ -493,8 +493,11 @@ static void ftable_destroy(struct task *t)
 {
     struct filedesc_table *ft = t->tb.filedesc_table;
     if (ft) {
-        if (--ft->usage_count == 0)
+        if (--ft->usage_count == 0) {
+            if (ft->fdesc)
+                kfree(ft->fdesc);
             kfree(ft);
+        }
     }
     t->tb.filedesc_table = NULL;
 }
