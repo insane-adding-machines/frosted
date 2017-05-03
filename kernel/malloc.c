@@ -295,8 +295,10 @@ static void f_compact(struct f_malloc_block *blk)
         heap_end_extra -= (blk->size + sizeof(struct f_malloc_block));
     } else if (mem_pool == MEMPOOL(MEM_TASK)) {
         heap_stack += (blk->size + sizeof(struct f_malloc_block));
+#ifdef CONFIG_TCPIP_MEMPOOL
     } else if (mem_pool == MEMPOOL(MEM_TCPIP)) {
         heap_end_tcpip -= (blk->size + sizeof(struct f_malloc_block));
+#endif
     } else {
         heap_end_kernel -= (blk->size + sizeof(struct f_malloc_block));
     }
@@ -355,7 +357,6 @@ void * f_realloc(int flags, void* ptr, size_t size)
             /* Grow to requested size by copying the content */
             new_size = size;
             copy_size = blk->size;
-            blk->size = new_size;
         } else {
             /* Shrink  (Ignore for now) */
             return ptr;
