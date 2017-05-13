@@ -1,8 +1,8 @@
 #Common code used to read the .config
-RAM1_SIZE=0
-RAM2_SIZE=0
-RAM3_SIZE=0
-SDRAM_SIZE=0
+RAM1_SIZE=0  #KiB
+RAM2_SIZE=0  #KiB
+RAM3_SIZE=0  #KiB
+SDRAM_SIZE=0 #B
 
 ifeq ($(RAM_SIZE_368KB),y)
 	RAM1_SIZE=368
@@ -80,7 +80,7 @@ ifeq ($(ARCH_STM32F7),y)
 	RAM1_BASE=0x20000000
 	SDRAM_BASE=0xC0000000
 	SDRAM_SIZE=0x800000
-	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft
+	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft -DCONFIG_SRAM_EXTRA
 	ARCH=STM32F7
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
 	UNICOREMX_TARGET=stm32/f7

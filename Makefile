@@ -240,7 +240,7 @@ kernel/$(BOARD)/$(BOARD).ld: kernel/$(BOARD)/$(BOARD).ld.in
 	export RAM1_SIZE_B=`python2 -c "print '0x%X' % ( $(RAM1_SIZE) * 1024)"`;	\
 	export RAM2_SIZE_B=`python2 -c "print '0x%X' % ( $(RAM2_SIZE) * 1024)"`;	\
 	export RAM3_SIZE_B=`python2 -c "print '0x%X' % ( $(RAM3_SIZE) * 1024)"`;	\
-	export SDRAM_SIZE_B=`python2 -c "print '0x%X' % ( $(SDRAM_SIZE) * 1024)"`;	\
+	export SDRAM_SIZE_B=`python2 -c "print '0x%X' % ( $(SDRAM_SIZE))"`;	\
 	cat $^ | sed -e "s/__FLASH_ORIGIN/$(FLASH_ORIGIN)/g" | \
 			 sed -e "s/__KFLASHMEM_SIZE/$$KFLASHMEM_SIZE_B/g" | \
 			 sed -e "s/__KRAMMEM_SIZE/$$KRAMMEM_SIZE_B/g" |\

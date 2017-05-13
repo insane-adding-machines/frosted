@@ -75,4 +75,6 @@ PROVIDE(_user_heap_start = ORIGIN(SRAM_USER));
 PROVIDE(_user_heap_end = ORIGIN(SRAM_USER) + LENGTH(SRAM_USER));
 PROVIDE(_external_heap_start = ORIGIN(SDRAM_USER));
 PROVIDE(_external_heap_end = ORIGIN(SDRAM_USER) + LENGTH(SDRAM_USER));
+PROVIDE(_extra_heap_start = ORIGIN(SDRAM_USER));
+PROVIDE(_extra_heap_end = ORIGIN(SDRAM_USER) + LENGTH(SDRAM_USER));
 
