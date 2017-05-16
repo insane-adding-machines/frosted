@@ -1829,8 +1829,8 @@ int sys_pthread_key_create_hdlr(int arg1, int arg2, int arg3, int arg4, int arg5
     pthread_key_t *key = (pthread_key_t *)arg1;
     if (newarray) {
         t->tb.specifics = newarray;
-        t->tb.n_specifics++;
         *key = t->tb.n_specifics;
+        t->tb.n_specifics++;
     }
     return 0;
 }
