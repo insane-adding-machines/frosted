@@ -35,7 +35,7 @@ static inline int heap_insert(struct heap_##type *heap, type *el)               
        heap->last_id = 0; /* Wrap around */                                             \
     if (heap->n == 1) {                                                                 \
         memcpy(&heap->top[1], &etmp, sizeof(struct heap_element_##type));               \
-        return 0;                                                                       \
+        return (int)etmp.id;                                                            \
     }                                                                                   \
     for (i = heap->n; ((i > 1) &&                                                       \
                 (heap->top[i / 2].data.orderby > el->orderby)); i /= 2) {               \
