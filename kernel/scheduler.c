@@ -2118,6 +2118,7 @@ void task_stop(struct task *t)
         t->tb.timeslice = 0;
     }
     t->tb.state = TASK_STOPPED;
+    running_to_idling(t);
     schedule();
 }
 
@@ -2619,7 +2620,7 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         return 0;
 
     case PTRACE_SINGLESTEP:
-        if (fpb_setbrk(pid, (void *)(cur_nvic->pc + 2), 7) >= 0)
+        if (fpb_setbrk(pid, (void *)(cur_nvic->pc * 2 / 2 + 2), 7) >= 0)
             return 0;
         else
             return -1;
