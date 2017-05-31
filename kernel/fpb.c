@@ -92,6 +92,12 @@ int fpb_delbrk(int n)
 
 int fpb_init(void)
 {
+    if (FPB_CTRL == 0x0) {
+        return -1;
+    }
+    if (FPB_COMP[0] == 0x0) {
+        return -1;
+    }
     /* Enable Debug Monitor Exception */
     DBG_DEMCR = DBG_DEMCR_MON_EN;
     FPB_CTRL = FPB_CTRL_ENABLE | FPB_CTRL_KEY | (1 << FPB_NUM_CODE2_OFF) | (2 << FPB_NUM_LIT_MASK_OFF);

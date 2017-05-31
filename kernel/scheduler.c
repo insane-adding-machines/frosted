@@ -2620,10 +2620,15 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         return 0;
 
     case PTRACE_SINGLESTEP:
-        if (fpb_setbrk(pid, (void *)(cur_nvic->pc * 2 / 2 + 2), 7) >= 0)
-            return 0;
-        else
-            return -1;
+        {
+            struct user u;
+            ptrace_getregs(tracee, &u);
+            if (fpb_setbrk(pid, (void *)((u.regs[15]) / 2 * 2 + 2), 0) >= 0) {
+                task_continue(tracee);
+                return 0;
+            } else
+                return -1;
+        }
 
     case PTRACE_GETREGS:
         return ptrace_getregs(tracee, (struct user *)data);
