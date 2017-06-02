@@ -796,16 +796,16 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
     uint8_t dirbuf[32];
     struct fatfs_dir dj;
     struct fnode *parent;
-    char  fullpath[128];
+    char fpath[128];
     int res;
 
-    fno_fullpath(f->mountpoint, fullpath, 128);
+    fno_fullpath(f->mountpoint, fpath, 128);
     if (path && strlen(path) > 0) {
         if (path[0] != '/')
-            strcat(fullpath, "/");
-        strcat(fullpath, path);
+            strcat(fpath, "/");
+        strcat(fpath, path);
     }
-    parent = fno_search(fullpath);
+    parent = fno_search(fpath);
     dj.fn = fbuf;
     if (clust > 0) {
         dj.clust = clust;
@@ -821,6 +821,8 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
             struct fatfs_finfo fi;
             get_fileinfo(&dj, dirbuf, &fi);
             if (dirbuf[DIR_Attr] & AM_DIR) {
+                char fullpath[128];
+                strncpy(fullpath, fpath, 128);
                 struct fnode *newdir;
                 newdir = fno_mkdir(&mod_fatfs, fi.fname, parent);
                 strcat(fullpath, "/");
@@ -1024,7 +1026,7 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     return r_len;
 }
 
-static int fatfs_write(struct fnode *fno, void *buf, unsigned int len)
+static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     struct fatfs_priv *priv;
     uint32_t sect;
