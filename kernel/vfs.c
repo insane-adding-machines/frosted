@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 #include "frosted.h"
 #include "vfs.h"
 #include "string.h"
@@ -97,7 +97,7 @@ static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
     return 0;
 }
 
-int fno_fullpath(struct fnode *f, char *dst, int len) 
+int fno_fullpath(struct fnode *f, char *dst, int len)
 {
     char *p = NULL;
     int ret;
@@ -126,7 +126,7 @@ static int path_abs(char *src, char *dst, int len)
         if (fno_fullpath(f, dst, len) > 0) {
             while (dst[strlen(dst) - 1] == '/')
                 dst[strlen(dst) - 1] = '\0';
-                
+
             strncat(dst, "/", len);
             strncat(dst, src, len);
             return 0;
@@ -176,7 +176,7 @@ static struct fnode *fno_link(char *src, char *dst)
         return NULL;
 
     link = fno_create_file(p_dst);
-    if (!link) 
+    if (!link)
         return NULL;
 
     file_name_len = strlen(p_src);
@@ -249,7 +249,7 @@ static const char *path_walk(const char *path)
 }
 
 
-/* Returns: 
+/* Returns:
  * 0 = if path does not match
  * 1 = if path is in the right dir, need to walk more
  * 2 = if path is found!
@@ -282,7 +282,7 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
     struct fnode *cur;
     char link[MAX_FILE];
     int check = 0;
-    if (dir == NULL) 
+    if (dir == NULL)
         return NULL;
 
     check = path_check(path, dir->fname);
@@ -443,7 +443,7 @@ void fno_unlink(struct fnode *fno)
             child = child->next;
         }
     }
-    
+
 
     kfree(fno->fname);
     kfree(fno);
@@ -506,7 +506,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
             return -EPERM;
         ret = f->owner->ops.open(path, flags);
-        if (ret >= 0) 
+        if (ret >= 0)
             task_fd_setmask(ret, flags);
         return ret;
     }
@@ -519,7 +519,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         f = fno_search(path);
         if (flags & O_EXCL) {
             if (f != NULL)
-                return -EEXIST; 
+                return -EEXIST;
         }
         if (f && (flags & O_TRUNC)) {
             if (f) {
@@ -536,7 +536,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
             f->flags |= FL_RDWR;
     }
     if (f == NULL)
-       return -ENOENT; 
+       return -ENOENT;
     if (f->flags & FL_INUSE)
         return -EBUSY;
     if (f->flags & FL_DIR)
@@ -548,7 +548,7 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     }
     ret = task_filedesc_add(f);
     task_fd_setmask(ret, flags);
-    return ret; 
+    return ret;
 }
 
 int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
@@ -558,9 +558,9 @@ int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
         task_filedesc_del(arg1);
         return 0;
     }
-    return -EINVAL; 
+    return -EINVAL;
 }
-    
+
 int sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     struct fnode *fno = task_filedesc_get(arg1);
@@ -583,7 +583,7 @@ int sys_ioctl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 
 int sys_link_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    struct fnode *fno; 
+    struct fnode *fno;
     if (task_ptr_valid((void*)arg1) || task_ptr_valid((void*)arg2))
         return -EACCES;
     fno = fno_link((char*)arg1, (char *)arg2);
@@ -624,7 +624,7 @@ int sys_unlink_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, 
 
 int sys_opendir_hdlr(uint32_t arg1)
 {
-    struct fnode *fno; 
+    struct fnode *fno;
     if (task_ptr_valid((void*)arg1))
         return -EACCES;
     fno = fno_search((char *)arg1);
@@ -642,7 +642,7 @@ int sys_opendir_hdlr(uint32_t arg1)
 
 int sys_readdir_hdlr(uint32_t arg1, uint32_t arg2)
 {
-    struct fnode *fno; 
+    struct fnode *fno;
     struct fnode *next;
     struct dirent *ep;
 
@@ -896,7 +896,7 @@ int vfs_mount(char *source, char *target, char *module, uint32_t flags, void *ar
 
 int vfs_umount(char *target, uint32_t flags)
 {
-    struct fnode *f; 
+    struct fnode *f;
     int ret;
     struct mountpoint *mp = MTAB, *prev = NULL;
     if (!target)
@@ -964,7 +964,7 @@ int sys_fcntl_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     return 0;
 }
 
-void vfs_init(void) 
+void vfs_init(void)
 {
     struct fnode *dev = NULL;
     /* Initialize "/" */
@@ -977,16 +977,16 @@ void vfs_init(void)
 
     /* Init "/dev" dir */
     dev = fno_mkdir(NULL, "dev", NULL);
-    
+
     /* Init "/sys" dir */
     dev = fno_mkdir(NULL, "sys", NULL);
 
     /* Init "/tmp" dir */
     dev = fno_mkdir(NULL, "tmp", NULL);
-    
+
     /* Init "/bin" dir */
     dev = fno_mkdir(NULL, "bin", NULL);
-    
+
     /* Init "/mnt" dir */
     dev = fno_mkdir(NULL, "mnt", NULL);
 }
