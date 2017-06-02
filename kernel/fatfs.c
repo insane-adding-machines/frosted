@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,12 +16,12 @@
  *
  *      Based on Petit FatFs R0.03 by ChaN
  *      Copyright (C) 2014, ChaN
- *      When redistribute the Petit FatFs with any modification, 
+ *      When redistribute the Petit FatFs with any modification,
  *      the license can also be changed to GNU GPL or BSD-style license.
  *
  *      Copyright (C) 2016, Insane Adding Machines
  *
- */  
+ */
 
 #include <stdint.h>
 #include "string.h"
@@ -118,13 +118,13 @@ struct fatfs_finfo{
 
 /* File function return code (int) */
 
-#define FR_OK            0	
+#define FR_OK            0
 #define FR_DISK_ERR      1
 #define FR_NOT_READY     2
 #define FR_NO_FILE       3
 #define FR_NOT_OPENED    4
 #define FR_NOT_ENABLED   5
-#define FR_NO_FILESYSTEM 6	
+#define FR_NO_FILESYSTEM 6
 
 /* File status flag (struct fatfs.flag) */
 
@@ -489,7 +489,7 @@ static uint32_t clust2sect (struct fatfs_disk *f, fatfs_cluster clst)
 
 
     static
-fatfs_cluster get_clust ( struct fatfs_disk *f, 
+fatfs_cluster get_clust ( struct fatfs_disk *f,
         uint8_t* dir		/* Pointer to directory entry */
         )
 {
@@ -512,7 +512,7 @@ fatfs_cluster get_clust ( struct fatfs_disk *f,
 /*-----------------------------------------------------------------------*/
 
 static
-int dir_rewind ( struct fatfs_disk *f, 
+int dir_rewind ( struct fatfs_disk *f,
 	struct fatfs_dir *dj			/* Pointer to directory object */
 )
 {
@@ -888,7 +888,7 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
     /* Target must be a valid dir */
     if (!tgt)
         return -1;
-    
+
     tgt_dir = fno_search(tgt);
     src_dev = fno_search(source);
 
@@ -897,13 +897,13 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
         return -1;
     }
 
-    if (!src_dev || !(src_dev ->owner) 
+    if (!src_dev || !(src_dev ->owner)
             //|| ((src_dev->flags & FL_BLK) == 0)
             ) {
         /* Invalid block device. */
         return -1;
     }
-   
+
     /* Initialize file system to disk association */
     fsd = kcalloc(sizeof(struct fatfs_disk), 1);
     if (!fsd)
@@ -911,7 +911,7 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 
     /* Associate the disk device */
     fsd->blockdev = src_dev;
-    
+
     /* Associate a newly created fat filesystem */
     fsd->fs = kcalloc(sizeof(struct fatfs), 1);
     if (!fsd->fs) {
@@ -938,7 +938,7 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
             }
         }
     }
-    if (fmt != 0) 
+    if (fmt != 0)
         goto fail;
 
     /* Initialize the file system object */
@@ -965,7 +965,7 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
         fmt = FS_FAT16;
     if (FATFS_FAT32 && mclst >= 0xFFF7)
         fmt = FS_FAT32;
-    if (!fmt) 
+    if (!fmt)
         goto fail;
     fsd->fs->fs_type = fmt;
 
@@ -1286,7 +1286,7 @@ int fatfs_init(void)
     strcpy(mod_fatfs.name,"fatfs");
 
     mod_fatfs.mount = fatfs_mount;
-    mod_fatfs.ops.read = fatfs_read; 
+    mod_fatfs.ops.read = fatfs_read;
     mod_fatfs.ops.seek = fatfs_seek;
     mod_fatfs.ops.poll = fatfs_poll;
     /*
