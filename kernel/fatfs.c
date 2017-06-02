@@ -1024,6 +1024,43 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     return r_len;
 }
 
+static int fatfs_write(struct fnode *fno, void *buf, unsigned int len)
+{
+    struct fatfs_priv *priv;
+    uint32_t sect;
+    uint32_t w_len = 0;
+    uint32_t w_off = 0;
+
+
+    if (!fno || !fno->priv)
+        return -1;
+    priv = (struct fatfs_priv *)fno->priv;
+
+//    if (len + fno->off > fno->size)
+//        len = fno->size - fno->off;
+
+    if (len == 0)
+        return -1;
+
+    while (w_len < len) {
+        int w = len - w_len;
+        w_off = fno->off;
+        sect = clust2sect(priv->fsd, priv->cluster);
+        while (w_off >= 512) {
+            sect++;
+            w_off -= 512;
+        }
+        if (w + w_off > 512) {
+            w = 512 - w_off;
+        }
+        if (disk_writep(priv->fsd, buf + w_len, sect, w_off, w) != 0)
+            break;
+        w_len += w;
+        fno->off += w;
+    }
+    return w_len;
+}
+
 static int fatfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
     *revents = events;
@@ -1287,16 +1324,17 @@ int fatfs_init(void)
 
     mod_fatfs.mount = fatfs_mount;
     mod_fatfs.ops.read = fatfs_read;
-    mod_fatfs.ops.seek = fatfs_seek;
-    mod_fatfs.ops.poll = fatfs_poll;
-    /*
     mod_fatfs.ops.write = fatfs_write;
     mod_fatfs.ops.seek = fatfs_seek;
+    mod_fatfs.ops.poll = fatfs_poll;
+
+    /*
     mod_fatfs.ops.creat = fatfs_creat;
     mod_fatfs.ops.unlink = fatfs_unlink;
     mod_fatfs.ops.close = fatfs_close;
     mod_fatfs.ops.exe = fatfs_exe;
     */
+
     register_module(&mod_fatfs);
     return 0;
 }

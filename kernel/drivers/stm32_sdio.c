@@ -17,7 +17,7 @@
  *      Original Author: Chuck M. (see https://github.com/ChuckM/stm32f4-sdio-driver/)
  *      Re-adapted for frosted by: Daniele Lacamera
  *
- *      Permission to release under the terms of GPLv2 are granted by the 
+ *      Permission to release under the terms of GPLv2 are granted by the
  *      copyright holders.
  *
  */
@@ -259,7 +259,7 @@ stm32_sdio_errmsg(int err) {
                                 __sdio_error_msgs[0-err];
 }
 
-/* 
+/*
  * stm32_sdio_bit_slice - helper function
  *
  * A number of the things the SDIO returns are in bit
@@ -492,8 +492,8 @@ int sdio_block_read(struct fnode *fno, void *_buf, uint32_t lba, int offset, int
     struct dev_sd *sdio;
     SDIO_CARD c;
     uint8_t *buf = _buf;
-        
-    
+
+
     sdio = (struct dev_sd *)FNO_MOD_PRIV(fno, &mod_sdio);
     if (!sdio)
         return -1;
@@ -551,22 +551,34 @@ int sdio_block_read(struct fnode *fno, void *_buf, uint32_t lba, int offset, int
 /*
  * Write a Block from our Card
  */
+//int
+//sdio_block_write(SDIO_CARD c, uint32_t lba, uint8_t *buf) {
 int
-sdio_writeblock(SDIO_CARD c, uint32_t lba, uint8_t *buf) {
+sdio_block_write(struct fnode *fno, void *_buf, uint32_t lba, int offset, int count)
+{
     int err;
     uint32_t tmp_reg;
     uint32_t addr = lba;
     uint8_t *t;
     int ndx;
+    struct dev_sd *sdio;
+    SDIO_CARD c;
+    uint8_t *buf = _buf;
+
+
+    sdio = (struct dev_sd *)FNO_MOD_PRIV(fno, &mod_sdio);
+    if (!sdio)
+        return -1;
+    c = sdio->card;
 
     if (! SDIO_CARD_CCS(c)) {
         addr = lba * 512; // non HC cards use byte address
     }
-    
+
     /*
      * Copy buffer to our word aligned buffer. Nominally you
      * can just use the passed in buffer and cast it to a
-     * uint32_t * but that can cause issues if it isn't 
+     * uint32_t * but that can cause issues if it isn't
      * aligned.
      */
     t = (uint8_t *)(data_buf);
@@ -787,7 +799,7 @@ stm32_sdio_open(void) {
         }
     }
     /* Compute the size of the card based on fields in the CSD
-     * block. There are two kinds, V1 or V2. 
+     * block. There are two kinds, V1 or V2.
      * In the V1 Case :
      *     Size = 1<<BLOCK_LEN * 1<<(MULT+2) * (C_SIZE+1) bytes.
      * In the V2 Case :
@@ -806,7 +818,7 @@ stm32_sdio_open(void) {
                 res->size = tmp_reg * (SDIO_CSD1_CSIZE(res) + 1);
                 break;
             case 1:
-                res->size = (SDIO_CSD2_CSIZE(res)+1) << 10; 
+                res->size = (SDIO_CSD2_CSIZE(res)+1) << 10;
                 break;
             default:
                 res->size = 0; // Bug if its not CSD V1 or V2
@@ -850,7 +862,7 @@ static void sdio_hw_init(struct sdio_config *conf)
     rcc_peripheral_enable_clock(conf->rcc_reg, conf->rcc_en);
 }
 
-    
+
 int sdio_init(struct sdio_config *conf)
 {
     SDIO_CARD card;
@@ -869,6 +881,7 @@ int sdio_init(struct sdio_config *conf)
 
     //mod_sdio.ops.close = sdio_close;
     mod_sdio.ops.block_read = sdio_block_read;
+    mod_sdio.ops.block_write = sdio_block_write;
 
     register_module(&mod_sdio);
     tasklet_add(stm32_sdio_card_detect, devfs);
