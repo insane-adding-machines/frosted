@@ -75,22 +75,19 @@ static void kthread_usbhost(void *arg)
 }
 
 int usbdev_start(usbd_device **_usbd_dev, unsigned int dev,
-          const struct usb_device_descriptor *dev_desc,
-          void *buffer, size_t buffer_size)
+          const struct usbd_info *info)
 {
     if (usbd_dev)
         return -EBUSY;
 
     if (dev == USB_DEV_FS) {
-        usbd_dev = usbd_init(USBD_STM32_OTG_FS, NULL, dev_desc, buffer,
-                                buffer_size);
+        usbd_dev = usbd_init(USBD_STM32_OTG_FS, NULL, info);
         nvic_enable_irq(NVIC_OTG_FS_IRQ);
     } else {
-        usbd_dev = usbd_init(USBD_STM32_OTG_HS, &hs_backend_config, dev_desc, buffer,
-                                buffer_size);
+        usbd_dev = usbd_init(USBD_STM32_OTG_HS, &hs_backend_config, info);
         nvic_enable_irq(NVIC_OTG_HS_IRQ);
     }
-    
+
     *_usbd_dev = usbd_dev;
     return 0;
 }
@@ -107,10 +104,10 @@ struct usb_driver {
 
 static struct usb_driver *UsbDriverList = NULL;
 
-static int usb_driver_register(struct module *owner, 
-        int (*probe)(struct usb_interface_descriptor *iface), 
+static int usb_driver_register(struct module *owner,
+        int (*probe)(struct usb_interface_descriptor *iface),
         int (*register_endpoint)(struct usb_endpoint_descriptor *ep),
-        void (*boot)(const usbh_transfer *transfer, usbh_transfer_status status, usbh_urb_id urb_id) 
+        void (*boot)(const usbh_transfer *transfer, usbh_transfer_status status, usbh_urb_id urb_id)
         )
 {
     struct usb_driver *usb = kalloc(sizeof(struct usb_driver));
@@ -183,10 +180,10 @@ static void usbh_conf_described(const usbh_transfer *transfer, usbh_transfer_sta
     while (len > 0) {
         uint8_t *d = ptr;
         switch (d[1]) {
-            case USB_DT_INTERFACE: 
+            case USB_DT_INTERFACE:
                 {
                     struct usb_interface_descriptor *iface = ptr;
-                    
+
                     /* If the interesting interface was already found, don't visit
                      * the endpoints of other configurations
                      */
@@ -201,18 +198,18 @@ static void usbh_conf_described(const usbh_transfer *transfer, usbh_transfer_sta
                     } else {
                         iface_interest = NULL;
                     }
-                } 
+                }
                 break;
 
-            case USB_DT_ENDPOINT: 
+            case USB_DT_ENDPOINT:
                 {
                     struct usb_endpoint_descriptor *ep = ptr;
-                    if (usb && iface_interest) { 
+                    if (usb && iface_interest) {
                         if ( usb->register_endpoint(ep) == 0) {
                             usbh_ctrlreq_set_config(transfer->device, cfg->bConfigurationValue, usbh_config_set);
                         }
                     }
-                } 
+                }
                 break;
         }
 
@@ -266,13 +263,13 @@ static void usbhost_start(void)
     if (usbh_dev)
         return ;
 #ifdef CONFIG_USBFSHOST
-	usbh_dev = usbh_init(USBH_STM32_OTG_FS, NULL);
-	usbh_register_connected_callback(usbh_dev, usbh_device_plugged);
-	nvic_enable_irq(NVIC_OTG_FS_IRQ);
+    usbh_dev = usbh_init(USBH_STM32_OTG_FS, NULL);
+    usbh_register_connected_callback(usbh_dev, usbh_device_plugged);
+    nvic_enable_irq(NVIC_OTG_FS_IRQ);
 #else
-	usbh_dev = usbh_init(USBH_STM32_OTG_HS, &hs_host_backend_config);
-	usbh_register_connected_callback(usbh_dev, usbh_device_plugged);
-	nvic_enable_irq(NVIC_OTG_HS_IRQ);
+    usbh_dev = usbh_init(USBH_STM32_OTG_HS, &hs_host_backend_config);
+    usbh_register_connected_callback(usbh_dev, usbh_device_plugged);
+    nvic_enable_irq(NVIC_OTG_HS_IRQ);
 #endif
     kthread_create(kthread_usbhost, NULL);
 }

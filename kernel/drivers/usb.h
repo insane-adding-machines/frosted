@@ -41,8 +41,7 @@ struct usb_config {
 #ifdef CONFIG_DEVUSB
     int usb_init(struct usb_config *conf);
     int usbdev_start(usbd_device **_usbd_dev, unsigned int dev,
-          const struct usb_device_descriptor *dev_desc,
-          void *buffer, size_t buffer_size);
+          const struct usbd_info *info);
 #else
 #  define usb_init(x) ((-ENOENT))
 #  define usbdev_start(...) ((-ENOENT))
