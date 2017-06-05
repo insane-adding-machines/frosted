@@ -28,6 +28,7 @@
 #include <unicore-mx/usbh/usbh.h>
 #include <unicore-mx/usbh/helper/ctrlreq.h>
 #include <unicore-mx/usbh/class/hid.h>
+#include <stdbool.h>
 
 
 static struct module mod_usb_guest = {
@@ -40,28 +41,36 @@ static struct module mod_usb_host = {
     .name = "usb-otg-host",
 };
 
-/* High-speed backend config */
-static const usbd_backend_config hs_backend_config = {
+/* Device: High-speed backend config */
+static const usbd_backend_config hs_dev_backend_config = {
     .ep_count = 9,
     .priv_mem = 4096,
     .speed = USBH_SPEED_HIGH,
     .feature = USBH_PHY_EXT
 };
 
+/* Host: High-speed backend config */
+static const usbh_backend_config hs_host_backend_config = {
+    .chan_count = 12,
+    .priv_mem = 4096,
+    .speed = USBH_SPEED_HIGH,
+    /* VBUS_EXT = PHY IC drive VBUS */
+    .feature = USBH_PHY_EXT | USBH_VBUS_EXT
+};
 
-static struct usbd_device *usbd_dev = NULL;
-static usbh_host *usbh_dev = NULL;
+static struct usbd_device *_usbd_dev = NULL;
+static usbh_host *_usbh_host = NULL;
 
 void otg_fs_isr(void)
 {
-    if (usbd_dev)
-        usbd_poll(usbd_dev, 0);
+    if (_usbd_dev)
+        usbd_poll(_usbd_dev, 0);
 }
 
 void otg_hs_isr(void)
 {
-    if (usbd_dev)
-        usbd_poll(usbd_dev, 0);
+    if (_usbd_dev)
+        usbd_poll(_usbd_dev, 0);
 }
 
 static void kthread_usbhost(void *arg)
@@ -69,102 +78,244 @@ static void kthread_usbhost(void *arg)
     (void)arg;
     kthread_sleep_ms(1000);
     while(1) {
-        usbh_poll(usbh_dev, 0);
+        usbh_poll(_usbh_host, 0);
         kthread_yield();
     }
 }
 
-int usbdev_start(usbd_device **_usbd_dev, unsigned int dev,
+int usbdev_start(usbd_device **usbd_dev, unsigned int dev,
           const struct usbd_info *info)
 {
-    if (usbd_dev)
+    if (_usbd_dev)
         return -EBUSY;
 
     if (dev == USB_DEV_FS) {
-        usbd_dev = usbd_init(USBD_STM32_OTG_FS, NULL, info);
+        _usbd_dev = usbd_init(USBD_STM32_OTG_FS, NULL, info);
         nvic_enable_irq(NVIC_OTG_FS_IRQ);
     } else {
-        usbd_dev = usbd_init(USBD_STM32_OTG_HS, &hs_backend_config, info);
+        _usbd_dev = usbd_init(USBD_STM32_OTG_HS, &hs_dev_backend_config, info);
         nvic_enable_irq(NVIC_OTG_HS_IRQ);
     }
 
-    *_usbd_dev = usbd_dev;
+    *usbd_dev = _usbd_dev;
     return 0;
 }
 
 #ifdef CONFIG_USBHOST
 
-struct usb_driver {
+struct usb_host_driver {
     struct module *owner;
-    int (*probe)(struct usb_interface_descriptor *iface);
-    int (*register_endpoint)(struct usb_endpoint_descriptor *ep);
-    void (*boot)(const usbh_transfer *transfer, usbh_transfer_status status, usbh_urb_id urb_id);
-    struct usb_driver *next;
+    usb_host_driver_probe_callback probe;
+    struct usb_host_driver *next;
 };
 
-static struct usb_driver *UsbDriverList = NULL;
+struct usb_host_claim {
+    struct module *owner;
 
-static int usb_driver_register(struct module *owner,
-        int (*probe)(struct usb_interface_descriptor *iface),
-        int (*register_endpoint)(struct usb_endpoint_descriptor *ep),
-        void (*boot)(const usbh_transfer *transfer, usbh_transfer_status status, usbh_urb_id urb_id)
-        )
+    /* Reason of call:
+     *  - Device disconnected
+     *  - Configuration change
+     *  - Interface released
+     */
+    usb_host_interface_removed_callback removed;
+
+    usbh_device *device;
+
+    /* Interface number */
+    uint8_t bInterfaceNumber;
+
+    struct usb_host_claim *next;
+};
+
+static struct usb_host_driver *HOST_DRIVER_LIST = NULL;
+static struct usb_host_claim *HOST_CLAIM_LIST = NULL;
+
+int usb_host_driver_register(struct module *owner,
+        usb_host_driver_probe_callback probe)
 {
-    struct usb_driver *usb = kalloc(sizeof(struct usb_driver));
-    if (!usb)
-        return -ENOMEM;
-
-    if (!probe || !register_endpoint)
+    if (!probe) {
         return -EINVAL;
+    }
 
-    usb->probe = probe;
-    usb->register_endpoint = register_endpoint;
-    usb->boot = boot;
-    usb->next = UsbDriverList;
-    UsbDriverList = usb;
+    struct usb_host_driver *driver = kalloc(sizeof(struct usb_host_driver));
+    if (!driver) {
+        return -ENOMEM;
+    }
+
+    driver->probe = probe;
+    driver->next = HOST_DRIVER_LIST;
+    HOST_DRIVER_LIST = driver;
     return 0;
 }
 
-static struct usb_driver *usb_driver_probe(struct usb_interface_descriptor *iface)
+/**
+ * Check weather the interface has already been claimed
+ * @param dev Device (USB Host)
+ * @param bInterfaceNumber Interface number
+ * @return true on claimed, false on still open for claiming
+ */
+bool interface_claimed(usbh_device *dev, uint8_t bInterfaceNumber)
 {
-    struct usb_driver *usb = UsbDriverList;
-    while(usb) {
-        if (usb->probe(iface) == 0)
-            return usb;
-        usb = usb->next;
+    const struct usb_host_claim *claim;
+
+    for (claim = HOST_CLAIM_LIST; claim; claim = claim->next) {
+        if (claim->device == dev && claim->bInterfaceNumber == bInterfaceNumber) {
+            return true;
+        }
     }
-    return NULL;
+
+    return false;
 }
-static void usbh_dev_disconnected(usbh_device *dev)
+
+/**
+ * Claim the USB Host device interface.
+ * @param owner Owner
+ * @param dev USB Host device
+ * @param bInterfaceNumber Interface number
+ * @param removed Callback when removed.
+ * @return 0 on success
+ * @return -EBUSY Interface already claimed
+ * @return -EINVAL Invalid value passed
+ * @note Make sure @a bInterfaceNumber is a valid interface number
+ *  for the device and currently selected configuration.
+ * @note Driver need to manually SET_INTEFACE
+ */
+int usb_host_claim_interface(struct module *owner,
+        usbh_device *dev, uint8_t bInterfaceNumber,
+        usb_host_interface_removed_callback removed)
 {
+    if (!dev || !removed) {
+        return -EINVAL;
+    }
 
+    if (interface_claimed(dev, bInterfaceNumber)) {
+        return -EBUSY;
+    }
+
+    struct usb_host_claim *claim = kalloc(sizeof(struct usb_host_claim));
+    if (!claim) {
+        return -ENOMEM;
+    }
+
+    claim->owner = owner;
+    claim->removed = removed;
+    claim->bInterfaceNumber = bInterfaceNumber;
+    claim->next = HOST_CLAIM_LIST;
+    HOST_CLAIM_LIST = claim;
+    return 0;
 }
 
-static uint8_t usbh_dev_ifnum;
-static uint8_t usbh_dev_altset;
-static struct usb_driver *usb;
+/**
+ * Release a previously claimed interface
+ * @param dev USB Host - device
+ * @param bInterfaceNumber Interface number
+ * @return 0 success
+ * @return -EINVAL Invalid argument
+ * @return -ENOENT No such entry
+ */
+int usb_host_release_interface(usbh_device *dev, uint8_t bInterfaceNumber)
+{
+    struct usb_host_claim *claim = HOST_CLAIM_LIST, *tmp, *prev = NULL;
 
-static void usbh_config_set(const usbh_transfer *transfer, usbh_transfer_status status, usbh_urb_id urb_id)
+    if (!dev) {
+        return -EINVAL;
+    }
+
+    while (claim != NULL) {
+        if (claim->device != dev) {
+            prev = claim;
+            claim = claim->next;
+            continue;
+        }
+
+        /* Update link */
+        if (prev == NULL) { /* First item */
+            HOST_CLAIM_LIST = claim->next;
+        } else {
+            prev->next = claim->next;
+        }
+
+        /* Goto next entry */
+        tmp = claim;
+        claim = claim->next;
+
+        /* Remove the item */
+        tmp->removed(tmp->device, tmp->bInterfaceNumber);
+        kfree(tmp);
+
+        return 0;
+    }
+
+    return -ENOENT;
+}
+
+/**
+ * USB Host - device disconnected.
+ * Remove any claimed interface from the list for the given device
+ * @param dev USB Host device
+ */
+static void host_dev_disconnected_callback(usbh_device *dev)
+{
+    struct usb_host_claim *claim = HOST_CLAIM_LIST, *tmp, *prev = NULL;
+
+    while (claim != NULL) {
+        if (claim->device != dev) {
+            prev = claim;
+            claim = claim->next;
+            continue;
+        }
+
+        /* Update link */
+        if (prev == NULL) { /* First item */
+            HOST_CLAIM_LIST = claim->next;
+        } else {
+            prev->next = claim->next;
+        }
+
+        /* Goto next entry */
+        tmp = claim;
+        claim = claim->next;
+
+        /* Remove the item */
+        tmp->removed(tmp->device, tmp->bInterfaceNumber);
+        kfree(tmp);
+    }
+}
+
+static uint8_t buf_dev_desc[18];
+static uint8_t buf_config_desc[128];
+
+static void host_set_config_callback(const usbh_transfer *transfer,
+                usbh_transfer_status status, usbh_urb_id urb_id)
 {
     (void) urb_id;
-    if (status != USBH_SUCCESS)
-        return;
-    usbh_ctrlreq_set_interface(transfer->device, usbh_dev_ifnum, usbh_dev_altset, usb->boot);
-    usb = NULL;
-}
 
-static void usbh_conf_described(const usbh_transfer *transfer, usbh_transfer_status status, usbh_urb_id urb_id)
-{
-    struct usb_config_descriptor *cfg = transfer->data;
-    int len = cfg->wTotalLength - cfg->bLength;
-    void *ptr = transfer->data + cfg->bLength;
-    struct usb_interface_descriptor *iface_interest = NULL;
-    (void) urb_id;
+    const struct usb_host_driver *usb;
+
+    const struct usb_device_descriptor *dev_desc = (void *) buf_dev_desc;
+    const struct usb_config_descriptor *config_desc = (void *) buf_config_desc;
 
     if (status != USBH_SUCCESS) {
         return;
     }
 
+    /* Let each driver probe the configuration descriptor and
+     * react accordingly */
+    for (usb = HOST_DRIVER_LIST; usb; usb = usb->next) {
+        usb->probe(transfer->device, dev_desc, config_desc);
+    }
+}
+
+static void host_config_desc_read_callback(const usbh_transfer *transfer,
+                usbh_transfer_status status, usbh_urb_id urb_id)
+{
+    (void) urb_id;
+
+    const struct usb_config_descriptor *cfg = transfer->data;
+
+    if (status != USBH_SUCCESS) {
+        return;
+    }
 
     if (!transfer->transferred || cfg->bLength < 4) {
         /* Descriptor too small */
@@ -176,56 +327,15 @@ static void usbh_conf_described(const usbh_transfer *transfer, usbh_transfer_sta
         return;
     }
 
-
-    while (len > 0) {
-        uint8_t *d = ptr;
-        switch (d[1]) {
-            case USB_DT_INTERFACE:
-                {
-                    struct usb_interface_descriptor *iface = ptr;
-
-                    /* If the interesting interface was already found, don't visit
-                     * the endpoints of other configurations
-                     */
-                    if (iface_interest && (iface != iface_interest))
-                        return;
-
-                    usb = usb_driver_probe(iface);
-                    if (usb) {
-                        iface_interest = iface;
-                        usbh_dev_ifnum = iface->bInterfaceNumber;
-                        usbh_dev_altset = iface->bAlternateSetting;
-                    } else {
-                        iface_interest = NULL;
-                    }
-                }
-                break;
-
-            case USB_DT_ENDPOINT:
-                {
-                    struct usb_endpoint_descriptor *ep = ptr;
-                    if (usb && iface_interest) {
-                        if ( usb->register_endpoint(ep) == 0) {
-                            usbh_ctrlreq_set_config(transfer->device, cfg->bConfigurationValue, usbh_config_set);
-                        }
-                    }
-                }
-                break;
-        }
-
-        ptr += d[0];
-        len -= d[0];
-    }
-
+    /* The descriptor look good. SET_CONFIGURATION before probing */
+    usbh_ctrlreq_set_config(transfer->device, cfg->bConfigurationValue,
+                        host_set_config_callback);
 }
 
-static uint8_t buf[128];
-void usbh_dev_described(const usbh_transfer *transfer, usbh_transfer_status status, usbh_urb_id urb_id)
+static void host_dev_desc_read_callback(const usbh_transfer *transfer,
+                usbh_transfer_status status, usbh_urb_id urb_id)
 {
-    struct usb_device_descriptor *desc = transfer->data;
-    uint8_t class = desc->bDeviceClass;
-    uint8_t subclass = desc->bDeviceSubClass;
-    uint8_t protocol = desc->bDeviceProtocol;
+    const struct usb_device_descriptor *desc = transfer->data;
 
     (void) urb_id;
 
@@ -233,47 +343,38 @@ void usbh_dev_described(const usbh_transfer *transfer, usbh_transfer_status stat
         return;
     }
 
-
     if (!desc->bNumConfigurations) {
         return;
     }
 
-    usbh_device *dev = transfer->device;
-    usbh_ctrlreq_read_desc(dev, USB_DT_CONFIGURATION, 0, buf, 128, usbh_conf_described);
+    /* Read the index=0 configuration descriptor */
+    usbh_ctrlreq_read_desc(transfer->device, USB_DT_CONFIGURATION, 0,
+                buf_config_desc, sizeof(buf_config_desc), host_config_desc_read_callback);
 }
 
-static void usbh_device_plugged(usbh_device *dev)
+static void host_dev_connected_callback(usbh_device *dev)
 {
-    usb = NULL;
-    usbh_device_register_disconnected_callback(dev, usbh_dev_disconnected);
-    usbh_ctrlreq_read_desc(dev, USB_DT_DEVICE, 0, buf, 18, usbh_dev_described);
+    usbh_device_register_disconnected_callback(dev, host_dev_disconnected_callback);
+    usbh_ctrlreq_read_desc(dev, USB_DT_DEVICE, 0, buf_dev_desc,
+                sizeof(buf_dev_desc), host_dev_desc_read_callback);
 }
-
-/* High-speed backend config */
-static const usbh_backend_config hs_host_backend_config = {
-    .chan_count = 12,
-    .priv_mem = 4096,
-    .speed = USBH_SPEED_HIGH,
-    /* VBUS_EXT = PHY IC drive VBUS */
-    .feature = USBH_PHY_EXT | USBH_VBUS_EXT
-};
 
 static void usbhost_start(void)
 {
-    if (usbh_dev)
+    if (_usbh_host)
         return ;
 #ifdef CONFIG_USBFSHOST
-    usbh_dev = usbh_init(USBH_STM32_OTG_FS, NULL);
-    usbh_register_connected_callback(usbh_dev, usbh_device_plugged);
+    _usbh_host = usbh_init(USBH_STM32_OTG_FS, NULL);
+    usbh_register_connected_callback(_usbh_host, host_dev_connected_callback);
     nvic_enable_irq(NVIC_OTG_FS_IRQ);
-#else
-    usbh_dev = usbh_init(USBH_STM32_OTG_HS, &hs_host_backend_config);
-    usbh_register_connected_callback(usbh_dev, usbh_device_plugged);
+#else /* CONFIG_USBFSHOST */
+    _usbh_host = usbh_init(USBH_STM32_OTG_HS, &hs_host_backend_config);
+    usbh_register_connected_callback(_usbh_host, host_dev_connected_callback);
     nvic_enable_irq(NVIC_OTG_HS_IRQ);
-#endif
+#endif /* CONFIG_USBFSHOST */
     kthread_create(kthread_usbhost, NULL);
 }
-#endif
+#endif /* CONFIG_USBHOST */
 
 int usb_init(struct usb_config *conf)
 {
@@ -303,5 +404,6 @@ int usb_init(struct usb_config *conf)
         usbhost_start();
     }
 #endif
+
     return 0;
 }

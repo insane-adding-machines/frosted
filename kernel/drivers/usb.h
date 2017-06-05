@@ -14,6 +14,24 @@
 #define USB_MODE_GUEST 1
 #define USB_MODE_HOST  2
 
+typedef void (*usb_host_driver_probe_callback)(
+        struct usbh_device *dev,
+        const struct usb_device_descriptor *device_desc,
+        const struct usb_config_descriptor *config_desc);
+
+typedef void (*usb_host_interface_removed_callback)(
+    struct usbh_device *dev, uint8_t bInterfaceNumber);
+
+int usb_host_driver_register(struct module *owner,
+        usb_host_driver_probe_callback probe);
+
+int usb_host_claim_interface(struct module *owner,
+        usbh_device *dev, uint8_t bInterfaceNumber,
+        usb_host_interface_removed_callback removed);
+
+int usb_host_release_interface(usbh_device *dev,
+        uint8_t bInterfaceNumber);
+
 struct usb_pio_config_fs {
     struct gpio_config pio_vbus;
     struct gpio_config pio_dm;
