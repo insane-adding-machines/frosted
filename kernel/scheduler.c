@@ -1762,7 +1762,7 @@ int sys_pthread_mutex_init_hdlr(int arg1, int arg2, int arg3, int arg4,
                                 int arg5)
 {
     mutex_t **mutex = (mutex_t **)arg1;
-    if (!mutex || (task_ptr_valid((void *)*mutex) < 0))
+    if (!mutex || (task_ptr_valid((void *)mutex) < 0))
         return -EPERM;
     else
         *mutex = mutex_init();
