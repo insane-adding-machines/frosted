@@ -558,15 +558,6 @@ void f_free(void * ptr)
     }
     if (block_valid(blk))
     {
-        if (!in_use(blk)) {
-            task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
-        }
-        blk->flags &= ~F_IN_USE;
-        /* stats */
-        f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
-        f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
-        f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
-
         /* Userspace task takes mlock in the syscall handler */
         /* kernelspace calls: pid=0 (kernel, kthreads */
         if (pid == 0) {
@@ -580,6 +571,15 @@ void f_free(void * ptr)
                 mutex_lock(mlock);
             }
         }
+        if (!in_use(blk)) {
+            task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
+        }
+        blk->flags &= ~F_IN_USE;
+        /* stats */
+        f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
+        f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
+        f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
+
 
         /* Userspace tasks release mlock in the syscall handler */
         if (pid == 0) {
