@@ -279,9 +279,10 @@ void frosted_kernel(int xipfs_mounted)
     while(1) {
         check_tasklets();
 #ifdef CONFIG_PICOTCP
-        pico_lock();
-        pico_stack_tick();
-        pico_unlock();
+        if (pico_trylock_kernel() == 0) {
+            pico_stack_tick();
+            pico_unlock();
+        }
 #endif
         __WFI();
     }

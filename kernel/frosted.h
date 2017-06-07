@@ -334,6 +334,10 @@ void kernel_task_init(void);
 #define kfree  f_free
 #define task_space_free f_free
 #define F_MALLOC_OVERHEAD 24
+
+int mem_lock(void);
+int mem_trylock(void);
+void mem_unlock(void);
 uint32_t mem_stats_frag(int pool);
 int fmalloc_owner(const void *ptr);
 int fmalloc_chown(const void *ptr, uint16_t pid);
@@ -347,7 +351,9 @@ void sysfs_lock(void);
 void sysfs_unlock(void);
 void frosted_tcpip_wakeup(void);
 void pico_lock_init(void);
+int pico_trylock_kernel(void);
 void pico_lock(void);
+int pico_trylock(void);
 void pico_unlock(void);
 
 #endif /* BSP_INCLUDED_H */

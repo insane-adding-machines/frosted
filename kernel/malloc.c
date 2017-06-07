@@ -454,9 +454,8 @@ void * f_malloc(int flags, size_t size)
 
         /* kernel receives a null (no blocking) */
         if (this_task() == NULL) {
-            if (mutex_trylock(mlock) < 0) {
+            if (mutex_trylock(mlock) < 0)
                 return NULL;
-            }
         } else {
             /* ktrheads can block. */
             mutex_lock(mlock);
@@ -464,8 +463,6 @@ void * f_malloc(int flags, size_t size)
     }
     /* Userspace calls acquire mlock in the syscall handler. */
 
-    /* update stats */
-    f_malloc_stats[MEMPOOL(flags)].malloc_calls++;
 
     /* Travel the linked list for first fit */
     blk = f_find_best_fit(flags, size, &last);
@@ -515,6 +512,7 @@ void * f_malloc(int flags, size_t size)
         blk->pid = 0;
 
     /* update stats */
+    f_malloc_stats[MEMPOOL(flags)].malloc_calls++;
     f_malloc_stats[MEMPOOL(flags)].objects_allocated++;
     f_malloc_stats[MEMPOOL(flags)].mem_allocated += ((uint32_t)blk->size + sizeof(struct f_malloc_block));
 
@@ -558,19 +556,6 @@ void f_free(void * ptr)
     }
     if (block_valid(blk))
     {
-        /* Userspace task takes mlock in the syscall handler */
-        /* kernelspace calls: pid=0 (kernel, kthreads */
-        if (pid == 0) {
-            /*  kernel task == NULL */
-            if (this_task() == NULL) {
-                if (mutex_trylock(mlock) < 0) {
-                    return;
-                }
-            } else {
-                /* ktrheads can block. */
-                mutex_lock(mlock);
-            }
-        }
         if (!in_use(blk)) {
             task_segfault((uint32_t)ptr, 0, MEMFAULT_DOUBLEFREE);
         }
@@ -579,12 +564,6 @@ void f_free(void * ptr)
         f_malloc_stats[MEMPOOL(blk->flags)].free_calls++;
         f_malloc_stats[MEMPOOL(blk->flags)].objects_allocated--;
         f_malloc_stats[MEMPOOL(blk->flags)].mem_allocated -= (uint32_t)blk->size + sizeof(struct f_malloc_block);
-
-
-        /* Userspace tasks release mlock in the syscall handler */
-        if (pid == 0) {
-            mutex_unlock(mlock);
-        }
     } else {
         dbg_malloc("FREE ERR: %p is not a valid allocated pointer!\n", blk);
     }
@@ -611,21 +590,21 @@ uint32_t mem_stats_frag(int pool)
 static int fmalloc_check_block_owner(int pool, const uint8_t *ptr)
 {
     struct f_malloc_block *blk;
+    int ret = -1;
     blk = malloc_entry[MEMPOOL(pool)];
     while(blk) {
         uint8_t *mem_start = (uint8_t *)blk + sizeof(struct f_malloc_block);
         uint8_t *mem_end   = mem_start + blk->size;
-
-
         if ( (ptr >= mem_start) && (ptr < mem_end) ) {
             if (block_valid(blk) && in_use(blk))
-                return blk->pid;
+                ret =  blk->pid;
             else
-                return -1;
+                ret = -1;
+            break;
         }
         blk = blk->next;
     }
-    return -1;
+    return ret;
 }
 
 int fmalloc_owner(const void *_ptr)
@@ -645,14 +624,29 @@ int fmalloc_chown(const void *ptr, uint16_t pid)
         blk->pid = pid;
 }
 
+int mem_trylock(void)
+{
+    return mutex_trylock(mlock);
+}
+
+int mem_lock(void)
+{
+    return suspend_on_mutex_lock(mlock);
+}
+
+void mem_unlock(void)
+{
+    mutex_unlock(mlock);
+}
+
 /* Syscalls back-end (for userspace memory call handling) */
 void *sys_malloc_hdlr(int size)
 {
     void *addr;
-    if (suspend_on_mutex_lock(mlock) < 0)
+    if (mem_lock() < 0)
         return (void *)SYS_CALL_AGAIN;
     addr = u_malloc(size);
-    mutex_unlock(mlock);
+    mem_unlock();
     return addr;
 }
 
@@ -664,31 +658,31 @@ int sys_free_hdlr(void *addr)
 
     blk = (struct f_malloc_block *)((uint8_t *)addr - sizeof(struct f_malloc_block));
 
-    if (suspend_on_mutex_lock(mlock) < 0)
+    if (mem_lock() < 0)
         return SYS_CALL_AGAIN;
     f_free(addr);
     blk_rearrange(blk);
-    mutex_unlock(mlock);
+    mem_unlock();
     return 0;
 }
 
 void *sys_calloc_hdlr(int n, int size)
 {
     void *addr;
-    if (suspend_on_mutex_lock(mlock) < 0)
+    if (mem_lock() < 0)
         return (void *)SYS_CALL_AGAIN;
     addr = u_calloc(n, size);
-    mutex_unlock(mlock);
+    mem_unlock();
     return addr;
 }
 
 void *sys_realloc_hdlr(void *addr, int size)
 {
     void *naddr;
-    if (suspend_on_mutex_lock(mlock) < 0)
+    if (mem_lock() < 0)
         return (void *)SYS_CALL_AGAIN;
     naddr = u_realloc(addr, size);
-    mutex_unlock(mlock);
+    mem_unlock();
     return naddr;
 }
 
