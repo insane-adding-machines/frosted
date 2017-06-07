@@ -22,6 +22,13 @@ int pico_trylock(void)
         return 0;
 }
 
+int pico_trylock_kernel(void)
+{
+    if (!picotcp_lock)
+        return -EAGAIN;
+    return mutex_trylock(picotcp_lock);
+}
+
 void pico_unlock(void)
 {
     if (picotcp_lock) {

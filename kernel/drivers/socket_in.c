@@ -104,20 +104,31 @@ static void pico_socket_event(uint16_t ev, struct pico_socket *sock)
 static int sock_close(struct fnode *fno)
 {
     struct frosted_inet_socket *s;
-    if (!fno)
-        return -1;
-    s = (struct frosted_inet_socket *)fno->priv;
-    if (!s)
-        return -1;
-    if (pico_trylock() < 0) {
+    int ret = -1;
+    if (mem_lock() < 0)
         return SYS_CALL_AGAIN;
+
+    if (!fno) {
+        ret = -1;
+        goto out;
+    }
+    s = (struct frosted_inet_socket *)fno->priv;
+    if (!s) {
+        ret = -1;
+        goto out;
+    }
+    if (pico_trylock() < 0) {
+        ret = SYS_CALL_AGAIN;
+        goto out;
     }
     pico_socket_close(s->sock);
     pico_unlock();
-    //kprintf("## Closed INET socket!\n");
     kfree((struct fnode *)s->node);
     kfree(s);
-    return 0;
+    ret = 0;
+out:
+    mem_unlock();
+    return ret;
 }
 
 static struct frosted_inet_socket *inet_socket_new(uint32_t flags)
@@ -141,10 +152,15 @@ static int sock_socket(int domain, int type_flags, int protocol)
     struct frosted_inet_socket *s;
     int type = type_flags & 0xFFFF;
     uint32_t fnode_flags = ((uint32_t)type_flags) & 0xFFFF0000u;
+    int ret = -1;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
 
     s = inet_socket_new(fnode_flags);
-    if (!s)
-        return -ENOMEM;
+    if (!s) {
+        ret = -ENOMEM;
+        goto out;
+    }
     if (domain != PICO_PROTO_IPV4)
         domain = PICO_PROTO_IPV4;
 
@@ -155,14 +171,16 @@ static int sock_socket(int domain, int type_flags, int protocol)
         type = PICO_PROTO_UDP;
 
     if (pico_trylock() < 0) {
-        return SYS_CALL_AGAIN;
+        ret = SYS_CALL_AGAIN;
+        goto out;
     }
     s->sock = pico_socket_open(domain, type, pico_socket_event);
     pico_unlock();
     if (!s->sock) {
         kfree((struct fnode *)s->node);
         kfree(s);
-        return 0 - pico_err;
+        ret = 0 - pico_err;
+        goto out;
     }
     s->node->owner = &mod_socket_in;
     s->node->priv = s;
@@ -171,7 +189,10 @@ static int sock_socket(int domain, int type_flags, int protocol)
     s->fd = task_filedesc_add(s->node);
     if (s->fd >= 0)
         task_fd_setmask(s->fd, O_RDWR);
-    return s->fd;
+    ret = s->fd;
+out:
+    mem_unlock();
+    return ret;
 }
 
 static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct sockaddr *addr, unsigned int *addrlen)
@@ -180,6 +201,8 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
     int ret;
     uint16_t port;
     struct pico_ip4 paddr;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
 
     s = fd_inet(fd);
     if (!s)
@@ -187,7 +210,8 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
     while (s->bytes < len) {
         if ((addr) && ((*addrlen) > 0)) {
             if (pico_trylock() < 0) {
-                return SYS_CALL_AGAIN;
+                ret = SYS_CALL_AGAIN;
+                goto out;
             }
             ret = pico_socket_recvfrom(s->sock, buf + s->bytes, len - s->bytes, &paddr, &port);
             pico_unlock();
@@ -199,15 +223,19 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
             pico_unlock();
         }
 
-        if (ret < 0)
-            return 0 - pico_err;
+        if (ret < 0) {
+            ret = 0 - pico_err;
+            goto out;
+        }
+
         if (ret == 0) {
             s->revents &= (~PICO_SOCK_EV_RD);
             if (SOCK_BLOCKING(s))  {
                 s->events = PICO_SOCK_EV_RD;
                 s->task = this_task();
                 task_suspend();
-                return SYS_CALL_AGAIN;
+                ret = SYS_CALL_AGAIN;
+                goto out;
             }
             break;
         }
@@ -227,6 +255,8 @@ static int sock_recvfrom(int fd, void *buf, unsigned int len, int flags, struct 
     if ((ret == 0) && !SOCK_BLOCKING(s)) {
         ret = -EAGAIN;
     }
+out:
+    mem_unlock();
     return ret;
 }
 
@@ -236,15 +266,21 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
     uint16_t port;
     struct pico_ip4 paddr;
     int ret;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
     s = fd_inet(fd);
-    if (!s)
-        return -EINVAL;
+    if (!s) {
+        ret = -EINVAL;
+        goto out;
+    }
+
 
     while (len > s->bytes) {
         if ((addr) && (addrlen >0))
         {
             if (pico_trylock() < 0) {
-                return SYS_CALL_AGAIN;
+                ret = SYS_CALL_AGAIN;
+                goto out;
             }
             paddr.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
             port = ((struct sockaddr_in *)addr)->sin_port;
@@ -252,7 +288,8 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
             pico_unlock();
         } else {
             if (pico_trylock() < 0) {
-                return SYS_CALL_AGAIN;
+                ret = SYS_CALL_AGAIN;
+                goto out;
             }
             ret = pico_socket_write(s->sock, buf + s->bytes, len - s->bytes);
             pico_unlock();
@@ -263,11 +300,14 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
                 s->events = PICO_SOCK_EV_WR;
                 s->task = this_task();
                 task_suspend();
-                return SYS_CALL_AGAIN;
+                ret = SYS_CALL_AGAIN;
+                goto out;
             }
         }
-        if (ret < 0)
-            return (0 - pico_err);
+        if (ret < 0) {
+            ret = (0 - pico_err);
+            goto out;
+        }
 
         s->bytes += ret;
         if ((s->sock->proto->proto_number) == PICO_PROTO_UDP && (s->bytes > 0))
@@ -279,6 +319,8 @@ static int sock_sendto(int fd, const void *buf, unsigned int len, int flags, str
     if ((ret == 0) && !SOCK_BLOCKING(s)) {
         ret = -EAGAIN;
     }
+out:
+    mem_unlock();
     return ret;
 }
 
@@ -288,21 +330,29 @@ static int sock_bind(int fd, struct sockaddr *addr, unsigned int addrlen)
     union pico_address paddr;
     uint16_t port;
     int ret;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
     s = fd_inet(fd);
-    if (!s)
-        return -EINVAL;
+    if (!s) {
+        ret =  -EINVAL;
+        goto out;
+    }
     paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
     port = ((struct sockaddr_in *)addr)->sin_port;
     if (pico_trylock() < 0) {
-        return SYS_CALL_AGAIN;
+        ret = SYS_CALL_AGAIN;
+        goto out;
     }
     ret = pico_socket_bind(s->sock, &paddr, &port);
     pico_unlock();
     if (ret == 0) {
         ((struct sockaddr_in *)addr)->sin_port = port;
-        return 0;
+    } else {
+        ret = 0 - pico_err;
     }
-    return 0 - pico_err;
+out:
+    mem_unlock();
+    return ret;
 }
 
 static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
@@ -312,30 +362,40 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
     union pico_address paddr;
     uint16_t port;
     struct sockaddr_in *s_in = (struct sockaddr_in *)addr;
+    int ret = -1;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
 
     l = fd_inet(fd);
-    if (!l)
-        return -EINVAL;
+    if (!l) {
+        ret = -EINVAL;
+        goto out;
+    }
     l->events = PICO_SOCK_EV_CONN;
 
     if (pico_trylock() < 0) {
-        return SYS_CALL_AGAIN;
+        ret = SYS_CALL_AGAIN;
+        goto out;
     }
     cli = pico_socket_accept(l->sock, &paddr, &port);
     pico_unlock();
-    if ((cli == NULL) && (pico_err != PICO_ERR_EAGAIN))
-        return 0 - pico_err;
+    if ((cli == NULL) && (pico_err != PICO_ERR_EAGAIN)) {
+        ret = 0 - pico_err;
+        goto out;
+    }
 
     l->revents &= (~PICO_SOCK_EV_CONN);
     if (cli) {
         s = inet_socket_new(0);
         if (!s) {
             if (pico_trylock() < 0) {
-                return SYS_CALL_AGAIN;
+                ret = SYS_CALL_AGAIN;
+                goto out;
             }
             pico_socket_close(cli);
             pico_unlock();
-            return -ENOMEM;
+            ret = -ENOMEM;
+            goto out;
         }
         s->sock = cli;
         s->node->owner = &mod_socket_in;
@@ -349,45 +409,58 @@ static int sock_accept(int fd, struct sockaddr *addr, unsigned int *addrlen)
             s_in->sin_port = port;
             s_in->sin_addr.s_addr = paddr.ip4.addr;
         }
-        return s->fd;
+        ret = s->fd;
+        goto out;
     } else {
         if (SOCK_BLOCKING(l)) {
             l->task = this_task();
             task_suspend();
-            return SYS_CALL_AGAIN;
+            ret = SYS_CALL_AGAIN;
         } else {
-            return -EAGAIN;
+            ret = -EAGAIN;
         }
     }
+out:
+    mem_unlock();
+    return ret;
 }
 
 static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
 {
     struct frosted_inet_socket *s;
-    int ret;
     union pico_address paddr;
     uint16_t port;
+    int ret = -1;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
     s = fd_inet(fd);
-    if (!s)
-        return -EINVAL;
+    if (!s) {
+        ret = -EINVAL;
+        goto out;
+    }
+
     s->events = PICO_SOCK_EV_CONN;
     if ((s->revents & PICO_SOCK_EV_CONN) == 0) {
         paddr.ip4.addr = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
         port = ((struct sockaddr_in *)addr)->sin_port;
         if (pico_trylock() < 0) {
-            return SYS_CALL_AGAIN;
+            ret = SYS_CALL_AGAIN;
+            goto out;
         }
         ret = pico_socket_connect(s->sock, &paddr, port);
         pico_unlock();
         if (SOCK_BLOCKING(s)) {
             s->task = this_task();
-            return SYS_CALL_AGAIN;
+            ret = SYS_CALL_AGAIN;
         } else {
-            return -EAGAIN;
+            ret = -EAGAIN;
         }
+        goto out;
     }
     s->events  &= (~PICO_SOCK_EV_CONN);
     s->revents &= ~(PICO_SOCK_EV_CONN | PICO_SOCK_EV_RD);
+out:
+    mem_unlock();
     return ret;
 }
 
@@ -395,15 +468,22 @@ static int sock_listen(int fd, int backlog)
 {
     struct frosted_inet_socket *s;
     int ret;
-    s = fd_inet(fd);
-    if (!s)
-        return -EINVAL;
-    if (pico_trylock() < 0) {
+    if (mem_lock() < 0)
         return SYS_CALL_AGAIN;
+    s = fd_inet(fd);
+    if (!s) {
+        ret = -EINVAL;
+        goto out;
+    }
+    if (pico_trylock() < 0) {
+        ret = SYS_CALL_AGAIN;
+        goto out;
     }
     ret = pico_socket_listen(s->sock, backlog);
     pico_unlock();
     s->events |= PICO_SOCK_EV_CONN;
+out:
+    mem_unlock();
     return ret;
 }
 
@@ -411,14 +491,21 @@ static int sock_shutdown(int fd, uint16_t how)
 {
     struct frosted_inet_socket *s;
     int ret;
-    s = fd_inet(fd);
-    if (!s)
-        return -EINVAL;
-    if (pico_trylock() < 0) {
+    if (mem_lock() < 0)
         return SYS_CALL_AGAIN;
+    s = fd_inet(fd);
+    if (!s) {
+        ret = -EINVAL;
+        goto out;
+    }
+    if (pico_trylock() < 0) {
+        ret = SYS_CALL_AGAIN;
+        goto out;
     }
     ret =  pico_socket_shutdown(s->sock, how);
     pico_unlock();
+out:
+    mem_unlock();
     return ret;
 }
 
@@ -589,50 +676,68 @@ static int sock_ioctl(struct fnode *fno, const uint32_t cmd, void *arg)
     struct frosted_inet_socket *s;
     struct ifreq *ifr;
     struct pico_device *dev;
+    int ret = -ENOENT;
+
     if (!fno || !arg)
         return -EINVAL;
 
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
 
     /* Check for route commands */
     if (cmd == SIOCADDRT)
     {
         struct rtentry *rte = (struct rtentry *)arg;
-        return sock_io_addroute(rte);
+        ret = sock_io_addroute(rte);
     }
-    if (cmd == SIOCDELRT)
+    else if (cmd == SIOCDELRT)
     {
         struct rtentry *rte = (struct rtentry *)arg;
-        return sock_io_delroute(rte);
-    }
+        ret =  sock_io_delroute(rte);
+    } else {
 
-    /* Check for interface-related ioctl */
-    ifr = (struct ifreq *)arg;
-    dev = pico_get_device(ifr->ifr_name);
-    if (!dev)
-        return -ENOENT;
+        /* Check for interface-related ioctl */
+        ifr = (struct ifreq *)arg;
+        dev = pico_get_device(ifr->ifr_name);
+        if (!dev)
+            ret = -ENOENT;
+        else {
 
-    switch(cmd) {
-        case SIOCSIFFLAGS:
-            return sock_io_setflags(dev, ifr);
-        case SIOCSIFADDR:
-            return sock_io_setaddr(dev, ifr);
-        case SIOCSIFNETMASK:
-            return sock_io_setnetmask(dev, ifr);
-        case SIOCGIFFLAGS:
-            return sock_io_getflags(dev, ifr);
-        case SIOCGIFADDR:
-            return sock_io_getaddr(dev, ifr);
-        case SIOCGIFHWADDR:
-            return sock_io_gethwaddr(dev, ifr);
-        case SIOCGIFBRDADDR:
-            return sock_io_getbcast(dev, ifr);
-        case SIOCGIFNETMASK:
-            return sock_io_getnmask(dev, ifr);
-        case SIOCETHTOOL:
-            return sock_io_ethtool(dev, ifr);
-        default:
-            return -ENOSYS;
+            switch(cmd) {
+                case SIOCSIFFLAGS:
+                    ret = sock_io_setflags(dev, ifr);
+                    break;
+                case SIOCSIFADDR:
+                    ret = sock_io_setaddr(dev, ifr);
+                    break;
+                case SIOCSIFNETMASK:
+                    ret = sock_io_setnetmask(dev, ifr);
+                    break;
+                case SIOCGIFFLAGS:
+                    ret = sock_io_getflags(dev, ifr);
+                    break;
+                case SIOCGIFADDR:
+                    ret = sock_io_getaddr(dev, ifr);
+                    break;
+                case SIOCGIFHWADDR:
+                    ret = sock_io_gethwaddr(dev, ifr);
+                    break;
+                case SIOCGIFBRDADDR:
+                    ret = sock_io_getbcast(dev, ifr);
+                    break;
+                case SIOCGIFNETMASK:
+                    ret = sock_io_getnmask(dev, ifr);
+                    break;
+                case SIOCETHTOOL:
+                    ret = sock_io_ethtool(dev, ifr);
+                    break;
+                default:
+                    ret = -ENOSYS;
+            }
+        }
     }
+    mem_unlock();
+    return ret;
 }
 
 
@@ -648,6 +753,8 @@ static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
     struct pico_device *dev;
     struct pico_tree_node *index;
     const char iface_banner[] = "Interface | \r\n";
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
     sysfs_lock();
     if (fno->off == 0) {
         txt = kcalloc(MAX_DEVNET_BUF, 1);
@@ -678,6 +785,7 @@ static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
     fno->off += len;
 out:
     sysfs_unlock();
+    mem_unlock();
     return len;
 }
 
@@ -693,10 +801,10 @@ int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
     char mask[16];
     char gw[16];
     char metric[5];
-
-
     static int off;
     int i;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
     if (fno->off == 0) {
         const char route_banner[] = "Kernel IP routing table\r\nDestination     Gateway         Genmask         Flags   Metric  Iface \r\n";
         sysfs_lock();
@@ -715,23 +823,23 @@ int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
             strcpy(mem_txt + off, dest);
             off+=strlen(dest);
             mem_txt[off++] = '\t';
-            if (strlen(dest) < 8) 
+            if (strlen(dest) < 8)
                 mem_txt[off++] = '\t';
-            
+
             /* Gateway */
             pico_ipv4_to_string(gw, r->gateway.addr);
             strcpy(mem_txt + off, gw);
             off+=strlen(gw);
             mem_txt[off++] = '\t';
-            if (strlen(gw) < 8) 
+            if (strlen(gw) < 8)
                 mem_txt[off++] = '\t';
-            
+
             /* Genmask */
             pico_ipv4_to_string(mask, r->netmask.addr);
             strcpy(mem_txt + off, mask);
             off+=strlen(mask);
             mem_txt[off++] = '\t';
-            if (strlen(mask) < 8) 
+            if (strlen(mask) < 8)
                 mem_txt[off++] = '\t';
 
             /* Flags */
@@ -759,6 +867,7 @@ int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
     if (off == fno->off) {
         kfree(mem_txt);
         sysfs_unlock();
+        mem_unlock();
         return -1;
     }
     if (len > (off - fno->off)) {
@@ -767,6 +876,7 @@ int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
     memcpy(res, mem_txt + fno->off, len);
     fno->off += len;
     sysfs_unlock();
+    mem_unlock();
     return len;
 }
 
@@ -774,15 +884,24 @@ static int sock_getsockopt(int sd, int level, int optname, void *optval, unsigne
 {
     struct frosted_inet_socket *s;
     int ret;
-    if (*optlen < sizeof(int))
-        return -EFAULT;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
+    if (*optlen < sizeof(int)) {
+        ret = -EFAULT;
+        goto out;
+    }
     s = fd_inet(sd);
-    if (!s)
-        return -EINVAL;
+    if (!s) {
+        ret = -EINVAL;
+        goto out;
+    }
     ret = pico_socket_getoption(s->sock, optname, optval);
-    if (ret < 0) 
-        return 0 - pico_err;
-    *optlen = sizeof(int);
+    if (ret < 0)
+        ret = 0 - pico_err;
+    else
+        *optlen = sizeof(int);
+out:
+    mem_unlock();
     return ret;
 }
 
@@ -793,12 +912,18 @@ static int sock_setsockopt(int sd, int level, int optname, void *optval, unsigne
     if (optlen < sizeof(int))
         return -EFAULT;
 
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
+
     s = fd_inet(sd);
-    if (!s)
-        return -EINVAL;
-    ret = pico_socket_setoption(s->sock, optname, optval);
-    if (ret < 0) 
-        return 0 - pico_err;
+    if (!s) {
+        ret = -EINVAL;
+    } else {
+        ret = pico_socket_setoption(s->sock, optname, optval);
+        if (ret < 0)
+            ret = 0 - pico_err;
+    }
+    mem_unlock();
     return ret;
 }
 
@@ -809,25 +934,39 @@ static int sock_getsockname(int sd, struct sockaddr *_addr, unsigned int *addrle
     struct sockaddr_in *addr = (struct sockaddr_in *)_addr;
     int r;
     uint16_t port, proto;
+    int ret = -1;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
     s = fd_inet(sd);
-    if (!s)
-        return -EINVAL;
+    if (!s) {
+        ret = -EINVAL;
+        goto out;
+    }
 
-    if (*addrlen < sizeof(struct sockaddr_in))
-        return -ENOBUFS;
+    if (*addrlen < sizeof(struct sockaddr_in)) {
+        ret = -ENOBUFS;
+        goto out;
+    }
     r = pico_socket_getname(s->sock, &ip4a, &port, &proto);
-    if (r < 0) 
-        return 0 - pico_err;
+    if (r < 0)  {
+        ret = 0 - pico_err;
+        goto out;
+    }
 
-    if (proto != PICO_PROTO_IPV4)
-        return -ENOENT;
+    if (proto != PICO_PROTO_IPV4) {
+        ret = -ENOENT;
+        goto out;
+    }
 
     memset(addr, 0, *addrlen);
     *addrlen = sizeof(struct sockaddr_in);
     addr->sin_family = AF_INET;
     addr->sin_port = port;
     addr->sin_addr.s_addr = ip4a.addr;
-    return 0;
+    ret = 0;
+out:
+    mem_unlock();
+    return ret;
 }
 
 static int sock_getpeername(int sd, struct sockaddr *_addr, unsigned int *addrlen)
@@ -837,25 +976,40 @@ static int sock_getpeername(int sd, struct sockaddr *_addr, unsigned int *addrle
     struct sockaddr_in *addr = (struct sockaddr_in *)addr;
     int r;
     uint16_t port, proto;
+    int ret = -1;
+    if (mem_lock() < 0)
+        return SYS_CALL_AGAIN;
+
     s = fd_inet(sd);
-    if (!s)
-        return -EINVAL;
+    if (!s) {
+        ret = -EINVAL;
+        goto out;
+    }
 
-    if (*addrlen < sizeof(struct sockaddr_in))
-        return -ENOBUFS;
+    if (*addrlen < sizeof(struct sockaddr_in)) {
+        ret = -ENOBUFS;
+        goto out;
+    }
     r = pico_socket_getpeername(s->sock, &ip4a, &port, &proto);
-    if (r < 0) 
-        return 0 - pico_err;
+    if (r < 0) {
+        ret = 0 - pico_err;
+        goto out;
+    }
 
-    if (proto != PICO_PROTO_IPV4)
-        return -ENOTCONN;
+    if (proto != PICO_PROTO_IPV4) {
+        ret = -ENOTCONN;
+        goto out;
+    }
 
     memset(addr, 0, *addrlen);
     *addrlen = sizeof(struct sockaddr_in);
     addr->sin_family = AF_INET;
     addr->sin_port = port;
     addr->sin_addr.s_addr = ip4a.addr;
-    return 0;
+    ret = 0;
+out:
+    mem_unlock();
+    return ret;
 }
 
 

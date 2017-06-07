@@ -31,7 +31,7 @@ static struct module mod_sysfs;
 static mutex_t *sysfs_mutex = NULL;
 
 extern struct mountpoint *MTAB;
-extern struct f_malloc_stats f_malloc_stats[3];
+extern struct f_malloc_stats f_malloc_stats[5];
 
 
 void sysfs_lock(void)
@@ -468,11 +468,7 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     return len;
 }
 
-#ifdef CONFIG_TCPIP_MEMPOOL
-#   define NPOOLS 4
-#else
-#   define NPOOLS 3
-#endif
+#define NPOOLS 5
 
 int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
@@ -487,9 +483,8 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
         const char mem_stat_banner[NPOOLS][50] = {"\r\nKernel memory statistics\r\n",
                                           "\r\n\nUser memory statistics\r\n",
                                           "\r\n\nTask space statistics\r\n",
-#ifdef CONFIG_TCPIP_MEMPOOL
                                           "\r\n\nTCP/IP space statistics\r\n",
-#endif
+                                          "\r\n\nExtra mem space statistics\r\n",
 
         };
 
