@@ -386,7 +386,7 @@ struct fatfs_finfo{
    / of structure member because there are incompatibility of the packing option
    / between various compilers. */
 
-#define BS_jmpBoot			0
+#define BS_JmpBoot			0
 #define BS_OEMName			3
 #define BPB_BytsPerSec		11
 #define BPB_SecPerClus		13
@@ -432,7 +432,13 @@ struct fatfs_finfo{
 #define	DIR_WrtDate			24
 #define	DIR_FstClusLO		26
 #define	DIR_FileSize		28
+#define MBR_Table           446     /* MBR: Offset of partition table in the MBR */
 
+
+#define SZDIRE              32      /* Size of a directory entry */
+#define MAX_FAT12   0xFF5           /* Max FAT12 clusters (differs from specs, but correct for real DOS/Windows behavior) */
+#define MAX_FAT16   0xFFF5          /* Max FAT16 clusters (differs from specs, but correct for real DOS/Windows behavior) */
+#define MAX_FAT32   0x0FFFFFF5      /* Max FAT32 clusters (not specified, practical limit) */
 
 
 /*-----------------------------------------------------------------------*/
@@ -446,10 +452,10 @@ static int sync_window(struct fatfs_disk *f)
     int res = FR_OK;
 
     if (fs->wflag) {    /* Write back the sector if it is dirty */
-        if (disk_writep(f, fs->win, fs->winsect, 0, 1) == 0) {
+        if (disk_writep(f, fs->win, fs->winsect, 0, SS(fs)) == 0) {
             fs->wflag = 0;
             if (fs->winsect - fs->fatbase < fs->fsize) {      /* Is it in the FAT area? */
-                if (fs->n_fats == 2) disk_writep(f, fs->win, fs->winsect + fs->fsize, 0, 1);
+                if (fs->n_fats == 2) disk_writep(f, fs->win, fs->winsect + fs->fsize, 0, SS(fs));
             } else {
                 res = FR_DISK_ERR;
             }
@@ -467,7 +473,7 @@ static int move_window(struct fatfs_disk *f, uint32_t sector)
     if (sector != fs->winsect) {    /* Window offset changed? */
         res = sync_window(f);      /* Write-back changes */
         if (res == FR_OK) {         /* Fill sector window with new data */
-            if (disk_readp(f, fs->win, sector, 0, 1) != 0) {
+            if (disk_readp(f, fs->win, sector, 0, SS(fs)) != 0) {
                 sector = 0xFFFFFFFF;    /* Invalidate window if data is not reliable */
                 res = FR_DISK_ERR;
             }
@@ -903,31 +909,35 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
 /*-----------------------------------------------------------------------*/
 
 
-static int check_fs(struct fatfs_disk *f, uint8_t *buf, uint32_t sect)
+static int check_fs(struct fatfs_disk *f, uint32_t sect)
 {
     if (!f || !f->blockdev || !f->blockdev->owner->ops.block_read) {
         return -1;
     }
-    if (disk_readp(f, buf, sect, 510, 2) != 0)
+
+    struct fatfs *fs = f->fs;
+
+    fs->wflag = 0; fs->winsect = 0xFFFFFFFF;        /* Invaidate window */
+    if (move_window(f, sect) != FR_OK) return 4;   /* Load boot record */
+
+    if (LD_WORD((fs->win + BS_55AA)) != 0xAA55)             /* Check record signature */
         return 3;
 
-    if (LD_WORD(buf) != 0xAA55)				/* Check record signature */
-        return 2;
+    //if (fs->win[BS_JmpBoot] == 0xE9 || (fs->win[BS_JmpBoot] == 0xEB && fs->win[BS_JmpBoot + 2] == 0x90)) {
+        if ((LD_WORD(fs->win + BS_FilSysType)) == 0x4146) return 0;   /* Check "FAT" string */
+        if (LD_WORD(fs->win + BS_FilSysType32) == 0x4146) return 0;            /* Check "FAT3" string */
+    //}
 
-    if (!FATFS_FAT32_ONLY && !disk_readp(f, buf, sect, BS_FilSysType, 2) && LD_WORD(buf) == 0x4146)	/* Check FAT12/16 */
-        return 0;
-    if (FATFS_FAT32 && !disk_readp(f, buf, sect, BS_FilSysType32, 2) && LD_WORD(buf) == 0x4146)	/* Check FAT32 */
-        return 0;
-    return 1;
+    return 2;
 }
-
 
 static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 {
     struct fnode *tgt_dir = NULL;
     struct fnode *src_dev = NULL;
     uint8_t fmt, buf[36];
-    uint32_t bsect, fsize, tsect, mclst;
+    uint32_t bsect, fsize, tsect, sysect, nclst;
+    uint16_t nrsv;
     struct fatfs_disk *fsd;
 
     /* Source must NOT be NULL */
@@ -977,60 +987,60 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
     fsd->fs->ssize = 512;
     /* Search FAT partition on the drive */
     bsect = 0;
-    fmt = check_fs(fsd, buf, bsect);			/* Check sector 0 as an SFD format */
-    if (fmt == 1) {						/* Not an FAT boot record, it may be FDISK format */
-        /* Check a partition listed in top of the partition table */
-        if (disk_readp(fsd, buf, bsect, MBR_Table, 16)) {	/* 1st partition entry */
-            fmt = 3;
-        } else {
-            if (buf[4]) {					/* Is the partition existing? */
-                bsect = LD_DWORD(&buf[8]);	/* Partition offset in LBA */
-                fmt = check_fs(fsd, buf, bsect);	/* Check the partition */
-            }
-        }
+    fmt = check_fs(fsd, bsect);			/* Check sector 0 as an SFD format */
+    struct fatfs *fs = fsd->fs;
+
+    if (fmt == 2) {                     /* Not an FAT boot record, it may be FDISK format */
+        bsect = LD_DWORD(fs->win + MBR_Table + 8);
+        fmt = check_fs(fsd, bsect);
     }
     if (fmt != 0)
         goto fail;
 
-    /* Initialize the file system object */
-    if (disk_readp(fsd, buf, bsect, 13, sizeof (buf))) return FR_DISK_ERR;
+    fsize = LD_WORD(fs->win + BPB_FATSz16);        /* Number of sectors per FAT */
+    if (fsize == 0) fsize = LD_DWORD(fs->win + BPB_FATSz32);
+    fs->fsize = fsize;
 
-    fsize = LD_WORD(buf+BPB_FATSz16-13);				/* Number of sectors per FAT */
-    if (!fsize) fsize = LD_DWORD(buf+BPB_FATSz32-13);
+    fs->n_fats = fs->win[BPB_NumFATs];              /* Number of FATs */
+    if (fs->n_fats != 1 && fs->n_fats != 2) goto fail;    /* (Must be 1 or 2) */
+    fsize *= fs->n_fats;                           /* Number of sectors for FAT area */
 
-    fsize *= buf[BPB_NumFATs-13];						/* Number of sectors in FAT area */
-    fsd->fs->fatbase = bsect + LD_WORD(buf+BPB_RsvdSecCnt-13); /* FAT start sector (lba) */
-    fsd->fs->csize = buf[BPB_SecPerClus-13];					/* Number of sectors per cluster */
-    fsd->fs->n_rootdir = LD_WORD(buf+BPB_RootEntCnt-13);		/* Nmuber of root directory entries */
-    tsect = LD_WORD(buf+BPB_TotSec16-13);				/* Number of sectors on the file system */
-    if (!tsect) tsect = LD_DWORD(buf+BPB_TotSec32-13);
-    mclst = (tsect						/* Last cluster# + 1 */
-            - LD_WORD(buf+BPB_RsvdSecCnt-13) - fsize - fsd->fs->n_rootdir / 16
-            ) / fsd->fs->csize + 2;
-    fsd->fs->n_fatent = (fatfs_cluster)mclst;
+    fs->csize = fs->win[BPB_SecPerClus];            /* Cluster size */
+    if (fs->csize == 0 || (fs->csize & (fs->csize - 1))) goto fail;   /* (Must be power of 2) */
 
-    fmt = 0;							/* Determine the FAT sub type */
-    if (FATFS_FAT12 && mclst < 0xFF7)
-        fmt = FS_FAT12;
-    if (FATFS_FAT16 && mclst >= 0xFF8 && mclst < 0xFFF7)
-        fmt = FS_FAT16;
-    if (FATFS_FAT32 && mclst >= 0xFFF7)
-        fmt = FS_FAT32;
-    if (!fmt)
-        goto fail;
-    fsd->fs->fs_type = fmt;
+    fs->n_rootdir = LD_WORD(fs->win + BPB_RootEntCnt);  /* Number of root directory entries */
+    if (fs->n_rootdir % (SS(fs) / SZDIRE)) goto fail; /* (Must be sector aligned) */
+
+    tsect = LD_WORD(fs->win + BPB_TotSec16);        /* Number of sectors on the volume */
+    if (tsect == 0) tsect = LD_DWORD(fs->win + BPB_TotSec32);
+
+    nrsv = LD_WORD(fs->win + BPB_RsvdSecCnt);       /* Number of reserved sectors */
+    if (nrsv == 0) goto fail;         /* (Must not be 0) */
+
+    /* Determine the FAT sub type */
+    sysect = nrsv + fsize + fs->n_rootdir / (SS(fs) / SZDIRE); /* RSV + FAT + DIR */
+    if (tsect < sysect) goto fail;    /* (Invalid volume size) */
+    nclst = (tsect - sysect) / fs->csize;           /* Number of clusters */
+    if (nclst == 0) goto fail;        /* (Invalid volume size) */
+    fmt = 0;
+    if (nclst <= MAX_FAT32) fmt = FS_FAT32;
+    if (nclst <= MAX_FAT16) fmt = FS_FAT16;
+    if (nclst <= MAX_FAT12) fmt = FS_FAT12;
+    if (fmt == 0) goto fail;
+
+    /* Boundaries and Limits */
+    fs->n_fatent = nclst + 2;                       /* Number of FAT entries */
+    fs->fatbase = bsect + nrsv;                     /* FAT start sector */
+    fs->database = bsect + sysect;                  /* Data start sector */
 
     if (FATFS_FAT32_ONLY || (FATFS_FAT32 && fmt == FS_FAT32))
-        fsd->fs->dirbase = LD_DWORD(buf+(BPB_RootClus-13));	/* Root directory start cluster */
+        fs->dirbase = LD_DWORD(fs->win + BPB_RootClus); /* Root directory start cluster */
     else
-        fsd->fs->dirbase = fsd->fs->fatbase + fsize;				/* Root directory start sector (lba) */
-    fsd->fs->database = fsd->fs->fatbase + fsize + fsd->fs->n_rootdir / 16;	/* Data start sector (lba) */
-    fsd->fs->flag = 0;
-    fsd->fs->fsize = fsize;
-    fsd->fs->n_fats = buf[BPB_NumFATs-13];
-    //kprintf("Mounted FAT filesystem, %d sectors per cluster, %d total sectors, dirbase: %p database: %p\r\n",
-    //        fsd->fs->csize, fsd->fs->n_fatent, fsd->fs->dirbase, fsd->fs->database);
-    //
+        fs->dirbase = fs->fatbase + fsize;                /* Root directory start sector (lba) */
+
+    fs->fs_type = fmt;
+    fs->flag = 0;
+
     fatfs_populate(fsd, "", 0);
     return 0;
 
