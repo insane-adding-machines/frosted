@@ -109,7 +109,7 @@ static int memfs_seek(struct fnode *fno, int off, int whence)
         fno->size = new_off;
     }
     fno->off = new_off;
-    return 0;
+    return fno->off;
 }
 
 static int memfs_close(struct fnode *fno)

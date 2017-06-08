@@ -135,7 +135,7 @@ static int path_abs(char *src, char *dst, int len)
     return 0;
 }
 
-static struct fnode *fno_create_file(char *path)
+struct fnode *fno_create_file(const char *path)
 {
     char *base = kalloc(strlen(path) + 1);
     struct module *owner = NULL;

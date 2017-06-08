@@ -186,6 +186,7 @@ int task_is_interrupted(void);
 /* VFS */
 void vfs_init(void);
 int fno_fullpath(struct fnode *f, char *dst, int len);
+struct fnode *fno_create_file(const char *path);
 void fno_use(struct fnode *f);
 
 #define FL_RDONLY 0x01

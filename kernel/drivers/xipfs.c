@@ -14,7 +14,15 @@
  *      You should have received a copy of the GNU General Public License
  *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
  *
- *      Authors:
+ *      Authors: Daniele Lacamera <root@danielinux.net>
+ *
+ */
+
+
+/*** XIPfs == eXecution In Place Filesystem ***/
+/*
+ * Applies to any blob. See frosted-headers/include/sys/fs/xipfs.h for the
+ * physical structure on disk.
  *
  */
  
@@ -32,11 +40,61 @@ static struct module mod_xipfs;
 struct xipfs_fnode {
     struct fnode *fnode;
     void (*init)(void *);
+    uint8_t *temp;
+    uint32_t temp_size;
 };
 
 
 
 #define SECTOR_SIZE (512)
+ 
+/* 
+ * - Write once, read always.
+ * - Read operations always possible.
+ * - Files stored are write-protected.
+ * - Creation of new files allowed:
+ *     * Temporarly stored in memory
+ *     * Committed to the block device on close()
+ *     * Once committed, it is write protected.
+ */
+static int xipfs_open(const char *path, int flags)
+{
+    int ret;
+    struct fnode *f;
+    if ((flags & O_WRONLY) == 0) {
+        /* Read mode. */
+        f = fno_search(path);
+        if (f) {
+            return task_filedesc_add(f);
+        } else {
+            return -ENOENT;
+        }
+    } else {
+        /* Write-once mode. */
+        if (fno_search(path)) {
+            return -EEXIST;
+        }
+    }
+    f = fno_create_file(path);
+    return task_filedesc_add(f);
+}
+
+static int xipfs_creat(struct fnode *f)
+{
+    struct xipfs_fnode *xip;
+    if (!f)
+        return -EBADF;
+    xip = kalloc(sizeof(struct xipfs_fnode));
+    if (!xip)
+        return -ENOMEM;
+    xip->fnode = f;
+    xip->fnode->priv = xip;
+    /* Make executable */
+    xip->fnode->flags |= FL_EXEC;
+    xip->init = NULL;
+    xip->temp = NULL;
+    return 0;
+}
 
 static int xipfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
@@ -47,6 +105,10 @@ static int xipfs_read(struct fnode *fno, void *buf, unsigned int len)
     xfno = FNO_MOD_PRIV(fno, &mod_xipfs);
     if (!xfno)
         return -1;
+
+    if (xfno->init == NULL) {
+        return -EBUSY;
+    }
 
     if (fno->size <= (fno->off))
         return -1;
@@ -75,28 +137,72 @@ static int xipfs_block_read(struct fnode *fno, void *buf, uint32_t sector, int o
 
 static int xipfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
-    return -1; /* Cannot write! */
+    struct xipfs_fnode *xip = (struct xipfs_fnode *)fno->priv;
+    if (len <= 0)
+        return len;
+
+    if (!xip)
+        return -1;
+
+    if (xip->init) {
+        return -EPERM; /* This file has already been committed. */
+    }
+
+    if (fno->size < (fno->off + len)) {
+        xip->temp = krealloc(xip->temp, fno->off + len);
+    }
+    if (!xip->temp)
+        return -1; /* OOM: file is corrupted forever. */
+    memcpy(xip->temp + fno->off, buf, len);
+    fno->off += len;
+    if (fno->size < fno->off)
+        fno->size = fno->off;
+    return len;
 }
 
 static int xipfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
-    return -1;
+    return 1;
 }
 
 static int xipfs_seek(struct fnode *fno, int off, int whence)
 {
-    return -1;
+    struct xipfs_fnode *xip = (struct xipfs_fnode *)fno->priv;
+    int new_off;
+    if (!xip)
+        return -1;
+    if (xip->init) {
+        return -1;
+    }
+    switch(whence) {
+        case SEEK_CUR:
+            new_off = fno->off + off;
+            break;
+        case SEEK_SET:
+            new_off = off;
+            break;
+        case SEEK_END:
+            new_off = fno->size + off;
+            break;
+        default:
+            return -1;
+    }
+
+    if (new_off < 0)
+        new_off = 0;
+
+    if (new_off > fno->size) {
+        xip->temp = krealloc(xip->temp, new_off);
+        memset(xip->temp + fno->size, 0, new_off - fno->size);
+        fno->size = new_off;
+    }
+    fno->off = new_off;
+    return fno->off;
 }
 
 static int xipfs_close(struct fnode *fno)
 {
     return 0;
-}
-
-static int xipfs_creat(struct fnode *fno)
-{
-    return -1;
-
 }
 
 static void *xipfs_exe(struct fnode *fno, void *arg)
@@ -107,8 +213,12 @@ static void *xipfs_exe(struct fnode *fno, void *arg)
     void *init = NULL;
     struct vfs_info *vfsi = NULL;
 
+
     if (!xip)
         return NULL;
+    if (xip->init == NULL) {
+        return NULL;
+    }
 
     vfsi = f_calloc(MEM_KERNEL, 1u, sizeof(struct vfs_info));
     if (!vfsi)
@@ -199,9 +309,11 @@ static int xipfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 }
 
 
+
 void xipfs_init(void)
 {
     mod_xipfs.family = FAMILY_FILE;
+    mod_xipfs.ops.open = xipfs_open;
     mod_xipfs.mount = xipfs_mount;
     strcpy(mod_xipfs.name,"xipfs");
     mod_xipfs.ops.read = xipfs_read;
