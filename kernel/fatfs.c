@@ -36,6 +36,9 @@ struct fatfs_disk {
 };
 
 struct fatfs_priv {
+    uint32_t    fptr;
+    uint32_t    fsize;      /* File size */
+    uint8_t     flag;
     int cluster;
     struct fatfs_disk *fsd;
 };
@@ -70,7 +73,7 @@ typedef uint32_t fatfs_cluster;
 #define disk_readp(f,b,s,o,l) f->blockdev->owner->ops.block_read(f->blockdev,b,s,o,l)
 #define disk_writep(f,b,s,o,l) f->blockdev->owner->ops.block_write(f->blockdev,b,s,o,l)
 
-
+#define _MAX_SS 512
 /* File system object structure */
 
 struct fatfs {
@@ -83,11 +86,15 @@ struct fatfs {
     uint32_t	fatbase;	/* FAT start sector */
     uint32_t	dirbase;	/* Root directory start sector (Cluster# on FAT32) */
     uint32_t	database;	/* Data start sector */
-    uint32_t	fptr;		/* File R/W pointer */
-    uint32_t	fsize;		/* File size */
     fatfs_cluster	org_clust;	/* File start cluster */
     fatfs_cluster	curr_clust;	/* File current cluster */
     uint32_t	dsect;		/* File current data sector */
+    uint32_t    fsize; /* FAT size, not file size! */
+    uint8_t wflag;
+    uint32_t winsect;
+    uint8_t win[_MAX_SS];
+    uint8_t n_fats;
+    uint16_t ssize;
 };
 
 
@@ -373,6 +380,7 @@ struct fatfs_finfo{
 
 #endif /* _EXCVT */
 
+#define SS(fs)  ((fs)->ssize)   /* Variable sector size */
 
 /* FatFs refers the members in the FAT structures with byte offset instead
    / of structure member because there are incompatibility of the packing option
@@ -426,51 +434,89 @@ struct fatfs_finfo{
 #define	DIR_FileSize		28
 
 
+
+/*-----------------------------------------------------------------------*/
+/* Move/Flush disk access window in the file system object               */
+/*-----------------------------------------------------------------------*/
+static int sync_window(struct fatfs_disk *f)
+{
+    struct fatfs *fs = f->fs;
+    uint32_t wsect;
+    unsigned int nf;
+    int res = FR_OK;
+
+    if (fs->wflag) {    /* Write back the sector if it is dirty */
+        if (disk_writep(f, fs->win, fs->winsect, 0, 1) == 0) {
+            fs->wflag = 0;
+            if (fs->winsect - fs->fatbase < fs->fsize) {      /* Is it in the FAT area? */
+                if (fs->n_fats == 2) disk_writep(f, fs->win, fs->winsect + fs->fsize, 0, 1);
+            } else {
+                res = FR_DISK_ERR;
+            }
+        }
+    }
+
+    return res;
+}
+
+static int move_window(struct fatfs_disk *f, uint32_t sector)
+{
+    struct fatfs *fs = f->fs;
+    int res = FR_OK;
+
+    if (sector != fs->winsect) {    /* Window offset changed? */
+        res = sync_window(f);      /* Write-back changes */
+        if (res == FR_OK) {         /* Fill sector window with new data */
+            if (disk_readp(f, fs->win, sector, 0, 1) != 0) {
+                sector = 0xFFFFFFFF;    /* Invalidate window if data is not reliable */
+                res = FR_DISK_ERR;
+            }
+            fs->winsect = sector;
+        }
+    }
+    return res;
+}
+
 /*-----------------------------------------------------------------------*/
 /* FAT access - Read value of a FAT entry                                */
 /*-----------------------------------------------------------------------*/
-	/* 1:IO error, Else:Cluster status */
-static
-fatfs_cluster get_fat (struct fatfs_disk *f, fatfs_cluster clst)
-{
-    uint8_t buf[4];
-    struct fatfs *fs = f->fs;
+    /* 1:IO error, Else:Cluster status */
 
-    if (clst < 2 || clst >= fs->n_fatent)	/* Range check */
+static fatfs_cluster get_fat(struct fatfs_disk *f, fatfs_cluster clst)
+{
+    struct fatfs *fs = f->fs;
+    unsigned int wc, bc;
+
+    if (clst < 2 || clst >= fs->n_fatent) { /* Range check */
         return 1;
+    }
 
     switch (fs->fs_type) {
 #if FATFS_FAT12
-        case FS_FAT12 : {
-                            unsigned int wc, bc, ofs;
-
-                            bc = (unsigned int)clst; bc += bc / 2;
-                            ofs = bc % 512; bc /= 512;
-                            if (ofs != 511) {
-                                if (disk_readp(f, buf, fs->fatbase + bc, ofs, 2)) break;
-                            } else {
-                                if (disk_readp(f, buf, fs->fatbase + bc, 511, 1)) break;
-                                if (disk_readp(f, buf+1, fs->fatbase + bc + 1, 0, 1)) break;
-                            }
-                            wc = LD_WORD(buf);
-                            return (clst & 1) ? (wc >> 4) : (wc & 0xFFF);
-                        }
+        case FS_FAT12 :
+            bc = (unsigned int)clst;
+            bc += bc / 2;
+            if (move_window(f, fs->fatbase + (bc / SS(fs))) != FR_OK) break;
+            wc = fs->win[bc++ % SS(fs)];
+            if (move_window(f, fs->fatbase + (bc / SS(fs))) != FR_OK) break;
+            wc |= fs->win[bc % SS(fs)] << 8;
+            return (clst & 1) ? (wc >> 4) : (wc & 0xFFF);
 #endif
+
 #if FATFS_FAT16
         case FS_FAT16 :
-                        if (disk_readp(f, buf, fs->fatbase + clst / 256, ((unsigned int)clst % 256) * 2, 2)) break;
-                        return LD_WORD(buf);
+            if (move_window(f, fs->fatbase + (clst / (SS(fs) / 2)))) break;
+            return LD_WORD(fs->win + clst * 2 % SS(fs));
 #endif
 #if FATFS_FAT32
         case FS_FAT32 :
-                        if (disk_readp(f, buf, fs->fatbase + clst / 128, ((unsigned int)clst % 128) * 4, 4)) break;
-                        return LD_DWORD(buf) & 0x0FFFFFFF;
+            if (move_window(f, fs->fatbase + (clst / (SS(fs) / 4)))) break;
+            return LD_DWORD(fs->win + clst * 4 % SS(fs)) & 0x0FFFFFFF;
 #endif
     }
 
-    return 1;	/* An error occured at the disk I/O layer */
+    return 1;
 }
-
 
 
 
@@ -841,6 +887,7 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
                     } else {
                         ((struct fatfs_priv *)newfile->priv)->cluster = get_clust(f, dirbuf);
                         ((struct fatfs_priv *)newfile->priv)->fsd = f;
+                        ((struct fatfs_priv *)newfile->priv)->fptr = 0;
                         newfile->size = fi.fsize;
 
                     }
@@ -926,6 +973,8 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
     tgt_dir->owner = &mod_fatfs;
 
 
+    fsd->fs->wflag = 0;
+    fsd->fs->ssize = 512;
     /* Search FAT partition on the drive */
     bsect = 0;
     fmt = check_fs(fsd, buf, bsect);			/* Check sector 0 as an SFD format */
@@ -977,6 +1026,8 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
         fsd->fs->dirbase = fsd->fs->fatbase + fsize;				/* Root directory start sector (lba) */
     fsd->fs->database = fsd->fs->fatbase + fsize + fsd->fs->n_rootdir / 16;	/* Data start sector (lba) */
     fsd->fs->flag = 0;
+    fsd->fs->fsize = fsize;
+    fsd->fs->n_fats = buf[BPB_NumFATs-13];
     //kprintf("Mounted FAT filesystem, %d sectors per cluster, %d total sectors, dirbase: %p database: %p\r\n",
     //        fsd->fs->csize, fsd->fs->n_fatent, fsd->fs->dirbase, fsd->fs->database);
     //
@@ -1026,6 +1077,7 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     return r_len;
 }
 
+
 static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     struct fatfs_priv *priv;
@@ -1037,6 +1089,12 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     if (!fno || !fno->priv)
         return -1;
     priv = (struct fatfs_priv *)fno->priv;
+
+    /* Check fptr wrap-around (file size cannot reach 4GiB on FATxx) */
+    if ((uint32_t)(priv->fptr + len) < (uint32_t)priv->fptr) {
+        len = (unsigned int)(0xFFFFFFFF - (uint32_t)priv->fptr);
+    }
+
 
 //    if (len + fno->off > fno->size)
 //        len = fno->size - fno->off;
@@ -1062,6 +1120,8 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     }
     return w_len;
 }
+
+
 
 static int fatfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
