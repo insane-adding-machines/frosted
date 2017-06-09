@@ -923,10 +923,10 @@ static int check_fs(struct fatfs_disk *f, uint32_t sect)
     if (LD_WORD((fs->win + BS_55AA)) != 0xAA55)             /* Check record signature */
         return 3;
 
-    //if (fs->win[BS_JmpBoot] == 0xE9 || (fs->win[BS_JmpBoot] == 0xEB && fs->win[BS_JmpBoot + 2] == 0x90)) {
+    if (fs->win[BS_JmpBoot] == 0xE9 || (fs->win[BS_JmpBoot] == 0xEB && fs->win[BS_JmpBoot + 2] == 0x90)) {
         if ((LD_WORD(fs->win + BS_FilSysType)) == 0x4146) return 0;   /* Check "FAT" string */
         if (LD_WORD(fs->win + BS_FilSysType32) == 0x4146) return 0;            /* Check "FAT3" string */
-    //}
+    }
 
     return 2;
 }
