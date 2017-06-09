@@ -39,8 +39,10 @@ struct fatfs_priv {
     uint32_t    fptr;
     uint32_t    fsize;      /* File size */
     uint8_t     flag;
+    uint32_t dirsect;
     int cluster;
     struct fatfs_disk *fsd;
+    uint8_t *dir;
 };
 
 typedef uint32_t fatfs_cluster;
@@ -123,6 +125,7 @@ struct fatfs_finfo{
     uint16_t	ftime;		/* Last modified time */
     uint8_t	fattrib;	/* Attribute */
     char	fname[13];	/* File name */
+    uint32_t dirsect;
 };
 
 
@@ -961,6 +964,7 @@ static void get_fileinfo(struct fatfs_dir *dj, struct fatfs_finfo *fno)
 		fno->fsize = LD_DWORD(dj->dir + DIR_FileSize);	/* Size */
 		fno->fdate = LD_WORD(dj->dir + DIR_WrtDate);		/* Date */
 		fno->ftime = LD_WORD(dj->dir + DIR_WrtTime);		/* Time */
+        fno->dirsect = dj->sect;
 	}
 	*p = 0;
 }
@@ -1058,6 +1062,8 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
                         ((struct fatfs_priv *)newfile->priv)->cluster = get_clust(f, dj.dir);
                         ((struct fatfs_priv *)newfile->priv)->fsd = f;
                         ((struct fatfs_priv *)newfile->priv)->fptr = 0;
+                        ((struct fatfs_priv *)newfile->priv)->dirsect = f->fs->winsect;
+                        ((struct fatfs_priv *)newfile->priv)->dir = dj.dir;
                         newfile->size = fi.fsize;
 
                     }
@@ -1256,6 +1262,7 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
 static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     struct fatfs_priv *priv;
+    struct fatfs_dir dj;
     uint32_t sect;
     uint32_t w_len = 0;
     uint32_t w_off = 0;
@@ -1269,6 +1276,7 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     if ((uint32_t)(priv->fptr + len) < (uint32_t)priv->fptr) {
         len = (unsigned int)(0xFFFFFFFF - (uint32_t)priv->fptr);
     }
+
 
 
 //    if (len + fno->off > fno->size)
@@ -1293,9 +1301,13 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
         w_len += w;
         fno->off += w;
     }
+    fno->size = w_len;
+    move_window(priv->fsd, priv->dirsect);
+    st_dword(priv->dir + DIR_FileSize, (uint32_t)w_len);   /* Update file size */
+    priv->fsd->fs->wflag = 1;
+    sync_window(priv->fsd);
     return w_len;
 }
-
 
 
 static int fatfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
