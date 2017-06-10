@@ -32,17 +32,28 @@
 #include "kprintf.h"
 #include "sys/fs/xipfs.h"
 #include "vfs.h"
+#include "locks.h"
+
 #define GDB_PATH "frosted-userland/gdb/"
 
 static struct fnode *xipfs;
 static struct module mod_xipfs;
+static uint8_t *xipfs_base;
+static uint8_t *xipfs_end;
 
 struct xipfs_fnode {
     struct fnode *fnode;
     void (*init)(void *);
     uint8_t *temp;
     uint32_t temp_size;
+    struct flash_commit_op { 
+        uint8_t *buf; 
+        int len; 
+        uint8_t *ptr;
+        sem_t xfer_done;
+    } commit;
 };
+
 
 
 
@@ -200,8 +211,131 @@ static int xipfs_seek(struct fnode *fno, int off, int whence)
     return fno->off;
 }
 
+#ifdef STM32F4
+#include <unicore-mx/stm32/flash.h>
+struct flash_sector { int id; uint32_t base; uint32_t size; };
+
+const struct flash_sector Flash[12] = {
+    {0, 0x08000000, 16 * 1024  },
+    {1, 0x08004000, 16 * 1024  },
+    {2, 0x08008000, 16 * 1024  },
+    {3, 0x0800C000, 16 * 1024  },
+    {4, 0x08010000, 64 * 1024  },
+    {5, 0x08020000, 128 * 1024 },
+    {6, 0x08040000, 128 * 1024 },
+    {7, 0x08060000, 128 * 1024 },
+    {8, 0x08080000, 128 * 1024 },
+    {9, 0x080A0000, 128 * 1024 },
+    {10, 0x080C0000, 128 * 1024 },
+    {11, 0x080E0000, 128 * 1024 },
+};
+
+#define SWAP_SECTOR (11)
+
+
+
+static const struct flash_sector *flash_sector_find(uint8_t *addr)
+{
+    int i;
+    for (i = 0; i < 12; i++)
+       if ((Flash[i].base <= (uint32_t)addr) && ((Flash[i].base + Flash[i].size) > (uint32_t)addr))
+           return &Flash[i];
+    return NULL;
+}
+
+void flash_wait_for_last_operation(void) {
+	while ((FLASH_SR & FLASH_SR_BSY) == FLASH_SR_BSY)
+        kthread_yield();
+}
+
+static void flash_commit(void *arg)
+{
+    struct xipfs_fnode *xip = (struct xipfs_fnode *)arg;
+    const struct xipfs_fat *stored_fat = (const struct xipfs_fat *)xipfs_base;
+    const struct flash_sector *fat_sector = flash_sector_find(xipfs_base);
+    struct xipfs_fat fat = {};
+    struct xipfs_fhdr f = {};
+    int wr = 0;
+
+    if (!stored_fat)
+        goto xfer_done;
+
+    if (!xip || !xip->commit.buf)
+        goto xfer_done;
+   
+    flash_unlock();
+
+    while(wr < xip->commit.len) {
+        const struct flash_sector *cur = flash_sector_find(xip->commit.ptr + wr);
+        uint32_t off = ((uint32_t)xip->commit.ptr + wr) - cur->base;
+        int w = xip->commit.len;
+        if (w > cur->size - off)
+            w = cur->size - off;
+
+        /* Make a swap copy on sector SWAP_SECTOR */
+        flash_erase_sector(SWAP_SECTOR, 0);
+        flash_program(Flash[SWAP_SECTOR].base, (uint8_t *)cur->base, cur->size);
+        
+        /* Erase current sector */
+        flash_erase_sector(cur->id, 0);
+
+        /* Restore pre-buffer part */
+        if (off > 0)
+            flash_program(cur->base, (uint8_t *)Flash[SWAP_SECTOR].base, off);
+        /* Actual buffer write */
+        flash_program(cur->base + off, xip->commit.buf, w);
+        /* Restore post-buffer part */
+        if ((off + w) < cur->size)
+            flash_program(cur->base + off + w, (uint8_t*)(Flash[SWAP_SECTOR].base + off + w), cur->size - off - w);
+        wr += w;
+    }
+    
+    
+    /* Update Fat */
+    memcpy(&fat, stored_fat, sizeof(struct xipfs_fat));
+    flash_erase_sector(SWAP_SECTOR, 0);
+    flash_program(Flash[SWAP_SECTOR].base, (uint8_t *)fat_sector->base, fat_sector->size);
+    flash_erase_sector(fat_sector->id, 0);
+    fat.fs_files++;
+    flash_program(fat_sector->base, (uint8_t *)&fat, sizeof(struct xipfs_fat));
+    flash_program(fat_sector->base + sizeof(struct xipfs_fat), (uint8_t *)Flash[SWAP_SECTOR].base + sizeof(struct xipfs_fat), fat_sector->size - sizeof(struct xipfs_fat));
+    flash_lock();
+    xip->init = (void *)xip->commit.ptr;
+    xipfs_end = xip->commit.ptr + xip->fnode->size;
+    kfree(xip->temp);
+    xip->temp = NULL;
+    sem_destroy(&xip->commit.xfer_done);
+    xip->commit.buf = NULL;
+
+xfer_done:
+    sem_post(&xip->commit.xfer_done);
+}
+#endif
+
 static int xipfs_close(struct fnode *fno)
 {
+    struct xipfs_fnode *xip = (struct xipfs_fnode *)fno->priv;
+    if (!xip)
+        return -1;
+
+    if (xip->init)
+        return 0;
+
+
+    xip->commit.buf = xip->temp;
+    xip->commit.len = fno->size;
+    xip->commit.ptr = xipfs_end;
+    if (sem_init(&xip->commit.xfer_done, 0) != 0)
+        return -ENOMEM;
+
+#   ifdef STM32F4 
+    kthread_create(flash_commit, xip);
+
+    if (sem_trywait(&xip->commit.xfer_done)) {
+        task_suspend();
+        return SYS_CALL_AGAIN;
+    }
+#endif
     return 0;
 }
 
@@ -280,6 +414,7 @@ static int xipfs_parse_blob(const uint8_t *blob)
         xip_add(f->name, f->payload, f->len);
         offset += f->len + sizeof(struct xipfs_fhdr);
     }
+    xipfs_end = xipfs_base + offset;
     return 0;
 }
 
@@ -302,6 +437,8 @@ static int xipfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
     }
 
     tgt_dir->owner = &mod_xipfs;
+    xipfs_base = (uint8_t *)source;
+
     if (xipfs_parse_blob((uint8_t *)source) < 0)
         return -1;
 
