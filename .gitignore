@@ -47,5 +47,7 @@ kconfig/.depend
 #generated files
 apps/apps.ld
 .gdbinit
+build/
+kernel/syscall_table.c
+*.img
 *.ld
-libfrosted/syscall_table.c
