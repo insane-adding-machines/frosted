@@ -155,7 +155,7 @@ static int memfs_truncate(struct fnode *fno, unsigned int newsize)
     if (mfno) {
         if (fno->size <= newsize) {
             /* Nothing to do here. */
-            return -EFBIG;
+            return 0;
         }
         if (newsize == 0) {
             fno->size = 0;
