@@ -57,6 +57,18 @@ ifeq ($(ARCH_LM3S),y)
 	UNICOREMX_TARGET=lm3s
 endif
 
+ifeq ($(ARCH_NRF51),y)
+	CPU=cortex-m
+	BOARD=nrf51
+	FLASH_ORIGIN=0x00000000
+	RAM1_BASE=0x20000000
+	SYS_CLOCK=16000000
+	ARCH=NRF51
+	CFLAGS+=-DNRF51 -mcpu=cortex-m0
+	UNICOREMX_TARGET=nrf/51
+endif
+
+
 ifeq ($(ARCH_STM32F4),y)
 	CPU=cortex-m
 	BOARD=stm32f4
