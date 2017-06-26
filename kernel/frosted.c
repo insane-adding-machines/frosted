@@ -61,12 +61,14 @@ void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
 void simple_hard_fault_handler(void)
 {
+#ifdef __ARCH_V7M__
     volatile uint32_t hfsr = SCB_HFSR;
     //volatile uint32_t bfsr = SCB_BFSR;
     volatile uint32_t afsr = SCB_AFSR;
     volatile uint32_t bfar = SCB_BFAR;
     //volatile uint32_t ufsr = SCB_UFSR;
     volatile uint32_t mmfar = SCB_MMFAR;
+#endif
     while(1);
 }
 
@@ -131,10 +133,14 @@ void hardfault_handler_dbg(unsigned long *sp)
 
 __attribute__((naked)) void hard_fault_handler(void)
 {
-    __asm("TST LR, #4           \n"
-          "ITE EQ               \n"
-          "MRSEQ R0, MSP        \n"
-          "MRSNE R0, PSP        \n"
+    __asm("MOVS R0, #4          \n"
+          "MOVS R1, LR          \n"
+          "TST R0, R1           \n"
+          "BEQ _MSP             \n"
+          "MRS R0, PSP          \n"
+          "B hardfault_handler_dbg \n"
+      "_MSP:"
+          "MRS R0, MSP          \n"
           "B hardfault_handler_dbg \n"
            );
 }
