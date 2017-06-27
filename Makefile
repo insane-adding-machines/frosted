@@ -9,10 +9,7 @@ ifneq ($(V),1)
    MAKEFLAGS += --no-print-directory
 endif
 
--include rules/config.mk
-include  rules/arch.mk
-include  rules/picotcp.mk
-include  rules/userspace.mk
+
 
 #kernel headers
 CFLAGS+=-Ikernel/frosted-headers/include -nostdlib 
@@ -21,7 +18,7 @@ CFLAGS+=-Ikernel/frosted-headers/include -nostdlib
 CFLAGS+=-Ikernel/drivers
 
 # minimal kernel
-OBJS-y:= kernel/frosted.o \
+OBJS-y+= kernel/frosted.o \
 		 kernel/vfs.o \
 		 kernel/systick.o \
 		 kernel/drivers/device.o \
@@ -43,6 +40,12 @@ OBJS-y:= kernel/frosted.o \
 		 kernel/getaddrinfo.o		\
 		 kernel/kprintf.o 			\
 		 kernel/pipe.o
+
+
+-include rules/config.mk
+include  rules/arch.mk
+include  rules/picotcp.mk
+include  rules/userspace.mk
 
 
 # device drivers
