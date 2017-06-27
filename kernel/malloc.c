@@ -329,20 +329,21 @@ void * u_calloc(size_t num, size_t size)
 void * f_realloc(int flags, void* ptr, size_t size)
 {
     void * out = NULL;
-    struct f_malloc_block * blk;
+    struct f_malloc_block * blk = NULL;
 
     /* size zero and valid ptr -> act as regular free() */
     if (!size && ptr)
         goto realloc_free;
 
-    blk = (struct f_malloc_block *)(((uint8_t*)ptr) - sizeof(struct f_malloc_block));
+    if (ptr)
+        blk = (struct f_malloc_block *)(((uint8_t*)ptr) - sizeof(struct f_malloc_block));
 
     if (!ptr)
     {
         /* f ptr is not valid, act as regular malloc() */
         out = f_malloc(flags, size);
     }
-    else if (block_valid(blk))
+    else if (blk && block_valid(blk))
     {
         size_t new_size, copy_size;
         if (!in_use(blk)) {
