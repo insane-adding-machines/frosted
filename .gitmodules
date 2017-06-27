@@ -3,7 +3,7 @@
 	url = https://github.com/insane-adding-machines/busybox.git
 [submodule "kernel/net/picotcp"]
 	path = kernel/net/picotcp
-	url = https://github.com/insane-adding-machines/picotcp.git
+	url = https://github.com/tass-belgium/picotcp.git
 [submodule "frosted-userland"]
 	path = frosted-userland
 	url = https://github.com/insane-adding-machines/frosted-userland.git
