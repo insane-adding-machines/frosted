@@ -37,10 +37,10 @@ static int memfs_read(struct fnode *fno, void *buf, unsigned int len)
 
     mfno = FNO_MOD_PRIV(fno, &mod_memfs);
     if (!mfno)
-        return -1;
+        return -ENOENT;
 
     if (fno->size <= (fno->off))
-        return -1;
+        return 0;
 
     if (len > (fno->size - fno->off))
         len = fno->size - fno->off;
@@ -59,13 +59,13 @@ static int memfs_write(struct fnode *fno, const void *buf, unsigned int len)
 
     mfno = FNO_MOD_PRIV(fno, &mod_memfs);
     if (!mfno)
-        return -1;
+        return -ENOENT;
 
     if (fno->size < (fno->off + len)) {
         mfno->content = krealloc(mfno->content, fno->off + len);
     }
     if (!mfno->content)
-        return -1;
+        return -ENOMEM;
     memcpy(mfno->content + fno->off, buf, len);
     fno->off += len;
     if (fno->size < fno->off)
@@ -127,6 +127,7 @@ static int memfs_creat(struct fnode *fno)
     struct memfs_fnode *mfs = kalloc(sizeof(struct memfs_fnode));
     if (mfs) {
         mfs->fnode = fno;
+        mfs->content = NULL;
         fno->priv = mfs;
         return 0;
     }
