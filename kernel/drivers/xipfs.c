@@ -76,6 +76,7 @@ static int xipfs_open(const char *path, int flags)
         /* Read mode. */
         f = fno_search(path);
         if (f) {
+            f->off = 0;
             return task_filedesc_add(f);
         } else {
             return -ENOENT;
