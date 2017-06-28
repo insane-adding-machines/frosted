@@ -26,7 +26,7 @@
 
 static const struct gpio_config Led0 = {
     .base=GPIO,
-    .pin=GPIOPIN19,
+    .pin=GPIO19,
     .mode=GPIO_DIR_OUTPUT,
     .name="led0"
 };
