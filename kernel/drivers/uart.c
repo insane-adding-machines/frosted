@@ -17,7 +17,7 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include "cirbuf.h"
@@ -71,6 +71,35 @@ static inline uint32_t get_interrupt_source(uint32_t base)
 static inline uint32_t get_interrupt_source(uint32_t base)
 {
     return UART_IIR(base);
+}
+#endif
+#ifdef NRF51
+#   include "unicore-mx/nrf/51/uart.h"
+#   define CLOCK_ENABLE(C) do{}while(0)
+#   define usart_enable           uart_enable
+#   define usart_set_baudrate     uart_set_baudrate
+#   define usart_set_databits     uart_set_databits
+#   define usart_set_stopbits     uart_set_stopbits
+#   define usart_set_parity       uart_set_parity
+#   define usart_set_flow_control uart_set_flow_control
+#   define usart_enable_rx_interrupt(x)  uart_enable_interrupts(x, UART_INTEN_RXDRDY)
+#   define usart_disable_rx_interrupt(x) uart_disable_interrupts(x, UART_INTEN_RXDRDY)
+#   define usart_enable_tx_interrupt(x)  uart_enable_interrupts(x, UART_INTEN_TXDRDY)
+#   define usart_disable_tx_interrupt(x) uart_disable_interrupts(x, UART_INTEN_TXDRDY)
+#   define usart_clear_tx_interrupt(x)   uart_clear_interrupts(x)
+#   define usart_clear_rx_interrupt(x)   uart_clear_interrupts(x)
+#   define usart_is_send_ready(x)        UART_EVENT_CTS(x)
+#   define usart_is_receive_ready(x)     UART_EVENT_CTS(x)
+#   define usart_send                    uart_send
+#   define USART_SR_RXNE  0
+#   define USART_SR_TXE   1
+
+static inline uint32_t get_interrupt_source(uint32_t base)
+{
+    if(UART_EVENT_TXDRDY(base))
+        return USART_SR_TXE;
+    if(UART_EVENT_RXDRDY(base))
+        return USART_SR_RXNE;
 }
 #endif
 
@@ -224,11 +253,11 @@ static int devuart_write(struct fnode *fno, const void *buf, unsigned int len)
     int i;
     char *ch = (char *)buf;
     struct dev_uart *uart;
-    
+
     uart = (struct dev_uart *)FNO_MOD_PRIV(fno, &mod_devuart);
     if (!uart)
         return -1;
-        
+
     mutex_lock(uart->dev->mutex);
     if (cirbuf_bytesinuse(uart->outbuf) && usart_is_send_ready(uart->base)) {
         char c;
@@ -387,6 +416,9 @@ int uart_create(const struct uart_config *uart)
 
     gpio_create(&mod_devuart, &uart->pio_rx);
     gpio_create(&mod_devuart, &uart->pio_tx);
+#ifdef NRF51
+    uart_set_pins(uart->base, uart->pio_rx, uart->pio_tx);
+#endif
 
     uart_fno_init(uart);
     CLOCK_ENABLE(uart->rcc);
@@ -394,7 +426,9 @@ int uart_create(const struct uart_config *uart)
     usart_set_baudrate(uart->base, uart->baudrate);
     usart_set_databits(uart->base, uart->data_bits);
     usart_set_stopbits(uart->base, uart->stop_bits);
+#if 0
     usart_set_mode(uart->base, USART_MODE_TX_RX);
+#endif
     usart_set_parity(uart->base, uart->parity);
     usart_set_flow_control(uart->base, uart->flow);
 #ifdef STM32F7
