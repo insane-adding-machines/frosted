@@ -58,5 +58,5 @@ CFLAGS+=-Ikernel -Iinclude -I. -Ikernel/unicore-mx/include/unicore-mx -Ikernel/u
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
 CFLAGS+=-nostdlib
-ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
+ASFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -ggdb
 
