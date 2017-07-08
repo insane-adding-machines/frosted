@@ -89,7 +89,19 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
 #define ARCH_GPIO_PIN_MAX 31
 
 
-#include "exti.h"
+int exti_register(uint32_t base, uint16_t pin, uint8_t trigger, void (*isr)(void *), void *isr_arg) {
+
+}
+void exti_unregister(int pin) {
+
+}
+int exti_enable(int idx, int enable) {
+
+}
+void exti_init(void) {
+
+}
+
 #endif
 #ifdef LPC17XX
 #include <unicore-mx/lpc17xx/nvic.h>
