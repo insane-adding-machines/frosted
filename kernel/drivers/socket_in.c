@@ -179,15 +179,11 @@ static int sock_socket(int domain, int type_flags, int protocol)
         ret = SYS_CALL_AGAIN;
         goto out;
     }
-    if (type != PICO_PROTO_ICMP4) { 
-        s->sock = pico_socket_open(domain, type, pico_socket_event);
-        if (s)
-            s->sock->priv = s;
-    } else {
-        s->sock = NULL; /* managed internally */
-    }
+    s->sock = pico_socket_open(domain, type, pico_socket_event);
+    if (s)
+        s->sock->priv = s;
     pico_unlock();
-    if ((type != PICO_PROTO_ICMP4) && (!s->sock)) {
+    if (!s->sock) {
         kfree((struct fnode *)s->node);
         kfree(s);
         ret = 0 - pico_err;
