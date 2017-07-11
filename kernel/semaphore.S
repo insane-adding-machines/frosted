@@ -14,23 +14,29 @@ _sem_wait:
   CPSID    i
   LDR      r1, [r0]
 #endif
-   CMP      r1, #0        // Test if semaphore holds the value 0
+   CMP      r1, #0           // Test if semaphore holds the value 0
    BEQ     _sem_wait_fail    // If it does, return 0
    SUBS    r1, #1            // If not, decrement temporary copy
 #ifdef __ARM_ARCH_7M__
    STREX   r2, r1, [r0]      // Attempt Store-Exclusive
+   CMP     r2, #0            // Check if Store-Exclusive succeeded
+   BNE     _sem_wait         // If Store-Exclusive failed, retry from start
+   DMB                       // Required before accessing protected resource
 #elif defined(__ARM_ARCH_6M__)
    STR     r1, [r0]
    CPSIE   i
 #endif
-   CMP     r2, #0            // Check if Store-Exclusive succeeded
-   BNE     _sem_wait         // If Store-Exclusive failed, retry from start
-   DMB                       // Required before accessing protected resource
    MOVS    r0, #0            // Successfully acquired.
    BX      lr
 _sem_wait_fail:
+#ifdef __ARM_ARCH_7M__
    DMB
-   MOVS    r0, #0xFF         // Try again.
+   MOV     r0, #-1           // Already locked!
+#elif defined(__ARM_ARCH_6M__)
+   CPSIE   i
+   MOVS    r2, #0            // Already locked!
+   MVNS    r0, r2
+#endif
    BX      lr
 
 /* Increase the semaphore value. 
@@ -49,12 +55,12 @@ _sem_post:
    ADDS    r1, #1           // Increment temporary copy
 #ifdef __ARM_ARCH_7M__
    STREX   r2, r1, [r0]     // Attempt Store-Exclusive
+   CMP     r2, #0           // Check if Store-Exclusive succeeded
+   BNE     _sem_post        // Store failed - retry immediately
 #elif defined(__ARM_ARCH_6M__)
    STR     r1, [r0]
    CPSIE   i
 #endif
-   CMP     r2, #0           // Check if Store-Exclusive succeeded
-   BNE     _sem_post        // Store failed - retry immediately
    CMP     r0, #1           // Store successful - test if incremented from zero
    DMB                      // Required before releasing protected resource
    BGE     _sem_signal_up   // If initial value was 0, signal update
