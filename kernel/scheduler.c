@@ -190,6 +190,8 @@ static void *_top_stack;
 #define TASK_FLAG_DETACHED 0x0100
 #define TASK_FLAG_CANCELABLE 0x0200
 #define TASK_FLAG_PENDING_CANC 0x0400
+/* Timer expired */
+#define TASK_FLAG_TIMEOUT 0x0800
 
 struct filedesc {
     struct fnode *fno;
@@ -2299,6 +2301,7 @@ void sleepy_task_wakeup(uint32_t now, void *arg)
 {
     struct task *t = (struct task *)arg;
     t->tb.timer_id = -1;
+    t->tb.flags |= TASK_FLAG_TIMEOUT;
     if (t->tb.state == TASK_WAITING)
         task_resume(t);
 }
@@ -2307,27 +2310,20 @@ int sys_sleep_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
                    uint32_t arg5)
 {
     uint32_t timeout = jiffies + arg1;
-    uint32_t *rem = (uint32_t *)arg2;
-
-    if (task_ptr_valid(rem))
-       return -EACCES;
-
     if (arg1 < 0)
         return -EINVAL;
 
-    if (timeout < jiffies) {
-        if (rem)
-            *rem = 0;
+    if ((_cur_task->tb.flags & TASK_FLAG_TIMEOUT) != 0) {
+        _cur_task->tb.flags &= (~TASK_FLAG_TIMEOUT);
+        if (_cur_task->tb.timer_id >= 0) {
+            ktimer_del(_cur_task->tb.timer_id);
+            _cur_task->tb.timer_id = -1;
+        }
         return 0;
     }
     _cur_task->tb.timer_id = ktimer_add(arg1, sleepy_task_wakeup, this_task());
     task_suspend();
-
-    if (timeout > jiffies) {
-        if (rem)
-            *rem = timeout - jiffies;
-    }
-    return 0;
+    return SYS_CALL_AGAIN;
 }
 
 void kthread_sleep_ms(uint32_t ms)
@@ -2362,14 +2358,23 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
     struct pollfd *pfd = (struct pollfd *)arg1;
     int i, n = (int)arg2;
-    int time_left = (int)arg3;
-    uint32_t timeout = jiffies + arg3;
+    uint32_t timeout;
     int ret = 0;
     struct fnode *f;
     if (task_ptr_valid((void *)arg1))
         return -EACCES;
 
-    while ((time_left < 0) || (jiffies <= timeout)) {
+    if ((_cur_task->tb.flags & TASK_FLAG_TIMEOUT) != 0) {
+        _cur_task->tb.flags &= (~TASK_FLAG_TIMEOUT);
+        return 0;
+    }
+
+    if ((_cur_task->tb.flags & TASK_FLAG_TIMEOUT) == 0)
+        timeout = jiffies + arg3;
+    else
+        timeout = jiffies;
+
+    while (jiffies <= timeout) {
         for (i = 0; i < n; i++) {
             f = task_filedesc_get(pfd[i].fd);
             if (!f || !f->owner || !f->owner->ops.poll) {
@@ -2382,12 +2387,13 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
                 ktimer_del(this_task()->tb.timer_id);
                 this_task()->tb.timer_id = -1;
             }
+            _cur_task->tb.flags &= (~TASK_FLAG_TIMEOUT);
             return ret;
         }
 
-        if ((time_left > 0) && (this_task()->tb.timer_id < 0)) {
+        if (this_task()->tb.timer_id < 0) {
             this_task()->tb.timer_id =
-                ktimer_add(time_left, sleepy_task_wakeup, this_task());
+                ktimer_add(timeout - jiffies, sleepy_task_wakeup, this_task());
         }
         task_suspend();
         return SYS_CALL_AGAIN;
