@@ -168,10 +168,14 @@ static int sock_socket(int domain, int type_flags, int protocol)
         type = PICO_PROTO_TCP;
 
     if (type == 2) {
-        if (protocol == 0) {
+        if ((protocol == 0) || (protocol == IPPROTO_UDP)) {
             type = PICO_PROTO_UDP;
         } else if (protocol == IPPROTO_ICMP) {
             type = PICO_PROTO_ICMP4;
+        } else {
+            kfree((struct fnode *)s->node);
+            kfree(s);
+            return -EPROTONOSUPPORT;
         }
     }
 
