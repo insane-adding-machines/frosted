@@ -167,14 +167,25 @@ static int sock_socket(int domain, int type_flags, int protocol)
     if (type == 1)
         type = PICO_PROTO_TCP;
 
-    if (type == 2)
-        type = PICO_PROTO_UDP;
+    if (type == 2) {
+        if ((protocol == 0) || (protocol == IPPROTO_UDP)) {
+            type = PICO_PROTO_UDP;
+        } else if (protocol == IPPROTO_ICMP) {
+            type = PICO_PROTO_ICMP4;
+        } else {
+            kfree((struct fnode *)s->node);
+            kfree(s);
+            return -EPROTONOSUPPORT;
+        }
+    }
 
     if (pico_trylock() < 0) {
         ret = SYS_CALL_AGAIN;
         goto out;
     }
     s->sock = pico_socket_open(domain, type, pico_socket_event);
+    if (s)
+        s->sock->priv = s;
     pico_unlock();
     if (!s->sock) {
         kfree((struct fnode *)s->node);
@@ -184,8 +195,6 @@ static int sock_socket(int domain, int type_flags, int protocol)
     }
     s->node->owner = &mod_socket_in;
     s->node->priv = s;
-    s->sock->priv = s;
-    //kprintf("## Open INET socket!\n");
     s->fd = task_filedesc_add(s->node);
     if (s->fd >= 0)
         task_fd_setmask(s->fd, O_RDWR);

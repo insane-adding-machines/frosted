@@ -48,4 +48,4 @@ printf "\nFrosted qemu env setup in ~/frosted-qemu\n\n";
 
 printf "For adding the env path autmatically, update your PATH with:\n";
 printf "$HOME/frosted-qemu/arm-frosted-eabi/bin\n";
-printf "$HOME/frosted-qemu/qemu-bin\n\n";
+printf "$HOME/frosted-qemu/qemu-bin/bin\n\n";

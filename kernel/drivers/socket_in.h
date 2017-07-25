@@ -52,6 +52,8 @@ typedef int socklen_t;
 #define TCP_LINGER          (PICO_SOCKET_OPT_LINGER)
 #define SO_ERROR            (4103)
 #define SO_REUSEADDR        (2)
+#define IPPROTO_ICMP        (1)
+#define IPPROTO_UDP         (17)
 #define sockopt_get_name(x) ((x))
 
 #define INET_ADDRSTRLEN    (16)
