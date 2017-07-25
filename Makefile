@@ -232,7 +232,7 @@ kernel.img: kernel.elf
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 
 apps.img: $(USERSPACE)
-	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
+	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(MCPU)
 
 image.bin: kernel.img apps.img
 	cat kernel.img apps.img > $@

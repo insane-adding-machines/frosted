@@ -42,8 +42,8 @@ ifeq ($(ARCH_LPC17XX),y)
 	RAM2_SIZE=16
 	RAM3_SIZE=16
 	ARCH=LPC17XX
-	CFLAGS+=-DLPC17XX -mcpu=cortex-m3 -DCONFIG_SRAM_EXTRA
-	ASFLAGS+=-mcpu=cortex-m3
+	MCPU=cortex-m3
+	CFLAGS+=-DLPC17XX -DCONFIG_SRAM_EXTRA
 	UNICOREMX_TARGET=lpc17xx
 endif
 
@@ -54,8 +54,8 @@ ifeq ($(ARCH_LM3S),y)
 	RAM1_BASE=0x20000000
 	SYS_CLOCK=50000000
 	ARCH=LM3S
-	CFLAGS+=-DLM3S -mcpu=cortex-m3
-	ASFLAGS+=-mcpu=cortex-m3
+	CFLAGS+=-DLM3S
+	MCPU=cortex-m3
 	UNICOREMX_TARGET=lm3s
 endif
 
@@ -67,8 +67,8 @@ ifeq ($(ARCH_NRF51),y)
 	RAM1_SIZE=32
 	SYS_CLOCK=16000000
 	ARCH=NRF51
-	CFLAGS+=-DNRF51 -mcpu=cortex-m0 -lgcc
-	ASFLAGS+=-mcpu=cortex-m0
+	MCPU=cortex-m0
+	CFLAGS+=-DNRF51 -lgcc
 	UNICOREMX_TARGET=nrf/51
 endif
 
@@ -83,8 +83,8 @@ ifeq ($(ARCH_STM32F4),y)
 	RAM2_SIZE=64
 	SDRAM_BASE=0xD0000000
 	SDRAM_SIZE=0x800000
-	CFLAGS+=-DSTM32F4 -mcpu=cortex-m4 -mfloat-abi=soft -DCONFIG_SRAM_EXTRA
-	ASFLAGS+=-mcpu=cortex-m4
+	CFLAGS+=-DSTM32F4 -mfloat-abi=soft -DCONFIG_SRAM_EXTRA
+	MCPU=cortex-m4
 	ARCH=STM32F4
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
 	UNICOREMX_TARGET=stm32/f4
@@ -97,8 +97,8 @@ ifeq ($(ARCH_STM32F7),y)
 	RAM1_BASE=0x20000000
 	SDRAM_BASE=0xC0000000
 	SDRAM_SIZE=0x800000
-	CFLAGS=-DSTM32F7 -mcpu=cortex-m4 -mfloat-abi=soft -DCONFIG_SRAM_EXTRA
-	ASFLAGS+=-mcpu=cortex-m4
+	CFLAGS=-DSTM32F7 -mfloat-abi=soft -DCONFIG_SRAM_EXTRA
+	MCPU=cortex-m4
 	ARCH=STM32F7
 	OPENCM3FLAGS=FP_FLAGS="-mfloat-abi=soft"
 	UNICOREMX_TARGET=stm32/f7
