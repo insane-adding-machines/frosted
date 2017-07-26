@@ -35,17 +35,24 @@ struct fatfs_disk {
     struct fatfs *fs;
 };
 
+typedef uint32_t fatfs_cluster;
+
 struct fatfs_priv {
     uint32_t    fptr;
     uint32_t    fsize;      /* File size */
     uint8_t     flag;
-    uint32_t dirsect;
-    int cluster;
+    uint8_t     err;
+    uint32_t    dirsect;
+    fatfs_cluster   sclust;
+    fatfs_cluster   clust;
     struct fatfs_disk *fsd;
-    uint8_t *dir;
+    uint8_t     *dir;
+    uint32_t    sect;      /* File current data sector */
+    fatfs_cluster   org_clust;  /* File start cluster */
+    fatfs_cluster   curr_clust; /* File current cluster */
 };
 
-typedef uint32_t fatfs_cluster;
+
 #ifdef CONFIG_FAT32
 # define FATFS_FAT32	1	/* Enable FAT32 */
 #endif
@@ -85,12 +92,10 @@ struct fatfs {
     uint8_t	pad1;
     uint16_t	n_rootdir;	/* Number of root directory entries (0 on FAT32) */
     fatfs_cluster n_fatent;	/* Number of FAT entries (= number of clusters + 2) */
+    uint32_t    volbase;
     uint32_t	fatbase;	/* FAT start sector */
     uint32_t	dirbase;	/* Root directory start sector (Cluster# on FAT32) */
     uint32_t	database;	/* Data start sector */
-    fatfs_cluster	org_clust;	/* File start cluster */
-    fatfs_cluster	curr_clust;	/* File current cluster */
-    uint32_t	dsect;		/* File current data sector */
     uint32_t    fsize; /* FAT size, not file size! */
     uint8_t wflag;
     uint32_t winsect;
@@ -99,6 +104,7 @@ struct fatfs {
     uint16_t ssize;
     fatfs_cluster last_clst;
     fatfs_cluster free_clst;
+    uint8_t fsi_flag;
 };
 
 
@@ -147,6 +153,13 @@ struct fatfs_finfo{
 #define	FA_OPENED	0x01
 #define	FA_WPRT		0x02
 #define	FA__WIP		0x40
+
+/* Additional file access control and file status flags for internal use */
+#define FA_SEEKEND  0x20    /* Seek to end of the file on file open */
+#define FA_MODIFIED 0x40    /* File has been modified */
+#define FA_DIRTY    0x80    /* FIL.buf[] needs to be written-back */
+
+
 
 /* DISK status */
 #define STA_OK          0x00
@@ -441,8 +454,15 @@ struct fatfs_finfo{
 #define	DIR_WrtDate			24
 #define	DIR_FstClusLO		26
 #define	DIR_FileSize		28
+#define DIR_LstAccDate      18      /* Last accessed date (WORD) */
+#define DIR_FstClusHI       20      /* Higher 16-bit of first cluster (WORD) */
+#define DIR_ModTime         22      /* Modified time (DWORD) */
 #define MBR_Table           446     /* MBR: Offset of partition table in the MBR */
 
+#define FSI_LeadSig         0       /* FAT32 FSI: Leading signature (DWORD) */
+#define FSI_StrucSig        484     /* FAT32 FSI: Structure signature (DWORD) */
+#define FSI_Free_Count      488     /* FAT32 FSI: Number of free clusters (DWORD) */
+#define FSI_Nxt_Free        492     /* FAT32 FSI: Last allocated cluster (DWORD) */
 
 #define SZDIRE              32      /* Size of a directory entry */
 #define DDEM                0xE5    /* Deleted directory entry mark set to DIR_Name[0] */
@@ -596,6 +616,41 @@ static int put_fat(struct fatfs_disk *f, fatfs_cluster clst, uint32_t val)
 }
 
 /*-----------------------------------------------------------------------*/
+/* FAT handling - Remove a cluster chain                                 */
+/*-----------------------------------------------------------------------*/
+static int remove_chain(struct fatfs_disk *f, fatfs_cluster clst, fatfs_cluster pclst)
+{
+    struct fatfs *fs = f->fs;
+    int res = FR_OK;
+    uint32_t nxt;
+
+    if (clst < 2 || clst >= fs->n_fatent) return FR_INT_ERR;    /* Check if in valid range */
+
+    /* Mark the previous cluster 'EOC' on the FAT if it exists */
+    if (pclst) {
+        res = put_fat(f, pclst, 0xFFFFFFFF);
+        if (res != FR_OK) return res;
+    }
+
+    /* Remove the chain */
+    do {
+        nxt = get_fat(f, clst);           /* Get cluster status */
+        if (nxt == 0) break;                /* Empty cluster? */
+        if (nxt == 1) return FR_INT_ERR;    /* Internal error? */
+        if (nxt == 0xFFFFFFFF) return FR_DISK_ERR;  /* Disk error? */
+        res = put_fat(f, clst, 0);     /* Mark the cluster 'free' on the FAT */
+        if (res != FR_OK) return res;
+        if (fs->free_clst < fs->n_fatent - 2) { /* Update FSINFO */
+            fs->free_clst++;
+            fs->fsi_flag |= 1; /* need fsi later to indicate action to sync_fs */
+        }
+        clst = nxt;                 /* Next cluster */
+    } while (clst < fs->n_fatent);  /* Repeat while not the last link */
+
+    return FR_OK;
+}
+
+/*-----------------------------------------------------------------------*/
 /* FAT handling - Stretch a chain or Create a new chain                  */
 /*-----------------------------------------------------------------------*/
 static uint32_t create_chain(struct fatfs_disk *f, fatfs_cluster clst)
@@ -637,7 +692,7 @@ static uint32_t create_chain(struct fatfs_disk *f, fatfs_cluster clst)
     if (res == FR_OK) {         /* Update FSINFO if function succeeded. */
         fs->last_clst = ncl;
         if (fs->free_clst < fs->n_fatent - 2) fs->free_clst--;
-        //fs->fsi_flag |= 1 /* we need the fsi later to indicate action to sync_fs */
+        fs->fsi_flag |= 1; /* we need the fsi later to indicate action to sync_fs */
     } else {
         ncl = (!res) ? 0xFFFFFFFF : 1;    /* Failed. Create error status */
     }
@@ -1026,6 +1081,9 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
         strcat(fpath, path);
     }
     parent = fno_search(fpath);
+    parent->priv = (void *)kalloc(sizeof(struct fatfs_priv));
+    ((struct fatfs_priv *)parent->priv)->fsd = f;
+    //parent->priv->fsd = f;
     dj.fn = fbuf;
     if (clust > 0) {
         dj.clust = clust;
@@ -1059,7 +1117,7 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
                     if (!newfile->priv) {
                         fno_unlink(newfile);
                     } else {
-                        ((struct fatfs_priv *)newfile->priv)->cluster = get_clust(f, dj.dir);
+                        ((struct fatfs_priv *)newfile->priv)->clust = get_clust(f, dj.dir);
                         ((struct fatfs_priv *)newfile->priv)->fsd = f;
                         ((struct fatfs_priv *)newfile->priv)->fptr = 0;
                         ((struct fatfs_priv *)newfile->priv)->dirsect = f->fs->winsect;
@@ -1087,7 +1145,7 @@ static int check_fs(struct fatfs_disk *f, uint32_t sect)
 
     struct fatfs *fs = f->fs;
 
-    fs->wflag = 0; fs->winsect = 0xFFFFFFFF;        /* Invaidate window */
+    fs->wflag = 0; fs->winsect = 0xFFFFFFFF;        /* Invalidate window */
     if (move_window(f, sect) != FR_OK) return 4;   /* Load boot record */
 
     if (LD_WORD((fs->win + BS_55AA)) != 0xAA55)             /* Check record signature */
@@ -1201,6 +1259,7 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 
     /* Boundaries and Limits */
     fs->n_fatent = nclst + 2;                       /* Number of FAT entries */
+    fs->volbase = bsect;
     fs->fatbase = bsect + nrsv;                     /* FAT start sector */
     fs->database = bsect + sysect;                  /* Data start sector */
 
@@ -1219,6 +1278,140 @@ fail:
     kfree(fsd->fs);
     kfree(fsd);
     return -1;
+}
+
+/*-----------------------------------------------------------------------*/
+/* FAT: Directory handling - Load/Store start cluster number             */
+/*-----------------------------------------------------------------------*/
+
+static uint32_t ld_clust(struct fatfs *fs, const uint8_t *dir)
+{
+    uint32_t cl;
+
+    cl = LD_WORD(dir + DIR_FstClusLO);
+    if (fs->fs_type == FS_FAT32) {
+        cl |= (uint32_t)LD_WORD(dir + DIR_FstClusHI) << 16;
+    }
+
+    return cl;
+}
+
+static void st_clust(struct fatfs *fs, uint8_t *dir, uint32_t cl)
+{
+    st_word(dir + DIR_FstClusLO, (uint8_t)cl);
+    if (fs->fs_type == FS_FAT32) {
+        st_word(dir + DIR_FstClusHI, (uint8_t)(cl >> 16));
+    }
+}
+
+/*-----------------------------------------------------------------------*/
+/* Open or Create a File                                                 */
+/*-----------------------------------------------------------------------*/
+
+#include <fcntl.h>
+
+static int fatfs_open(const char *path, int flags)
+{
+    struct fnode *fno;
+    struct fatfs_priv *priv;
+    struct fatfs_dir dj;
+    struct fatfs_fil *fp;
+    uint8_t dirbuf[32];
+    uint32_t dw, cl, bcs, clst, sc;
+
+    if (!path) {
+        return -1;
+    }
+
+    fno = fno_search(path);
+
+    if (!fno || !fno->parent)
+        return -1;
+
+    priv = (struct fatfs_priv *)fno->priv;
+
+    if (!priv) {
+        priv = (void *)kalloc(sizeof (struct fatfs_priv));
+        //memcpy(priv, fno->parent->priv, sizeof (struct fatfs_priv));
+        priv->fsd = ((struct fatfs_priv *)fno->parent->priv)->fsd;
+    }
+
+    struct fatfs *fs = priv->fsd->fs;
+
+    flags &= O_RDONLY | O_WRONLY | O_RDWR | O_APPEND | O_CREAT | O_TRUNC;
+
+    int res = follow_path(priv->fsd, &dj, path);
+    int ofs;
+
+    if (res) {
+        res = dir_register(priv->fsd, &dj);
+        if (res == FR_OK && (flags & O_CREAT)) {
+            /* Set directory entry initial state */
+            cl = ld_clust(fs, dj.dir);          /* Get current cluster chain */
+            st_dword(dj.dir + DIR_CrtTime, 0420);  /* Set created time */
+            dj.dir[DIR_Attr] = AM_ARC;          /* Reset attribute */
+            st_clust(fs, dj.dir, 0);            /* Reset file allocation info */
+            st_dword(dj.dir + DIR_FileSize, 0);
+            fs->wflag = 1;
+            if (cl != 0) {                      /* Remove the cluster chain if exist */
+                dw = fs->winsect;
+                res = remove_chain(priv->fsd, cl, 0);
+                if (res == FR_OK) {
+                    res = move_window(priv->fsd, dw);
+                    fs->last_clst = cl - 1;     /* Reuse the cluster hole */
+                }
+            }
+                //struct fnode *newfile;
+                //newfile = fno_create(&mod_fatfs, path, fno->parent);
+                //if (newfile) {
+                //    newfile->priv = (void *)kalloc(sizeof(struct fatfs_priv));
+                //    if (!newfile->priv) {
+                //        fno_unlink(newfile);
+                //    } else {
+                priv->clust = get_clust(priv->fsd, dj.dir);
+                //priv->fsd = priv->fsd;
+                priv->fptr = 0;
+                priv->dirsect = priv->fsd->fs->winsect;
+                priv->dir = dj.dir;
+                priv->fsize = 0;
+
+        }
+
+        if (res == FR_OK) {
+            if (flags & O_CREAT) flags |= FA_MODIFIED;   /* Set file change flag if created or overwritten */
+            priv->dirsect = fs->winsect;         /* Pointer to the directory entry */
+            priv->dir = dj.dir;
+            priv->sclust = ld_clust(fs, dj.dir);                  /* Get object allocation info */
+            priv->fsize = LD_DWORD(dj.dir + DIR_FileSize);
+            priv->flag = flags;        /* Set file access mode */
+            priv->err = 0;            /* Clear error flag */
+            priv->sect = 0;           /* Invalidate current data sector */
+            priv->fptr = 0;           /* Set file pointer top of the file */
+//            memset(fp->buf, 0, FF_MAX_SS); /* Clear sector buffer */
+            if ((flags & FA_SEEKEND) && priv->fsize > 0) {   /* Seek to end of file if FA_OPEN_APPEND is specified */
+                priv->fptr = priv->fsize;         /* Offset to seek */
+                bcs = (uint32_t)fs->csize * SS(fs);    /* Cluster size in byte */
+                clst = priv->sclust;              /* Follow the cluster chain */
+                for (ofs = priv->fsize; res == FR_OK && ofs > bcs; ofs -= bcs) {
+                    clst = get_fat(priv->fsd, clst);
+                    if (clst <= 1) res = FR_INT_ERR;
+                    if (clst == 0xFFFFFFFF) res = FR_DISK_ERR;
+                }
+                priv->clust = clst;
+                if (res == FR_OK && ofs % SS(fs)) { /* Fill sector buffer if not on the sector boundary */
+                    if ((sc = clust2sect(priv->fsd, clst)) == 0) {
+                        res = FR_INT_ERR;
+                    } else {
+                        priv->sect = sc + (uint32_t)(ofs / SS(fs));
+                        //if (disk_readp(priv->fsd, fp->buf, fp->sect, 1) != RES_OK) res = FR_DISK_ERR;
+                    }
+                }
+            }
+        }
+
+    }
+    int ret = task_filedesc_add(fno);
+    return ret;
 }
 
 static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
@@ -1242,7 +1435,7 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     while (r_len < len) {
         int r = len - r_len;
         r_off = fno->off;
-        sect = clust2sect(priv->fsd, priv->cluster);
+        sect = clust2sect(priv->fsd, priv->clust);
         while (r_off >= 512) {
             sect++;
             r_off -= 512;
@@ -1277,7 +1470,7 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
         len = (unsigned int)(0xFFFFFFFF - (uint32_t)priv->fptr);
     }
 
-
+//create_chain needs to stretch the cluster if required!
 
 //    if (len + fno->off > fno->size)
 //        len = fno->size - fno->off;
@@ -1288,7 +1481,7 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     while (w_len < len) {
         int w = len - w_len;
         w_off = fno->off;
-        sect = clust2sect(priv->fsd, priv->cluster);
+        sect = clust2sect(priv->fsd, priv->clust);
         while (w_off >= 512) {
             sect++;
             w_off -= 512;
@@ -1347,12 +1540,58 @@ static int fatfs_seek(struct fnode *fno, int off, int whence)
     return fno->off;
 }
 
+static int sync_fs(struct fatfs_priv *priv)
+{
+    int res;
+    struct fatfs *fs = priv->fsd->fs;
+
+    res = sync_window(priv->fsd);
+    if (res == FR_OK) {
+        if (fs->fs_type == FS_FAT32 && fs->fsi_flag == 1) { /* FAT32: Update FSInfo sector if needed */
+            /* Create FSInfo structure */
+            memset(fs->win, 0, SS(fs));
+            st_word(fs->win + BS_55AA, 0xAA55);
+            st_dword(fs->win + FSI_LeadSig, 0x41615252);
+            st_dword(fs->win + FSI_StrucSig, 0x61417272);
+            st_dword(fs->win + FSI_Free_Count, fs->free_clst);
+            st_dword(fs->win + FSI_Nxt_Free, fs->last_clst);
+            /* Write it into the FSInfo sector */
+            fs->winsect = fs->volbase + 1;
+            disk_writep(priv->fsd, fs->win, fs->winsect, 0, 1);
+            fs->fsi_flag = 0;
+        }
+        /* Make sure that no pending write process in the lower layer */
+        //if (disk_ioctl(fs->pdrv, CTRL_SYNC, 0) != RES_OK) res = FR_DISK_ERR;
+    }
+
+    return res;
+}
+
 static int fatfs_close(struct fnode *fno)
 {
-    struct fatfs_fnode *mfno;
-    mfno = FNO_MOD_PRIV(fno, &mod_fatfs);
-    if (!mfno)
+    int res;
+    //struct fatfs_fnode *mfno;
+    //mfno = FNO_MOD_PRIV(fno, &mod_fatfs);
+    //if (!mfno)
+    //    return -1;
+
+    if (!fno || !fno->priv)
         return -1;
+    struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
+    if (priv->flag & FA_MODIFIED) {   /* Is there any change to the file? */
+        res = move_window(priv->fsd, priv->dirsect);
+        if (res == FR_OK) {
+            uint8_t *dir = priv->dir;
+            dir[DIR_Attr] |= AM_ARC;                        /* Set archive attribute to indicate that the file has been changed */
+            st_clust(priv->fsd->fs, dir, priv->sclust);      /* Update file allocation information  */
+            st_dword(dir + DIR_FileSize, (uint32_t)priv->fsize);   /* Update file size */
+            st_dword(dir + DIR_ModTime, 0x42);                /* Update modified time */
+            st_word(dir + DIR_LstAccDate, 0);
+            priv->fsd->fs->wflag = 1;
+            res = sync_fs(priv);                  /* Restore it to the directory */
+            priv->flag &= (uint8_t)~FA_MODIFIED;
+        }
+    }
     fno->off = 0;
     return 0;
 }
@@ -1572,10 +1811,12 @@ int fatfs_init(void)
     strcpy(mod_fatfs.name,"fatfs");
 
     mod_fatfs.mount = fatfs_mount;
+    mod_fatfs.ops.open = fatfs_open;
     mod_fatfs.ops.read = fatfs_read;
     mod_fatfs.ops.write = fatfs_write;
     mod_fatfs.ops.seek = fatfs_seek;
     mod_fatfs.ops.poll = fatfs_poll;
+    mod_fatfs.ops.close = fatfs_close;
 
     /*
     mod_fatfs.ops.creat = fatfs_creat;
