@@ -528,9 +528,12 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
             }
 
         }
-        if (!f)
+        if (!f) {
             f = fno_create_file(path);
-
+            ret = f->owner->ops.open(path, flags);
+            task_fd_setmask(ret, flags);
+            return ret;
+        }
         /* TODO: Parse arg3 & 0x1c0 for permissions */
         if (f)
             f->flags |= FL_RDWR;
@@ -553,12 +556,19 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
 
 int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    struct fnode *f = task_filedesc_get(arg1);
-    if (f != NULL) {
+    struct fnode *fno = task_filedesc_get(arg1);
+    if (!fno)
+        return -EINVAL;
+    if (fno->owner && fno->owner->ops.close) {
+        fno->owner->ops.close(fno);
         task_filedesc_del(arg1);
         return 0;
-    }
-    return -EINVAL;
+    } else return -EOPNOTSUPP;
+//    if (f != NULL) {
+//        task_filedesc_del(arg1);
+//        return 0;
+//    }
+//    return -EINVAL;
 }
 
 int sys_seek_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
