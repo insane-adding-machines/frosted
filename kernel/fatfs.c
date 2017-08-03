@@ -37,11 +37,9 @@ struct fatfs_disk {
     struct fatfs *fs;
 };
 
-typedef uint32_t fatfs_cluster;
-
 struct fatfs_priv {
-    fatfs_cluster       sclust;
-    fatfs_cluster       cclust;
+    uint32_t            sclust;
+    uint32_t            cclust;
     uint32_t            sect;
     uint32_t            off;
     uint32_t            dirsect;
@@ -105,7 +103,10 @@ struct fatfs_dir {
 #define BS_FSTYPE       54
 #define BS_FSTYPE32     82
 #define BS_MBR          446
+#define BS_BS           454
 #define BS_55AA         510
+
+#define DEFBPS          512
 
 #define DIR_NAME        0
 #define DIR_ATTR        11
@@ -129,15 +130,19 @@ struct fatfs_dir {
 
 static void st_word(uint8_t *ptr, uint16_t val)  /* Store a 2-byte word in little-endian */
 {
-    *ptr++ = (uint8_t)val; val >>= 8;
+    *ptr++ = (uint8_t)val;
+    val >>= 8;
     *ptr++ = (uint8_t)val;
 }
 
 static void st_dword(uint8_t *ptr, uint32_t val)    /* Store a 4-byte word in little-endian */
 {
-    *ptr++ = (uint8_t)val; val >>= 8;
-    *ptr++ = (uint8_t)val; val >>= 8;
-    *ptr++ = (uint8_t)val; val >>= 8;
+    *ptr++ = (uint8_t)val;
+    val >>= 8;
+    *ptr++ = (uint8_t)val;
+    val >>= 8;
+    *ptr++ = (uint8_t)val;
+    val >>= 8;
     *ptr++ = (uint8_t)val;
 }
 
@@ -406,10 +411,10 @@ void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
     char fbuf[12];
     struct fatfs_dir dj;
     struct fnode *parent;
-    char fpath[128];
+    char fpath[MAXPATHLEN];
     int res;
 
-    fno_fullpath(f->mountpoint, fpath, 128);
+    fno_fullpath(f->mountpoint, fpath, MAXPATHLEN);
 
     if (path && strlen(path) > 0) {
         if (path[0] != '/')
@@ -534,11 +539,11 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
     tgt_dir->owner = &mod_fatfs;
     fs->bsect = 0;
 
-    mb_read(fsd, fs->win, 0, (fs->bsect), 512);
+    mb_read(fsd, fs->win, 0, (fs->bsect), DEFBPS);
 
     if (check_fs(fsd) == -2) {
-        fs->bsect = LD_WORD(fs->win + BS_MBR + 8);
-        mb_read(fsd, fs->win, 0, (fs->bsect), 512);
+        fs->bsect = LD_WORD(fs->win + BS_BS);
+        mb_read(fsd, fs->win, 0, (fs->bsect), DEFBPS);
         //print_array(fs->win, 512);
         if (check_fs(fsd) < 0) {
             goto fail;
@@ -602,12 +607,12 @@ int fatfs_create(struct fnode *fno)
 
     struct fatfs_dir dj;
     char fbuf[12];
-    char *path = kalloc(128 * sizeof (char));
+    char *path = kalloc(MAXPATHLEN * sizeof (char));
 
     if (!fno || !fno->parent)
         return -1;
 
-    fno_fullpath(fno, path, 128);
+    fno_fullpath(fno, path, MAXPATHLEN);
 
     struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
 
@@ -684,7 +689,8 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
         mb_read(fsd, fs->win, 0, ((priv->sect + sect)), fs->bps);
 
         for (; r_len < fno->size && r_len < len && off < fs->bps; r_len++) {
-            memcpy(buf++, (fs->win + off++), 1);
+            //memcpy(buf++, (fs->win + off++), 1);
+            *(uint8_t *)buf++ = *(fs->win + off++);
         }
         fno->off += off;
         off = 0;
@@ -738,6 +744,7 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
         mb_read(fsd, fs->win, 0, (priv->sect + sect), fs->bps);
 
         for (; w_len < len && off < fs->bps; w_len++) {
+            //*(fs->win + off++) = *(uint8_t *)buf++;
             memcpy((fs->win + off++), (buf++), 1);
         }
         mb_write(fsd, fs->win, 0, (priv->sect + sect), fs->bps);
