@@ -21,6 +21,8 @@
  *
  *      Copyright (C) 2016, Insane Adding Machines
  *
+ *      Authors: brabo
+ *
  */
 
 #include <stdint.h>
@@ -35,12 +37,42 @@ struct fatfs_disk {
     struct fatfs *fs;
 };
 
+typedef uint32_t fatfs_cluster;
+
 struct fatfs_priv {
-    int cluster;
-    struct fatfs_disk *fsd;
+    fatfs_cluster       sclust;
+    fatfs_cluster       cclust;
+    uint32_t            sect;
+    uint32_t            off;
+    uint32_t            dirsect;
+    struct fatfs_disk   *fsd;
 };
 
-typedef uint32_t fatfs_cluster;
+struct fatfs {
+    int         fd;
+    uint8_t     win[512];
+    uint32_t    bsect;
+    uint8_t     type;
+    uint16_t    bps;
+    uint8_t     spc;
+    uint32_t    database;
+    uint32_t    fatbase;
+    uint32_t    dirbase;
+    uint32_t    n_fatent;
+    uint8_t     mounted;
+};
+
+struct fatfs_dir {
+    uint8_t     *fn;
+    uint32_t    sclust;
+    uint32_t    cclust;
+    uint32_t    sect;
+    uint32_t    off;
+    uint32_t    dirsect;
+    uint32_t    attr;
+    uint32_t    fsize;
+};
+
 #ifdef CONFIG_FAT32
 # define FATFS_FAT32	1	/* Enable FAT32 */
 #endif
@@ -59,727 +91,307 @@ typedef uint32_t fatfs_cluster;
 # define FATFS_FAT32_ONLY 0
 #define FATFS_FAT12	1
 
-#define	LD_WORD(ptr)		(uint16_t)(*(uint16_t *)(ptr))
-#define	LD_DWORD(ptr)		(uint32_t)(*(uint32_t *)(ptr))
-#define FATFS_CODE_PAGE (858)
+#define BS_JMPBOOT      0
+#define BPB_BPS         11
+#define BPB_SPC         13
+#define BPB_RSVD_SEC    14
+#define BPB_NUMFATS     16
+#define BPB_ROOTENTS    17
+#define BPB_TOTSEC16    19
+#define BPB_FATSz16     22
+#define BPB_TOTSEC32    32
+#define BPB_FATSz32     36
+#define BPB_ROOTCLUS    44
+#define BS_FSTYPE       54
+#define BS_FSTYPE32     82
+#define BS_MBR          446
+#define BS_55AA         510
 
-#define _USE_LCC	1	/* Allow lower case characters for path name */
+#define DIR_NAME        0
+#define DIR_ATTR        11
+#define DIR_SCLUST_HI   20
+#define DIR_SCLUST_LO   26
+#define DIR_FSIZE       28
 
+#define AM_DIR  0x10    /* Directory */
+
+#define FAT12   1
+#define FAT16   2
+#define FAT32   3
+#define EOC32   0x0FFFFFF8
+
+#define LD_WORD(ptr)        (uint16_t)(*(uint16_t *)(ptr))
+#define LD_DWORD(ptr)       (uint32_t)(*(uint32_t *)(ptr))
 
 /* Macro proxies for disk operations */
-#define disk_readp(f,b,s,o,l) f->blockdev->owner->ops.block_read(f->blockdev,b,s,o,l)
-#define disk_writep(f,b,s,o,l) f->blockdev->owner->ops.block_write(f->blockdev,b,s,o,l)
+#define mb_read(f,b,s,o,l) f->blockdev->owner->ops.block_read(f->blockdev,b,o,s,l)
+#define mb_write(f,b,s,o,l) f->blockdev->owner->ops.block_write(f->blockdev,b,o,s,l)
 
-
-/* File system object structure */
-
-struct fatfs {
-    uint8_t	fs_type;	/* FAT sub type */
-    uint8_t	flag;		/* File status flags */
-    uint8_t	csize;		/* Number of sectors per cluster */
-    uint8_t	pad1;
-    uint16_t	n_rootdir;	/* Number of root directory entries (0 on FAT32) */
-    fatfs_cluster n_fatent;	/* Number of FAT entries (= number of clusters + 2) */
-    uint32_t	fatbase;	/* FAT start sector */
-    uint32_t	dirbase;	/* Root directory start sector (Cluster# on FAT32) */
-    uint32_t	database;	/* Data start sector */
-    uint32_t	fptr;		/* File R/W pointer */
-    uint32_t	fsize;		/* File size */
-    fatfs_cluster	org_clust;	/* File start cluster */
-    fatfs_cluster	curr_clust;	/* File current cluster */
-    uint32_t	dsect;		/* File current data sector */
-};
-
-
-
-/* Directory object structure */
-
-struct fatfs_dir {
-    uint16_t	index;		/* Current read/write index number */
-    uint8_t*	fn;			/* Pointer to the SFN (in/out) {file[8],ext[3],status[1]} */
-    fatfs_cluster	sclust;		/* Table start cluster (0:Static table) */
-    fatfs_cluster	clust;		/* Current cluster */
-    uint32_t	sect;		/* Current sector */
-};
-
-
-
-/* File status structure */
-
-struct fatfs_finfo{
-    uint32_t	fsize;		/* File size */
-    uint16_t	fdate;		/* Last modified date */
-    uint16_t	ftime;		/* Last modified time */
-    uint8_t	fattrib;	/* Attribute */
-    char	fname[13];	/* File name */
-};
-
-
-
-/* File function return code (int) */
-
-#define FR_OK            0
-#define FR_DISK_ERR      1
-#define FR_NOT_READY     2
-#define FR_NO_FILE       3
-#define FR_NOT_OPENED    4
-#define FR_NOT_ENABLED   5
-#define FR_NO_FILESYSTEM 6
-
-/* File status flag (struct fatfs.flag) */
-
-#define	FA_OPENED	0x01
-#define	FA_WPRT		0x02
-#define	FA__WIP		0x40
-
-/* DISK status */
-#define STA_OK          0x00
-#define STA_NOINIT		0x01	/* Drive not initialized */
-#define STA_NODISK		0x02	/* No medium in the drive */
-
-/* FAT sub type (struct fatfs.fs_type) */
-
-#define FS_FAT12	1
-#define FS_FAT16	2
-#define FS_FAT32	3
-
-
-/* File attribute bits for directory entry */
-
-#define	AM_RDO	0x01	/* Read only */
-#define	AM_HID	0x02	/* Hidden */
-#define	AM_SYS	0x04	/* System */
-#define	AM_VOL	0x08	/* Volume label */
-#define AM_LFN	0x0F	/* LFN entry */
-#define AM_DIR	0x10	/* Directory */
-#define AM_ARC	0x20	/* Archive */
-#define AM_MASK	0x3F	/* Mask of defined bits */
-
-
-/*--------------------------------------------------------------------------
-
-  Module Private Definitions
-
-  ---------------------------------------------------------------------------*/
-
-#define ABORT(err)	{fs->flag = 0; return err;}
-
-
-
-/*---------------------------------------------------------------------------/
-  / Locale and Namespace Configurations
-  /---------------------------------------------------------------------------*/
-
-
-
-
-
-/*--------------------------------------------------------*/
-/* DBCS code ranges and SBCS extend char conversion table */
-/*--------------------------------------------------------*/
-
-#if FATFS_CODE_PAGE == 932	/* Japanese Shift-JIS */
-#define _DF1S	0x81	/* DBC 1st byte range 1 start */
-#define _DF1E	0x9F	/* DBC 1st byte range 1 end */
-#define _DF2S	0xE0	/* DBC 1st byte range 2 start */
-#define _DF2E	0xFC	/* DBC 1st byte range 2 end */
-#define _DS1S	0x40	/* DBC 2nd byte range 1 start */
-#define _DS1E	0x7E	/* DBC 2nd byte range 1 end */
-#define _DS2S	0x80	/* DBC 2nd byte range 2 start */
-#define _DS2E	0xFC	/* DBC 2nd byte range 2 end */
-
-#elif FATFS_CODE_PAGE == 936	/* Simplified Chinese GBK */
-#define _DF1S	0x81
-#define _DF1E	0xFE
-#define _DS1S	0x40
-#define _DS1E	0x7E
-#define _DS2S	0x80
-#define _DS2E	0xFE
-
-#elif FATFS_CODE_PAGE == 949	/* Korean */
-#define _DF1S	0x81
-#define _DF1E	0xFE
-#define _DS1S	0x41
-#define _DS1E	0x5A
-#define _DS2S	0x61
-#define _DS2E	0x7A
-#define _DS3S	0x81
-#define _DS3E	0xFE
-
-#elif FATFS_CODE_PAGE == 950	/* Traditional Chinese Big5 */
-#define _DF1S	0x81
-#define _DF1E	0xFE
-#define _DS1S	0x40
-#define _DS1E	0x7E
-#define _DS2S	0xA1
-#define _DS2E	0xFE
-
-#elif FATFS_CODE_PAGE == 437	/* U.S. (OEM) */
-#define _EXCVT {0x80,0x9A,0x90,0x41,0x8E,0x41,0x8F,0x80,0x45,0x45,0x45,0x49,0x49,0x49,0x8E,0x8F,0x90,0x92,0x92,0x4F,0x99,0x4F,0x55,0x55,0x59,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0x41,0x49,0x4F,0x55,0xA5,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0x21,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE4,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 720	/* Arabic (OEM) */
-#define _EXCVT {0x80,0x81,0x45,0x41,0x84,0x41,0x86,0x43,0x45,0x45,0x45,0x49,0x49,0x8D,0x8E,0x8F,0x90,0x92,0x92,0x93,0x94,0x95,0x49,0x49,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE4,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 737	/* Greek (OEM) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x92,0x92,0x93,0x94,0x95,0x96,0x97,0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87, \
-    0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0xAA,0x92,0x93,0x94,0x95,0x96,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0x97,0xEA,0xEB,0xEC,0xE4,0xED,0xEE,0xE7,0xE8,0xF1,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 775	/* Baltic (OEM) */
-#define _EXCVT {0x80,0x9A,0x91,0xA0,0x8E,0x95,0x8F,0x80,0xAD,0xED,0x8A,0x8A,0xA1,0x8D,0x8E,0x8F,0x90,0x92,0x92,0xE2,0x99,0x95,0x96,0x97,0x97,0x99,0x9A,0x9D,0x9C,0x9D,0x9E,0x9F, \
-    0xA0,0xA1,0xE0,0xA3,0xA3,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xB5,0xB6,0xB7,0xB8,0xBD,0xBE,0xC6,0xC7,0xA5,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE5,0xE5,0xE6,0xE3,0xE8,0xE8,0xEA,0xEA,0xEE,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 850	/* Multilingual Latin 1 (OEM) */
-#define _EXCVT {0x80,0x9A,0x90,0xB6,0x8E,0xB7,0x8F,0x80,0xD2,0xD3,0xD4,0xD8,0xD7,0xDE,0x8E,0x8F,0x90,0x92,0x92,0xE2,0x99,0xE3,0xEA,0xEB,0x59,0x99,0x9A,0x9D,0x9C,0x9D,0x9E,0x9F, \
-    0xB5,0xD6,0xE0,0xE9,0xA5,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0x21,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC7,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE5,0xE5,0xE6,0xE7,0xE7,0xE9,0xEA,0xEB,0xED,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 852	/* Latin 2 (OEM) */
-#define _EXCVT {0x80,0x9A,0x90,0xB6,0x8E,0xDE,0x8F,0x80,0x9D,0xD3,0x8A,0x8A,0xD7,0x8D,0x8E,0x8F,0x90,0x91,0x91,0xE2,0x99,0x95,0x95,0x97,0x97,0x99,0x9A,0x9B,0x9B,0x9D,0x9E,0x9F, \
-    0xB5,0xD6,0xE0,0xE9,0xA4,0xA4,0xA6,0xA6,0xA8,0xA8,0xAA,0x8D,0xAC,0xB8,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBD,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC6,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD1,0xD1,0xD2,0xD3,0xD2,0xD5,0xD6,0xD7,0xB7,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE3,0xD5,0xE6,0xE6,0xE8,0xE9,0xE8,0xEB,0xED,0xED,0xDD,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xEB,0xFC,0xFC,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 855	/* Cyrillic (OEM) */
-#define _EXCVT {0x81,0x81,0x83,0x83,0x85,0x85,0x87,0x87,0x89,0x89,0x8B,0x8B,0x8D,0x8D,0x8F,0x8F,0x91,0x91,0x93,0x93,0x95,0x95,0x97,0x97,0x99,0x99,0x9B,0x9B,0x9D,0x9D,0x9F,0x9F, \
-    0xA1,0xA1,0xA3,0xA3,0xA5,0xA5,0xA7,0xA7,0xA9,0xA9,0xAB,0xAB,0xAD,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB6,0xB6,0xB8,0xB8,0xB9,0xBA,0xBB,0xBC,0xBE,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC7,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD1,0xD1,0xD3,0xD3,0xD5,0xD5,0xD7,0xD7,0xDD,0xD9,0xDA,0xDB,0xDC,0xDD,0xE0,0xDF, \
-    0xE0,0xE2,0xE2,0xE4,0xE4,0xE6,0xE6,0xE8,0xE8,0xEA,0xEA,0xEC,0xEC,0xEE,0xEE,0xEF,0xF0,0xF2,0xF2,0xF4,0xF4,0xF6,0xF6,0xF8,0xF8,0xFA,0xFA,0xFC,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 857	/* Turkish (OEM) */
-#define _EXCVT {0x80,0x9A,0x90,0xB6,0x8E,0xB7,0x8F,0x80,0xD2,0xD3,0xD4,0xD8,0xD7,0x98,0x8E,0x8F,0x90,0x92,0x92,0xE2,0x99,0xE3,0xEA,0xEB,0x98,0x99,0x9A,0x9D,0x9C,0x9D,0x9E,0x9E, \
-    0xB5,0xD6,0xE0,0xE9,0xA5,0xA5,0xA6,0xA6,0xA8,0xA9,0xAA,0xAB,0xAC,0x21,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC7,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE5,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xDE,0x59,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 858	/* Multilingual Latin 1 + Euro (OEM) */
-#define _EXCVT {0x80,0x9A,0x90,0xB6,0x8E,0xB7,0x8F,0x80,0xD2,0xD3,0xD4,0xD8,0xD7,0xDE,0x8E,0x8F,0x90,0x92,0x92,0xE2,0x99,0xE3,0xEA,0xEB,0x59,0x99,0x9A,0x9D,0x9C,0x9D,0x9E,0x9F, \
-    0xB5,0xD6,0xE0,0xE9,0xA5,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0x21,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC7,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD1,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE5,0xE5,0xE6,0xE7,0xE7,0xE9,0xEA,0xEB,0xED,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 862	/* Hebrew (OEM) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0x41,0x49,0x4F,0x55,0xA5,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0x21,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE4,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 866	/* Russian (OEM) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0x90,0x91,0x92,0x93,0x9d,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F,0xF0,0xF0,0xF2,0xF2,0xF4,0xF4,0xF6,0xF6,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 874	/* Thai (OEM, Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE4,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 1250 /* Central Europe (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x8A,0x9B,0x8C,0x8D,0x8E,0x8F, \
-    0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xA3,0xB4,0xB5,0xB6,0xB7,0xB8,0xA5,0xAA,0xBB,0xBC,0xBD,0xBC,0xAF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xF7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xFF}
-
-#elif FATFS_CODE_PAGE == 1251 /* Cyrillic (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x82,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x80,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x8A,0x9B,0x8C,0x8D,0x8E,0x8F, \
-    0xA0,0xA2,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB2,0xA5,0xB5,0xB6,0xB7,0xA8,0xB9,0xAA,0xBB,0xA3,0xBD,0xBD,0xAF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF}
-
-#elif FATFS_CODE_PAGE == 1252 /* Latin 1 (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0xAd,0x9B,0x8C,0x9D,0xAE,0x9F, \
-    0xA0,0x21,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xF7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0x9F}
-
-#elif FATFS_CODE_PAGE == 1253 /* Greek (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xA2,0xB8,0xB9,0xBA, \
-    0xE0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xF2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xFB,0xBC,0xFD,0xBF,0xFF}
-
-#elif FATFS_CODE_PAGE == 1254 /* Turkish (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x8A,0x9B,0x8C,0x9D,0x9E,0x9F, \
-    0xA0,0x21,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xF7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0x9F}
-
-#elif FATFS_CODE_PAGE == 1255 /* Hebrew (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0xA0,0x21,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xE0,0xE1,0xE2,0xE3,0xE4,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 1256 /* Arabic (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x8C,0x9D,0x9E,0x9F, \
-    0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0x41,0xE1,0x41,0xE3,0xE4,0xE5,0xE6,0x43,0x45,0x45,0x45,0x45,0xEC,0xED,0x49,0x49,0xF0,0xF1,0xF2,0xF3,0x4F,0xF5,0xF6,0xF7,0xF8,0x55,0xFA,0x55,0x55,0xFD,0xFE,0xFF}
-
-#elif FATFS_CODE_PAGE == 1257 /* Baltic (Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F, \
-    0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xA8,0xB9,0xAA,0xBB,0xBC,0xBD,0xBE,0xAF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xF7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xFF}
-
-#elif FATFS_CODE_PAGE == 1258 /* Vietnam (OEM, Windows) */
-#define _EXCVT {0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0xAC,0x9D,0x9E,0x9F, \
-    0xA0,0x21,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF, \
-    0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xEC,0xCD,0xCE,0xCF,0xD0,0xD1,0xF2,0xD3,0xD4,0xD5,0xD6,0xF7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xFE,0x9F}
-
-#else
-#error Unknown code page.
-
-#endif
-
-
-
-/* Character code support macros */
-
-#define IsUpper(c)	(((c)>='A')&&((c)<='Z'))
-#define IsLower(c)	(((c)>='a')&&((c)<='z'))
-
-#ifndef _EXCVT	/* DBCS configuration */
-
-#ifdef _DF2S	/* Two 1st byte areas */
-#define IsDBCS1(c)	(((uint8_t)(c) >= _DF1S && (uint8_t)(c) <= _DF1E) || ((uint8_t)(c) >= _DF2S && (uint8_t)(c) <= _DF2E))
-#else			/* One 1st byte area */
-#define IsDBCS1(c)	((uint8_t)(c) >= _DF1S && (uint8_t)(c) <= _DF1E)
-#endif
-
-#ifdef _DS3S	/* Three 2nd byte areas */
-#define IsDBCS2(c)	(((uint8_t)(c) >= _DS1S && (uint8_t)(c) <= _DS1E) || ((uint8_t)(c) >= _DS2S && (uint8_t)(c) <= _DS2E) || ((uint8_t)(c) >= _DS3S && (uint8_t)(c) <= _DS3E))
-#else			/* Two 2nd byte areas */
-#define IsDBCS2(c)	(((uint8_t)(c) >= _DS1S && (uint8_t)(c) <= _DS1E) || ((uint8_t)(c) >= _DS2S && (uint8_t)(c) <= _DS2E))
-#endif
-
-#else			/* SBCS configuration */
-
-#define IsDBCS1(c)	0
-#define IsDBCS2(c)	0
-
-#endif /* _EXCVT */
-
-
-/* FatFs refers the members in the FAT structures with byte offset instead
-   / of structure member because there are incompatibility of the packing option
-   / between various compilers. */
-
-#define BS_jmpBoot			0
-#define BS_OEMName			3
-#define BPB_BytsPerSec		11
-#define BPB_SecPerClus		13
-#define BPB_RsvdSecCnt		14
-#define BPB_NumFATs			16
-#define BPB_RootEntCnt		17
-#define BPB_TotSec16		19
-#define BPB_Media			21
-#define BPB_FATSz16			22
-#define BPB_SecPerTrk		24
-#define BPB_NumHeads		26
-#define BPB_HiddSec			28
-#define BPB_TotSec32		32
-#define BS_55AA				510
-
-#define BS_DrvNum			36
-#define BS_BootSig			38
-#define BS_VolID			39
-#define BS_VolLab			43
-#define BS_FilSysType		54
-
-#define BPB_FATSz32			36
-#define BPB_ExtFlags		40
-#define BPB_FSVer			42
-#define BPB_RootClus		44
-#define BPB_FSInfo			48
-#define BPB_BkBootSec		50
-#define BS_DrvNum32			64
-#define BS_BootSig32		66
-#define BS_VolID32			67
-#define BS_VolLab32			71
-#define BS_FilSysType32		82
-
-#define MBR_Table			446
-
-#define	DIR_Name			0
-#define	DIR_Attr			11
-#define	DIR_NTres			12
-#define	DIR_CrtTime			14
-#define	DIR_CrtDate			16
-#define	DIR_FstClusHI		20
-#define	DIR_WrtTime			22
-#define	DIR_WrtDate			24
-#define	DIR_FstClusLO		26
-#define	DIR_FileSize		28
-
-
-/*-----------------------------------------------------------------------*/
-/* FAT access - Read value of a FAT entry                                */
-/*-----------------------------------------------------------------------*/
-	/* 1:IO error, Else:Cluster status */
-static
-fatfs_cluster get_fat (struct fatfs_disk *f, fatfs_cluster clst)
+static void st_word(uint8_t *ptr, uint16_t val)  /* Store a 2-byte word in little-endian */
 {
-    uint8_t buf[4];
-    struct fatfs *fs = f->fs;
+    *ptr++ = (uint8_t)val; val >>= 8;
+    *ptr++ = (uint8_t)val;
+}
 
-    if (clst < 2 || clst >= fs->n_fatent)	/* Range check */
-        return 1;
+static void st_dword(uint8_t *ptr, uint32_t val)    /* Store a 4-byte word in little-endian */
+{
+    *ptr++ = (uint8_t)val; val >>= 8;
+    *ptr++ = (uint8_t)val; val >>= 8;
+    *ptr++ = (uint8_t)val; val >>= 8;
+    *ptr++ = (uint8_t)val;
+}
 
-    switch (fs->fs_type) {
-#if FATFS_FAT12
-        case FS_FAT12 : {
-                            unsigned int wc, bc, ofs;
-
-                            bc = (unsigned int)clst; bc += bc / 2;
-                            ofs = bc % 512; bc /= 512;
-                            if (ofs != 511) {
-                                if (disk_readp(f, buf, fs->fatbase + bc, ofs, 2)) break;
-                            } else {
-                                if (disk_readp(f, buf, fs->fatbase + bc, 511, 1)) break;
-                                if (disk_readp(f, buf+1, fs->fatbase + bc + 1, 0, 1)) break;
-                            }
-                            wc = LD_WORD(buf);
-                            return (clst & 1) ? (wc >> 4) : (wc & 0xFFF);
-                        }
-#endif
-#if FATFS_FAT16
-        case FS_FAT16 :
-                        if (disk_readp(f, buf, fs->fatbase + clst / 256, ((unsigned int)clst % 256) * 2, 2)) break;
-                        return LD_WORD(buf);
-#endif
-#if FATFS_FAT32
-        case FS_FAT32 :
-                        if (disk_readp(f, buf, fs->fatbase + clst / 128, ((unsigned int)clst % 128) * 4, 4)) break;
-                        return LD_DWORD(buf) & 0x0FFFFFFF;
-#endif
+static int check_fs(struct fatfs_disk *fsd)
+{
+    struct fatfs *fs = fsd->fs;
+    if (LD_WORD(fs->win + BS_55AA) != 0xAA55) {
+        return -1;
     }
 
-    return 1;	/* An error occured at the disk I/O layer */
+    if (fs->win[BS_JMPBOOT] == 0xE9 || (fs->win[BS_JMPBOOT] == 0xEB && fs->win[BS_JMPBOOT + 2] == 0x90)) {
+
+        if ((LD_WORD(fs->win + BS_FSTYPE)) == 0x4146) return 0;   /* Check "FAT" string */
+        if ((LD_WORD(fs->win + BS_FSTYPE32) == 0x4146) && (LD_WORD(fs->win + BS_FSTYPE32 + 2) == 0x3354) && (*(fs->win + BS_FSTYPE32 + 4) == 0x32)) {
+            fs->type = FAT32;
+            return 0;            /* Check "FAT3" string */
+        }
+    }
+
+    return -2;
 }
 
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Get sector# from cluster# / Get cluster field from directory entry    */
-/*-----------------------------------------------------------------------*/
-/* !=0: Sector number, 0: Failed - invalid cluster# */
-
-static uint32_t clust2sect (struct fatfs_disk *f, fatfs_cluster clst)
+static int get_fat(struct fatfs_disk *fsd, int clust)
 {
-    struct fatfs *fs = f->fs;
-    clst -= 2;
-    if (clst >= (fs->n_fatent - 2)) return 0;		/* Invalid cluster# */
-    return (uint32_t)clst * fs->csize + fs->database;
+    struct fatfs *fs = fsd->fs;
+
+    if (clust < 2 || clust >= fs->n_fatent) { /* Range check */
+        return -1;
+    }
+
+    switch(fs->type) {
+    case FAT12:
+        break;
+    case FAT16:
+        if (mb_read(fsd, fs->win, 0, (fs->fatbase + (clust / (fs->bps / 2))), fs->bps)) break;
+        return LD_WORD(fs->win + (clust * 2));
+    case FAT32:
+        if (mb_read(fsd, fs->win, 0, (fs->fatbase + (clust / (fs->bps / 4))), fs->bps)) break;
+
+        return (LD_DWORD(fs->win + ((clust * 4) % fs->bps)) & 0x0FFFFFFF);
+    }
+    return -2;
 }
 
-
-    static
-fatfs_cluster get_clust ( struct fatfs_disk *f,
-        uint8_t* dir		/* Pointer to directory entry */
-        )
+static int set_fat(struct fatfs_disk *fsd, uint32_t clust, uint32_t val)
 {
-    struct fatfs *fs = f->fs;
-    fatfs_cluster clst = 0;
+    struct fatfs *fs = fsd->fs;
 
+    if (clust < 2 || clust >= fs->n_fatent) { /* Range check */
+        return -1;
+    }
 
-    if (FATFS_FAT32_ONLY || (FATFS_FAT32 && fs->fs_type == FS_FAT32)) {
-        clst = LD_WORD(dir+DIR_FstClusHI);
+    switch(fs->type) {
+    case FAT12:
+        break;
+    case FAT16:
+        //if (mb_read(fs->fd, fs->win, 0, (fs->fatbase + (clust / (fs->bps / 2))) * fs->bps, fs->bps)) break;
+        //return LD_WORD(fs->win + (clust * 2));
+        break;
+    case FAT32:
+        if (mb_read(fsd, fs->win, 0, (fs->fatbase + (clust / (fs->bps / 4))), fs->bps)) break;
+        st_dword((fs->win + ((clust * 4) % fs->bps)), (uint32_t)(val & 0x0FFFFFFF));
+        mb_write(fsd, fs->win, 0, (fs->fatbase + (clust / (fs->bps / 4))), fs->bps);
+        return 0;
+    }
+    return -2;
+}
+
+static int clust2sect(struct fatfs *fs, uint32_t clust)
+{
+    clust -= 2;
+    return ((clust * fs->spc + fs->database));
+}
+
+static int get_clust(struct fatfs *fs, uint8_t *dir)
+{
+    int clst = 0;
+
+    if (fs->type == FAT32) {
+        clst = LD_WORD(dir + DIR_SCLUST_HI);
         clst <<= 16;
     }
-    clst |= LD_WORD(dir+DIR_FstClusLO);
+    clst |= LD_WORD(dir + DIR_SCLUST_LO);
 
     return clst;
 }
 
-
-/*-----------------------------------------------------------------------*/
-/* Directory handling - Rewind directory index                           */
-/*-----------------------------------------------------------------------*/
-
-static
-int dir_rewind ( struct fatfs_disk *f,
-	struct fatfs_dir *dj			/* Pointer to directory object */
-)
+static int set_clust(struct fatfs *fs, uint8_t *dir, uint32_t clust)
 {
-	uint32_t clst;
-	struct fatfs *fs = f->fs;
+    if (fs->type == FAT32) {
+        st_word((dir + DIR_SCLUST_HI), (clust >> 16));
+    }
+    st_word((dir + DIR_SCLUST_LO), (clust & 0xFFFF));
 
-
-	dj->index = 0;
-	clst = dj->sclust;
-	if (clst == 1 || clst >= fs->n_fatent)	/* Check start cluster range */
-		return FR_DISK_ERR;
-	if (FATFS_FAT32 && !clst && (FATFS_FAT32_ONLY || fs->fs_type == FS_FAT32))	/* Replace cluster# 0 with root cluster# if in FAT32 */
-		clst = (uint32_t)fs->dirbase;
-	dj->clust = clst;						/* Current cluster */
-	dj->sect = (FATFS_FAT32_ONLY || clst) ? clust2sect(f, clst) : fs->dirbase;	/* Current sector */
-
-	return FR_OK;	/* Seek succeeded */
+    return 0;
 }
 
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Directory handling - Move directory index next                        */
-/*-----------------------------------------------------------------------*/
-
-static
-int dir_next (	struct fatfs_disk *f, /* FR_OK:Succeeded, FR_NO_FILE:End of table */
-	struct fatfs_dir *dj			/* Pointer to directory object */
-)
+static int walk_fat(struct fatfs_disk *fsd)
 {
-	uint32_t clst;
-	uint16_t i;
-	struct fatfs *fs = f->fs;
+    int fat;
+    int clust = 2;
+    while (2 > 1) {
+        fat = get_fat(fsd, clust);
+        if (!fat)
+            break;
+        clust++;
+    }
 
-
-	i = dj->index + 1;
-	if (!i || !dj->sect)	/* Report EOT when index has reached 65535 */
-		return FR_NO_FILE;
-
-	if (!(i % 16)) {		/* Sector changed? */
-		dj->sect++;			/* Next sector */
-
-		if (dj->clust == 0) {	/* Static table */
-			if (i >= fs->n_rootdir)	/* Report EOT when end of table */
-				return FR_NO_FILE;
-		}
-		else {					/* Dynamic table */
-			if (((i / 16) & (fs->csize - 1)) == 0) {	/* Cluster changed? */
-				clst = get_fat(f, dj->clust);		/* Get next cluster */
-				if (clst <= 1) return FR_DISK_ERR;
-				if (clst >= fs->n_fatent)		/* When it reached end of dynamic table */
-					return FR_NO_FILE;			/* Report EOT */
-				dj->clust = clst;				/* Initialize data for new cluster */
-				dj->sect = clust2sect(f, clst);
-			}
-		}
-	}
-
-	dj->index = i;
-
-	return FR_OK;
+    return clust;
 }
 
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Directory handling - Find an object in the directory                  */
-/*-----------------------------------------------------------------------*/
-
-static
-int dir_find ( struct fatfs_disk *f,
-	struct fatfs_dir *dj,		/* Pointer to the directory object linked to the file name */
-	uint8_t *dir		/* 32-byte working buffer */
-)
+static int init_fat(struct fatfs_disk *fsd)
 {
-	int res;
-	uint8_t c;
+    struct fatfs *fs = fsd->fs;
 
+    int clust = walk_fat(fsd);
 
-	res = dir_rewind(f, dj);			/* Rewind directory object */
-	if (res != FR_OK) return res;
+    st_dword((fs->win + ((clust * 4) % fs->bps)), 0x0FFFFFFF);
+    mb_write(fsd, fs->win, 0, (fs->fatbase + (clust / (fs->bps / 4))), fs->bps);
 
-	do {
-		res = disk_readp(f, dir, dj->sect, (dj->index % 16) * 32, 32)	/* Read an entry */
-			? FR_DISK_ERR : FR_OK;
-		if (res != FR_OK) break;
-		c = dir[DIR_Name];	/* First character */
-		if (c == 0) { res = FR_NO_FILE; break; }	/* Reached to end of table */
-		if (!(dir[DIR_Attr] & AM_VOL) && !memcmp(dir, dj->fn, 11)) /* Is it a valid entry? */
-			break;
-		res = dir_next(f, dj);					/* Next entry */
-	} while (res == FR_OK);
-
-	return res;
+    return clust;
 }
 
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Read an object from the directory                                     */
-/*-----------------------------------------------------------------------*/
-static
-int dir_read ( struct fatfs_disk *f,
-	struct fatfs_dir *dj,		/* Pointer to the directory object to store read object name */
-	uint8_t *dir		/* 32-byte working buffer */
-)
+static int dir_rewind(struct fatfs *fs, struct fatfs_dir *dj)
 {
-	int res;
-	uint8_t a, c;
+    if (dj->cclust == 1 || dj->cclust >= fs->n_fatent)
+        return -1;
 
+    if (!dj->cclust) {
+        dj->sect = fs->dirbase;
+    } else {
+        dj->sect = clust2sect(fs, dj->cclust);
+    }
 
-	res = FR_NO_FILE;
-	while (dj->sect) {
-		res = disk_readp(f, dir, dj->sect, (dj->index % 16) * 32, 32)	/* Read an entry */
-			? FR_DISK_ERR : FR_OK;
-		if (res != FR_OK) break;
-		c = dir[DIR_Name];
-		if (c == 0) { res = FR_NO_FILE; break; }	/* Reached to end of table */
-		a = dir[DIR_Attr] & AM_MASK;
-		if (c != 0xE5 && c != '.' && !(a & AM_VOL))	/* Is it a valid entry? */
-			break;
-		res = dir_next(f, dj);			/* Next entry */
-		if (res != FR_OK) break;
-	}
-
-	if (res != FR_OK) dj->sect = 0;
-
-	return res;
+    return 0;
 }
 
-
-
-/*-----------------------------------------------------------------------*/
-/* Pick a segment and create the object name in directory form           */
-/*-----------------------------------------------------------------------*/
-static
-int create_name (
-	struct fatfs_dir *dj,			/* Pointer to the directory object */
-	const char **path	/* Pointer to pointer to the segment in the path string */
-)
+static int dir_read(struct fatfs_disk *fsd, struct fatfs_dir *dj)
 {
-	char c, ni, si, i, *sfn;
-	const char *p;
-#if _USE_LCC
-#ifdef _EXCVT
-	static const char cvt[] = _EXCVT;
-#endif
-#endif
+    if (!fsd || !dj)
+        return -1;
 
-	/* Create file name in directory form */
-	sfn = dj->fn;
-	memset(sfn, ' ', 11);
-	si = i = 0; ni = 8;
-	p = *path;
-	for (;;) {
-		c = p[si++];
-		if (c <= ' ' || c == '/') break;	/* Break on end of segment */
-		if (c == '.' || i >= ni) {
-			if (ni != 8 || c != '.') break;
-			i = 8; ni = 11;
-			continue;
-		}
-#if _USE_LCC
-#ifdef _EXCVT
-		if (c >= 0x80)					/* To upper extended char (SBCS) */
-			c = cvt[c - 0x80];
-#endif
-		if (IsDBCS1(c) && i < ni - 1) {	/* DBC 1st byte? */
-			char d = p[si++];			/* Get 2nd byte */
-			sfn[i++] = c;
-			sfn[i++] = d;
-		} else
-#endif
-		{						/* Single byte code */
-			if (_USE_LCC && IsLower(c)) c -= 0x20;	/* toupper */
-			sfn[i++] = c;
-		}
-	}
-	*path = &p[si];						/* Rerurn pointer to the next segment */
+    struct fatfs *fs = fsd->fs;
 
-	sfn[11] = (c <= ' ') ? 1 : 0;		/* Set last segment flag if end of path */
+    if (dj->off == 512) {
+        dj->sect++;
+        dj->off = 0;
+    }
+    mb_read(fsd, fs->win, 0, (dj->sect), fs->bps);
 
-	return FR_OK;
+    /* have to check cluster borders! */
+    while (2 > 1) {
+        uint8_t *off = fs->win + dj->off;
+        if (!*off) /* Free FAT entry, no more FAT entries! */
+            return -2;
+        if (*(off + DIR_ATTR) & 0x0F) { /* LFN entry */
+            dj->off += 32;
+            continue;
+        } else {
+            int i;
+            for (i = 0; i < 8; i++) {   /* Copy file name body */
+                dj->fn[i] = off[i];
+                if (dj->fn[i] == ' ') break;
+            }
+            dj->fn[i] = 0x00;
+            dj->attr = *(off + DIR_ATTR);
+            dj->sclust = get_clust(fs, off);
+            dj->fsize = LD_DWORD(off + DIR_FSIZE);
+            dj->dirsect = dj->sect;
+            dj->off += 32;
+            break;
+        }
+    }
+
+    return 0;
 }
 
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Get file information from directory entry                             */
-/*-----------------------------------------------------------------------*/
-static
-void get_fileinfo (		/* No return code */
-	struct fatfs_dir *dj,			/* Pointer to the directory object */
-	char *dir,			/* 32-byte working buffer */
-	struct fatfs_finfo *fno	 	/* Pointer to store the file information */
-)
+static int dir_find(struct fatfs_disk *fsd, struct fatfs_dir *dj, char *path)
 {
-	char i, c;
-	char *p;
+    if (!fsd || !dj || !path)
+        return -1;
 
+    struct fatfs *fs = fsd->fs;
 
-	p = fno->fname;
-	if (dj->sect) {
-		for (i = 0; i < 8; i++) {	/* Copy file name body */
-			c = dir[i];
-			if (c == ' ') break;
-			if (c == 0x05) c = 0xE5;
-			*p++ = c;
-		}
-		if (dir[8] != ' ') {		/* Copy file name extension */
-			*p++ = '.';
-			for (i = 8; i < 11; i++) {
-				c = dir[i];
-				if (c == ' ') break;
-				*p++ = c;
-			}
-		}
-		fno->fattrib = dir[DIR_Attr];				/* Attribute */
-		fno->fsize = LD_DWORD(dir+DIR_FileSize);	/* Size */
-		fno->fdate = LD_WORD(dir+DIR_WrtDate);		/* Date */
-		fno->ftime = LD_WORD(dir+DIR_WrtTime);		/* Time */
-	}
-	*p = 0;
+    while (dir_read(fsd, dj) == 0) {
+        if (!strncmp(dj->fn, path, 11)) {
+            dj->off -= 32;
+            uint32_t fat = get_fat(fsd, dj->sclust);
+            dj->sect = clust2sect(fs, dj->sclust);
+            dj->cclust = dj->sclust;
+            dj->off = 0;
+            return 0;
+        }
+    }
+
+    return -2;
 }
 
-
-
-/*-----------------------------------------------------------------------*/
-/* Follow a file path                                                    */
-/*-----------------------------------------------------------------------*/
-
-static
-int follow_path (	struct fatfs_disk *f, /* FR_OK(0): successful, !=0: error code */
-	struct fatfs_dir *dj,			/* Directory object to return last directory and found object */
-	char *dir,			/* 32-byte working buffer */
-	const char *path	/* Full-path string to find a file or directory */
-)
+static int follow_path(struct fatfs_disk *fsd, struct fatfs_dir *dj, char *path)
 {
-	int res;
+    int res;
+
+    while (*path == ' ')
+        path++;
+
+    if (*path == '/')
+        path++;
+
+    dj->cclust = 0;
+
+    res = dir_rewind(fsd->fs, dj);
+    if (*path < ' ') {
+        dj->off = 0;
+        return res;
+    }
+
+    dj->off = 0;
+
+    do {
+        char tpath[12];
+        char *tpathp = tpath;
+
+        while ((*path != '/') && (*path != ' ') && (*path != 0x00)) {
+            *tpathp++ = *path++;
+
+        }
+        *tpathp = 0x00;
+        res = dir_find(fsd, dj, tpath);
+        if (*path == '/')
+            path++;
+    } while ((*path != ' ') && (*path != 0x00));
 
 
-	while (*path == ' ') path++;		/* Strip leading spaces */
-	if (*path == '/') path++;			/* Strip heading separator if exist */
-	dj->sclust = 0;						/* Set start directory (always root dir) */
+    return res;
+}
 
-	if (*path < ' ') {			        /* Null path means the root directory */
-		res = dir_rewind(f, dj);
-		dir[0] = 0;
-	} else {							/* Follow path */
-		for (;;) {
-			res = create_name(dj, &path);	/* Get a segment */
-			if (res != FR_OK) break;
-			res = dir_find(f, dj, dir);		/* Find it */
-			if (res != FR_OK) break;		/* Could not find the object */
-			if (dj->fn[11]) break;			/* Last segment match. Function completed. */
-			if (!(dir[DIR_Attr] & AM_DIR)) { /* Cannot follow path because it is a file */
-				res = FR_NO_FILE; break;
-			}
-			dj->sclust = get_clust(f, dir);	/* Follow next */
-		}
-	}
+static int add_dir(struct fatfs *fs, struct fatfs_dir *dj, char *name)
+{
+    int nlen = strlen(name);
+    if (nlen > 11)
+        return -1;
 
-	return res;
+    memset((fs->win + dj->off), 0, 0x20);
+    memset((fs->win + dj->off), ' ', 11);
+    int len = 0;
+    while (len < nlen) {
+        *(fs->win + dj->off + len) = name[len++];
+    }
+
+    *(fs->win + dj->off + DIR_ATTR) = 0x20;
+    st_dword((fs->win + dj->off + DIR_FSIZE), 0);
+    dj->dirsect = dj->sect;
+
+    return 0;
 }
 
 char *relative_path(struct fatfs_disk *f, char *abs)
@@ -789,98 +401,91 @@ char *relative_path(struct fatfs_disk *f, char *abs)
     return (abs + strlen(f->mountpoint->fname) + 1);
 }
 
-
 void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
 {
-    uint8_t fbuf[12];
-    uint8_t dirbuf[32];
+    char fbuf[12];
     struct fatfs_dir dj;
     struct fnode *parent;
     char fpath[128];
     int res;
 
     fno_fullpath(f->mountpoint, fpath, 128);
+
     if (path && strlen(path) > 0) {
         if (path[0] != '/')
             strcat(fpath, "/");
         strcat(fpath, path);
     }
+
     parent = fno_search(fpath);
+    parent->priv = (void *)kalloc(sizeof(struct fatfs_priv));
+    ((struct fatfs_priv *)parent->priv)->fsd = f;
     dj.fn = fbuf;
+
     if (clust > 0) {
-        dj.clust = clust;
+        dj.cclust = clust;
         dj.sclust = clust;
         res = 0;
     } else {
-        res = follow_path(f, &dj, dirbuf, path);
+        res = follow_path(f, &dj, path);
     }
 
     if (res == 0) {
-        dir_rewind(f, &dj);
-        while(dir_read(f, &dj, dirbuf) == 0) {
-            struct fatfs_finfo fi;
-            get_fileinfo(&dj, dirbuf, &fi);
-            if (dirbuf[DIR_Attr] & AM_DIR) {
+        dir_rewind(f->fs, &dj);
+        while(dir_read(f, &dj) == 0) {
+            if (dj.attr & AM_DIR) {
                 char fullpath[128];
                 strncpy(fullpath, fpath, 128);
                 struct fnode *newdir;
-                newdir = fno_mkdir(&mod_fatfs, fi.fname, parent);
+                newdir = fno_mkdir(&mod_fatfs, dj.fn, parent);
                 strcat(fullpath, "/");
-                strcat(fullpath, fi.fname);
+                strcat(fullpath, dj.fn);
                 if (newdir) {
-                    path = relative_path(f, fullpath);
-                    fatfs_populate(f, path, get_clust(f, dirbuf));
+                    newdir->priv = (void *)kalloc(sizeof(struct fatfs_priv));
+                    if (!newdir->priv) {
+                        fno_unlink(newdir);
+                    } else {
+                        ((struct fatfs_priv *)newdir->priv)->sclust = dj.sclust;
+                        ((struct fatfs_priv *)newdir->priv)->cclust = dj.cclust;
+                        ((struct fatfs_priv *)newdir->priv)->sect = dj.sect;
+                        ((struct fatfs_priv *)newdir->priv)->fsd = f;
+                        ((struct fatfs_priv *)newdir->priv)->off = dj.off - 32;
+                        ((struct fatfs_priv *)newdir->priv)->dirsect = dj.dirsect;
+                        newdir->size = dj.fsize;
+                        newdir->off = 0;
+                        //path = relative_path(f, fullpath);
+                        //fatfs_populate(f, path, get_clust(f->fs, (f->fs->win + (dj.off - 32))));
+                    }
                 }
             } else {
                 struct fnode *newfile;
-                newfile = fno_create(&mod_fatfs, fi.fname, parent);
+                newfile = fno_create(&mod_fatfs, dj.fn, parent);
                 if (newfile) {
                     newfile->priv = (void *)kalloc(sizeof(struct fatfs_priv));
                     if (!newfile->priv) {
                         fno_unlink(newfile);
                     } else {
-                        ((struct fatfs_priv *)newfile->priv)->cluster = get_clust(f, dirbuf);
+                        ((struct fatfs_priv *)newfile->priv)->sclust = dj.sclust;
+                        ((struct fatfs_priv *)newfile->priv)->cclust = dj.cclust;
+                        ((struct fatfs_priv *)newfile->priv)->sect = dj.sect;
                         ((struct fatfs_priv *)newfile->priv)->fsd = f;
-                        newfile->size = fi.fsize;
+                        ((struct fatfs_priv *)newfile->priv)->off = dj.off - 32;
+                        ((struct fatfs_priv *)newfile->priv)->dirsect = dj.dirsect;
+                        newfile->size = dj.fsize;
+                        newfile->off = 0;
 
                     }
                 }
             }
-            dir_next(f, &dj);
         }
     }
 }
-
-/*-----------------------------------------------------------------------*/
-/* Check a sector if it is an FAT boot record                            */
-/*-----------------------------------------------------------------------*/
-
-
-static int check_fs(struct fatfs_disk *f, uint8_t *buf, uint32_t sect)
-{
-    if (!f || !f->blockdev || !f->blockdev->owner->ops.block_read) {
-        return -1;
-    }
-    if (disk_readp(f, buf, sect, 510, 2) != 0)
-        return 3;
-
-    if (LD_WORD(buf) != 0xAA55)				/* Check record signature */
-        return 2;
-
-    if (!FATFS_FAT32_ONLY && !disk_readp(f, buf, sect, BS_FilSysType, 2) && LD_WORD(buf) == 0x4146)	/* Check FAT12/16 */
-        return 0;
-    if (FATFS_FAT32 && !disk_readp(f, buf, sect, BS_FilSysType32, 2) && LD_WORD(buf) == 0x4146)	/* Check FAT32 */
-        return 0;
-    return 1;
-}
-
 
 static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 {
     struct fnode *tgt_dir = NULL;
     struct fnode *src_dev = NULL;
-    uint8_t fmt, buf[36];
-    uint32_t bsect, fsize, tsect, mclst;
+
     struct fatfs_disk *fsd;
 
     /* Source must NOT be NULL */
@@ -921,66 +526,64 @@ static int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
         return -1;
     }
 
+    struct fatfs *fs = fsd->fs;
+    fs->mounted = 0;
+
     /* Associate the mount point */
     fsd->mountpoint = tgt_dir;
     tgt_dir->owner = &mod_fatfs;
+    fs->bsect = 0;
 
+    mb_read(fsd, fs->win, 0, (fs->bsect), 512);
 
-    /* Search FAT partition on the drive */
-    bsect = 0;
-    fmt = check_fs(fsd, buf, bsect);			/* Check sector 0 as an SFD format */
-    if (fmt == 1) {						/* Not an FAT boot record, it may be FDISK format */
-        /* Check a partition listed in top of the partition table */
-        if (disk_readp(fsd, buf, bsect, MBR_Table, 16)) {	/* 1st partition entry */
-            fmt = 3;
-        } else {
-            if (buf[4]) {					/* Is the partition existing? */
-                bsect = LD_DWORD(&buf[8]);	/* Partition offset in LBA */
-                fmt = check_fs(fsd, buf, bsect);	/* Check the partition */
-            }
+    if (check_fs(fsd) == -2) {
+        fs->bsect = LD_WORD(fs->win + BS_MBR + 8);
+        mb_read(fsd, fs->win, 0, (fs->bsect), 512);
+        //print_array(fs->win, 512);
+        if (check_fs(fsd) < 0) {
+            goto fail;
         }
     }
-    if (fmt != 0)
-        goto fail;
 
-    /* Initialize the file system object */
-    if (disk_readp(fsd, buf, bsect, 13, sizeof (buf))) return FR_DISK_ERR;
+    uint8_t num_fats = 0;
+    uint16_t root_ents = 0, rsvd_sec = 0;
+    uint32_t root_secs = 0, fatsz = 0, totsec = 0, datasec = 0, nclusts = 0;
 
-    fsize = LD_WORD(buf+BPB_FATSz16-13);				/* Number of sectors per FAT */
-    if (!fsize) fsize = LD_DWORD(buf+BPB_FATSz32-13);
+    fs->bps = LD_WORD(fs->win + BPB_BPS);
+    fs->spc = fs->win[BPB_SPC];
 
-    fsize *= buf[BPB_NumFATs-13];						/* Number of sectors in FAT area */
-    fsd->fs->fatbase = bsect + LD_WORD(buf+BPB_RsvdSecCnt-13); /* FAT start sector (lba) */
-    fsd->fs->csize = buf[BPB_SecPerClus-13];					/* Number of sectors per cluster */
-    fsd->fs->n_rootdir = LD_WORD(buf+BPB_RootEntCnt-13);		/* Nmuber of root directory entries */
-    tsect = LD_WORD(buf+BPB_TotSec16-13);				/* Number of sectors on the file system */
-    if (!tsect) tsect = LD_DWORD(buf+BPB_TotSec32-13);
-    mclst = (tsect						/* Last cluster# + 1 */
-            - LD_WORD(buf+BPB_RsvdSecCnt-13) - fsize - fsd->fs->n_rootdir / 16
-            ) / fsd->fs->csize + 2;
-    fsd->fs->n_fatent = (fatfs_cluster)mclst;
+    root_ents = LD_WORD(fs->win + BPB_ROOTENTS);
+    root_secs = ((root_ents * 32) + (fs->bps -1)) / fs->bps;
+    fatsz = LD_WORD(fs->win + BPB_FATSz16);
+    if (!fatsz)
+        fatsz = LD_DWORD(fs->win + BPB_FATSz32);
 
-    fmt = 0;							/* Determine the FAT sub type */
-    if (FATFS_FAT12 && mclst < 0xFF7)
-        fmt = FS_FAT12;
-    if (FATFS_FAT16 && mclst >= 0xFF8 && mclst < 0xFFF7)
-        fmt = FS_FAT16;
-    if (FATFS_FAT32 && mclst >= 0xFFF7)
-        fmt = FS_FAT32;
-    if (!fmt)
-        goto fail;
-    fsd->fs->fs_type = fmt;
+    num_fats = fs->win[BPB_NUMFATS];
+    rsvd_sec = LD_WORD(fs->win + BPB_RSVD_SEC);
+    fs->database = rsvd_sec + (num_fats * fatsz) + root_secs;
+    fs->database += fs->bsect;
+    totsec = LD_WORD(fs->win + BPB_TOTSEC16);
+    if (!totsec)
+        totsec = LD_DWORD(fs->win + BPB_TOTSEC32);
+    datasec = totsec - (rsvd_sec + (num_fats * fatsz) + root_secs);
+    nclusts = datasec / fs->spc;
+    fs->fatbase = rsvd_sec + fs->bsect;
+    fs->dirbase = clust2sect(fs, LD_DWORD(fs->win + BPB_ROOTCLUS));
 
-    if (FATFS_FAT32_ONLY || (FATFS_FAT32 && fmt == FS_FAT32))
-        fsd->fs->dirbase = LD_DWORD(buf+(BPB_RootClus-13));	/* Root directory start cluster */
-    else
-        fsd->fs->dirbase = fsd->fs->fatbase + fsize;				/* Root directory start sector (lba) */
-    fsd->fs->database = fsd->fs->fatbase + fsize + fsd->fs->n_rootdir / 16;	/* Data start sector (lba) */
-    fsd->fs->flag = 0;
-    //kprintf("Mounted FAT filesystem, %d sectors per cluster, %d total sectors, dirbase: %p database: %p\r\n",
-    //        fsd->fs->csize, fsd->fs->n_fatent, fsd->fs->dirbase, fsd->fs->database);
-    //
+    // fat type determination
+
+    if (nclusts < 4085) {
+        fs->type = FAT12;
+    } else if (nclusts < 65525) {
+        fs->type = FAT16;
+    } else {
+        fs->type = FAT32;
+    }
+
+    fs->n_fatent = nclusts + 2;
+
     fatfs_populate(fsd, "", 0);
+    fs->mounted = 1;
     return 0;
 
 fail:
@@ -989,335 +592,184 @@ fail:
     return -1;
 }
 
+int fatfs_create(struct fnode *fno)
+{
+    if (!fno || !fno->parent || !fno->parent->priv)
+        return -1;
+
+    if (!((struct fatfs_priv *)fno->parent->priv)->fsd->fs->mounted)
+        return -2;
+
+    struct fatfs_dir dj;
+    char fbuf[12];
+    char *path = kalloc(128 * sizeof (char));
+
+    if (!fno || !fno->parent)
+        return -1;
+
+    fno_fullpath(fno, path, 128);
+
+    struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
+
+    if (!priv) {
+        priv = (void *)kalloc(sizeof (struct fatfs_priv));
+        priv->fsd = ((struct fatfs_priv *)fno->parent->priv)->fsd;
+    }
+
+    struct fatfs *fs = priv->fsd->fs;
+    struct fatfs_disk *fsd = priv->fsd;
+    fno->priv = priv;
+    dj.fn = fbuf;
+    dj.off = 0;
+
+    int ret = follow_path(fsd, &dj, path);
+
+    uint32_t clust = init_fat(fsd);
+
+    if (ret = dir_read(fsd, &dj) != -2)
+        return ret;
+
+    while ((*path != ' ') && (*path != 0x00))
+        path++;
+    while (*path != '/')
+        path--;
+    path++;
+
+    ret = add_dir(fs, &dj, path);
+    set_clust(fs, (fs->win + dj.off), clust);
+    mb_write(fsd, fs->win, 0, dj.sect, fs->bps);
+    priv->sclust = priv->cclust = clust;
+    priv->sect = clust2sect(fs, priv->cclust);
+    priv->off = dj.off;
+    fno->off = 0;
+    fno->size = 0;
+
+    return ret;
+}
+
 static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
-    struct fatfs_priv *priv;
-    uint32_t sect;
-    uint32_t r_len = 0;
-    uint32_t r_off = 0;
-
-
     if (!fno || !fno->priv)
         return -1;
-    priv = (struct fatfs_priv *)fno->priv;
+    struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
 
-    if (len + fno->off > fno->size)
-        len = fno->size - fno->off;
+    struct fatfs_disk *fsd = priv->fsd;
+    struct fatfs *fs = fsd->fs;
 
-    if (len == 0)
-        return -1;
+    int r_len = 0, sect = 0, off = 0, clust = 0, tmpclust = 0;
 
-    while (r_len < len) {
-        int r = len - r_len;
-        r_off = fno->off;
-        sect = clust2sect(priv->fsd, priv->cluster);
-        while (r_off >= 512) {
-            sect++;
-            r_off -= 512;
-        }
-        if (r + r_off > 512) {
-            r = 512 - r_off;
-        }
-        if (disk_readp(priv->fsd, buf + r_len, sect, r_off, r) != 0)
-            break;
-        r_len += r;
-        fno->off += r;
+    /* calculate where to put sect and off! */
+    off = fno->off;
+    while (off >= fs->bps) {
+        sect++;
+        off -= fs->bps;
     }
+
+    while (sect >= fs->spc) {
+        clust++;
+        sect -= fs->spc;
+    }
+
+    tmpclust = priv->sclust;
+    while(clust > 0) {
+        /* walk cluster chain until we have right cluster! */
+        tmpclust = get_fat(fsd, tmpclust);
+        clust--;
+    }
+
+    priv->cclust = tmpclust;
+    priv->sect = clust2sect(fs, priv->cclust);
+
+    while ((r_len < len) && (fno->off < fno->size)) {
+        mb_read(fsd, fs->win, 0, ((priv->sect + sect)), fs->bps);
+
+        for (; r_len < fno->size && r_len < len && off < fs->bps; r_len++) {
+            memcpy(buf++, (fs->win + off++), 1);
+        }
+        fno->off += off;
+        off = 0;
+        if ((r_len < len) && (off == fs->bps) && (fno->off < fno->size)) {
+            sect++;
+            if ((sect + 1) > fs->spc) {
+                priv->cclust = get_fat(fsd, priv->cclust);
+                priv->sect = clust2sect(fs, priv->cclust);
+                sect = 0;
+            }
+        }
+    }
+
     return r_len;
 }
 
 static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
-    struct fatfs_priv *priv;
-    uint32_t sect;
-    uint32_t w_len = 0;
-    uint32_t w_off = 0;
-
-
     if (!fno || !fno->priv)
         return -1;
-    priv = (struct fatfs_priv *)fno->priv;
+    struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
 
-//    if (len + fno->off > fno->size)
-//        len = fno->size - fno->off;
+    struct fatfs_disk *fsd = priv->fsd;
+    struct fatfs *fs = fsd->fs;
 
-    if (len == 0)
-        return -1;
+    int w_len = 0, sect = 0, off = 0, clust = 0, tmpclust = 0;
+
+    /* calculate where to put sect and off! */
+    off = fno->off;
+    while (off >= fs->bps) {
+        sect++;
+        off -= fs->bps;
+    }
+
+    while (sect >= fs->spc) {
+        clust++;
+        sect -= fs->spc;
+    }
+
+    tmpclust = priv->sclust;
+    while(clust > 0) {
+        /* walk cluster chain until we have right cluster! */
+        tmpclust = get_fat(fsd, tmpclust);
+        clust--;
+    }
+
+    priv->cclust = tmpclust;
+    priv->sect = clust2sect(fs, priv->cclust);
 
     while (w_len < len) {
-        int w = len - w_len;
-        w_off = fno->off;
-        sect = clust2sect(priv->fsd, priv->cluster);
-        while (w_off >= 512) {
+        mb_read(fsd, fs->win, 0, (priv->sect + sect), fs->bps);
+
+        for (; w_len < len && off < fs->bps; w_len++) {
+            memcpy((fs->win + off++), (buf++), 1);
+        }
+        mb_write(fsd, fs->win, 0, (priv->sect + sect), fs->bps);
+        fno->off += off;
+        off = 0;
+        if ((w_len < len) && (off == fs->bps)) {
             sect++;
-            w_off -= 512;
+            if ((sect + 1) > fs->spc) {
+                uint32_t tempclus = priv->cclust;
+                priv->cclust = init_fat(fsd);
+                set_fat(fsd, tempclus, priv->cclust);
+                priv->sect = clust2sect(fs, priv->cclust);
+                sect = 0;
+            }
         }
-        if (w + w_off > 512) {
-            w = 512 - w_off;
-        }
-        if (disk_writep(priv->fsd, buf + w_len, sect, w_off, w) != 0)
-            break;
-        w_len += w;
-        fno->off += w;
     }
+
+    if (fno->off > fno->size) {
+        fno->size = fno->off;
+        mb_read(fsd, fs->win, 0, priv->dirsect, fs->bps);
+        st_dword((fs->win + priv->off + DIR_FSIZE), (uint32_t)fno->size);
+        mb_write(fsd, fs->win, 0, priv->dirsect, fs->bps);
+    }
+
     return w_len;
-}
-
-static int fatfs_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
-{
-    *revents = events;
-    return 1;
-}
-
-static int fatfs_seek(struct fnode *fno, int off, int whence)
-{
-    struct fatfs_fnode *mfno;
-    int new_off;
-    mfno = FNO_MOD_PRIV(fno, &mod_fatfs);
-    if (!mfno)
-        return -1;
-    switch(whence) {
-        case SEEK_CUR:
-            new_off = fno->off + off;
-            break;
-        case SEEK_SET:
-            new_off = off;
-            break;
-        case SEEK_END:
-            new_off = fno->size + off;
-            break;
-        default:
-            return -1;
-    }
-
-    if (new_off < 0)
-        new_off = 0;
-
-    if (new_off > fno->size) {
-        return -1;
-    }
-    fno->off = new_off;
-    return fno->off;
 }
 
 static int fatfs_close(struct fnode *fno)
 {
-    struct fatfs_fnode *mfno;
-    mfno = FNO_MOD_PRIV(fno, &mod_fatfs);
-    if (!mfno)
-        return -1;
     fno->off = 0;
     return 0;
 }
-
-
-#if 0
-
-/*-----------------------------------------------------------------------*/
-/* Open or Create a File                                                 */
-/*-----------------------------------------------------------------------*/
-
-static
-int fatfs_open (struct fatfs_disk *f,
-        const char *path	/* Pointer to the file name */
-        )
-{
-    int res;
-    struct fatfs_dir dj;
-    uint8_t sp[12], dir[32];
-    struct fatfs *fs = f->fs;
-
-
-    if (!fs) return FR_NOT_ENABLED;		/* Check file system */
-
-    fs->flag = 0;
-    dj.fn = sp;
-    res = follow_path(&dj, dir, path);	/* Follow the file path */
-    if (res != FR_OK) return res;		/* Follow failed */
-    if (!dir[0] || (dir[DIR_Attr] & AM_DIR))	/* It is a directory */
-        return FR_NO_FILE;
-
-    fs->org_clust = get_clust(f, dir);		/* File start cluster */
-    fs->fsize = LD_DWORD(dir+DIR_FileSize);	/* File size */
-    fs->fptr = 0;						/* File pointer */
-    fs->flag = FA_OPENED;
-
-    return FR_OK;
-}
-
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Read File                                                             */
-/*-----------------------------------------------------------------------*/
-
-static
-int fatfs_read ( struct fatfs_disk *f,
-        void* buff,		/* Pointer to the read buffer (NULL:Forward data to the stream)*/
-        unsigned int btr,		/* Number of bytes to read */
-        unsigned int* br		/* Pointer to number of bytes read */
-        )
-{
-    int dr;
-    fatfs_cluster clst;
-    uint32_t sect, remain;
-    unsigned int rcnt;
-    uint8_t cs, *rbuff = buff;
-    struct fatfs *fs = f->fs;
-
-
-    *br = 0;
-    if (!fs) return FR_NOT_ENABLED;		/* Check file system */
-    if (!(fs->flag & FA_OPENED))		/* Check if opened */
-        return FR_NOT_OPENED;
-
-    remain = fs->fsize - fs->fptr;
-    if (btr > remain) btr = (unsigned int)remain;			/* Truncate btr by remaining bytes */
-
-    while (btr)	{									/* Repeat until all data transferred */
-        if ((fs->fptr % 512) == 0) {				/* On the sector boundary? */
-            cs = (uint8_t)(fs->fptr / 512 & (fs->csize - 1));	/* Sector offset in the cluster */
-            if (!cs) {								/* On the cluster boundary? */
-                if (fs->fptr == 0)					/* On the top of the file? */
-                    clst = fs->org_clust;
-                else
-                    clst = get_fat(fs->curr_clust);
-                if (clst <= 1) ABORT(FR_DISK_ERR);
-                fs->curr_clust = clst;				/* Update current cluster */
-            }
-            sect = clust2sect(f, fs->curr_clust);		/* Get current sector */
-            if (!sect) ABORT(FR_DISK_ERR);
-            fs->dsect = sect + cs;
-        }
-        rcnt = 512 - (unsigned int)fs->fptr % 512;			/* Get partial sector data from sector buffer */
-        if (rcnt > btr) rcnt = btr;
-        dr = disk_readp(!buff ? 0 : rbuff, fs->dsect, (unsigned int)fs->fptr % 512, rcnt);
-        if (dr) ABORT(FR_DISK_ERR);
-        fs->fptr += rcnt; rbuff += rcnt;			/* Update pointers and counters */
-        btr -= rcnt; *br += rcnt;
-    }
-
-    return FR_OK;
-}
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Write File                                                            */
-/*-----------------------------------------------------------------------*/
-static
-int fatfs_write (struct fatfs_disk *f,
-        const void* buff,	/* Pointer to the data to be written */
-        unsigned int btw,			/* Number of bytes to write (0:Finalize the current write operation) */
-        unsigned int* bw			/* Pointer to number of bytes written */
-        )
-{
-    fatfs_cluster clst;
-    uint32_t sect, remain;
-    const uint8_t *p = buff;
-    uint8_t cs;
-    unsigned int wcnt;
-    struct fatfs *fs = f->fs;
-
-
-    *bw = 0;
-    if (!fs) return FR_NOT_ENABLED;		/* Check file system */
-    if (!(fs->flag & FA_OPENED))		/* Check if opened */
-        return FR_NOT_OPENED;
-
-    if (!btw) {		/* Finalize request */
-        if ((fs->flag & FA__WIP) && disk_writep(0, 0)) ABORT(FR_DISK_ERR);
-        fs->flag &= ~FA__WIP;
-        return FR_OK;
-    } else {		/* Write data request */
-        if (!(fs->flag & FA__WIP))		/* Round-down fptr to the sector boundary */
-            fs->fptr &= 0xFFFFFE00;
-    }
-    remain = fs->fsize - fs->fptr;
-    if (btw > remain) btw = (unsigned int)remain;			/* Truncate btw by remaining bytes */
-
-    while (btw)	{									/* Repeat until all data transferred */
-        if ((unsigned int)fs->fptr % 512 == 0) {			/* On the sector boundary? */
-            cs = (uint8_t)(fs->fptr / 512 & (fs->csize - 1));	/* Sector offset in the cluster */
-            if (!cs) {								/* On the cluster boundary? */
-                if (fs->fptr == 0)					/* On the top of the file? */
-                    clst = fs->org_clust;
-                else
-                    clst = get_fat(fs->curr_clust);
-                if (clst <= 1) ABORT(FR_DISK_ERR);
-                fs->curr_clust = clst;				/* Update current cluster */
-            }
-            sect = clust2sect(f, fs->curr_clust);		/* Get current sector */
-            if (!sect) ABORT(FR_DISK_ERR);
-            fs->dsect = sect + cs;
-            if (disk_writep(0, fs->dsect)) ABORT(FR_DISK_ERR);	/* Initiate a sector write operation */
-            fs->flag |= FA__WIP;
-        }
-        wcnt = 512 - (unsigned int)fs->fptr % 512;			/* Number of bytes to write to the sector */
-        if (wcnt > btw) wcnt = btw;
-        if (disk_writep(p, wcnt)) ABORT(FR_DISK_ERR);	/* Send data to the sector */
-        fs->fptr += wcnt; p += wcnt;				/* Update pointers and counters */
-        btw -= wcnt; *bw += wcnt;
-        if ((unsigned int)fs->fptr % 512 == 0) {
-            if (disk_writep(0, 0)) ABORT(FR_DISK_ERR);	/* Finalize the currtent secter write operation */
-            fs->flag &= ~FA__WIP;
-        }
-    }
-
-    return FR_OK;
-}
-
-
-
-/*-----------------------------------------------------------------------*/
-/* Seek File R/W Pointer                                                 */
-/*-----------------------------------------------------------------------*/
-
-static
-int fatfs_lseek (struct fatfs_disk *f,
-        uint32_t ofs		/* File pointer from top of file */
-        )
-{
-    fatfs_cluster clst;
-    uint32_t bcs, sect, ifptr;
-    struct fatfs *fs = f->fs;
-
-
-    if (!fs) return FR_NOT_ENABLED;		/* Check file system */
-    if (!(fs->flag & FA_OPENED))		/* Check if opened */
-        return FR_NOT_OPENED;
-
-    if (ofs > fs->fsize) ofs = fs->fsize;	/* Clip offset with the file size */
-    ifptr = fs->fptr;
-    fs->fptr = 0;
-    if (ofs > 0) {
-        bcs = (uint32_t)fs->csize * 512;	/* Cluster size (byte) */
-        if (ifptr > 0 &&
-                (ofs - 1) / bcs >= (ifptr - 1) / bcs) {	/* When seek to same or following cluster, */
-            fs->fptr = (ifptr - 1) & ~(bcs - 1);	/* start from the current cluster */
-            ofs -= fs->fptr;
-            clst = fs->curr_clust;
-        } else {							/* When seek to back cluster, */
-            clst = fs->org_clust;			/* start from the first cluster */
-            fs->curr_clust = clst;
-        }
-        while (ofs > bcs) {				/* Cluster following loop */
-            clst = get_fat(clst);		/* Follow cluster chain */
-            if (clst <= 1 || clst >= fs->n_fatent) ABORT(FR_DISK_ERR);
-            fs->curr_clust = clst;
-            fs->fptr += bcs;
-            ofs -= bcs;
-        }
-        fs->fptr += ofs;
-        sect = clust2sect(f, clst);		/* Current sector */
-        if (!sect) ABORT(FR_DISK_ERR);
-        fs->dsect = sect + (fs->fptr / 512 & (fs->csize - 1));
-    }
-
-    return FR_OK;
-}
-#endif
 
 int fatfs_init(void)
 {
@@ -1326,14 +778,14 @@ int fatfs_init(void)
 
     mod_fatfs.mount = fatfs_mount;
     mod_fatfs.ops.read = fatfs_read;
+    mod_fatfs.ops.close = fatfs_close;
+    mod_fatfs.ops.creat = fatfs_create;
     mod_fatfs.ops.write = fatfs_write;
-    mod_fatfs.ops.seek = fatfs_seek;
-    mod_fatfs.ops.poll = fatfs_poll;
+    //mod_fatfs.ops.seek = fatfs_seek;
+    //mod_fatfs.ops.poll = fatfs_poll;
 
     /*
-    mod_fatfs.ops.creat = fatfs_creat;
     mod_fatfs.ops.unlink = fatfs_unlink;
-    mod_fatfs.ops.close = fatfs_close;
     mod_fatfs.ops.exe = fatfs_exe;
     */
 
