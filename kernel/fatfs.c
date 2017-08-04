@@ -772,6 +772,37 @@ static int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     return w_len;
 }
 
+static int fatfs_seek(struct fnode *fno, int off, int whence)
+{
+    struct fatfs_fnode *mfno;
+    int new_off;
+    mfno = FNO_MOD_PRIV(fno, &mod_fatfs);
+    if (!mfno)
+        return -1;
+    switch(whence) {
+        case SEEK_CUR:
+            new_off = fno->off + off;
+            break;
+        case SEEK_SET:
+            new_off = off;
+            break;
+        case SEEK_END:
+            new_off = fno->size + off;
+            break;
+        default:
+            return -1;
+    }
+
+    if (new_off < 0)
+        new_off = 0;
+
+    if (new_off > fno->size) {
+        return -1;
+    }
+    fno->off = new_off;
+    return fno->off;
+}
+
 static int fatfs_close(struct fnode *fno)
 {
     fno->off = 0;
@@ -788,7 +819,7 @@ int fatfs_init(void)
     mod_fatfs.ops.close = fatfs_close;
     mod_fatfs.ops.creat = fatfs_create;
     mod_fatfs.ops.write = fatfs_write;
-    //mod_fatfs.ops.seek = fatfs_seek;
+    mod_fatfs.ops.seek = fatfs_seek;
     //mod_fatfs.ops.poll = fatfs_poll;
 
     /*
