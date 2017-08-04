@@ -399,14 +399,14 @@ static int add_dir(struct fatfs *fs, struct fatfs_dir *dj, char *name)
     return 0;
 }
 
-char *relative_path(struct fatfs_disk *f, char *abs)
+static char *relative_path(struct fatfs_disk *f, char *abs)
 {
     if (!abs)
         return NULL;
     return (abs + strlen(f->mountpoint->fname) + 1);
 }
 
-void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
+static void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
 {
     char fbuf[12];
     struct fatfs_dir dj;
@@ -597,7 +597,7 @@ fail:
     return -1;
 }
 
-int fatfs_create(struct fnode *fno)
+static int fatfs_create(struct fnode *fno)
 {
     if (!fno || !fno->parent || !fno->parent->priv)
         return -1;
