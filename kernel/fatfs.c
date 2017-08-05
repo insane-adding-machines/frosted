@@ -303,11 +303,23 @@ static int dir_read(struct fatfs_disk *fsd, struct fatfs_dir *dj)
             continue;
         } else {
             int i;
+            char *p = dj->fn;
+            memset(dj->fn, 0x00, 13);
+            char c;
             for (i = 0; i < 8; i++) {   /* Copy file name body */
-                dj->fn[i] = off[i];
-                if (dj->fn[i] == ' ') break;
+                c = off[i];
+                if (c == ' ') break;
+                if (c == 0x05) c = 0xE5;
+                *p++ = c;
             }
-            dj->fn[i] = 0x00;
+            if (off[8] != ' ') {        /* Copy file name extension */
+                *p++ = '.';
+                for (i = 8; i < 11; i++) {
+                    c = off[i];
+                    if (c == ' ') break;
+                    *p++ = c;
+                }
+            }
             dj->attr = *(off + DIR_ATTR);
             dj->sclust = get_clust(fs, off);
             dj->fsize = LD_DWORD(off + DIR_FSIZE);
@@ -382,7 +394,7 @@ static int follow_path(struct fatfs_disk *fsd, struct fatfs_dir *dj, char *path)
 static int add_dir(struct fatfs *fs, struct fatfs_dir *dj, char *name)
 {
     int nlen = strlen(name);
-    if (nlen > 11)
+    if (nlen > 12)
         return -1;
 
     memset((fs->win + dj->off), 0, 0x20);
@@ -408,7 +420,7 @@ static char *relative_path(struct fatfs_disk *f, char *abs)
 
 static void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
 {
-    char fbuf[12];
+    char fbuf[13];
     struct fatfs_dir dj;
     struct fnode *parent;
     char fpath[MAXPATHLEN];
