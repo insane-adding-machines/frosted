@@ -30,6 +30,7 @@
 
 #include "sys/user.h"
 
+
 #define __inl inline
 #define __naked __attribute__((naked))
 
@@ -2810,6 +2811,8 @@ int task_ptr_valid(const void *ptr)
     return -1;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
 struct extra_stack_frame *stored_extra = NULL;
@@ -2843,13 +2846,6 @@ sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
 
     save_task_context();
     asm volatile("mrs %0, " PSP "" : "=r"(_top_stack));
-
-    /* save current context on current stack */
-    /*
-       copied_extra = (struct extra_stack_frame *)_top_stack - EXTRA_FRAME_SIZE;
-       stored_extra = (struct extra_stack_frame *)_top_stack + NVIC_FRAME_SIZE;
-       memcpy(copied_extra, stored_extra, EXTRA_FRAME_SIZE);
-       */
 
     /* save current SP to TCB */
     _cur_task->tb.sp = _top_stack;
@@ -2925,3 +2921,5 @@ return_from_syscall:
     /* return (function is naked) */
     asm volatile("bx lr");
 }
+
+#pragma GCC pop_options
