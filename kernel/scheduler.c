@@ -1998,6 +1998,9 @@ static __inl void task_switch(void)
     _cur_task = t;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 /* C ABI cannot mess with the stack, we will */
 void __naked pend_sv_handler(void)
 {
@@ -2067,6 +2070,8 @@ void __naked pend_sv_handler(void)
     /* return (function is naked) */
     asm volatile("bx lr          \n");
 }
+#pragma GCC pop_options
+
 
 void kernel_task_init(void)
 {
@@ -2817,6 +2822,7 @@ static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
 struct extra_stack_frame *stored_extra = NULL;
 struct extra_stack_frame *copied_extra = NULL;
+
 
 int __attribute__((naked))
 sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
