@@ -18,12 +18,6 @@
  *
  */  
 
-#ifndef likely
-#   define likely(co) __builtin_expect((co),1)
-#endif
-
-
-
 
 /* 
  * memset implementation
@@ -31,7 +25,6 @@
  */
 
 #include <stddef.h>
-#include <stdint.h>
 
 void * memset(void *s, int c, size_t n)
 {
@@ -156,51 +149,15 @@ int strncmp(const char *s1, const char *s2, size_t n)
  * memcpy implementation
  *
  */
-
-static void *mmcpy_nonaligned(void *dst, const void *src, uint32_t size)
+void *memcpy(void *dst, const void *src, size_t n)
 {
-    const char *s = src;
-    char *d = dst;
-    while (size > 0) {
-        *d = *s;
-        d++;
-        s++;
-        size--;
+    int i;
+    const char *s = (const char *)src;
+    char *d = (char *)dst;
+    for (i = 0; i < n; i++) {
+        d[i] = s[i];
     }
     return dst;
-}
-
-void *memcpy(void *dst, const void *src, size_t size) {
-    void *stored_dst = dst;
-    const char *s = src;
-    char *d = dst;
-    uint32_t us = (uint32_t)s;
-    uint32_t ud = (uint32_t)d;
-
-    if ((us & 0x03) != (ud & 0x03)) {
-        return mmcpy_nonaligned(d,s, size);
-    }
-
-    while (size > 0) {
-        if (likely(((us & 0x03) == 0) && (size >= 4))) {
-            const uint32_t *ps = src;
-            uint32_t *pd = dst;
-            *pd = *ps;
-            size -= 4;
-            us += 4;
-            ud += 4;
-        } else {
-            *d = *s;
-            size--;
-            us++;
-            ud++;
-        }
-        src = (void *)us;
-        dst = (void *)ud;
-        s = src;
-        d = dst;
-    }
-    return stored_dst;
 }
 
 /* 
