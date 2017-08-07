@@ -699,13 +699,27 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
 
     while ((r_len < len) && (fno->off < fno->size)) {
         mb_read(fsd, fs->win, 0, ((priv->sect + sect)), fs->bps);
+        int r = len - r_len;
+        int tmp;
+        if (r > 512)
+            tmp = 512;
+        else
+            tmp = r;
 
-        for (; r_len < fno->size && r_len < len && off < fs->bps; r_len++) {
-            //memcpy(buf++, (fs->win + off++), 1);
-            *(uint8_t *)buf++ = *(fs->win + off++);
-        }
-        fno->off += off;
-        off = 0;
+        if ((tmp == 512) && off > 0)
+            tmp -= off;
+
+        //for (; r_len < fno->size && r_len < len && off < fs->bps; r_len++) {
+            if (fno->off + tmp > fno->size)
+                tmp = fno->size - fno->off;
+            memcpy(buf, (fs->win + off), tmp);
+            buf += tmp;
+            r_len += tmp;
+            //off += tmp;
+            //*(uint8_t *)buf++ = *(fs->win + off++);
+        //}
+        fno->off += tmp;
+        off += tmp;
         if ((r_len < len) && (off == fs->bps) && (fno->off < fno->size)) {
             sect++;
             if ((sect + 1) > fs->spc) {
@@ -714,6 +728,7 @@ static int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
                 sect = 0;
             }
         }
+        off = 0;
     }
 
     return r_len;
