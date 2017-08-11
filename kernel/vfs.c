@@ -37,7 +37,7 @@ static struct fnode FNO_ROOT = {
 static void basename_r(const char *path, char *res)
 {
     char *p;
-    strncpy(res, path, strlen(path));
+    strncpy(res, path, strlen(path) + 1);
     p = res + strlen(res) - 1;
     while (p >= res) {
         if (*p == '/') {
@@ -200,19 +200,17 @@ int vfs_symlink(char *file, char *link)
 
 static void mkdir_links(struct fnode *fno)
 {
-    char path[MAX_FILE], selfl[MAX_FILE], parentl[MAX_FILE];
+    char path[MAX_FILE], selfl[MAX_FILE], parentl[MAX_FILE], path_basename[MAX_FILE];
     fno_fullpath(fno, path, MAX_FILE -4);
     strcpy(selfl, path);
     strcpy(parentl, path);
-    strcat( selfl, "/." );
-    strcat( parentl, "/.." );
+    strcat(selfl, "/.");
+    strcat(parentl, "/..");
     if (fno) {
-        fno_link( path, selfl );
-        basename_r(path, path);
-        fno_link( path, parentl);
+        fno_link(path, selfl);
+        basename_r(path, path_basename);
+        fno_link(path_basename, parentl);
     }
-
-
 }
 
 static struct fnode *fno_create_dir(char *path, uint32_t flags)
