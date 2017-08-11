@@ -183,7 +183,7 @@ static int get_fat(struct fatfs_disk *fsd, int clust)
     case FAT32:
         if (disk_read(fsd, fs->win, (fs->fatbase + (clust / (fs->bps / 4))), 0, fs->bps) < 0) break;
 
-        return (LD_DWORD(fs->win + ((clust * 4) % fs->bps)) & 0x0FFFFFFF);
+        return (LD_DWORD(fs->win + ((clust * 4) & (fs->bps - 1))) & 0x0FFFFFFF);
     }
     return -2;
 }
@@ -205,7 +205,7 @@ static int set_fat(struct fatfs_disk *fsd, uint32_t clust, uint32_t val)
         break;
     case FAT32:
         if (disk_read(fsd, fs->win, (fs->fatbase + (clust / (fs->bps / 4))), 0, fs->bps) < 0) break;
-        st_dword((fs->win + ((clust * 4) % fs->bps)), (uint32_t)(val & 0x0FFFFFFF));
+        st_dword((fs->win + ((clust * 4) & (fs->bps - 1))), (uint32_t)(val & 0x0FFFFFFF));
         disk_write(fsd, fs->win, (fs->fatbase + (clust / (fs->bps / 4))), 0, fs->bps);
         return 0;
     }
@@ -262,7 +262,7 @@ static int init_fat(struct fatfs_disk *fsd)
 
     int clust = walk_fat(fsd);
 
-    st_dword((fs->win + ((clust * 4) % fs->bps)), 0x0FFFFFFF);
+    st_dword((fs->win + ((clust * 4) & (fs->bps - 1))), 0x0FFFFFFF);
     disk_write(fsd, fs->win, (fs->fatbase + (clust / (fs->bps / 4))), 0, fs->bps);
 
     return clust;
@@ -432,7 +432,7 @@ static void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
 
         int i = 0;
         uint32_t nclust = newdir->size / (f->fs->spc * f->fs->bps);
-        priv->fat = kcalloc(sizeof (uint32_t), nclust + 2);
+        priv->fat = kcalloc(sizeof (uint32_t), nclust + 3);
         uint32_t tmpclust = priv->sclust;
         priv->fat[i++] = tmpclust;
         while (nclust > 0) {
@@ -637,9 +637,9 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     /* calculate where to put sect and off! */
     off = fno->off;
     sect = off / fs->bps;
-    off = off % fs->bps;
+    off = off & (fs->bps - 1);
     clust = sect / fs->spc;
-    sect = sect % fs->spc;
+    sect = sect & (fs->spc - 1);
 
     /* walk cluster chain until we have right cluster! */
     priv->cclust = priv->fat[clust];
