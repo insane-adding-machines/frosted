@@ -129,6 +129,8 @@ struct fatfs_dir {
 #define LD_WORD(ptr)        (uint16_t)(*(uint16_t *)(ptr))
 #define LD_DWORD(ptr)       (uint32_t)(*(uint32_t *)(ptr))
 
+#define CLUST2SECT(f, c) (((c - 2) * f->spc + f->database))
+
 static void st_word(uint8_t *ptr, uint16_t val)  /* Store a 2-byte word in little-endian */
 {
     *ptr++ = (uint8_t)val;
@@ -212,12 +214,6 @@ static int set_fat(struct fatfs_disk *fsd, uint32_t clust, uint32_t val)
     return -2;
 }
 
-static int clust2sect(struct fatfs *fs, uint32_t clust)
-{
-    clust -= 2;
-    return ((clust * fs->spc + fs->database));
-}
-
 static int get_clust(struct fatfs *fs, uint8_t *dir)
 {
     int clst = 0;
@@ -276,7 +272,7 @@ static int dir_rewind(struct fatfs *fs, struct fatfs_dir *dj)
     if (!dj->cclust)
         dj->sect = fs->dirbase;
     else
-        dj->sect = clust2sect(fs, dj->cclust);
+        dj->sect = CLUST2SECT(fs, dj->cclust);
 
     dj->off = 0;
 
@@ -432,7 +428,7 @@ static void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
 
         int i = 0;
         uint32_t nclust = newdir->size / (f->fs->spc * f->fs->bps);
-        priv->fat = kcalloc(sizeof (uint32_t), nclust + 3);
+        priv->fat = kcalloc(sizeof (uint32_t), nclust + 2);
         uint32_t tmpclust = priv->sclust;
         priv->fat[i++] = tmpclust;
         while (nclust > 0) {
@@ -543,7 +539,7 @@ int fatfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
     datasec = totsec - (rsvd_sec + (num_fats * fatsz) + root_secs);
     nclusts = datasec / fs->spc;
     fs->fatbase = rsvd_sec + fs->bsect;
-    fs->dirbase = clust2sect(fs, LD_DWORD(fs->win + BPB_ROOTCLUS));
+    fs->dirbase = CLUST2SECT(fs, LD_DWORD(fs->win + BPB_ROOTCLUS));
 
     /* FAT type determination */
     if (nclusts < 4085)
@@ -567,6 +563,76 @@ fail:
     return -1;
 }
 
+int fatfs_open(char *path, uint32_t flags)
+{
+    struct fnode *fno;
+    fno = fno_search(path);
+    if (!fno)
+        return -1;
+
+    fno->off = 0;
+
+    return 0;
+}
+
+static int dir_find(struct fatfs_disk *fsd, struct fatfs_dir *dj, char *path)
+{
+    if (!fsd || !dj || !path)
+        return -1;
+
+    while (dir_read(fsd, dj) == 0) {
+        if (!strncmp(dj->fn, path, 12)) {
+            dj->off -= 32;
+            uint32_t fat = get_fat(fsd, dj->sclust);
+            dj->sect = CLUST2SECT(fsd->fs, dj->sclust);
+            dj->cclust = dj->sclust;
+            return 0;
+        }
+    }
+
+    return -2;
+}
+
+static int follow_path(struct fatfs_disk *fsd, struct fatfs_dir *dj, char *path)
+{
+    int res;
+
+    if (!strncmp(path, "/mnt", 4))
+        path += 4;
+
+    while (*path == ' ')
+        path++;
+
+    if (*path == '/')
+        path++;
+
+    dj->cclust = 0;
+
+    res = dir_rewind(fsd->fs, dj);
+    if (*path < ' ') {
+        dj->off = 0;
+        return res;
+    }
+
+    dj->off = 0;
+
+    do {
+        char tpath[12];
+        char *tpathp = tpath;
+
+        while ((*path != '/') && (*path != ' ') && (*path != 0x00)) {
+            *tpathp++ = *path++;
+
+        }
+        *tpathp = 0x00;
+        res = dir_find(fsd, dj, tpath);
+        if (*path == '/')
+            path++;
+    } while ((*path != ' ') && (*path != 0x00));
+
+    return res;
+}
+
 int fatfs_create(struct fnode *fno)
 {
     if (!fno || !fno->parent || !fno->parent->priv)
@@ -576,7 +642,7 @@ int fatfs_create(struct fnode *fno)
         return -2;
 
     struct fatfs_dir dj;
-    char fbuf[12];
+    char fbuf[13];
     char *path = kalloc(MAXPATHLEN * sizeof (char));
 
     if (!fno || !fno->parent)
@@ -597,12 +663,8 @@ int fatfs_create(struct fnode *fno)
     dj.fn = fbuf;
     dj.off = 0;
 
-    int ret;// = follow_path(fsd, &dj, path);
-
     uint32_t clust = init_fat(fsd);
-
-    if (ret = dir_read(fsd, &dj) != -2)
-        return ret;
+    follow_path(fsd, &dj, path);
 
     while ((*path != ' ') && (*path != 0x00))
         path++;
@@ -610,17 +672,18 @@ int fatfs_create(struct fnode *fno)
         path--;
     path++;
 
-    ret = add_dir(fs, &dj, path);
+    int ret = add_dir(fs, &dj, path);
     set_clust(fs, (fs->win + dj.off), clust);
     disk_write(fsd, fs->win, dj.sect, 0, fs->bps);
 
     priv->sclust = priv->cclust = clust;
-    priv->sect = clust2sect(fs, priv->cclust);
+    priv->sect = CLUST2SECT(fs, priv->cclust);
     priv->off = dj.off;
     fno->off = 0;
     fno->size = 0;
+    priv->dirsect = dj.dirsect;
 
-    return ret;
+    return 0;
 }
 
 int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
@@ -641,14 +704,8 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     clust = sect / fs->spc;
     sect = sect & (fs->spc - 1);
 
-    /* walk cluster chain until we have right cluster! */
     priv->cclust = priv->fat[clust];
-    //while(clust > 0) {
-    //    priv->cclust = get_fat(fsd, priv->cclust);
-    //    clust--;
-    //}
-
-    priv->sect = clust2sect(fs, priv->cclust);
+    priv->sect = CLUST2SECT(fs, priv->cclust);
 
     while ((r_len < len) && (fno->off < fno->size)) {
         int r = len - r_len;
@@ -672,8 +729,7 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
             if ((sect + 1) > fs->spc) {
                 clust++;
                 priv->cclust = priv->fat[clust];
-                //priv->cclust = get_fat(fsd, priv->cclust);
-                priv->sect = clust2sect(fs, priv->cclust);
+                priv->sect = CLUST2SECT(fs, priv->cclust);
                 sect = 0;
             }
         }
@@ -714,7 +770,7 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     }
 
     priv->cclust = tmpclust;
-    priv->sect = clust2sect(fs, priv->cclust);
+    priv->sect = CLUST2SECT(fs, priv->cclust);
 
     while (w_len < len) {
         disk_read(fsd, fs->win, (priv->sect + sect), 0, fs->bps);
@@ -732,7 +788,7 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
                 uint32_t tempclus = priv->cclust;
                 priv->cclust = init_fat(fsd);
                 set_fat(fsd, tempclus, priv->cclust);
-                priv->sect = clust2sect(fs, priv->cclust);
+                priv->sect = CLUST2SECT(fs, priv->cclust);
                 sect = 0;
             }
         }
