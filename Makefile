@@ -12,7 +12,7 @@ endif
 
 
 #kernel headers
-CFLAGS+=-Ikernel/frosted-headers/include -nostdlib 
+CFLAGS+=-Ikernel/frosted-headers/include -nostdlib
 
 #drivers headers
 CFLAGS+=-Ikernel/drivers
@@ -102,6 +102,9 @@ CFLAGS-$(DEVSPI)+=-DCONFIG_DEVSTM32F4SPI
 
 OBJS-$(DEVLIS3DSH)+= kernel/drivers/lis3dsh.o
 CFLAGS-$(DEVLIS3DSH)+=-DCONFIG_DEVLIS3DSH
+
+OBJS-$(DEVSPI_MMC)+= kernel/drivers/stm32_spi_mmc.o
+CFLAGS-$(DEVSPI_MMC)+=-DCONFIG_DEVSPI_MMC
 
 OBJS-$(DEVSTM32I2C)+= kernel/drivers/stm32_i2c.o
 CFLAGS-$(DEVSTM32I2C)+=-DCONFIG_DEVI2C
