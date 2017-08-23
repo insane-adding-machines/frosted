@@ -181,11 +181,16 @@ int spi_mmc_init(struct spi_mmc_config *conf)
     return 0;
 }
 
-
-
-
-
-
+/* We need to setup this pin as gpio for us similar to lis3dsh to (de)select the sd card
+        .pio_nss = {
+            .base=GPIOE,
+            .pin=GPIO4,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF5,
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
+        },
+*/
 
 
 
