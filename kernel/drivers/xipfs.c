@@ -17,7 +17,7 @@
  *      Authors:
  *
  */
- 
+
 #include "frosted.h"
 #include <string.h>
 #include "bflt.h"
@@ -26,12 +26,16 @@
 #include "vfs.h"
 #define GDB_PATH "frosted-userland/gdb/"
 
-static struct fnode *xipfs;
 static struct module mod_xipfs;
 
 struct xipfs_fnode {
     struct fnode *fnode;
     void (*init)(void *);
+};
+
+struct xipfs_mount_info {
+    uint8_t *source_ptr;
+    char *target_path;
 };
 
 
@@ -154,28 +158,57 @@ static int xip_add(const char *name, const void (*init), uint32_t size)
     return 0;
 }
 
-static int xipfs_parse_blob(const uint8_t *blob)
+static int xipfs_parse_blob(const uint8_t *blob, const char *path)
 {
-    const struct xipfs_fat *fat = (const struct xipfs_fat *)blob;
+    const struct xipfs_mount_info *mount_info = (const struct xipfs_mount_info *)blob;
+    const struct xipfs_fat *fat = (struct xipfs_fat *) mount_info->source_ptr;
     const struct xipfs_fhdr *f;
     int i, offset;
     if (!fat || fat->fs_magic != XIPFS_MAGIC)
         return -1;
 
+    char *full_path = NULL;
+    size_t len_path = 0;
+    size_t len_root = 0;
+    if (path) {
+        len_root = strlen(mount_info->target_path);
+        len_path = strlen(path);
+        full_path = (char *) kalloc(sizeof(char)* (len_path + 1));
+        strncpy(full_path, mount_info->target_path, len_root);
+        full_path[len_root] = '/';
+    }
     offset = sizeof(struct xipfs_fat);
     for (i = 0; i < fat->fs_files; i++) {
-        f = (const struct xipfs_fhdr *) (blob + offset);
+        f = (const struct xipfs_fhdr *) ((uint8_t *)fat + offset);
         if (f->magic != XIPFS_MAGIC)
             return -1;
-        xip_add(f->name, f->payload, f->len);
+        if (path) {
+            strncpy(full_path+len_root+1, f->name, (len_path - len_root) + 1);
+            if (strncmp(full_path, path, len_path + 1) == 0) {
+                xip_add(f->name, f->payload, f->len);
+                kfree(full_path);
+                return 0;
+            }
+        } else {
+            xip_add(f->name, f->payload, f->len);
+        }
         offset += f->len + sizeof(struct xipfs_fhdr);
+        while ((offset % 4) != 0)
+            offset++;        
     }
+    kfree(full_path);
     return 0;
+}
+
+static void xipfs_lookup(const char *path)
+{
+    xipfs_parse_blob((uint8_t *)mod_xipfs.private, path);
 }
 
 static int xipfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
 {
     struct fnode *tgt_dir = NULL;
+    struct xipfs_mount_info *xipfs_mount_info = NULL;
     /* Source must NOT be NULL */
     if (!source)
         return -1;
@@ -192,8 +225,13 @@ static int xipfs_mount(char *source, char *tgt, uint32_t flags, void *arg)
     }
 
     tgt_dir->owner = &mod_xipfs;
-    if (xipfs_parse_blob((uint8_t *)source) < 0)
-        return -1;
+    /* cache the value for later */
+    size_t tgt_len = strlen(tgt);
+    xipfs_mount_info = (struct xipfs_mount_info *)kalloc(sizeof(struct xipfs_mount_info));
+    xipfs_mount_info->target_path = (char *) kalloc(sizeof(char)*tgt_len+1);
+    xipfs_mount_info->source_ptr = source;
+    strncpy(xipfs_mount_info->target_path, tgt, tgt_len+1);
+    mod_xipfs.private = xipfs_mount_info;
 
     return 0;
 }
@@ -212,6 +250,7 @@ void xipfs_init(void)
     mod_xipfs.ops.unlink = xipfs_unlink;
     mod_xipfs.ops.close = xipfs_close;
     mod_xipfs.ops.exe = xipfs_exe;
+    mod_xipfs.ops.lookup = xipfs_lookup;
 
     mod_xipfs.ops.block_read = xipfs_block_read;
     register_module(&mod_xipfs);

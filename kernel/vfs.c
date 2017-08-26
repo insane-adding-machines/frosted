@@ -65,7 +65,7 @@ static char *filename(char *path)
     return path;
 }
 
-static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow);
+static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow, char *full_path);
 
 static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
 {
@@ -73,7 +73,7 @@ static int _fno_fullpath(struct fnode *f, char *dst, char **p, int len)
     if (!f)
         return -EINVAL;
     if ((f->flags & FL_LINK) == FL_LINK) {
-        f =  _fno_search(f->linkname, &FNO_ROOT, 1);
+        f =  _fno_search(f->linkname, &FNO_ROOT, 1, f->linkname);
     }
     if (f == &FNO_ROOT) {
         *p = dst + 1;
@@ -275,9 +275,9 @@ static int path_check(const char *path, const char *dirname)
 }
 
 
-static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow)
+static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow, char *full_path)
 {
-    struct fnode *cur;
+    struct fnode *fno;
     char link[MAX_FILE];
     int check = 0;
     if (dir == NULL)
@@ -289,14 +289,14 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
     if (check == 0) {
         if (!dir->next)
             return NULL;
-        return _fno_search(path, dir->next, follow);
+        return _fno_search(path, dir->next, follow, full_path);
     }
 
     /* Item is found! */
     if (check == 2) {
         /* If it's a symlink, restart check */
         if (follow && ((dir->flags & FL_LINK) == FL_LINK)) {
-            return _fno_search(dir->linkname, &FNO_ROOT, 1);
+            return _fno_search(dir->linkname, &FNO_ROOT, 1, full_path);
         }
         return dir;
     }
@@ -307,9 +307,15 @@ static struct fnode *_fno_search(const char *path, struct fnode *dir, int follow
         strcpy( link, dir->linkname );
         strcat( link, "/" );
         strcat( link, path_walk(path));
-        return _fno_search( link, &FNO_ROOT, follow );
+        return _fno_search( link, &FNO_ROOT, follow, full_path);
     }
-    return _fno_search(path_walk(path), dir->children, follow);
+    fno = _fno_search(path_walk(path), dir->children, follow, full_path);
+    /* load on demand */
+    if (!fno && dir->owner && dir->owner->ops.lookup) {
+        dir->owner->ops.lookup(full_path);
+        fno = _fno_search(path_walk(path), dir->children, follow, full_path);
+    }
+    return fno;
 }
 
 struct fnode *fno_search(const char *_path)
@@ -338,7 +344,7 @@ struct fnode *fno_search(const char *_path)
             break;
     }
     if (strlen(path) > 0) {
-        fno = _fno_search(path, &FNO_ROOT, 1);
+        fno = _fno_search(path, &FNO_ROOT, 1, path);
     }
     kfree(path);
     return fno;
@@ -346,7 +352,7 @@ struct fnode *fno_search(const char *_path)
 
 struct fnode *fno_search_nofollow(const char *path)
 {
-    return _fno_search(path, &FNO_ROOT, 0);
+    return _fno_search(path, &FNO_ROOT, 0, path);
 }
 
 static struct fnode *_fno_create(struct module *owner, const char *name, struct fnode *parent)

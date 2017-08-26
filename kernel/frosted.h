@@ -291,6 +291,7 @@ struct module {
         int (*unlink)(struct fnode *fno);
         int (*truncate)(struct fnode *fno, unsigned int size);
         void * (*exe)(struct fnode *fno, void *arg);
+        void (*lookup)(const char *path);
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);
@@ -318,6 +319,7 @@ struct module {
         int (*block_write)(struct fnode *fno, const void *buf, uint32_t sector, int offset, int count);
 
     } ops;
+    void *private;
     struct module *next;
 };
 
