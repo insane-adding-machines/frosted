@@ -73,7 +73,7 @@ int sys_clock_gettime_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t
             now->tv_usec = (jiffies % 1000) * 1000;
         } else if ((clockid_t)arg1 == CLOCK_REALTIME) {
             now->tv_sec = rt_offset + (jiffies / 1000);
-            now->tv_usec = rt_offset + ((jiffies % 1000) * 1000);
+            now->tv_usec = ((jiffies % 1000) * 1000) * 1000;
         }
     }
     return 0;
