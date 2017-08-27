@@ -272,7 +272,7 @@ qemu: image.bin
 qemu2: qemu
 
 qemunet:
-	sudo env "PATH=${PATH}" qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
+	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
 
 qemunetdbg:
 	sudo qemu-system-arm -M lm3s6965evb --kernel image.bin -nographic -S -gdb tcp::3333 -net nic,vlan=0 -net tap,vlan=0,ifname=frost0
