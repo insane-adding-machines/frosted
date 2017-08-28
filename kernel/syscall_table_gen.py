@@ -106,7 +106,9 @@ syscalls = [
     ["clock_gettime", 2, "sys_clock_gettime_hdlr"],
     ["pthread_key_create", 2, "sys_pthread_key_create_hdlr"],
     ["pthread_setspecific", 2, "sys_pthread_setspecific_hdlr"],
-    ["pthread_getspecific", 2, "sys_pthread_getspecific_hdlr"]
+    ["pthread_getspecific", 2, "sys_pthread_getspecific_hdlr"],
+    ["alarm", 1, "sys_alarm_hdlr"],
+    ["ualarm", 2, "sys_ualarm_hdlr"]
 ]
 
    #

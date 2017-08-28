@@ -2340,6 +2340,16 @@ void kthread_sleep_ms(uint32_t ms)
     }
 }
 
+int sys_alarm_hdlr(uint32_t arg1)
+{
+    return 0;
+}
+
+int sys_ualarm_hdlr(uint32_t arg1, uint32_t arg2)
+{
+    return 0;
+}
+
 __inl void task_yield(void)
 {
     task_preempt();
