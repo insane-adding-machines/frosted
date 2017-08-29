@@ -2340,14 +2340,43 @@ void kthread_sleep_ms(uint32_t ms)
     }
 }
 
+void alarm_task(uint32_t now, void *arg)
+{
+    struct task *t = (struct task *)arg;
+    if (t) {
+        t->tb.timer_id = -1;
+        task_kill(t->tb.pid, SIGALRM);
+    }
+}
+
 int sys_alarm_hdlr(uint32_t arg1)
 {
-    return 0;
+    if (arg1 < 0)
+        return -EINVAL;
+
+    int ret = 0;
+    if (_cur_task->tb.timer_id >= 0) {
+        ktimer_del(_cur_task->tb.timer_id);
+        ret = 1;
+    }
+
+    _cur_task->tb.timer_id = ktimer_add((arg1 * 1000), alarm_task, this_task());
+    return ret;
 }
 
 int sys_ualarm_hdlr(uint32_t arg1, uint32_t arg2)
 {
-    return 0;
+    if (arg1 < 0)
+        return -EINVAL;
+
+    int ret = 0;
+    if (_cur_task->tb.timer_id >= 0) {
+        ktimer_del(_cur_task->tb.timer_id);
+        ret = 1;
+    }
+
+    _cur_task->tb.timer_id = ktimer_add(((arg1 / 1000) + 1), alarm_task, this_task());
+    return ret;
 }
 
 __inl void task_yield(void)
