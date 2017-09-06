@@ -974,18 +974,18 @@ void vfs_init(void)
     FNO_ROOT.flags = FL_DIR | FL_RDWR;
 
     /* Init "/dev" dir */
-    dev = fno_mkdir(NULL, "dev", NULL);
+    fno_mkdir(NULL, "dev", NULL);
 
     /* Init "/sys" dir */
-    dev = fno_mkdir(NULL, "sys", NULL);
+    fno_mkdir(NULL, "sys", NULL);
 
     /* Init "/tmp" dir */
-    dev = fno_mkdir(NULL, "tmp", NULL);
+    fno_mkdir(NULL, "tmp", NULL);
 
     /* Init "/bin" dir */
-    dev = fno_mkdir(NULL, "bin", NULL);
+    fno_mkdir(NULL, "bin", NULL);
 
     /* Init "/mnt" dir */
-    dev = fno_mkdir(NULL, "mnt", NULL);
+    fno_mkdir(NULL, "mnt", NULL);
 }
 

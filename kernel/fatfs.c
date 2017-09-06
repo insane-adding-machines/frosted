@@ -377,7 +377,8 @@ static int add_dir(struct fatfs *fs, struct fatfs_dir *dj, char *name)
 
     int len = 0;
     while (len < nlen) {
-        *(fs->win + dj->off + len) = name[len++];
+        *(fs->win + dj->off + len) = name[len];
+        len++;
     }
 
     *(fs->win + dj->off + DIR_ATTR) = 0x20;

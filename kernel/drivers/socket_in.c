@@ -760,7 +760,7 @@ static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
     static char *txt;
     int i;
     struct pico_device *dev;
-    struct pico_tree_node *index;
+    struct pico_tree_node *index = NULL;
     const char iface_banner[] = "Interface | \r\n";
     if (mem_lock() < 0)
         return SYS_CALL_AGAIN;
@@ -805,7 +805,7 @@ int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
     struct fnode *fno = sfs->fnode;
     static char *mem_txt;
     struct pico_ipv4_route *r;
-    struct pico_tree_node *index;
+    struct pico_tree_node *index = NULL;
     char dest[16];
     char mask[16];
     char gw[16];
@@ -982,7 +982,7 @@ static int sock_getpeername(int sd, struct sockaddr *_addr, unsigned int *addrle
 {
     struct pico_ip4 ip4a;
     struct frosted_inet_socket *s;
-    struct sockaddr_in *addr = (struct sockaddr_in *)addr;
+    struct sockaddr_in *addr = (struct sockaddr_in *)_addr;
     int r;
     uint16_t port, proto;
     int ret = -1;
