@@ -65,16 +65,27 @@
 struct dev_disp {
     struct i2c_slave i2c;
     struct device *dev;
-    char buf[32];
+    char buf[80];
     uint8_t functions;
     volatile int update;
 } Disp;
 
+static void mccog21_clear(void)
+{
+    uint8_t cmd = MCC0G21_CLEAR_DISPLAY;
+    int r;
+    kthread_sleep_ms(400);
+    do {
+        r = i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
+    } while (r != 1);
+    kthread_sleep_ms(800);
+}
+
 /* Module description */
 int mccog21_read(struct fnode *fno, void *buf, unsigned int len)
 {
-    if (len > 32)
-        len = 32;
+    if (len > 80)
+        len = 80;
     if (len > 0)
         memcpy(buf, Disp.buf, len);
     return len;
@@ -82,8 +93,9 @@ int mccog21_read(struct fnode *fno, void *buf, unsigned int len)
 
 int mccog21_write(struct fnode *fno, const void *buf, unsigned int len)
 {
-    if (len > 32)
-        len = 32;
+    memset(Disp.buf, 0, 80);
+    if (len > 80)
+        len = 80;
     if (len > 0)
         memcpy(Disp.buf, buf, len);
 
@@ -141,14 +153,9 @@ static void mccog21_task(void *arg)
     cmd = MCC0G21_ONOFF | MCC0G21_DISPLAY_ON;
     i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
 
-    kthread_sleep_ms(400);
 
-    cmd = MCC0G21_CLEAR_DISPLAY;
-    do {
-        r = i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
-    } while (r != 1);
+    mccog21_clear();
 
-    kthread_sleep_ms(800);
 
     cmd = MCC0G21_RETURN_HOME;;
     do {
@@ -184,7 +191,7 @@ static void mccog21_task(void *arg)
             cmd = MCC0G21_DDRAM_SELECT;
             i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
 
-            for (i = 0; i < 32; i++) {
+            for (i = 0; i < 80; i++) {
                 if (Disp.buf[i] == 0)
                     break;
                 i2c_kthread_write(&Disp.i2c, MCC0G21_DATA_PREFIX, &Disp.buf[i], 1);
