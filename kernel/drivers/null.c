@@ -73,6 +73,8 @@ void devnull_init(struct fnode *dev)
     mod_devnull.ops.write = devnull_write;
 
     devnull = fno_create_wronly(&mod_devnull, "null", dev);
+    devnull->flags |= FL_TTY;
     devzero = fno_create_rdonly(&mod_devnull, "zero", dev);
+    devzero->flags |= FL_TTY;
     register_module(&mod_devnull);
 }
