@@ -681,6 +681,12 @@ static int stat_hdlr(char *path, struct stat *st)
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
         st->st_size = 0;
+    } else if (fno->flags & FL_TTY) {
+        st->st_mode = S_IFCHR;
+        st->st_size = 0;
+    } else if (fno->flags & FL_BLK) {
+        st->st_mode = S_IFBLK;
+        st->st_size = 0;
     } else if (fno->flags & FL_LINK) {
         return stat_hdlr(fno->linkname, st); /* Stat follows symlink */
     } else {
