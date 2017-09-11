@@ -749,6 +749,12 @@ int sys_lstat_hdlr(char *arg1, struct stat *arg2)
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
         st->st_size = 0;
+    } else if (fno->flags & FL_TTY) {
+        st->st_mode = S_IFCHR;
+        st->st_size = 0;
+    } else if (fno->flags & FL_BLK) {
+        st->st_mode = S_IFBLK;
+        st->st_size = 0;
     } else if (fno->flags & FL_LINK) {
         st->st_mode = S_IFLNK; /* lstat gives info about the link itself */
         st->st_size = 0;
