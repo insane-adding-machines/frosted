@@ -483,7 +483,8 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     f = fno_search(path);
     if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exe) {
         vfsi = (struct vfs_info *)f->owner->ops.exe(f, arg);
-        scheduler_exec(vfsi, arg);
+        if (vfsi)
+            scheduler_exec(vfsi, arg);
     }
     return -EINVAL;
 }
