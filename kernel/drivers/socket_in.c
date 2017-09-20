@@ -466,6 +466,9 @@ static int sock_connect(int fd, struct sockaddr *addr, unsigned int addrlen)
         }
         goto out;
     }
+
+    /* SOCK_EV_CONN received. Successfully connected. */
+    ret = 0;
     s->events  &= (~PICO_SOCK_EV_CONN);
     s->revents &= ~(PICO_SOCK_EV_CONN | PICO_SOCK_EV_RD);
 out:
