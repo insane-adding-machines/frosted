@@ -429,11 +429,12 @@ int machine_init(void)
 
     ethernet_init(&eth_config);
 
-    #ifdef CONFIG_DEVFT5336
-    ft5336_init(3); /* FT5336 touch screen on I2C-3 */
-    #endif
+
     #ifdef CONFIG_DEVMCCOG21
-    mccog21_init(1);
+        mccog21_init(1);
+    #endif
+    #ifdef CONFIG_DEVFT5336
+       ft5336_init(3); /* FT5336 touch screen on I2C-3 */
     #endif
     return 0;
 }

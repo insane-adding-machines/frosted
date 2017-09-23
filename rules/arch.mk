@@ -22,7 +22,7 @@ AR:=$(CROSS_COMPILE)ar
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DSYS_CLOCK=$(SYS_CLOCK) -DCORTEX_M3 -DFROSTED
 CFLAGS+=-Ikernel/unicore-mx/include -Ikernel -Iinclude -I.
 PREFIX:=$(PWD)/build
-LDFLAGS:=-gc-sections -nostartfiles -L$(PREFIX)/lib 
+LDFLAGS:=-Wl,-gc-sections -nostartfiles -L$(PREFIX)/lib 
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
 CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD) -D$(ARCH) -mcpu=$(MCPU)
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)

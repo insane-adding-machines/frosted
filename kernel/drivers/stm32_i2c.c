@@ -325,6 +325,7 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_ev ev)
                     restart_state_machine(i2c);
                     break;
                 case I2C_EV_DMA_COMPLETE_RX:
+                    i2c->kthread_transfer_complete++;
                     i2c_disable_dma(i2c->base);
                     i2c_send_stop(i2c->base);
                     i2c_peripheral_disable(i2c->base);
@@ -346,6 +347,8 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_ev ev)
                     break;
                 case I2C_EV_TXE:
                 case I2C_EV_BTF:
+                    i2c->kthread_transfer_complete++;
+                    i2c_disable_dma(i2c->base);
                     i2c_send_stop(i2c->base);
                     i2c_peripheral_disable(i2c->base);
                     i2c->isr(i2c->sl);

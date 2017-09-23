@@ -17,7 +17,7 @@
  *      Authors: Daniele Lacamera <root@danielinux.net>
  *
  */
- 
+
 #include "frosted.h"
 #include "device.h"
 #include <stdint.h>
@@ -41,8 +41,8 @@
 #   define MCC0G21_CURSOR_BLINK     (1 << 0)
 
 #define MCC0G21_SHIFT         (0x10)
-   
-#define MCC0G21_OSC_FREQ (0x10) 
+
+#define MCC0G21_OSC_FREQ (0x10)
 #   define MCC0G21_OSC_FREQ_192HZ (0x04)
 #define MCC0G21_FSET          (0x20)
 #       define MCC0G21_FSET_8BIT        (1 << 4)
@@ -55,6 +55,7 @@
 #define MCC0G21_DDRAM_SELECT  (0x80)
 #define MCC0G21_CONTRAST_HI   (0x50)
 #define MCC0G21_FOLLOWER      (0x60)
+#       define MCC0G21_FOLLOWER_5V      (0x0C)
 #define MCC0G21_CONTRAST_LO   (0x70)
 
 
@@ -64,35 +65,47 @@
 struct dev_disp {
     struct i2c_slave i2c;
     struct device *dev;
-    char buf[32];
+    char buf[80];
     uint8_t functions;
-    int update;
+    volatile int update;
 } Disp;
+
+static void mccog21_clear(void)
+{
+    uint8_t cmd = MCC0G21_CLEAR_DISPLAY;
+    int r;
+    kthread_sleep_ms(400);
+    do {
+        r = i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
+    } while (r != 1);
+    kthread_sleep_ms(800);
+}
 
 /* Module description */
 int mccog21_read(struct fnode *fno, void *buf, unsigned int len)
 {
-    if (len > 32)
-        len = 32;
+    if (len > 80)
+        len = 80;
     if (len > 0)
         memcpy(buf, Disp.buf, len);
-    return len; 
+    return len;
 }
 
 int mccog21_write(struct fnode *fno, const void *buf, unsigned int len)
 {
-    if (len > 32)
-        len = 32;
+    memset(Disp.buf, 0, 80);
+    if (len > 80)
+        len = 80;
     if (len > 0)
         memcpy(Disp.buf, buf, len);
 
-
-    return len; 
+    Disp.update = 1;
+    return len;
 }
 
 static struct module mod_devdisp = {
     .family = FAMILY_FILE,
-    .name = "display",
+    .name = "lcd",
     .ops.open = device_open,
     .ops.read = mccog21_read,
     .ops.write= mccog21_write
@@ -107,48 +120,48 @@ static void mccog21_task(void *arg)
     int i;
     int r;
 
-    kthread_sleep_ms(40); /* Wait 40ms until VDD stabilizes */
+    kthread_sleep_ms(80); /* Wait 40ms until VDD stabilizes */
     /* Mode = 8 bit, two lines */
     Disp.functions =  MCC0G21_FSET_8BIT | MCC0G21_FSET_TWOLINES;
     cmd = MCC0G21_FSET | Disp.functions;
     i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
-    
+
+    /* Mode = 8 bit, two lines */
+    Disp.functions =  MCC0G21_FSET_8BIT | MCC0G21_FSET_TWOLINES;
+    cmd = MCC0G21_FSET | Disp.functions;
+    i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
+
     /* Switch to extended mode */
     cmd = MCC0G21_FSET | Disp.functions | MCC0G21_FSET_EXTEND;
     i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
 
-    /* Follower circuit off */
-    cmd = MCC0G21_FOLLOWER;
-    i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
-    kthread_sleep_ms(200);
-    
     /* Oscillator */
     cmd = MCC0G21_OSC_FREQ | MCC0G21_OSC_FREQ_192HZ;
     i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
     kthread_sleep_ms(200);
-    
+
+    /* Follower circuit off */
+    cmd = MCC0G21_FOLLOWER | MCC0G21_FOLLOWER_5V;
+    i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
+    kthread_sleep_ms(200);
+
     /* Switch to normal mode */
     cmd = MCC0G21_FSET | Disp.functions;
     i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
-    
+
     /* Power on */
     cmd = MCC0G21_ONOFF | MCC0G21_DISPLAY_ON;
     i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
 
-    kthread_sleep_ms(400);
 
-    cmd = MCC0G21_CLEAR_DISPLAY;
-    do {
-        r = i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
-    } while (r != 1);
-    
-    kthread_sleep_ms(800);
-    
+    mccog21_clear();
+
+
     cmd = MCC0G21_RETURN_HOME;;
     do {
         r = i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
     } while (r != 1);
-    
+
     kthread_sleep_ms(800);
 
     cmd = MCC0G21_ENTRY_MODE | MCC0G21_ENTRY_MODE_INCREMENT;
@@ -161,7 +174,7 @@ static void mccog21_task(void *arg)
     i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
 
     /* Set contrast */
-    cmd = MCC0G21_CONTRAST_LO | 0x02;
+    cmd = MCC0G21_CONTRAST_HI | 0x02;
     do {
         r = i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
     } while (r < 1);
@@ -177,8 +190,8 @@ static void mccog21_task(void *arg)
             kthread_sleep_ms(80);
             cmd = MCC0G21_DDRAM_SELECT;
             i2c_kthread_write(&Disp.i2c, MCC0G21_COMMAND_PREFIX, &cmd, 1);
-            
-            for (i = 0; i < 32; i++) {
+
+            for (i = 0; i < 80; i++) {
                 if (Disp.buf[i] == 0)
                     break;
                 i2c_kthread_write(&Disp.i2c, MCC0G21_DATA_PREFIX, &Disp.buf[i], 1);
@@ -196,13 +209,13 @@ int mccog21_init(uint32_t bus)
     if (!devdir)
         return -ENOENT;
     memset(&Disp, 0, sizeof(struct dev_disp));
-    Disp.dev = device_fno_init(&mod_devdisp, "display", devdir, 0, &Disp);
+    Disp.dev = device_fno_init(&mod_devdisp, "lcd", devdir, 0, &Disp);
 
     /* Populate i2c_slave struct */
     Disp.i2c.bus = bus;
     Disp.i2c.address = MCCOG21_I2C_ADDR;
-    Disp.update = 1;
     strcpy(Disp.buf, "Frosted");
+    Disp.update = 1;
     kthread_create(mccog21_task, NULL);
     return 0;
 }

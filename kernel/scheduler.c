@@ -30,6 +30,7 @@
 
 #include "sys/user.h"
 
+
 #define __inl inline
 #define __naked __attribute__((naked))
 
@@ -2041,6 +2042,9 @@ static __inl void task_switch(void)
     _cur_task = t;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 /* C ABI cannot mess with the stack, we will */
 void __naked pend_sv_handler(void)
 {
@@ -2110,6 +2114,8 @@ void __naked pend_sv_handler(void)
     /* return (function is naked) */
     asm volatile("bx lr          \n");
 }
+#pragma GCC pop_options
+
 
 void kernel_task_init(void)
 {
@@ -2376,6 +2382,45 @@ void kthread_sleep_ms(uint32_t ms)
     while(dl > jiffies) {
         kthread_yield();
     }
+}
+
+void alarm_task(uint32_t now, void *arg)
+{
+    struct task *t = (struct task *)arg;
+    if (t) {
+        t->tb.timer_id = -1;
+        task_kill(t->tb.pid, SIGALRM);
+    }
+}
+
+int sys_alarm_hdlr(uint32_t arg1)
+{
+    if (arg1 < 0)
+        return -EINVAL;
+
+    int ret = 0;
+    if (_cur_task->tb.timer_id >= 0) {
+        ktimer_del(_cur_task->tb.timer_id);
+        ret = 1;
+    }
+
+    _cur_task->tb.timer_id = ktimer_add((arg1 * 1000), alarm_task, this_task());
+    return ret;
+}
+
+int sys_ualarm_hdlr(uint32_t arg1, uint32_t arg2)
+{
+    if (arg1 < 0)
+        return -EINVAL;
+
+    int ret = 0;
+    if (_cur_task->tb.timer_id >= 0) {
+        ktimer_del(_cur_task->tb.timer_id);
+        ret = 1;
+    }
+
+    _cur_task->tb.timer_id = ktimer_add(((arg1 / 1000) + 1), alarm_task, this_task());
+    return ret;
 }
 
 __inl void task_yield(void)
@@ -2854,10 +2899,13 @@ int task_ptr_valid(const void *ptr)
     return -1;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
 struct extra_stack_frame *stored_extra = NULL;
 struct extra_stack_frame *copied_extra = NULL;
+
 
 int __attribute__((naked))
 sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
@@ -2887,13 +2935,6 @@ sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
 
     save_task_context();
     asm volatile("mrs %0, " PSP "" : "=r"(_top_stack));
-
-    /* save current context on current stack */
-    /*
-       copied_extra = (struct extra_stack_frame *)_top_stack - EXTRA_FRAME_SIZE;
-       stored_extra = (struct extra_stack_frame *)_top_stack + NVIC_FRAME_SIZE;
-       memcpy(copied_extra, stored_extra, EXTRA_FRAME_SIZE);
-       */
 
     /* save current SP to TCB */
     _cur_task->tb.sp = _top_stack;
@@ -2969,3 +3010,5 @@ return_from_syscall:
     /* return (function is naked) */
     asm volatile("bx lr");
 }
+
+#pragma GCC pop_options

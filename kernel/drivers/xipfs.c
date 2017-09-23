@@ -159,16 +159,25 @@ static int xipfs_parse_blob(const uint8_t *blob)
     const struct xipfs_fat *fat = (const struct xipfs_fat *)blob;
     const struct xipfs_fhdr *f;
     int i, offset;
-    if (!fat || fat->fs_magic != XIPFS_MAGIC)
+    if (!fat)
         return -1;
 
     offset = sizeof(struct xipfs_fat);
     for (i = 0; i < fat->fs_files; i++) {
         f = (const struct xipfs_fhdr *) (blob + offset);
-        if (f->magic != XIPFS_MAGIC)
+        if ((f->magic != XIPFS_MAGIC) && (f->magic != XIPFS_MAGIC_ICELINK))
             return -1;
-        xip_add(f->name, f->payload, f->len);
-        offset += f->len + sizeof(struct xipfs_fhdr);
+        if (f->magic == XIPFS_MAGIC) {
+            xip_add(f->name, f->payload, f->len);
+            offset += f->len + sizeof(struct xipfs_fhdr);
+        } else {
+            char fullname[64] = "/bin/";
+            strcpy(fullname + 5, f->name);
+            vfs_symlink("/bin/icebox", fullname);
+            offset += sizeof(struct xipfs_fhdr);
+        }
+        while ((offset % 4) != 0)
+            offset++;
     }
     return 0;
 }

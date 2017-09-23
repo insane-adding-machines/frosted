@@ -12,7 +12,7 @@ endif
 
 
 #kernel headers
-CFLAGS+=-Ikernel/frosted-headers/include -nostdlib 
+CFLAGS+=-Ikernel/frosted-headers/include -nostdlib
 
 #drivers headers
 CFLAGS+=-Ikernel/drivers

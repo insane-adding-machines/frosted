@@ -37,7 +37,7 @@ static struct fnode FNO_ROOT = {
 static void basename_r(const char *path, char *res)
 {
     char *p;
-    strncpy(res, path, strlen(path));
+    strncpy(res, path, strlen(path) + 1);
     p = res + strlen(res) - 1;
     while (p >= res) {
         if (*p == '/') {
@@ -200,19 +200,17 @@ int vfs_symlink(char *file, char *link)
 
 static void mkdir_links(struct fnode *fno)
 {
-    char path[MAX_FILE], selfl[MAX_FILE], parentl[MAX_FILE];
+    char path[MAX_FILE], selfl[MAX_FILE], parentl[MAX_FILE], path_basename[MAX_FILE];
     fno_fullpath(fno, path, MAX_FILE -4);
     strcpy(selfl, path);
     strcpy(parentl, path);
-    strcat( selfl, "/." );
-    strcat( parentl, "/.." );
+    strcat(selfl, "/.");
+    strcat(parentl, "/..");
     if (fno) {
-        fno_link( path, selfl );
-        basename_r(path, path);
-        fno_link( path, parentl);
+        fno_link(path, selfl);
+        basename_r(path, path_basename);
+        fno_link(path_basename, parentl);
     }
-
-
 }
 
 static struct fnode *fno_create_dir(char *path, uint32_t flags)
@@ -485,7 +483,8 @@ int sys_exec_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
     f = fno_search(path);
     if (f && f->owner && (f->flags & FL_EXEC) && f->owner->ops.exe) {
         vfsi = (struct vfs_info *)f->owner->ops.exe(f, arg);
-        scheduler_exec(vfsi, arg);
+        if (vfsi)
+            scheduler_exec(vfsi, arg);
     }
     return -EINVAL;
 }
@@ -683,6 +682,12 @@ static int stat_hdlr(char *path, struct stat *st)
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
         st->st_size = 0;
+    } else if (fno->flags & FL_TTY) {
+        st->st_mode = S_IFCHR;
+        st->st_size = 0;
+    } else if (fno->flags & FL_BLK) {
+        st->st_mode = S_IFBLK;
+        st->st_size = 0;
     } else if (fno->flags & FL_LINK) {
         return stat_hdlr(fno->linkname, st); /* Stat follows symlink */
     } else {
@@ -743,6 +748,12 @@ int sys_lstat_hdlr(char *arg1, struct stat *arg2)
         return -ENOENT;
     if (fno->flags & FL_DIR) {
         st->st_mode = S_IFDIR;
+        st->st_size = 0;
+    } else if (fno->flags & FL_TTY) {
+        st->st_mode = S_IFCHR;
+        st->st_size = 0;
+    } else if (fno->flags & FL_BLK) {
+        st->st_mode = S_IFBLK;
         st->st_size = 0;
     } else if (fno->flags & FL_LINK) {
         st->st_mode = S_IFLNK; /* lstat gives info about the link itself */
@@ -976,18 +987,18 @@ void vfs_init(void)
     FNO_ROOT.flags = FL_DIR | FL_RDWR;
 
     /* Init "/dev" dir */
-    dev = fno_mkdir(NULL, "dev", NULL);
+    fno_mkdir(NULL, "dev", NULL);
 
     /* Init "/sys" dir */
-    dev = fno_mkdir(NULL, "sys", NULL);
+    fno_mkdir(NULL, "sys", NULL);
 
     /* Init "/tmp" dir */
-    dev = fno_mkdir(NULL, "tmp", NULL);
+    fno_mkdir(NULL, "tmp", NULL);
 
     /* Init "/bin" dir */
-    dev = fno_mkdir(NULL, "bin", NULL);
+    fno_mkdir(NULL, "bin", NULL);
 
     /* Init "/mnt" dir */
-    dev = fno_mkdir(NULL, "mnt", NULL);
+    fno_mkdir(NULL, "mnt", NULL);
 }
 
