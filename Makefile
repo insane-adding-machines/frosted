@@ -129,7 +129,14 @@ CFLAGS-$(DEVF7DISCOLTDC)+=-DCONFIG_DEVF7DISCOLTDC -DCONFIG_LTDC
 
 OBJS-$(DEVFRAMEBUFFER)+= kernel/framebuffer.o
 CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER
-OBJS-$(DEVFBCON)+= kernel/drivers/fbcon.o kernel/fonts/cga_8x8.o kernel/fonts/palette_256_xterm.o
+OBJS-$(DEVFBCON)+= kernel/drivers/fbcon.o kernel/fonts/palette_256_xterm.o
+
+# Font Selection
+OBJS-$(FONT_CGA_8X8)+=kernel/fonts/cga_8x8.o
+CFLAGS-$(FONT_CGA_8X8)+=-DCONFIG_FONT_8x8
+OBJS-$(FONT_PICCOLO_7X6)+=kernel/fonts/piccolo_7x6.o
+CFLAGS-$(FONT_PICCOLO_7X6)+=-DCONFIG_FONT_7x6
+
 CFLAGS-$(DEVFBCON)+=-DCONFIG_DEVFBCON
 
 OBJS-$(DEVSTM32DMA)+=kernel/drivers/stm32_dma.o
@@ -307,7 +314,6 @@ clean:
 	@rm -f $(OBJS-y)
 	@rm -f *.map *.bin *.elf *.img
 	@rm -f kernel/$(BOARD)/$(BOARD).ld
-	@find . |grep "\.o" | xargs -x rm -f
 	@rm -rf build
 	@rm -f tags
 	@rm -f kernel/syscall_table.c
