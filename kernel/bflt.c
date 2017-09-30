@@ -73,7 +73,7 @@ static unsigned long * calc_reloc(uint8_t * base, uint32_t offset)
     int id = (offset >> 24) & 0x000000FFu;
     if (id)
     {
-        kprintf("bFLT: No shared library support\r\n");
+        kprintf("bFLT: Found reloc to library id %d\r\n", id);
         return (unsigned long *)RELOC_FAILED;
     }
     return (unsigned long *)(base + (offset & 0x00FFFFFFu));
@@ -92,22 +92,30 @@ static int process_got_relocs(struct flat_hdr * hdr, uint8_t * base, uint8_t * g
     uint8_t * data_start_dest = got_start;
 
     for (rp; *rp != 0xffffffff; rp++) {
-        if (*rp) {
-            unsigned long addr = RELOC_FAILED;
-            if (*rp < data_start) {
-                /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
-                addr = (unsigned long)calc_reloc(text_start_dest, *rp);
-            } else if (*rp < bss_end) {
-                /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
-                addr = (unsigned long)calc_reloc(data_start_dest, *rp - data_start);
-            }
+        unsigned long reloc = *rp;
+        /* this will remap pointers starting from address 0x0, to wherever they are actually loaded in the memory map (.text reloc) */
+        if (reloc) {
+            int lib_id = (reloc >> 24u) & 0xFF;
+            if (lib_id)
+            {
+                kprintf("bFLT: Found GOT reloc to shared library d %d\r\n", lib_id);
+                /* TO BE IMPLEMENTED */
+            } else {
+                unsigned long addr = RELOC_FAILED;
+                if (reloc < data_start) {
+                    /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
+                    addr = (unsigned long)calc_reloc(text_start_dest, reloc);
+                } else if (reloc < bss_end) {
+                    /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
+                    addr = (unsigned long)calc_reloc(data_start_dest, reloc - data_start);
+                }
 
-            /* this will remap pointers starting from address 0x0, to wherever they are actually loaded in the memory map (.text reloc) */
-            if (addr == RELOC_FAILED) {
-                //errno = -ENOEXEC;
-                return -1;
+                if (addr == RELOC_FAILED) {
+                    //errno = -ENOEXEC;
+                    return -1;
+                }
+                *rp = addr; /* Store translated address in GOT */
             }
-            *rp = addr;
         }
     }
     return 0;
