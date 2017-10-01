@@ -1,23 +1,21 @@
 /*
- *  frosted - printf() library function
+ *      This file is part of frosted.
  *
- Based on Georges Menie's printf -
- Copyright 2001, 2002 Georges Menie (www.menie.org)
- stdarg version contributed by Christian Ettinger
- Originally released under LGPL2+.
-
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU Lesser General Public License version 2, as
- published by the Free Software Foundation.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU Lesser General Public License for more details.
-
- You should have received a copy of the GNU Lesser General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *      frosted is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License version 2, as
+ *      published by the Free Software Foundation.
+ *
+ *
+ *      frosted is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with frosted.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *      Authors:
+ *
  */
 
 #include <stdint.h>
@@ -93,7 +91,20 @@ static struct module mod_klog = {
     .ops.close = klog_close
 };
 
+#endif /* CONFIG_KLOG */
 
+#ifdef CONFIG_KLOG
+static inline void kprintchar(int c)
+{
+    if (cirbuf_bytesfree(klog.buf)) {
+        cirbuf_writebyte(klog.buf, c);
+        if (klog.task != NULL)
+            task_resume(klog.task);
+    }
+}
+#else
+static inline void kprintchar(int c) {};
+#endif
 
 static void printchar(char **str, int c)
 {
@@ -102,11 +113,7 @@ static void printchar(char **str, int c)
         ++(*str);
     }
     else {
-        if (cirbuf_bytesfree(klog.buf)) {
-            cirbuf_writebyte(klog.buf, c);
-            if (klog.task != NULL) 
-                task_resume(klog.task);
-        }
+        kprintchar(c);
     }
 }
 
@@ -256,6 +263,14 @@ out:
     return pc;
 }
 
+int ksprintf(char *out, const char *format, ...)
+{
+    va_list args;
+    va_start( args, format );
+    return print( &out, format, args );
+}
+
+#ifdef CONFIG_KLOG
 static mutex_t *klog_lock;
 
 int kprintf(const char *format, ...)
@@ -271,13 +286,6 @@ int kprintf(const char *format, ...)
         return ret;
     }
     return 0;
-}
-
-int ksprintf(char *out, const char *format, ...)
-{
-    va_list args;
-    va_start( args, format );
-    return print( &out, format, args );
 }
 
 int klog_init(void)
