@@ -20,13 +20,30 @@
 #include "frosted.h"
 #include "flat.h"
 #include "kprintf.h"
+#include "vfs.h"
 #include "libopencmsis/core_cm3.h"
 #include "unicore-mx/cm3/systick.h"
+
+#include <stdio.h>
 
 /*************************
  * bFLT start 
  *************************/
 #define RELOC_FAILED 0xff00ff01     /* Relocation incorrect somewhere */
+#define MAX_SHARED_LIB_ID (254)
+
+#define GDB_PATH "frosted-userland/gdb/"
+
+struct shared_lib {
+    void *base;
+    unsigned long build_date;
+};
+
+int bflt_load(char* from, void **reloc_text, void **reloc_data, void **reloc_bss,
+              void ** entry_point, size_t *stack_size, unsigned long *got_loc, unsigned long *text_len, unsigned long *data_len);
+
+/* lib 0 = reserved for the running app, so in the cache, all the indices are -1 */
+static struct shared_lib lib_cache[MAX_SHARED_LIB_ID-1];
 
 static inline unsigned long long_be(unsigned long le)
 {
@@ -74,6 +91,45 @@ static unsigned long * calc_reloc(char * base, unsigned long offset)
     return (unsigned long *)(base + (offset & 0x00FFFFFFu));
 }
 
+static void * load_shared_lib(int lib_id)
+{
+    /* Should we load TEXT + DATA + BSS?  -- HOW TO MANAGER DIFFERENT RELOCS? */
+    /* Re-load DATA and BSS for each instance? */
+    unsigned long * reloc_text, reloc_data, reloc_bss, entry_point;
+    unsigned long text_len, got_loc, data_len;
+    struct fnode *f;
+    size_t stack_size;
+    char path[MAX_FILE];
+    char *bflt_file_base; // Open the file, first!
+
+    if ( (lib_id >= MAX_SHARED_LIB_ID) || (lib_id <= 0) ) {
+        kprintf("Invalid lib_id specified: %d\r\n", lib_id);
+        return NULL;
+    }
+
+    /* Open /lib/lib[lib_id].so */
+    ksprintf(path, "/lib/lib%d.so", lib_id);
+    f = fno_search(path);
+    if (!f) {
+        ksprintf(path, "/bin/lib%d.so", lib_id);
+        f = fno_search(path);
+    }
+    if (!f || !f->owner || !f->owner->ops.mmap) {
+        return NULL;
+    }
+
+    bflt_file_base = f->owner->ops.mmap(f);
+    if (!bflt_file_base)
+        return NULL;
+
+    if (bflt_load(bflt_file_base, (void **)&reloc_text, (void **)&reloc_data, (void **)&reloc_bss, (void **)&entry_point, &stack_size, &got_loc, &text_len, &data_len))
+        return NULL;
+
+    kprintf("bflt_lib: GDB: add-symbol-file %s/lib%d.so.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n", GDB_PATH, lib_id, reloc_text, reloc_data, reloc_bss);
+
+    return reloc_text;
+}
+
 static int process_got_relocs(struct flat_hdr * hdr, char * base, char * got_start)
 {
     /*
@@ -90,13 +146,30 @@ static int process_got_relocs(struct flat_hdr * hdr, char * base, char * got_sta
         unsigned long reloc = *rp;
         /* this will remap pointers starting from address 0x0, to wherever they are actually loaded in the memory map (.text reloc) */
         if (reloc) {
+            unsigned long addr = RELOC_FAILED;
             int lib_id = (reloc >> 24u) & 0xFF;
             if (lib_id)
             {
+                /* Load shared library if needed */
                 kprintf("bFLT: Found GOT reloc to shared library id %d\r\n", lib_id);
-                /* TO BE IMPLEMENTED */
+                if (lib_cache[lib_id -1].base == NULL)
+                {
+                    /* Needs loading */
+                    char * lib_base = load_shared_lib(lib_id);
+                    if (!lib_base) {
+                        kprintf("Library lib%d.so could not be loaded\r\n", lib_id);
+                        return -2;
+                    }
+                    lib_cache[lib_id -1].base = lib_base;
+                    /* TODO: add date to cache + compare with executable build date! */
+
+                    reloc &= 0x00FFFFFFu;
+
+                    /* perform .text reloc */
+                    addr = (unsigned long)calc_reloc(lib_base, reloc);
+                    /* XXX: what about .data and .bss relocs form exec ->> shared lib?? */
+                }
             } else {
-                unsigned long addr = RELOC_FAILED;
                 if (reloc < data_start) {
                     /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
                     addr = (unsigned long)calc_reloc(text_start_dest, reloc);
@@ -104,13 +177,12 @@ static int process_got_relocs(struct flat_hdr * hdr, char * base, char * got_sta
                     /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
                     addr = (unsigned long)calc_reloc(data_start_dest, reloc - data_start);
                 }
-
-                if (addr == RELOC_FAILED) {
-                    //errno = -ENOEXEC;
-                    return -1;
-                }
-                *rp = addr; /* Store translated address in GOT */
             }
+            if (addr == RELOC_FAILED) {
+                //errno = -ENOEXEC;
+                return -1;
+            }
+            *rp = addr; /* Store translated address in GOT */
         }
     }
     return 0;
@@ -212,6 +284,13 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long da
  * |........................|   relocs_end   <- BFLT ends here
  * | (.bss section)         |
  * +------------------------+   bss_end
+ */
+
+/****
+ * XXX TODO:
+ * - shared libs now require a different r9 pointer, because their GOT table is located elsewhere.
+ * - this is a problem, because this means we should change the r9 pointer every time the code execution jumps from exec -> lib -> exec, etc...
+ * - it's possible to introduce a veneer to do this, but this does not solve the problem in case the library want to call a call-back function, located in the application and not in the lib...
  */
 
 int bflt_load(char* from, void **reloc_text, void **reloc_data, void **reloc_bss,

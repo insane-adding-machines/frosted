@@ -291,6 +291,8 @@ struct module {
         int (*unlink)(struct fnode *fno);
         int (*truncate)(struct fnode *fno, unsigned int size);
         void * (*exe)(struct fnode *fno, void *arg);
+        void * (*mmap)(struct fnode *fno);
+        void (*munmap)(struct fnode *fno);
 
         /* Sockets only (NULL == file) */
         int (*socket)(int domain, int type, int protocol);
@@ -305,7 +307,6 @@ struct module {
         int (*getsockopt)(int sd, int level, int optname, void *optval, unsigned int *optlen);
         int (*getsockname)(int fd, struct sockaddr *addr, unsigned int *addrlen);
         int (*getpeername)(int fd, struct sockaddr *addr, unsigned int *addrlen);
-
 
         /* Terminal operations */
         void (*tty_attach)(struct fnode *fno, int pid);

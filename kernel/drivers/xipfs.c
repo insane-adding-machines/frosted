@@ -31,7 +31,7 @@ static struct module mod_xipfs;
 
 struct xipfs_fnode {
     struct fnode *fnode;
-    void (*init)(void *);
+    const void *init;
 };
 
 
@@ -130,6 +130,13 @@ static void *xipfs_exe(struct fnode *fno, void *arg)
     return (void*)vfsi;
 }
 
+void * xipfs_mmap(struct fnode *fno)
+{
+    /* in the case of xipfs, "init" is our directly accessible file content */
+    struct xipfs_fnode *xip = (struct xipfs_fnode *)fno->priv;
+    return (void *)xip->init;
+}
+
 static int xipfs_unlink(struct fnode *fno)
 {
     return -1; /* Cannot unlink */
@@ -221,6 +228,8 @@ void xipfs_init(void)
     mod_xipfs.ops.unlink = xipfs_unlink;
     mod_xipfs.ops.close = xipfs_close;
     mod_xipfs.ops.exe = xipfs_exe;
+    mod_xipfs.ops.mmap = xipfs_mmap;
+    mod_xipfs.ops.munmap = NULL;
 
     mod_xipfs.ops.block_read = xipfs_block_read;
     register_module(&mod_xipfs);
