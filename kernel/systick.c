@@ -21,6 +21,10 @@
 #include "heap.h"
 #include "unicore-mx/cm3/nvic.h"
 #include "unicore-mx/cm3/systick.h"
+#ifdef NRF51
+#include "unicore-mx/nrf/51/ostick.h"
+#endif
+
 volatile unsigned int jiffies = 0u;
 volatile unsigned int _n_int = 0u;
 volatile int ktimer_check_pending = 0;
@@ -31,10 +35,15 @@ void frosted_scheduler_on(void)
 {
     nvic_set_priority(NVIC_PENDSV_IRQ, 2);
     nvic_set_priority(NVIC_SV_CALL_IRQ, 1);
+#ifdef CUSTOM_SYSTICK
+    ostick_init(1, &sys_tick_handler);
+    ostick_start();
+#else
     nvic_set_priority(NVIC_SYSTICK_IRQ, 0);
     nvic_enable_irq(NVIC_SYSTICK_IRQ);
-    _sched_active = 1;
     systick_interrupt_enable();
+#endif
+    _sched_active = 1;
 }
 
 void frosted_scheduler_off(void)
