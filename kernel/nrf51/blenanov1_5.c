@@ -31,9 +31,38 @@ static const struct gpio_config Led0 = {
     .name="led0"
 };
 
+static const struct uart_config uart_configs[] = {
+#ifdef CONFIG_DEVUART
+#ifdef CONFIG_UART_0
+    {
+        .devidx = 0,
+        .base = UART0,
+        .irq = NVIC_UART0_IRQ,
+        .baudrate = UART_BAUD_115200,
+        .stop_bits = 1,
+        .data_bits = 8,
+        .parity = 0,
+        .flow = 0,
+        .pio_tx = {
+            .base=GPIO,
+            .pin=GPIO9,
+            .mode=GPIO_MODE_INPUT,
+        },
+        .pio_rx = {
+            .base=GPIO,
+            .pin=GPIO11,
+            .mode=GPIO_MODE_OUTPUT,
+            .pullupdown=GPIO_PUPD_NONE,
+        },
+    },
+#endif
+#endif
+};
+
 int machine_init(void)
 {
     gpio_create(NULL, &Led0);
+    uart_create(&uart_configs[0]);
 
     return 0;
 }
