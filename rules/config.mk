@@ -170,7 +170,7 @@ ifeq ($(USART_6),y)
 endif
 #UARTs
 ifeq ($(UART_0),y)
-    CFLAGS+=-DCONFIG_UART_1
+    CFLAGS+=-DCONFIG_UART_0
 endif
 ifeq ($(UART_1),y)
     CFLAGS+=-DCONFIG_UART_1
