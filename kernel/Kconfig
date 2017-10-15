@@ -384,7 +384,7 @@ menu "Device Drivers"
 
             config UART_0
             bool "UART 0"
-            depends on ARCH_LPC17XX
+            depends on (ARCH_LPC17XX || ARCH_NRF51)
 
             config UART_1
             bool "UART 1"
