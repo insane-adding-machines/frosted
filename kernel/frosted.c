@@ -61,7 +61,7 @@ void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
 void simple_hard_fault_handler(void)
 {
-#ifdef __ARCH_V7M__
+#ifdef __ARM_ARCH_V7M__
     volatile uint32_t hfsr = SCB_HFSR;
     //volatile uint32_t bfsr = SCB_BFSR;
     volatile uint32_t afsr = SCB_AFSR;
@@ -193,7 +193,9 @@ int frosted_init(void)
 
     kernel_task_init();
 
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     fpb_init();
+#endif
 
     vfs_init();
     devnull_init(fno_search("/dev"));
