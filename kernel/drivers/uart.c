@@ -417,7 +417,7 @@ int uart_create(const struct uart_config *uart)
     gpio_create(&mod_devuart, &uart->pio_rx);
     gpio_create(&mod_devuart, &uart->pio_tx);
 #ifdef NRF51
-    uart_set_pins(uart->base, uart->pio_rx, uart->pio_tx);
+    uart_set_pins(uart->base, uart->pio_rx.pin, uart->pio_tx.pin);
 #endif
 
     uart_fno_init(uart);
