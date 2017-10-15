@@ -1940,16 +1940,18 @@ int sys_pthread_getspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg
 static __naked void save_kernel_context(void)
 {
     asm volatile("mrs r0, " MSP "           ");
-#ifdef __ARCH_V7M__
+#ifdef __ARM_ARCH_7M__
     asm volatile("stmdb r0!, {r4-r11}   ");
-#elif defined(__ARCH_V6M__)
-    asm volatile("sub   r0,#0x20")
-    asm volatile("stm   r0!,{r4-R7}")
-    asm volatile("mov   r4,r8")
-    asm volatile("mov   r5,r9")
-    asm volatile("mov   r6,r10")
-    asm volatile("mov   r7,r11")
-    asm volatile("stm   r0!,{r4-R7}")
+#elif defined(__ARM_ARCH_6M__)
+    asm volatile("sub   r0,#0x10");
+    asm volatile("stm   r0!,{r4-R7}"); // Save r4-r7
+    asm volatile("mov   r4,r8");
+    asm volatile("mov   r5,r9");
+    asm volatile("mov   r6,r10");
+    asm volatile("mov   r7,r11");
+    asm volatile("sub   r0,#0x20");
+    asm volatile("stm   r0!,{r4-R7}"); // Save r8-r11
+    asm volatile("sub   r0,#0x10");
 #endif
     asm volatile("msr " MSP ", r0           ");
     asm volatile("isb");
@@ -1959,16 +1961,18 @@ static __naked void save_kernel_context(void)
 static __naked void save_task_context(void)
 {
     asm volatile("mrs r0, " PSP "           ");
-#ifdef __ARCH_V7M__
+#ifdef __ARM_ARCH_7M__
     asm volatile("stmdb r0!, {r4-r11}   ");
-#elif defined(__ARCH_V6M__)
-    asm volatile("sub   r0,#0x20")
-    asm volatile("stm   r0!,{r4-R7}")
-    asm volatile("mov   r4,r8")
-    asm volatile("mov   r5,r9")
-    asm volatile("mov   r6,r10")
-    asm volatile("mov   r7,r11")
-    asm volatile("stm   r0!,{r4-R7}")
+#elif defined(__ARM_ARCH_6M__)
+    asm volatile("sub   r0,#0x10");
+    asm volatile("stm   r0!,{r4-R7}"); // Save r4-r7
+    asm volatile("mov   r4,r8");
+    asm volatile("mov   r5,r9");
+    asm volatile("mov   r6,r10");
+    asm volatile("mov   r7,r11");
+    asm volatile("sub   r0,#0x20");
+    asm volatile("stm   r0!,{r4-R7}"); // Save r8-r11
+    asm volatile("sub   r0,#0x10");
 #endif
     asm volatile("msr " PSP ", r0           ");
     asm volatile("isb");
@@ -1980,20 +1984,17 @@ static uint32_t runnable = RUN_HANDLER;
 static __naked void restore_kernel_context(void)
 {
     asm volatile("mrs r0, " MSP "          ");
-#ifdef __ARCH_V7M__
+#ifdef __ARM_ARCH_7M__
     asm volatile("ldmfd r0!, {r4-r11}  ");
-#elif defined(__ARCH_V6M__)
-    asm volatile("mov r1,r0")
-    asm volatile("add r0,0x10")
-    asm volatile("ldm r0!,{r4-r7}")
-    asm volatile("mov r8,r4")
-    asm volatile("mov r9,r5")
-    asm volatile("mov r10,r6")
-    asm volatile("mov r11,r7")
-    asm volatile("mov r0,r1")
-    asm volatile("ldm r0!,{r4-r7}")
+#elif defined(__ARM_ARCH_6M__)
+    asm volatile("ldm r0!,{r4-r7}");
+    asm volatile("mov r8,r4");
+    asm volatile("mov r9,r5");
+    asm volatile("mov r10,r6");
+    asm volatile("mov r11,r7");
+    asm volatile("ldm r0!,{r4-r7}");
 #endif
-    asm volatile("msr " MSP ", r0          ");
+    asm volatile("msr " MSP ", r0");
     asm volatile("isb");
     asm volatile("bx lr                 ");
 }
@@ -2001,18 +2002,15 @@ static __naked void restore_kernel_context(void)
 static __naked void restore_task_context(void)
 {
     asm volatile("mrs r0, " PSP "          ");
-#ifdef __ARCH_V7M__
+#ifdef __ARM_ARCH_7M__
     asm volatile("ldmfd r0!, {r4-r11}  ");
-#elif defined(__ARCH_V6M__)
-    asm volatile("mov r1,r0")
-    asm volatile("add r0,0x10")
-    asm volatile("ldm r0!,{r4-r7}")
-    asm volatile("mov r8,r4")
-    asm volatile("mov r9,r5")
-    asm volatile("mov r10,r6")
-    asm volatile("mov r11,r7")
-    asm volatile("mov r0,r1")
-    asm volatile("ldm r0!,{r4-r7}")
+#elif defined(__ARM_ARCH_6M__)
+    asm volatile("ldm r0!,{r4-r7}");
+    asm volatile("mov r8,r4");
+    asm volatile("mov r9,r5");
+    asm volatile("mov r10,r6");
+    asm volatile("mov r11,r7");
+    asm volatile("ldm r0!,{r4-r7}");
 #endif
     asm volatile("msr " PSP ", r0          ");
     asm volatile("isb");
@@ -2646,12 +2644,14 @@ int ptrace_pokeuser(struct task *t, uint32_t addr, uint32_t data)
     }
 
     /* Breakpoints */
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     if ((pos > 56) && (pos < 64)) {
         pos -= 56;
         if (data == 0)
             return fpb_delbrk(pos);
         return fpb_setbrk(t->tb.pid, (void *)data, pos);
     }
+#endif
     return -1;
 }
 
@@ -2718,10 +2718,12 @@ int sys_ptrace_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
         {
             struct user u;
             ptrace_getregs(tracee, &u);
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
             if (fpb_setbrk(pid, (void *)((u.regs[15]) / 2 * 2 + 2), 0) >= 0) {
                 task_continue(tracee);
                 return 0;
             } else
+#endif
                 return -1;
         }
 
