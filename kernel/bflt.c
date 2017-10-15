@@ -79,28 +79,16 @@ static int check_header(struct flat_hdr * header) {
     return 0;
 }
 
-static unsigned long * calc_reloc(char * base, unsigned long offset)
-{
-    /* the library id is in top byte of offset */
-    int id = (offset >> 24) & 0x000000FFu;
-    if (id)
-    {
-        kprintf("bFLT: Found reloc to shared library id %d\r\n", id);
-        return (unsigned long *)RELOC_FAILED;
-    }
-    return (unsigned long *)(base + (offset & 0x00FFFFFFu));
-}
-
 static void * load_shared_lib(int lib_id)
 {
-    /* Should we load TEXT + DATA + BSS?  -- HOW TO MANAGER DIFFERENT RELOCS? */
+    /* Should we load TEXT + DATA + BSS?  -- HOW TO MANAGE DIFFERENT RELOCS? */
     /* Re-load DATA and BSS for each instance? */
     unsigned long * reloc_text, reloc_data, reloc_bss, entry_point;
     unsigned long text_len, got_loc, data_len;
     struct fnode *f;
     size_t stack_size;
     char path[MAX_FILE];
-    char *bflt_file_base; // Open the file, first!
+    char *bflt_file_base;
 
     if ( (lib_id >= MAX_SHARED_LIB_ID) || (lib_id <= 0) ) {
         kprintf("Invalid lib_id specified: %d\r\n", lib_id);
@@ -122,12 +110,47 @@ static void * load_shared_lib(int lib_id)
     if (!bflt_file_base)
         return NULL;
 
+    //XXX TODO: Need to munmap after the executable returns!
+
     if (bflt_load(bflt_file_base, (void **)&reloc_text, (void **)&reloc_data, (void **)&reloc_bss, (void **)&entry_point, &stack_size, &got_loc, &text_len, &data_len))
         return NULL;
 
     kprintf("bflt_lib: GDB: add-symbol-file %s/lib%d.so.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n", GDB_PATH, lib_id, reloc_text, reloc_data, reloc_bss);
 
     return reloc_text;
+}
+
+
+static inline void* calc_reloc_NEW(uint32_t offset, struct flat_hdr * header, void *base) {
+    /* the library id is located in high byte of offset entry */
+    int lib_id = (offset >> 24) & 0xff;
+    void * lib_base;
+
+    offset &= 0x00ffffff;
+
+    /* fix up offset */
+    if (lib_id != 0) {
+        /* Load shared library if needed */
+        kprintf("bFLT: Found reloc to shared library id %d\r\n", lib_id);
+        if (lib_cache[lib_id -1].base == NULL)
+        {
+            /* Needs loading */
+            lib_base = load_shared_lib(lib_id);
+            if (!lib_base) {
+                kprintf("Library lib%d.so could not be loaded\r\n", lib_id);
+                return (void *)-1;
+            }
+            lib_cache[lib_id - 1].base = lib_base;
+            /* TODO: add date to cache + compare with executable build date! */
+        } else {
+            lib_base = lib_cache[lib_id - 1].base;
+        }
+        /* XXX: what about .data and .bss relocs form exec ->> shared lib?? */
+        /* perform .text reloc */
+        return (void*)((uint32_t)lib_base + offset);
+    } else {
+        return (void*)((uint32_t)base + offset);
+    }
 }
 
 static int process_got_relocs(struct flat_hdr * hdr, char * base, char * got_start)
@@ -145,45 +168,53 @@ static int process_got_relocs(struct flat_hdr * hdr, char * base, char * got_sta
     for (rp = (unsigned long *)got_start; *rp != 0xffffffff; rp++) {
         unsigned long reloc = *rp;
         /* this will remap pointers starting from address 0x0, to wherever they are actually loaded in the memory map (.text reloc) */
-        if (reloc) {
-            unsigned long addr = RELOC_FAILED;
-            int lib_id = (reloc >> 24u) & 0xFF;
-            if (lib_id)
-            {
-                /* Load shared library if needed */
-                kprintf("bFLT: Found GOT reloc to shared library id %d\r\n", lib_id);
-                if (lib_cache[lib_id -1].base == NULL)
-                {
-                    /* Needs loading */
-                    char * lib_base = load_shared_lib(lib_id);
-                    if (!lib_base) {
-                        kprintf("Library lib%d.so could not be loaded\r\n", lib_id);
-                        return -2;
-                    }
-                    lib_cache[lib_id -1].base = lib_base;
-                    /* TODO: add date to cache + compare with executable build date! */
+        reloc = (uint32_t)calc_reloc_NEW(reloc, hdr, (void *)base);
+        if (reloc == -1)
+            kprintf("Could not calculate GOT reloc\n");
+        *rp = reloc; /* Store translated address in GOT */
 
-                    reloc &= 0x00FFFFFFu;
+        // XXX if (reloc) {
+        // XXX     unsigned long addr = RELOC_FAILED;
+        // XXX     int lib_id = (reloc >> 24u) & 0xFF;
+        // XXX     if (lib_id)
+        // XXX     {
+        // XXX         /* Load shared library if needed */
+        // XXX         kprintf("bFLT: Found GOT reloc to shared library id %d\r\n", lib_id);
+        // XXX         if (lib_cache[lib_id -1].base == NULL)
+        // XXX         {
+        // XXX             /* Needs loading */
+        // XXX             char * lib_base = load_shared_lib(lib_id);
+        // XXX             if (!lib_base) {
+        // XXX                 kprintf("Library lib%d.so could not be loaded\r\n", lib_id);
+        // XXX                 return -2;
+        // XXX             }
+        // XXX             lib_cache[lib_id -1].base = lib_base;
+        // XXX             /* TODO: add date to cache + compare with executable build date! */
 
-                    /* perform .text reloc */
-                    addr = (unsigned long)calc_reloc(lib_base, reloc);
-                    /* XXX: what about .data and .bss relocs form exec ->> shared lib?? */
-                }
-            } else {
-                if (reloc < data_start) {
-                    /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
-                    addr = (unsigned long)calc_reloc(text_start_dest, reloc);
-                } else if (reloc < bss_end) {
-                    /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
-                    addr = (unsigned long)calc_reloc(data_start_dest, reloc - data_start);
-                }
-            }
-            if (addr == RELOC_FAILED) {
-                //errno = -ENOEXEC;
-                return -1;
-            }
-            *rp = addr; /* Store translated address in GOT */
-        }
+        // XXX             reloc &= 0x00FFFFFFu;
+
+        // XXX             /* perform .text reloc */
+        // XXX             addr = (unsigned long)calc_reloc(lib_base, reloc);
+        // XXX             /* XXX: what about .data and .bss relocs form exec ->> shared lib?? */
+        // XXX         }
+        // XXX     } else {
+        // XXX         /* Value of *rp = location of .data in bFLT file (without bFLT header) */
+        // XXX         /* Relocated value = location of .data in actual memory */
+        // XXX         addr = (unsigned long)calc_reloc_NEW(reloc - data_start, hdr, data_start_dest);
+        // XXX         //if (reloc < data_start) {
+        // XXX         //    /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
+        // XXX         //    addr = (unsigned long)calc_reloc(text_start_dest, reloc);
+        // XXX         //} else if (reloc < bss_end) {
+        // XXX         //    /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
+        // XXX         //    addr = (unsigned long)calc_reloc(data_start_dest, reloc - data_start);
+        // XXX         //}
+        // XXX     }
+        // XXX     if (addr == RELOC_FAILED) {
+        // XXX         //errno = -ENOEXEC;
+        // XXX         return -1;
+        // XXX     }
+        // XXX     *rp = addr; /* Store translated address in GOT */
+        // XXX }
     }
     return 0;
 }
@@ -204,7 +235,7 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long da
     unsigned long data_start = long_be(hdr->data_start) - sizeof(struct flat_hdr);
     unsigned long data_end = long_be(hdr->data_end) - sizeof(struct flat_hdr); /* relocs must be located in .data segment for GOTPIC */
     unsigned long bss_end = long_be(hdr->bss_end) - sizeof(struct flat_hdr);
-    unsigned long text_start_dest = ((unsigned long)base) + sizeof(struct flat_hdr); /* original RELOC is relative to text_start (.bss in ROM/Flash/source) */
+    unsigned long text_start_dest = ((unsigned long)base); //XXX + sizeof(struct flat_hdr); /* original RELOC is relative to text_start (.bss in ROM/Flash/source) */
     /*
      * Now run through the relocation entries.
      * We've got to be careful here as C++ produces relocatable zero
@@ -223,44 +254,45 @@ int process_relocs(struct flat_hdr * hdr, unsigned long * base, unsigned long da
         /* Get the address of the pointer to be
            relocated (of course, the address has to be
            relocated first).  */
-        fixup_addr = (unsigned long *)long_be(reloc[i]);
+        fixup_addr = (unsigned long *)(long_be(reloc[i]) + (uint32_t)base);
         /* two cases: reloc_addr < text_end: For now we only support GOTPIC, which cannot have relocations in .text segment!
          *        or  reloc_addr > data_start
          */
         /* TODO: Make common between GOT and regular relocs ? */
+        relocd_addr = (unsigned long *)calc_reloc_NEW(*fixup_addr, hdr, base);
 
+        //if ((unsigned long)fixup_addr < data_start)
+        //{
+        //    /* FAIL -- non GOTPIC, cannot write to ROM/.text */
+        //    return -1;
+        //} else if ((unsigned long)fixup_addr < data_end) {
+        //    /* Reloc is in .data section (must be for GOTPIC), now make this point to the .data source (in the DEST ram!), and dereference */
+        //    fixup_addr = (unsigned long *)calc_reloc((char *)((unsigned long)data_start_dest - (unsigned long)data_start), (unsigned long)fixup_addr);
+        //    if (fixup_addr == (unsigned long *)RELOC_FAILED)
+        //        return -1;
 
-
-        if ((unsigned long)fixup_addr < data_start)
-        {
-            /* FAIL -- non GOTPIC, cannot write to ROM/.text */
-            return -1;
-        } else if ((unsigned long)fixup_addr < data_end) {
-            /* Reloc is in .data section (must be for GOTPIC), now make this point to the .data source (in the DEST ram!), and dereference */
-            fixup_addr = (unsigned long *)calc_reloc((char *)((unsigned long)data_start_dest - (unsigned long)data_start), (unsigned long)fixup_addr);
-            if (fixup_addr == (unsigned long *)RELOC_FAILED)
-                return -1;
-
-            /* Again 2 cases: reloc points to .text -- or to .data/.bss */
-            if (*fixup_addr < data_start) {
-                /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
-                relocd_addr = (unsigned long *)calc_reloc((char *)text_start_dest, *fixup_addr);
-            } else if (*fixup_addr < bss_end) {
-                /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
-                relocd_addr = (unsigned long *)calc_reloc((char *)data_start_dest, *fixup_addr - data_start);
-            } else {
-                relocd_addr = (unsigned long *)RELOC_FAILED;
-                return -1;
-            }
-            /* write the relocated/offsetted value back were it was read */
-            *fixup_addr = (unsigned long)relocd_addr;
-        }
+        //    /* Again 2 cases: reloc points to .text -- or to .data/.bss */
+        //    if (*fixup_addr < data_start) {
+        //        /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
+        //        relocd_addr = (unsigned long *)calc_reloc((char *)text_start_dest, *fixup_addr);
+        //    } else if (*fixup_addr < bss_end) {
+        //        /* reloc is in .data section: BASE == data_start  -- addr == relative to .text - (start of data) */
+        //        relocd_addr = (unsigned long *)calc_reloc((char *)data_start_dest, *fixup_addr - data_start);
+        //    } else {
+        //        relocd_addr = (unsigned long *)RELOC_FAILED;
+        //        return -1;
+        //    }
+        //    /* write the relocated/offsetted value back were it was read */
+        //    *fixup_addr = (unsigned long)relocd_addr;
+        //}
 
         if (relocd_addr == (unsigned long *)RELOC_FAILED) {
             kprintf("bFLT: Unable to calculate relocation address\r\n");
             return -1;
         }
 
+        /* write the relocated/offsetted value back were it was read */
+        *(uint32_t *)(fixup_addr) = (unsigned long)relocd_addr;
     }
 
     return 0;
@@ -354,6 +386,16 @@ int bflt_load(char* from, void **reloc_text, void **reloc_data, void **reloc_bss
         char  *mem, *copy_src;
         unsigned long data_offset = 0;
         unsigned long copy_len = *data_len;
+        
+        /* FORCE FLAT_FLAG_RAM for now,
+         * since using GCC with -mno-single-pic-base -mno-pic-data-is-text-relative,
+         * *SHOULD* allow use to have .text read-only and XIP,
+         * but this combination seems to force the GOT offset to the .text to be fixed,
+         * thus also located in read-only memory, which makes us unable to fixup the GOT,
+         * and therefor XIP is not working anymore...
+         * Current solution: Relocate .text, to RAM, too, such that we *can* fixup the GOT
+         */
+        flags |= FLAT_FLAG_RAM; //XXX FIXME -- needs GCC patch?
 
         if (flags & FLAT_FLAG_RAM) {
             alloc_len += *text_len;
@@ -410,7 +452,8 @@ int bflt_load(char* from, void **reloc_text, void **reloc_data, void **reloc_bss
 
     /* init relocations */
     if (flags & FLAT_FLAG_GOTPIC) {
-        if (process_got_relocs(&hdr, address_zero, data_dest)) // .data section is beginning of GOT
+        //if (process_got_relocs(&hdr, address_zero, data_dest)) // .data section is beginning of GOT
+        if (process_got_relocs(&hdr, *reloc_text, data_dest)) // .data section is beginning of GOT
             goto error;
         *got_loc = (unsigned long)data_dest;
     }
@@ -418,7 +461,8 @@ int bflt_load(char* from, void **reloc_text, void **reloc_data, void **reloc_bss
     /*
      * Now run through the relocation entries.
      */
-    process_relocs(&hdr, (unsigned long *)address_zero, (unsigned long)data_dest, (unsigned long *)relocs_src, relocs);
+    //process_relocs(&hdr, (unsigned long *)address_zero, (unsigned long)data_dest, (unsigned long *)relocs_src, relocs);
+    process_relocs(&hdr, (unsigned long *)*reloc_text, (unsigned long)data_dest, (unsigned long *)relocs_src, relocs);
 
     return 0;
 
