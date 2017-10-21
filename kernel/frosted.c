@@ -206,7 +206,7 @@ int frosted_init(void)
     fatfs_init();
 
     ltdc_init();
-    fbcon_init();
+    fbcon_init( 480, 272);
 
     vfs_mount(NULL, "/tmp", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);
