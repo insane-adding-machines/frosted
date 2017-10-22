@@ -96,10 +96,10 @@ static uint32_t * calc_reloc(const uint8_t * base, uint32_t offset)
     return (uint32_t *)(base + (offset & 0x00FFFFFFu));
 }
 
-static void * load_shared_lib(int lib_id)
+static void * load_shared_lib(struct bflt_info *info, int lib_id)
 {
     /* TODO: Re-load a new DATA and BSS for each instance! */
-    struct bflt_info info = {};
+    struct bflt_info libinfo = {};
     struct fnode *f;
     size_t stack_size;
     char path[MAX_FILE];
@@ -125,12 +125,15 @@ static void * load_shared_lib(int lib_id)
     if (!bflt_file_base)
         return NULL;
 
-    if (bflt_load(bflt_file_base, &info))
+    if (bflt_load(bflt_file_base, &libinfo))
         return NULL;
 
-    kprintf("bflt_lib: GDB: add-symbol-file %slib%d.so.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n", GDB_PATH, lib_id, info.reloc_text, info.reloc_data, info.reloc_bss);
+    kprintf("bflt_lib: GDB: add-symbol-file %slib%d.so.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n", GDB_PATH, lib_id, libinfo.reloc_text, libinfo.reloc_data, libinfo.reloc_bss);
 
-    return info.reloc_text;
+    /* fill in static base (PIC register value) of this library instance in PDT */
+    info->pdt->static_base[lib_id] = libinfo.reloc_data;
+
+    return libinfo.reloc_text;
 }
 
 static int process_got_relocs(struct bflt_info *info)
@@ -155,7 +158,7 @@ static int process_got_relocs(struct bflt_info *info)
                 if (lib_cache[lib_id -1].base == NULL)
                 {
                     /* Needs loading */
-                    uint8_t * lib_base = load_shared_lib(lib_id);
+                    uint8_t * lib_base = load_shared_lib(info, lib_id);
                     if (!lib_base) {
                         kprintf("Library lib%d.so could not be loaded\r\n", lib_id);
                         return -2;
@@ -164,8 +167,6 @@ static int process_got_relocs(struct bflt_info *info)
                     /* TODO: add date to cache + compare with executable build date! */
 
                     reloc &= 0x00FFFFFFu;
-
-                    return -1; //XXX fail on purpose
 
                     /* perform .text reloc */
                     addr = (uint32_t)calc_reloc(lib_base, reloc);
