@@ -45,6 +45,7 @@ struct shared_lib {
 
 struct process_data_table {
     void * static_base[MAX_SHARED_LIBS];
+    void * pdt_self; /* pointer to this table, which will be located a (static_base_reg(=r9) - 4), independed of MAX_SHARED_LIBS */
 };
 
 /* lib 0 = reserved for the running app, so in the cache, all the indices are -1 */
@@ -153,25 +154,29 @@ static int process_got_relocs(struct bflt_info *info)
             int lib_id = (reloc >> 24u) & 0xFF;
             if (lib_id)
             {
-                /* Load shared library if needed */
+                uint8_t * lib_base = lib_cache[lib_id - 1].base;
                 kprintf("bFLT: Found GOT reloc to shared library id %d\r\n", lib_id);
-                if (lib_cache[lib_id -1].base == NULL)
+
+                /* Load shared library if needed */
+                if (lib_base == NULL)
                 {
-                    /* Needs loading */
-                    uint8_t * lib_base = load_shared_lib(info, lib_id);
+                    lib_base = load_shared_lib(info, lib_id);
                     if (!lib_base) {
                         kprintf("Library lib%d.so could not be loaded\r\n", lib_id);
                         return -2;
                     }
                     lib_cache[lib_id -1].base = lib_base;
                     /* TODO: add date to cache + compare with executable build date! */
-
-                    reloc &= 0x00FFFFFFu;
-
-                    /* perform .text reloc */
-                    addr = (uint32_t)calc_reloc(lib_base, reloc);
-                    /* XXX: what about .data and .bss relocs form exec ->> shared lib?? */
                 }
+
+                /* perform reloc (.text only for now) */
+                reloc &= 0x00FFFFFFu;
+                /* perform .text reloc */
+                addr = (uint32_t)calc_reloc(lib_base, reloc);
+                // XXX FIXME: will break if there's a reloc to library's .data or .bss!! */
+                addr |= 0x00000001u; /* relocs in .text must have the bit0 set! */
+                /* XXX: what about .data and .bss relocs form exec ->> shared lib?? */
+                // XXX need something like this: if (reloc < (uint32_t)info->data_offset) {
             } else {
                 if (reloc < (uint32_t)info->data_offset) {
                     /* reloc is in .text section: BASE == text_start  -- addr == relative to .text */
@@ -375,6 +380,7 @@ int bflt_load(const void *bflt_src, struct bflt_info *info)
          * then set 'copy_dst' after that */
 #ifdef CONFIG_BINFMT_SHARED_FLAT
         info->pdt = (void *)mem;
+        info->pdt->pdt_self = info->pdt;
         copy_dst += sizeof(struct process_data_table);
 #endif
 
