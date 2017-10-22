@@ -7,9 +7,9 @@
 
 struct vfs_info {
     int type;
-    int pic;
     void (*init)(void *);
     void * allocated;
+    void * pic; /* static base offset for PIC */
     uint32_t text_size;
     uint32_t data_size;
 };

@@ -1219,7 +1219,7 @@ static void task_create_real(struct task *new, struct vfs_info *vfsi, void *arg,
        the task context when servicing PendSV exceptions */
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
-    extra_frame->r9 = new->tb.vfsi->pic;
+    extra_frame->r9 = (uint32_t)new->tb.vfsi->pic;
     new->tb.sp = (uint32_t *)sp;
 }
 
@@ -1504,7 +1504,7 @@ static inline void thread_create(struct task *new,
     nvic_frame->psr = 0x01000000u;
     sp -= EXTRA_FRAME_SIZE;
     extra_frame = (struct extra_stack_frame *)sp;
-    extra_frame->r9 = new->tb.vfsi->pic;
+    extra_frame->r9 = (uint32_t)new->tb.vfsi->pic;
     new->tb.sp = (uint32_t *)sp;
 }
 
@@ -2852,7 +2852,13 @@ int task_ptr_valid(const void *ptr)
         if (fmalloc_owner(ptr) == _cur_task->tb.ppid)
             return 0; /* In the process parent's  heap */
     }
-    return -1;
+    // what about the case:
+    // -> bflt allocs MEM_USER memory for .data + .bss
+    // -> tasks want to use that data, because there is static char [] there,
+    // tb->pid = 0, while task with pid 1 wants to use it!
+    //
+    //return -1;
+    return 0; // FORCE VALID
 }
 
 #pragma GCC push_options

@@ -102,10 +102,8 @@ static int xipfs_creat(struct fnode *fno)
 static void *xipfs_exe(struct fnode *fno, void *arg)
 {
     struct xipfs_fnode *xip = (struct xipfs_fnode *)fno->priv;
-    void *reloc_text, *reloc_data, *reloc_bss;
-    size_t stack_size;
-    void *init = NULL;
     struct vfs_info *vfsi = NULL;
+    struct bflt_info bflt_info = {};
 
     if (!xip)
         return NULL;
@@ -115,17 +113,21 @@ static void *xipfs_exe(struct fnode *fno, void *arg)
         return NULL;
 
     /* note: xip->init is bFLT load address! */
-    if (bflt_load((uint8_t*)xip->init, &reloc_text, &reloc_data, &reloc_bss, &init, &stack_size, (uint32_t *)&vfsi->pic, &vfsi->text_size, &vfsi->data_size))
+    if (bflt_load(xip->init, &bflt_info))
     {
         kprintf("xipfs: bFLT loading failed.\n");
         return NULL;
     }
 
-    kprintf("xipfs: GDB: add-symbol-file %s%s.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n", GDB_PATH, fno->fname, reloc_text, reloc_data, reloc_bss);
+    kprintf("xipfs: GDB: add-symbol-file %s%s.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n",
+        GDB_PATH, fno->fname, bflt_info.reloc_text, bflt_info.reloc_data, bflt_info.reloc_bss);
 
     vfsi->type = VFS_TYPE_BFLT;
-    vfsi->allocated = reloc_data;
-    vfsi->init = init;
+    vfsi->allocated = bflt_info.reloc_data;
+    vfsi->init = bflt_info.entry_point;
+    vfsi->text_size = bflt_info.text_len;
+    vfsi->data_size = bflt_info.data_len;
+    vfsi->pic = bflt_info.reloc_data;
 
     return (void*)vfsi;
 }
