@@ -167,7 +167,9 @@ struct __attribute__((packed)) nvic_stack_frame {
     uint32_t dummy;
 #endif
 };
+/* In order to keep the code efficient, the stack layout of armv6 and armv7 do NOT match! */
 struct __attribute__((packed)) extra_stack_frame {
+#ifdef __ARM_ARCH_7M__
     uint32_t r4;
     uint32_t r5;
     uint32_t r6;
@@ -176,6 +178,16 @@ struct __attribute__((packed)) extra_stack_frame {
     uint32_t r9;
     uint32_t r10;
     uint32_t r11;
+#elif defined(__ARM_ARCH_6M__)
+    uint32_t r8;
+    uint32_t r9;
+    uint32_t r10;
+    uint32_t r11;
+    uint32_t r4;
+    uint32_t r5;
+    uint32_t r6;
+    uint32_t r7;
+#endif
 };
 
 #define NVIC_FRAME_SIZE ((sizeof(struct nvic_stack_frame)))
@@ -1937,6 +1949,7 @@ int sys_pthread_getspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg
 /**/
 /**/
 /**/
+/* In order to keep the code efficient, the stack layout of armv6 and armv7 do NOT match! */
 static __naked void save_kernel_context(void)
 {
     asm volatile("mrs r0, " MSP "           ");
@@ -2046,6 +2059,7 @@ static __inl void task_switch(void)
 /* C ABI cannot mess with the stack, we will */
 void __naked pend_sv_handler(void)
 {
+    asm volatile("cpsid i");
     /* save current context on current stack */
     if (in_kernel()) {
         save_kernel_context();
@@ -2092,6 +2106,7 @@ void __naked pend_sv_handler(void)
         runnable = RUN_USER;
     }
 
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     /* Set control bit for non-kernel threads */
     if (_cur_task->tb.pid != 0) {
         asm volatile("msr CONTROL, %0" ::"r"(0x01));
@@ -2099,6 +2114,7 @@ void __naked pend_sv_handler(void)
         asm volatile("msr CONTROL, %0" ::"r"(0x00));
     }
     asm volatile("isb");
+#endif
 
     /* Set return value selected by the restore procedure;
        RUN_KERNEL/RUN_USER are special values which inform
@@ -2109,6 +2125,7 @@ void __naked pend_sv_handler(void)
        execution.  */
     asm volatile("mov lr, %0" ::"r"(runnable));
 
+    asm volatile("cpsie i");
     /* return (function is naked) */
     asm volatile("bx lr          \n");
 }
@@ -2903,19 +2920,40 @@ int task_ptr_valid(const void *ptr)
 
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
+#ifdef __ARM_ARCH_6M__
+static uint32_t *a0 = NULL;
+static uint32_t *a1 = NULL;
+static uint32_t *a2 = NULL;
+static uint32_t *a3 = NULL;
+#endif
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
-struct extra_stack_frame *stored_extra = NULL;
-struct extra_stack_frame *copied_extra = NULL;
-
+struct nvic_stack_frame *n_stack = NULL;
 
 int __attribute__((naked))
-sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
-                uint32_t arg4, uint32_t arg5)
+sv_call_handler(void)
 {
     irq_off();
 
-    if (n == SV_CALL_SIGRETURN) {
+    save_task_context();
+    asm volatile("mrs %0, " PSP "" : "=r"(_top_stack));
+
+    /* save current SP to TCB */
+    _cur_task->tb.sp = _top_stack;
+
+    /* Get function arguments */
+    n_stack = (struct nvic_stack_frame *)(_cur_task->tb.sp + NVIC_FRAME_SIZE);
+    a0 = &n_stack->r0;
+    a1 = &n_stack->r1;
+    a2 = &n_stack->r2;
+    a3 = &n_stack->r3;
+    a4 = (uint32_t *)((uint8_t *)_cur_task->tb.sp +
+                      (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 8*4));
+    a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp +
+                      (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 8*4 + 4));
+
+
+    if (*a0 == SV_CALL_SIGRETURN) {
         uint32_t *syscall_retval =
             (uint32_t *)(_cur_task->tb.osp + EXTRA_FRAME_SIZE);
         _cur_task->tb.sp = _cur_task->tb.osp;
@@ -2926,25 +2964,14 @@ sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
         irq_on();
         goto return_from_syscall;
     }
-    if (n >= _SYSCALLS_NR) {
+    if (*a0 >= _SYSCALLS_NR) {
         irq_on();
         return -1;
     }
-    if (sys_syscall_handlers[n] == NULL) {
+    if (sys_syscall_handlers[*a0] == NULL) {
         irq_on();
         return -1;
     }
-
-    save_task_context();
-    asm volatile("mrs %0, " PSP "" : "=r"(_top_stack));
-
-    /* save current SP to TCB */
-    _cur_task->tb.sp = _top_stack;
-
-    a4 = (uint32_t *)((uint8_t *)_cur_task->tb.sp +
-                      (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 8));
-    a5 = (uint32_t *)((uint8_t *)_cur_task->tb.sp +
-                      (EXTRA_FRAME_SIZE + NVIC_FRAME_SIZE + 12));
 
 #ifdef CONFIG_SYSCALL_TRACE
     Strace[StraceTop].n = n;
@@ -2960,12 +2987,12 @@ sv_call_handler(uint32_t n, uint32_t arg1, uint32_t arg2, uint32_t arg3,
                 uint32_t arg5) = NULL;
 
     _cur_task->tb.flags |= TASK_FLAG_IN_SYSCALL;
-    call = sys_syscall_handlers[n];
+    call = sys_syscall_handlers[*a0];
     if (!call) {
         irq_on();
         goto return_from_syscall;
     }
-    call(arg1, arg2, arg3, *a4, *a5);
+    call(*a1, *a2, *a3, *a4, *a5);
 
     /* Exec does not have a return value, and will use r0 as args for main()*/
     if (call != sys_syscall_handlers[SYS_EXEC])
