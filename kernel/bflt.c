@@ -38,14 +38,26 @@
 
 #define GDB_PATH "frosted-userland/gdb/"
 
-struct shared_lib {
+/* Process Data Table (PDT) is used by the shared lib infrastructure
+ * to find the static_base (r9 single-pic-base) value for each library,
+ * and it's text_base (start of code) value.
+ * Both are required in the asm veneers, which are inserted when calling
+ * libraries from a bFLT executable.
+ */
+struct __attribute__((packed)) shared_lib {
     void *base;
     uint32_t build_date;
 };
 
-struct process_data_table {
-    void * static_base[MAX_SHARED_LIBS];
-    void * pdt_self; /* pointer to this table, which will be located a (static_base_reg(=r9) - 4), independed of MAX_SHARED_LIBS */
+struct __attribute__((packed)) base_addr {
+    void * static_base;
+    void * text_base;
+    void * scratch_lr;
+    void * padding;
+};
+
+struct __attribute__((packed)) process_data_table {
+    struct base_addr base[MAX_SHARED_LIBS];
 };
 
 /* lib 0 = reserved for the running app, so in the cache, all the indices are -1 */
@@ -126,13 +138,15 @@ static void * load_shared_lib(struct bflt_info *info, int lib_id)
     if (!bflt_file_base)
         return NULL;
 
+    libinfo.pdt = info->pdt; /* lib loading should use the main executable's PDT */
     if (bflt_load(bflt_file_base, &libinfo))
         return NULL;
 
     kprintf("bflt_lib: GDB: add-symbol-file %slib%d.so.gdb 0x%p -s .data 0x%p -s .bss 0x%p\n", GDB_PATH, lib_id, libinfo.reloc_text, libinfo.reloc_data, libinfo.reloc_bss);
 
-    /* fill in static base (PIC register value) of this library instance in PDT */
-    info->pdt->static_base[lib_id] = libinfo.reloc_data;
+    /* fill in static_base (PIC register value) and text_base of this library instance in PDT */
+    info->pdt->base[lib_id].static_base = libinfo.reloc_data;
+    info->pdt->base[lib_id].text_base = libinfo.reloc_text;
 
     return libinfo.reloc_text;
 }
@@ -167,6 +181,11 @@ static int process_got_relocs(struct bflt_info *info)
                     }
                     lib_cache[lib_id -1].base = lib_base;
                     /* TODO: add date to cache + compare with executable build date! */
+
+                    /* TODO:
+                     * - Do NOT reload same lib twice for one executable
+                     * - DO reload the same lib again for another executable!
+                     */
                 }
 
                 /* perform reloc (.text only for now) */
@@ -343,7 +362,12 @@ int bflt_load(const void *bflt_src, struct bflt_info *info)
     /* extra space needed for the shared lib static-base pointers (r9/v6)
      * a.k.a. "process data table" */
 #ifdef CONFIG_BINFMT_SHARED_FLAT
-    alloc_len += sizeof(struct process_data_table);
+    /* for the pointer to PDT */
+    alloc_len += sizeof(void *);
+    /* for the actual PDT (only main executable, not for shared libs) */
+    if (info->pdt == NULL) {
+        alloc_len += sizeof(struct process_data_table);
+    }
 #endif
 
     /*
@@ -376,12 +400,13 @@ int bflt_load(const void *bflt_src, struct bflt_info *info)
         }
         copy_dst = mem;
 
-        /* initialize PDT for shared libraries,
-         * then set 'copy_dst' after that */
 #ifdef CONFIG_BINFMT_SHARED_FLAT
-        info->pdt = (void *)mem;
-        info->pdt->pdt_self = info->pdt;
-        copy_dst += sizeof(struct process_data_table);
+        /* move copy_dst after PDT pointer */
+        copy_dst += sizeof(void *);
+        /* move copy_dst after PDT table and PDT pointer (only for main executable, not for shared libs) */
+        if (info->pdt == NULL) {
+            copy_dst += sizeof(struct process_data_table);
+        }
 #endif
 
         /* .text is only relocated when RAM flag is set */
@@ -392,6 +417,22 @@ int bflt_load(const void *bflt_src, struct bflt_info *info)
             info->reloc_text = (uint8_t *)info->orig_text;
             copy_src = (uint8_t *)info->orig_text + info->text_len;
         }
+
+#ifdef CONFIG_BINFMT_SHARED_FLAT
+        if (info->pdt == NULL) {
+            /* main executable */
+            struct process_data_table ** pdt_ptr = (void *)(mem + sizeof(struct process_data_table));
+            info->pdt = (void *)mem;
+            *pdt_ptr = info->pdt;
+            memset(info->pdt, 0, sizeof(struct process_data_table));
+            info->pdt->base[0].static_base = copy_dst + data_offset; /* save static base in PDT */
+            info->pdt->base[0].text_base = info->reloc_text;
+        } else {
+            /* shared lib: PDT is not modified, this is done by the caller of this function, using the 'info' struct */
+            struct process_data_table ** pdt_ptr = (void *)mem;
+            *pdt_ptr = info->pdt;
+        }
+#endif
 
         /* .data is always relocated */
         info->reloc_data = copy_dst + data_offset;
@@ -422,7 +463,6 @@ int bflt_load(const void *bflt_src, struct bflt_info *info)
     /* 1. GOT relocations */
     if (flags & FLAT_FLAG_GOTPIC) {
         if (process_got_relocs(info)) goto error;
-        info->pdt->static_base[0] = info->reloc_data; /* save static base in PDT */
     }
 
     /* 2. Extra relocations */
