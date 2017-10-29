@@ -75,24 +75,37 @@ static inline uint32_t get_interrupt_source(uint32_t base)
 #endif
 #ifdef NRF51
 #   include "unicore-mx/nrf/51/uart.h"
-#   define CLOCK_ENABLE(C) do{}while(0)
-#   define usart_enable           uart_enable
-#   define usart_set_baudrate     uart_set_baudrate
-#   define usart_set_databits     uart_set_databits
-#   define usart_set_stopbits     uart_set_stopbits
-#   define usart_set_parity       uart_set_parity
-#   define usart_set_flow_control uart_set_flow_control
-#   define usart_enable_rx_interrupt(x)  uart_enable_interrupts(x, UART_INTEN_RXDRDY)
-#   define usart_disable_rx_interrupt(x) uart_disable_interrupts(x, UART_INTEN_RXDRDY)
-#   define usart_enable_tx_interrupt(x)  uart_enable_interrupts(x, UART_INTEN_TXDRDY)
-#   define usart_disable_tx_interrupt(x) uart_disable_interrupts(x, UART_INTEN_TXDRDY)
-#   define usart_clear_tx_interrupt(x)   uart_clear_interrupts(x)
-#   define usart_clear_rx_interrupt(x)   uart_clear_interrupts(x)
+#   define CLOCK_ENABLE(C)               do{} while(0)
+#   define usart_enable                  uart_enable
+#   define usart_set_baudrate            uart_set_baudrate
+#   define usart_set_databits(x, y)      do {} while(0)
+#   define usart_set_stopbits(x, y)      do {} while(0)
+#   define usart_set_parity              uart_set_parity
+#   define usart_set_flow_control        uart_set_flow_control
+#   define usart_enable_rx_interrupt(x)  do { \
+                                              uart_enable_interrupts(x, UART_INTEN_RXDRDY); \
+                                              uart_start_rx(x); \
+                                         } while(0)
+#   define usart_disable_rx_interrupt(x) do { \
+                                              uart_disable_interrupts(x, UART_INTEN_RXDRDY); \
+                                              uart_stop_rx(x); \
+                                         } while(0)
+#   define usart_enable_tx_interrupt(x)  do { \
+                                              uart_enable_interrupts(x, UART_INTEN_TXDRDY); \
+                                              uart_start_tx(x); \
+                                         } while(0)
+#   define usart_disable_tx_interrupt(x) do { \
+                                              uart_disable_interrupts(x, UART_INTEN_TXDRDY); \
+                                              uart_stop_tx(x); \
+                                         } while(0)
+#   define usart_clear_tx_interrupt(x)   uart_clear_events(UART_EVENT_TXDRDY(x))
+#   define usart_clear_rx_interrupt(x)   uart_clear_events(UART_EVENT_RXDRDY(x))
 #   define usart_is_send_ready(x)        UART_EVENT_CTS(x)
-#   define usart_is_receive_ready(x)     UART_EVENT_CTS(x)
+#   define usart_is_recv_ready(x)        1
 #   define usart_send                    uart_send
-#   define USART_SR_RXNE  0
-#   define USART_SR_TXE   1
+#   define usart_recv                    uart_recv
+#   define USART_SR_RXNE                 0
+#   define USART_SR_TXE                  1
 
 static inline uint32_t get_interrupt_source(uint32_t base)
 {
@@ -146,7 +159,6 @@ static void devuart_tty_attach(struct fnode *fno, int pid)
         uart->sid = pid;
     }
 }
-
 
 void uart_isr(struct dev_uart *uart)
 {
@@ -417,7 +429,13 @@ int uart_create(const struct uart_config *uart)
     gpio_create(&mod_devuart, &uart->pio_rx);
     gpio_create(&mod_devuart, &uart->pio_tx);
 #ifdef NRF51
-    uart_set_pins(uart->base, uart->pio_rx.pin, uart->pio_tx.pin);
+    if(!uart->flow) {
+        uart_set_pins(uart->base, uart->pio_rx.pin, uart->pio_tx.pin,
+                                  UART_PSEL_OFF, UART_PSEL_OFF);
+    } else {
+        uart_set_pins(uart->base, uart->pio_rx.pin, uart->pio_tx.pin,
+                                  uart->pio_cts.pin, uart->pio_rts.pin);
+    }
 #endif
 
     uart_fno_init(uart);
