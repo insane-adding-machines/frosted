@@ -104,8 +104,8 @@ static inline uint32_t get_interrupt_source(uint32_t base)
 #   define usart_is_recv_ready(x)        1
 #   define usart_send                    uart_send
 #   define usart_recv                    uart_recv
-#   define USART_SR_RXNE                 0
-#   define USART_SR_TXE                  1
+#   define USART_SR_RXNE                 1
+#   define USART_SR_TXE                  2
 
 static inline uint32_t get_interrupt_source(uint32_t base)
 {
