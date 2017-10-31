@@ -176,14 +176,14 @@ static const struct i2c_config i2c_configs[] = {
         },
         .rx_dma = {
             .base = DMA1,
-            .stream = DMA_STREAM0,
+            .stream = DMA_STREAM5,
             .channel = DMA_SxCR_CHSEL_1,
             .psize =  DMA_SxCR_PSIZE_8BIT,
             .msize = DMA_SxCR_MSIZE_8BIT,
             .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
             .prio = DMA_SxCR_PL_VERY_HIGH,
             .paddr =  (uint32_t) &I2C_DR(I2C1),
-            .irq = NVIC_DMA1_STREAM0_IRQ,
+            .irq = NVIC_DMA1_STREAM5_IRQ,
         },
         .dma_rcc = RCC_DMA1,
         .pio_scl = {

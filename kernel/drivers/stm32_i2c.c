@@ -78,7 +78,6 @@ struct dev_i2c {
     uint8_t slv_register;
     const struct dma_config * tx_dma_config;
     const struct dma_config * rx_dma_config;
-    uint8_t *dma_buffer;
     mutex_t *mutex;
 
     uint8_t dirn;
@@ -114,7 +113,7 @@ static void i2c_ev(struct dev_i2c * i2c)
             (sr2 & (I2C_SR2_BUSY | I2C_SR2_MSL | I2C_SR2_TRA)) == (I2C_SR2_BUSY | I2C_SR2_MSL | I2C_SR2_TRA))   )
         state_machine(i2c, I2C_EV_MASTER_TRANSMITTER_MODE_SELECTED);
     /* MASTER_RECEIVER_MODE_SELECTED */
-    else if(((sr1 & (I2C_SR1_ADDR)) == (I2C_SR1_ADDR)) &&
+    else if(//((sr1 & (I2C_SR1_ADDR)) == (I2C_SR1_ADDR)) &&
             ((sr2 &(I2C_SR2_BUSY | I2C_SR2_MSL)) == (I2C_SR2_BUSY | I2C_SR2_MSL))   )
         state_machine(i2c, I2C_EV_MASTER_RECEIVER_MODE_SELECTED);
 
@@ -253,6 +252,7 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_ev ev)
                     restart_state_machine(i2c);
                     break;
                 case I2C_EV_MASTER_TRANSMITTER_MODE_SELECTED:
+                case I2C_EV_MASTER_RECEIVER_MODE_SELECTED:
                     if(i2c->dirn)
                     {
                         i2c->state = I2C_STATE_READ;
@@ -299,6 +299,7 @@ static void state_machine(struct dev_i2c *i2c, enum i2c_ev ev)
                     restart_state_machine(i2c);
                     break;
                 case I2C_EV_MASTER_RECEIVER_MODE_SELECTED:
+                    i2c_peripheral_enable(i2c->base);
                     i2c->state = I2C_STATE_DMA_COMPLETE;
                     i2c_enable_dma(i2c->base);
                     break;

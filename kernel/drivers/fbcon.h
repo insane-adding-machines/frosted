@@ -6,9 +6,9 @@
 
 #ifdef CONFIG_DEVFBCON
 /* kernel init */
-int fbcon_init(void);
+int fbcon_init(uint32_t cols, uint32_t rows);
 #else
-#  define fbcon_init() ((-ENOENT))
+#  define fbcon_init(...) ((-ENOENT))
 #endif
 
 #endif

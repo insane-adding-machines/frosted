@@ -145,35 +145,27 @@ menu "Platform Selection"
     config MACH_STM32F746Discovery
         bool "STM32F746 Discovery"
         depends on (ARCH_STM32F746)
-        default y
     config MACH_STM32F769Discovery
         bool "STM32F769 Discovery"
         depends on (ARCH_STM32F769)
-        default y
     config MACH_STM32F746Nucleo144
         bool "STM32F746 Nucleo-144"
         depends on (ARCH_STM32F746)
-        default y
     config MACH_STM32F407Discovery
         bool "STM32F407Discovery"
         depends on (ARCH_STM32F407)
-        default y
     config MACH_STM32F405Pyboard
         bool "STM32F405 PyBoard (micropython)"
         depends on (ARCH_STM32F405)
-        default y
     config MACH_STM32F4x1Discovery
         bool "STM32F4x1Discovery"
         depends on (   ARCH_STM32F401 ||ARCH_STM32F411)
-        default y
     config MACH_STM32F429Discovery
         bool "STM32F429Discovery"
         depends on (ARCH_STM32F429)
-        default y
     config MACH_STM32F446Nucleo
         bool "STM32F446 Nucleo"
         depends on (ARCH_STM32F446)
-        default y
 
     config MACH_LPC1768MBED
         bool "LPC1768MBED"
@@ -181,15 +173,12 @@ menu "Platform Selection"
     config MACH_SEEEDPRO
         bool "SEEEDPRO"
         depends on ARCH_LPC1768
-        default y
     config MACH_LPC1679XPRESSO
         bool "LPC1679XPRESSO"
         depends on ARCH_LPC1769
-        default y
     config MACH_LM3S6965EVB
         bool "lm3s6965evb"
         depends on ARCH_LM3S6965
-        default y
     config MACH_LM3SVIRT
         bool "lm3s-qemu"
         depends on ARCH_LM3SVIRT
@@ -340,7 +329,6 @@ menu "Networking"
 
         config PICOTCP
         bool "Built-in PicoTCP"
-        default y
        endchoice
        source ../kernel/net/Kconfig
 
@@ -418,13 +406,13 @@ menu "Device Drivers"
        if DEVSTM32USBFS
           choice
             prompt "USB FS OTG mode"
+            default USBFS_GUEST
             config USBFS_HOST
             bool "Host mode"
 
             config USBFS_GUEST
             bool "Device mode"
 
-            default USBFS_GUEST
           endchoice
        endif
 
@@ -436,13 +424,13 @@ menu "Device Drivers"
        if DEVSTM32USBHS
           choice
             prompt "USB HS OTG mode"
+            default USBHS_GUEST
             config USBHS_HOST
             bool "Host mode"
 
             config USBHS_GUEST
             bool "Device mode"
 
-            default USBHS_GUEST
           endchoice
 
         endif
@@ -617,6 +605,18 @@ menu "Device Drivers"
            depends on DEVFRAMEBUFFER
            bool "Console on Framebuffer via /dev/fbcon"
            default y
+        choice FONT_FACE
+            prompt "Console font face"
+            depends on DEVFBCON
+            default FONT_CGA8X8
+
+            config FONT_CGA_8X8
+            bool "CGA 8x8"
+
+            config FONT_PICCOLO_7X6
+            bool "Piccolo 7x6"
+        endchoice
+
 
        config DEVF7DISCOLTDC
            depends on DEVFRAMEBUFFER

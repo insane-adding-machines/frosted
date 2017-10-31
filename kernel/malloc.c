@@ -82,7 +82,7 @@ struct f_malloc_stats f_malloc_stats[5] = {};
 /* Mlock is a special lock, so initialization is made static */
 static struct task *_m_listeners[16] = {};
 static struct semaphore _mlock = { .signature = 0xCAFEC0C0, .value = 1, .listeners=16, .last=-1, .listener=_m_listeners};
-static mutex_t *mlock = (mutex_t *)(&_mlock);
+static mutex_t * const mlock = (mutex_t *)(&_mlock);
 
 #define KMEM_SIZE   (CONFIG_KRAM_SIZE << 10)
 
@@ -237,7 +237,7 @@ static void * f_sbrk(int flags, int incr)
 #endif
 
         /* task/stack memory */
-        heap_stack = &_stack - 4096;
+        heap_stack = &_stack - CONFIG_TASK_STACK_SIZE;
     }
 
     int mem_pool = MEMPOOL(flags);
@@ -523,6 +523,9 @@ out:
     /* Userspace calls release mlock in the syscall handler. */
     if (this_task_getpid() == 0) {
         mutex_unlock(mlock);
+    }
+    if (ret && (flags & MEM_TASK)) {
+        memset(ret, 0x55, size);
     }
     return ret;
 }
