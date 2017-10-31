@@ -2920,18 +2920,15 @@ int task_ptr_valid(const void *ptr)
 
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
-#ifdef __ARM_ARCH_6M__
+struct nvic_stack_frame *n_stack = NULL;
 static uint32_t *a0 = NULL;
 static uint32_t *a1 = NULL;
 static uint32_t *a2 = NULL;
 static uint32_t *a3 = NULL;
-#endif
 static uint32_t *a4 = NULL;
 static uint32_t *a5 = NULL;
-struct nvic_stack_frame *n_stack = NULL;
 
-int __attribute__((naked))
-sv_call_handler(void)
+int __naked sv_call_handler(void)
 {
     irq_off();
 
@@ -2965,10 +2962,12 @@ sv_call_handler(void)
         goto return_from_syscall;
     }
     if (*a0 >= _SYSCALLS_NR) {
+        restore_task_context();
         irq_on();
         return -1;
     }
     if (sys_syscall_handlers[*a0] == NULL) {
+        restore_task_context();
         irq_on();
         return -1;
     }
