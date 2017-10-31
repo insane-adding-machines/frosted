@@ -237,7 +237,7 @@ static void * f_sbrk(int flags, int incr)
 #endif
 
         /* task/stack memory */
-        heap_stack = &_stack - 4096;
+        heap_stack = &_stack - CONFIG_TASK_STACK_SIZE;
     }
 
     int mem_pool = MEMPOOL(flags);
@@ -523,6 +523,9 @@ out:
     /* Userspace calls release mlock in the syscall handler. */
     if (this_task_getpid() == 0) {
         mutex_unlock(mlock);
+    }
+    if (ret && (flags & MEM_TASK)) {
+        memset(ret, 0x55, size);
     }
     return ret;
 }
