@@ -55,7 +55,7 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len);
 static struct module mod_devrng = {
 	.family = FAMILY_FILE,
 #if defined(CONFIG_RNG)
-	.name = "random",
+	.name = "urandom",
 	.ops.open = device_open,
 	.ops.read = devrng_read,
 #endif
