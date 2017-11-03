@@ -65,6 +65,8 @@ static struct module mod_devrng = {
 static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 {
 	struct dev_rng *rng;
+    int i;
+    uint32_t tmp;
 
 	if (len == 0)
 		return len;
@@ -79,20 +81,25 @@ static int devrng_read(struct fnode *fno, void *buf, unsigned int len)
 	uint32_t error_bits = 0;
 	error_bits = RNG_SR_SEIS | RNG_SR_CEIS | RNG_SR_SECS | RNG_SR_CECS;
 
-	if (((RNG_SR & error_bits) != 0) ||
-		    ((RNG_SR & RNG_SR_DRDY) != 1)) {
-		rng->random = (uint32_t *)buf;
-		rng_enable_interrupt();
-        	rng->dev->task = this_task();
-        	mutex_unlock(rng->dev->mutex);
-        	task_suspend();
-        	return SYS_CALL_AGAIN;
-	}
-
-	rng_get_random((uint32_t *) buf);
-
+    for (i = 0; i < len; i+=4) {
+        uint32_t *rnd_dst = (uint32_t *)((uint8_t *)buf + i);
+	    if (((RNG_SR & error_bits) != 0) ||
+                ((RNG_SR & RNG_SR_DRDY) != 1)) {
+            rng->random = (uint32_t *)buf;
+            rng_enable_interrupt();
+            rng->dev->task = this_task();
+            mutex_unlock(rng->dev->mutex);
+            task_suspend();
+            return SYS_CALL_AGAIN;
+        }
+    	rng_get_random(rnd_dst);
+    }
+    if (i < len) {
+        rng_get_random(&tmp);
+        memcpy(buf + i, &tmp, len - i);
+    }
 	mutex_unlock(rng->dev->mutex);
-	return 4;
+	return len;
 }
 #endif
 
