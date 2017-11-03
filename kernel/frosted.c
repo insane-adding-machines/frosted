@@ -61,7 +61,7 @@ void (*init)(void *arg) = (void (*)(void*))(FLASH_ORIGIN + APPS_ORIGIN);
 
 void simple_hard_fault_handler(void)
 {
-#ifdef __ARM_ARCH_V7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     volatile uint32_t hfsr = SCB_HFSR;
     //volatile uint32_t bfsr = SCB_BFSR;
     volatile uint32_t afsr = SCB_AFSR;

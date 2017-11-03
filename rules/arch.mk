@@ -20,7 +20,7 @@ CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DSYS_CLOCK=$(SYS_CLOCK) -DCORTEX_M3 -DFROSTED
-CFLAGS+=-Ikernel/unicore-mx/include -Ikernel -Iinclude -I.
+CFLAGS+=-Ikernel/unicore-mx/include -Ikernel -Iinclude -Ikernel/drivers -I. -Ikernel/frosted-headers/include
 PREFIX:=$(PWD)/build
 LDFLAGS:=-Wl,-gc-sections -nostartfiles -L$(PREFIX)/lib 
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
