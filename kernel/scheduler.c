@@ -169,7 +169,7 @@ struct __attribute__((packed)) nvic_stack_frame {
 };
 /* In order to keep the code efficient, the stack layout of armv6 and armv7 do NOT match! */
 struct __attribute__((packed)) extra_stack_frame {
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     uint32_t r4;
     uint32_t r5;
     uint32_t r6;
@@ -1953,7 +1953,7 @@ int sys_pthread_getspecific_hdlr(int arg1, int arg2, int arg3, int arg4, int arg
 static __naked void save_kernel_context(void)
 {
     asm volatile("mrs r0, " MSP "           ");
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     asm volatile("stmdb r0!, {r4-r11}   ");
 #elif defined(__ARM_ARCH_6M__)
     asm volatile("sub   r0,#0x10");
@@ -1974,7 +1974,7 @@ static __naked void save_kernel_context(void)
 static __naked void save_task_context(void)
 {
     asm volatile("mrs r0, " PSP "           ");
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     asm volatile("stmdb r0!, {r4-r11}   ");
 #elif defined(__ARM_ARCH_6M__)
     asm volatile("sub   r0,#0x10");
@@ -1997,7 +1997,7 @@ static uint32_t runnable = RUN_HANDLER;
 static __naked void restore_kernel_context(void)
 {
     asm volatile("mrs r0, " MSP "          ");
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     asm volatile("ldmfd r0!, {r4-r11}  ");
 #elif defined(__ARM_ARCH_6M__)
     asm volatile("ldm r0!,{r4-r7}");
@@ -2015,7 +2015,7 @@ static __naked void restore_kernel_context(void)
 static __naked void restore_task_context(void)
 {
     asm volatile("mrs r0, " PSP "          ");
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     asm volatile("ldmfd r0!, {r4-r11}  ");
 #elif defined(__ARM_ARCH_6M__)
     asm volatile("ldm r0!,{r4-r7}");

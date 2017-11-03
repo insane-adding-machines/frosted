@@ -17,7 +17,7 @@ _mutex_lock:
    CMP     r1, #0             // Test if mutex holds the value 0
    BEQ     _mutex_lock_fail   // If it does, return 0
    SUBS    r1, #1             // If not, decrement temporary copy
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    STREX   r2, r1, [r0]       // Attempt Store-Exclusive
    CMP     r2, #0             // Check if Store-Exclusive succeeded
    BNE     _mutex_lock        // If Store-Exclusive failed, retry from start
@@ -29,7 +29,7 @@ _mutex_lock:
    MOVS    r0, #0             // Successfully locked.
    BX      lr
 _mutex_lock_fail:
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    DMB
    MOV     r0, #-1              // Already locked!
 #elif defined(__ARM_ARCH_6M__)
@@ -46,7 +46,7 @@ _mutex_lock_fail:
 
 .global _mutex_unlock
 _mutex_unlock:
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    LDREX   r1, [r0]
 #elif defined(__ARM_ARCH_6M__)
    CPSID    i
@@ -55,7 +55,7 @@ _mutex_unlock:
    CMP     r1, #0               // Test if mutex holds the value 0
    BNE     _mutex_unlock_fail   // If it does not, it's already locked!
    ADDS    r1, #1               // Increment temporary copy
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    STREX   r2, r1, [r0]         // Attempt Store-Exclusive
    CMP     r2, #0               // Check if Store-Exclusive succeeded
    BNE     _mutex_unlock        // Store failed - retry immediately
@@ -67,7 +67,7 @@ _mutex_unlock:
    MOVS    r0, #0               // Successfully unlocked.
    BX      lr
 _mutex_unlock_fail:
-#ifdef __ARM_ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    DMB
    MOV     r0, #-1              // Already locked!
 #elif defined(__ARM_ARCH_6M__)
