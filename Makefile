@@ -17,6 +17,9 @@ CFLAGS+=-Ikernel/frosted-headers/include -nostdlib
 #drivers headers
 CFLAGS+=-Ikernel/drivers
 
+#fs headers
+CFLAGS+=-Ikernel/fs
+
 # minimal kernel
 OBJS-y+= kernel/frosted.o \
 		 kernel/vfs.o \
@@ -58,16 +61,16 @@ OBJS-$(ARCH_STM32F7)+=kernel/drivers/gpio.o \
 
 OBJS-$(ARCH_LPC17XX)+=kernel/drivers/gpio.o
 
-OBJS-$(MEMFS)+= kernel/drivers/memfs.o
-OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
+OBJS-$(MEMFS)+= kernel/fs/memfs.o
+OBJS-$(XIPFS)+= kernel/fs/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
 
-OBJS-$(FATFS)+= kernel/fatfs.o
+OBJS-$(FATFS)+= kernel/fs/fatfs.o
 CFLAGS-$(FATFS)+=-DCONFIG_FATFS
 CFLAGS-$(FAT32)+=-DCONFIG_FAT32
 CFLAGS-$(FAT16)+=-DCONFIG_FAT16
 
-OBJS-$(SYSFS)+= kernel/drivers/sysfs.o
+OBJS-$(SYSFS)+= kernel/fs/sysfs.o
 CFLAGS-$(SYSFS)+=-DCONFIG_SYSFS
 
 OBJS-$(DEVNULL)+= kernel/drivers/null.o
