@@ -8,7 +8,7 @@
 
 .global _mutex_lock
 _mutex_lock:
-#ifdef __ARCH_V7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    LDREX   r1, [r0]
 #elif defined(__ARCH_V6M__)
    CPSID   i

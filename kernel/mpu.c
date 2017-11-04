@@ -170,7 +170,7 @@ void mpu_init(void)
     mpu_setattr(7, MPUSIZE_256M | MPU_RASR_ENABLE | MPU_RASR_ATTR_S | MPU_RASR_ATTR_B | MPU_RASR_ATTR_AP_PRW_UNO);
 
 
-#ifdef __ARCH_7M__
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
     SCB_SHCSR |= SCB_SHCSR_MEMFAULTENA;
 #endif
     mpu_enable();
