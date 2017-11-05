@@ -8,19 +8,35 @@
 
 .global _mutex_lock
 _mutex_lock:
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    LDREX   r1, [r0]
+#elif defined(__ARCH_V6M__)
+   CPSID   i
+   LDR     r1, [r0]
+#endif
    CMP     r1, #0             // Test if mutex holds the value 0
    BEQ     _mutex_lock_fail   // If it does, return 0
-   SUB     r1, #1             // If not, decrement temporary copy
+   SUBS    r1, #1             // If not, decrement temporary copy
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    STREX   r2, r1, [r0]       // Attempt Store-Exclusive
    CMP     r2, #0             // Check if Store-Exclusive succeeded
    BNE     _mutex_lock        // If Store-Exclusive failed, retry from start
    DMB                        // Required before accessing protected resource
-   MOV     r0, #0             // Successfully locked.
+#elif defined(__ARM_ARCH_6M__)
+   STR     r1, [r0]
+   CPSIE   i
+#endif
+   MOVS    r0, #0             // Successfully locked.
    BX      lr
 _mutex_lock_fail:
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    DMB
-   MOV     r0, #-1            // Try again.
+   MOV     r0, #-1              // Already locked!
+#elif defined(__ARM_ARCH_6M__)
+   CPSIE   i
+   MOVS    r2, #0               // Already locked!
+   MVNS    r0, r2
+#endif
    BX      lr
 
 /* Unlock mutex. 
@@ -30,17 +46,34 @@ _mutex_lock_fail:
 
 .global _mutex_unlock
 _mutex_unlock:
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    LDREX   r1, [r0]
+#elif defined(__ARM_ARCH_6M__)
+   CPSID    i
+   LDR      r1, [r0]
+#endif
    CMP     r1, #0               // Test if mutex holds the value 0
    BNE     _mutex_unlock_fail   // If it does not, it's already locked!
-   ADD     r1, #1               // Increment temporary copy
+   ADDS    r1, #1               // Increment temporary copy
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
    STREX   r2, r1, [r0]         // Attempt Store-Exclusive
    CMP     r2, #0               // Check if Store-Exclusive succeeded
    BNE     _mutex_unlock        // Store failed - retry immediately
    DMB                          // Required before releasing protected resource
-   MOV     r0, #0               // Successfully unlocked.
+#elif defined(__ARM_ARCH_6M__)
+   STR     r1, [r0]
+   CPSIE   i
+#endif
+   MOVS    r0, #0               // Successfully unlocked.
    BX      lr
 _mutex_unlock_fail:
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
+   DMB
    MOV     r0, #-1              // Already locked!
+#elif defined(__ARM_ARCH_6M__)
+   CPSIE   i
+   MOVS    r2, #0               // Already locked!
+   MVNS    r0, r2
+#endif
    BX      lr
 

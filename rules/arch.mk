@@ -20,11 +20,11 @@ CC:=$(CROSS_COMPILE)gcc
 AS:=$(CROSS_COMPILE)as
 AR:=$(CROSS_COMPILE)ar
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -DCORE_M3 -fno-builtin -ffreestanding -DSYS_CLOCK=$(SYS_CLOCK) -DCORTEX_M3 -DFROSTED
-CFLAGS+=-Ikernel/unicore-mx/include -Ikernel -Iinclude -I.
+CFLAGS+=-Ikernel/unicore-mx/include -Ikernel -Iinclude -Ikernel/drivers -I. -Ikernel/frosted-headers/include
 PREFIX:=$(PWD)/build
 LDFLAGS:=-Wl,-gc-sections -nostartfiles -L$(PREFIX)/lib 
 CFLAGS+=-mthumb -mlittle-endian -mthumb-interwork
-CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD) -D$(ARCH)
+CFLAGS+=-DCORE_M3 -DBOARD_$(BOARD) -D$(ARCH) -mcpu=$(MCPU)
 CFLAGS+=-DCONFIG_KMEM_SIZE=$(KMEM_SIZE)
 CFLAGS+=-DCONFIG_TASK_STACK_SIZE=$(TASK_STACK_SIZE)
 
@@ -58,5 +58,5 @@ CFLAGS+=-Ikernel -Iinclude -I. -Ikernel/unicore-mx/include/unicore-mx -Ikernel/u
 CFLAGS+=-fno-builtin
 CFLAGS+=-ffreestanding
 CFLAGS+=-nostdlib
-ASFLAGS:=-mcpu=cortex-m3 -mthumb -mlittle-endian -mthumb-interwork -ggdb
+ASFLAGS+=-mthumb -mlittle-endian -mthumb-interwork -ggdb -mcpu=$(MCPU)
 

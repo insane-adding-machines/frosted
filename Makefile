@@ -58,6 +58,8 @@ OBJS-$(ARCH_STM32F7)+=kernel/drivers/gpio.o \
 
 OBJS-$(ARCH_LPC17XX)+=kernel/drivers/gpio.o
 
+OBJS-$(ARCH_NRF51)+=kernel/drivers/gpio.o
+
 OBJS-$(MEMFS)+= kernel/drivers/memfs.o
 OBJS-$(XIPFS)+= kernel/drivers/xipfs.o
 CFLAGS-$(MEMFS)+=-DCONFIG_MEMFS
@@ -206,6 +208,7 @@ OBJS-$(MACH_SEEEDPRO)+=kernel/$(BOARD)/lpc1768mbed.o
 OBJS-$(MACH_LPC1679XPRESSO)+=kernel/$(BOARD)/lpc1769xpresso.o
 OBJS-$(MACH_LM3S6965EVB)+=kernel/$(BOARD)/lm3s6965evb.o
 OBJS-$(MACH_LM3SVIRT)+=kernel/$(BOARD)/lm3s6965evb.o
+OBJS-$(MACH_BLENANOV1_5)+=kernel/$(BOARD)/blenanov1_5.o
 
 
 LIB-y:=
@@ -236,7 +239,7 @@ kernel.img: kernel.elf
 	$(CROSS_COMPILE)objcopy -O binary --pad-to=$$PADTO kernel.elf $@
 
 apps.img: $(USERSPACE)
-	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(ARCH)
+	@make -C $(USERSPACE) FROSTED=$(PWD) FAMILY=$(FAMILY) ARCH=$(MCPU)
 
 image.bin: kernel.img apps.img
 	cat kernel.img apps.img > $@

@@ -44,6 +44,11 @@ menu "Platform Selection"
         bool "STM32F7"
         help
             Enable support for ST STM32F7 systems
+        
+        config ARCH_NRF51
+        bool "NRF51"
+        help
+            Enable support for Nordic NRF51 systems
     endchoice
 
 
@@ -51,6 +56,7 @@ menu "Platform Selection"
     source "../kernel/stm32f4/Kconfig"
     source "../kernel/lpc17xx/Kconfig"
     source "../kernel/lm3s/Kconfig"
+    source "../kernel/nrf51/Kconfig"
 
     config FLASH_SIZE_2MB
             bool
@@ -107,6 +113,9 @@ menu "Platform Selection"
     #Temp hack to allow '407 & '411 clock setups to coexist
     choice
         prompt "Clock Speed"
+        config CLK_16MHZ
+            bool "16MHz"
+            depends on (ARCH_NRF51)
         config CLK_48MHZ
             bool "48MHz"
             depends on (ARCH_STM32F401  || ARCH_STM32F411 || ARCH_STM32F429)
@@ -173,6 +182,11 @@ menu "Platform Selection"
     config MACH_LM3SVIRT
         bool "lm3s-qemu"
         depends on ARCH_LM3SVIRT
+        default y
+    config MACH_BLENANOV1_5
+        bool "BLENanoV1.5"
+        depends on ARCH_NRF51
+        default y
 
     endchoice
 
@@ -358,7 +372,7 @@ menu "Device Drivers"
 
             config UART_0
             bool "UART 0"
-            depends on ARCH_LPC17XX
+            depends on (ARCH_LPC17XX || ARCH_NRF51)
 
             config UART_1
             bool "UART 1"
