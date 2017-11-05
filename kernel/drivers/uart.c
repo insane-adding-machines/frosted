@@ -82,6 +82,7 @@ static inline uint32_t get_interrupt_source(uint32_t base)
 #   define usart_set_stopbits(x, y)      do {} while(0)
 #   define usart_set_parity              uart_set_parity
 #   define usart_set_flow_control        uart_set_flow_control
+#   define usart_set_mode(x, y)          do {} while(0)
 #   define usart_enable_rx_interrupt(x)  do { \
                                               uart_enable_interrupts(x, UART_INTEN_RXDRDY); \
                                               uart_start_rx(x); \
@@ -444,9 +445,7 @@ int uart_create(const struct uart_config *uart)
     usart_set_baudrate(uart->base, uart->baudrate);
     usart_set_databits(uart->base, uart->data_bits);
     usart_set_stopbits(uart->base, uart->stop_bits);
-#if 0
     usart_set_mode(uart->base, USART_MODE_TX_RX);
-#endif
     usart_set_parity(uart->base, uart->parity);
     usart_set_flow_control(uart->base, uart->flow);
 #ifdef STM32F7
