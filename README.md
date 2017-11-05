@@ -1,9 +1,4 @@
 # Frosted :snowman:
- * Kernel build status:       [![Build   Status](http://trexotech.com:8080/buildStatus/icon?job=frosted-multi&style=plastic)] (http://trexotech.com:8080/job/frosted-multi/)
-
- * Toolchain build status:    [![Toolchain Status](http://trexotech.com:8080/buildStatus/icon?job=arm-frosted-eabi-from-source&style=plastic)] (http://trexotech.com:8080/job/arm-frosted-eabi-from-source/?style=plastic)
-
-Get the latest toolchain [here](https://github.com/insane-adding-machines/crosstool-ng/releases/latest).
 
 ### Introduction
 frosted is an acronym that means "Free Operating Systems for Tiny Embedded Devices"
@@ -31,6 +26,8 @@ kernel without any restriction about distributing your user space application so
 [Hardware support](https://github.com/insane-adding-machines/frosted/wiki/Hardware-support)
 
 ### Getting started
+
+Get the latest toolchain [here](https://archive.trexotech.com/frosted/)
 
 [Getting started](https://github.com/insane-adding-machines/frosted/wiki/Getting-started)
 
