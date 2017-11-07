@@ -1,10 +1,10 @@
-/*  
+/*
  *      This file is part of frosted.
  *
  *      frosted is free software: you can redistribute it and/or modify
- *      it under the terms of the GNU General Public License version 2, as 
+ *      it under the terms of the GNU General Public License version 2, as
  *      published by the Free Software Foundation.
- *      
+ *
  *
  *      frosted is distributed in the hope that it will be useful,
  *      but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,10 +16,10 @@
  *
  *      Authors: Daniele Lacamera, Maxime Vincent
  *
- */  
+ */
 
 
-/* 
+/*
  * memset implementation
  *
  */
@@ -36,7 +36,7 @@ void * memset(void *s, int c, size_t n)
 
 	return s;
 }
-/* 
+/*
  * strcat implementation
  *
  */
@@ -54,7 +54,7 @@ char *strcat(char *dest, const char *src)
     dest[j] = '\0';
     return dest;
 }
-/* 
+/*
  * strcmp implementation
  *
  */
@@ -88,7 +88,7 @@ int strcasecmp(const char *s1, const char *s2)
 }
 
 
-/* 
+/*
  * strcmp implementation
  *
  */
@@ -102,7 +102,7 @@ size_t strlen(const char *s)
         i++;
     return i;
 }
-/* 
+/*
  * strcat implementation
  *
  */
@@ -123,7 +123,7 @@ char *strncat(char *dest, const char *src, size_t n)
     dest[j] = '\0';
     return dest;
 }
-/* 
+/*
  * strncmp implementation
  *
  */
@@ -133,16 +133,25 @@ char *strncat(char *dest, const char *src, size_t n)
 int strncmp(const char *s1, const char *s2, size_t n)
 {
     int diff = 0;
-    while(!diff && *s1 && n)
-    {
-        diff = (int)*s1 - (int)*s2;
-        if (!s1 || !s2)
+
+    while (n > 0) {
+        if (!s1) {
+            diff = 0 - (int)*s2;
+        } else if (!s2) {
+            diff = (int)*s1;
+        } else {
+            diff = (int)*s1 - (int)*s2;
+        }
+
+        if (diff)
             break;
+
         s1++;
         s2++;
         n--;
     }
-	return diff;
+
+    return diff;
 }
 
 /*
@@ -160,7 +169,7 @@ void *memcpy(void *dst, const void *src, size_t n)
     return dst;
 }
 
-/* 
+/*
  * strncpy implementation
  *
  */
@@ -175,7 +184,7 @@ char *strncpy(char *dst, const char *src, size_t n)
     return dst;
 }
 
-/* 
+/*
  * strcpy implementation
  *
  */
