@@ -21,6 +21,8 @@
 
 #include "fpb.h"
 #include <libopencmsis/core_cm3.h>
+
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
 #define FPB_NUM_CODE2_OFF   12
 #define FPB_NUM_LIT_MASK_OFF 8
 #define FPB_NUM_CODE1_OFF    4
@@ -76,10 +78,10 @@ int fpb_setbrk(int pid, void *bpoint, int n)
     bkpt[n].b = bpoint;
     if ((uint32_t)bpoint & 0x01)
         return -1;
-    if ((uint32_t)bpoint & 0x02) 
-        FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_HI; 
+    if ((uint32_t)bpoint & 0x02)
+        FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_HI;
     else
-        FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_LO; 
+        FPB_COMP[n] = FPB_COMP_ENABLE | (((uint32_t)bpoint) & (0x1FFFFFFC)) | FPB_REPLACE_LO;
     return n;
 }
 
@@ -104,3 +106,4 @@ int fpb_init(void)
     nvic_enable_irq(DEBUG_MONITOR_IRQ);
 }
 
+#endif

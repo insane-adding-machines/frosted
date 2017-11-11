@@ -22,12 +22,13 @@
 #define FROSTED_FPB_INC
 
 #include "frosted.h"
-#define __ARM_ARCH_7M__ 1
-#define __ARM_ARCH_7EM__ 1
+/* Those defined only on ARMv7 and above */
+#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
 #include <cm3/fpb.h>
 
 int fpb_init(void);
 int fpb_setbrk(int pid, void *bpoint, int n);
 int fpb_delbrk(int n);
 
+#endif
 #endif

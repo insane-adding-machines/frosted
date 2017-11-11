@@ -1,0 +1,59 @@
+if ARCH_NRF51
+
+choice
+    prompt "MCU"
+    default ARCH_NRF51822_QFAC
+
+config ARCH_NRF51822_QFAA
+    bool "NRF51822_QFAA 256KB/16KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_16KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_QFAB
+    bool "NRF51822_QFAB 128KB/16KB"
+    select FLASH_SIZE_128KB
+    select RAM_SIZE_16KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_CEAA
+    bool "NRF51822_CEAA 256KB/16KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_16KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_QFAC
+    bool "NRF51822_QFAC 256KB/32KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_32KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_CDAB
+    bool "NRF51822_CDAB 128KB/16KB"
+    select FLASH_SIZE_128KB
+    select RAM_SIZE_16KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_CEAA
+    bool "NRF51822_CEAA 256KB/16KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_16KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_CFAC
+    bool "NRF51822_CFAC 256KB/32KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_32KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_CTAC
+    bool "NRF51822_CTAC 256KB/32KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_32KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_CTAA
+    bool "NRF51822_CTAA 256KB/16KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_16KB
+    select ARCH_NRF51822
+config ARCH_NRF51822_WFAC
+    bool "NRF51822_WFAC 256KB/32KB"
+    select FLASH_SIZE_256KB
+    select RAM_SIZE_32KB
+    select ARCH_NRF51822
+endchoice
+
+endif

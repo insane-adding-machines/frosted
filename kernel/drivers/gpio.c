@@ -75,6 +75,34 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/cm3/nvic.h>
 #endif
+
+#ifdef NRF51
+#include <unicore-mx/nrf/gpio.h>
+
+static inline uint32_t ARCH_GPIO_BASE(int x)
+{
+    return GPIO_BASE;
+}
+
+#define ARCH_GPIO_PIN(X) (1 << X)
+#define ARCH_GPIO_BASE_MAX 1
+#define ARCH_GPIO_PIN_MAX 31
+
+
+int exti_register(uint32_t base, uint16_t pin, uint8_t trigger, void (*isr)(void *), void *isr_arg) {
+
+}
+void exti_unregister(int pin) {
+
+}
+int exti_enable(int idx, int enable) {
+
+}
+void exti_init(void) {
+
+}
+
+#endif
 #ifdef LPC17XX
 #include <unicore-mx/lpc17xx/nvic.h>
 #include <unicore-mx/lpc17xx/pwr.h>
@@ -265,6 +293,14 @@ static struct module mod_devgpio_mx = {
 
 #endif
 
+/* NRF */
+#ifdef NRF51
+#define GPIO_CLOCK_ENABLE(C)
+#define SET_INPUT(P, D, I)               gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);
+
+#define SET_OUTPUT(P, I, O, S)     gpio_mode_setup(P, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, I);
+#endif
+
 /* LPC */
 #ifdef LPC17XX
 #define GPIO_CLOCK_ENABLE(C)                pwr_enable_peripherals(PWR_PCONP_GPIO);
@@ -402,7 +438,7 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         return 0;
     }
     if (cmd == IOCTL_GPIO_SET_OUTPUT) {
-        SET_OUTPUT(gpio->base, gpio->pin, gpio->optype, gpio->speed)
+        SET_OUTPUT(gpio->base, gpio->pin, gpio->optype, gpio->speed);
         return 0;
     }
     if (cmd == IOCTL_GPIO_SET_PULLUPDOWN) {
@@ -410,10 +446,12 @@ static int devgpio_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
         SET_INPUT(gpio->base, *((uint32_t*)arg), gpio->pin);
         return 0;
     }
+#ifdef GPIO_MODE_AF
     if (cmd == IOCTL_GPIO_SET_ALT_FUNC) {
         gpio_set_af(gpio->base, *((uint32_t*)arg), gpio->pin);
         return 0;
     }
+#endif
     if (cmd == IOCTL_GPIO_SET_TRIGGER) {
         uint32_t trigger = *((uint32_t *)arg);
         if (trigger > GPIO_TRIGGER_TOGGLE) {
@@ -571,9 +609,11 @@ int gpio_create(struct module *mod, const struct gpio_config *gpio_config)
         case GPIO_MODE_OUTPUT:
             SET_OUTPUT(gpio_config->base, gpio_config->pin, gpio_config->optype, gpio_config->speed);
             break;
+#ifdef GPIO_MODE_AF
         case GPIO_MODE_AF:
             SET_AF(gpio_config->base, GPIO_MODE_AF, gpio_config->af,  gpio_config->pin, gpio_config->optype, gpio_config->speed);
             break;
+#endif
         case GPIO_MODE_ANALOG:
             gpio_mode_setup(gpio_config->base, gpio_config->mode, GPIO_PUPD_NONE, gpio_config->pin);
             break;

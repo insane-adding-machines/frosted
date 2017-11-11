@@ -19,6 +19,8 @@ struct uart_config {
     uint8_t flow;
     struct gpio_config pio_rx;
     struct gpio_config pio_tx;
+    struct gpio_config pio_cts;
+    struct gpio_config pio_rts;
 };
 
 #ifdef CONFIG_DEVUART
