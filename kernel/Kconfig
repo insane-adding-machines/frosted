@@ -303,11 +303,6 @@ menu "Filesystems"
        bool "Fat32 support"
        default n
 
-       config FAT16
-       depends on FATFS
-       bool "Fat16 support"
-       default y
-
 endmenu
 
 menu "Networking"
@@ -393,10 +388,10 @@ menu "Device Drivers"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446)
        select DEVSTM32DMA
        default n
-    
+
        config DEVSTM32USB
        bool
-       
+
        menuconfig DEVSTM32USBFS
        bool "Support for Full Speed USB OTG"
        depends on (!DEVSTM32USBHFS) && (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F446 || \
@@ -532,12 +527,12 @@ menu "Device Drivers"
            tristate "LSM303DLHC driver (Accelerometer & Magnetometer)"
            depends on (DEVSTM32I2C)
            default n
-           
+
            config DEVMCCOG21
            tristate "MCCOG21 driver (2-lines B/W display)"
            depends on (DEVSTM32I2C)
            default n
-           
+
            config DEVFT5336
            tristate "FT5336 driver (Touchscreen STM32F746)"
            depends on (DEVSTM32I2C)

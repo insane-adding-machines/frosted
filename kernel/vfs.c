@@ -531,8 +531,17 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
             f = fno_create_file(path);
 
         /* TODO: Parse arg3 & 0x1c0 for permissions */
-        if (f)
+        if (f) {
             f->flags |= FL_RDWR;
+            if (f && f->owner && f->owner->ops.open) {
+                if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
+                    return -EPERM;
+                ret = f->owner->ops.open(path, flags);
+                if (ret >= 0)
+                    task_fd_setmask(ret, flags);
+                return ret;
+            }
+        }
     }
     if (f == NULL)
        return -ENOENT;
