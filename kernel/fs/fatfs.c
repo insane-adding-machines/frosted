@@ -790,11 +790,12 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
 
     if (priv->flags & O_APPEND) {
         off = fno->size;
+        cur_off = off;
     } else {
         off = cur_off;
     }
 
-    task_fd_set_off(fno, off);
+    task_fd_set_off(fno, cur_off);
 
     sect = off / fs->bps;
     off = off & (fs->bps - 1);
