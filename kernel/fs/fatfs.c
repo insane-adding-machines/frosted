@@ -813,11 +813,11 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
         if ((r == fs->bps) && off > 0)
             r -= off;
 
-        disk_write(fsd, buf, (priv->sect + sect), off, r);
+        disk_write(fsd, ((uint8_t *)buf) + w_len, (priv->sect + sect), off, r);
         w_len += r;
         off += r;
         cur_off += r;
-        task_fd_set_off(fno, off);
+        task_fd_set_off(fno, cur_off);
         if ((w_len < len) && (off == fs->bps)) {
             sect++;
             if ((sect) >= fs->spc) {
