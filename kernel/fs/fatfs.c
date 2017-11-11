@@ -731,8 +731,9 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     struct fatfs *fs = fsd->fs;
 
     int r_len = 0, sect = 0, off = 0, clust = 0;
+    uint32_t cur_off = task_fd_get_off(fno);
 
-    off = task_fd_get_off(fno);
+    off = cur_off;
     sect = off / fs->bps;
     off = off & (fs->bps - 1);
     clust = sect / fs->spc;
@@ -741,7 +742,7 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     priv->cclust = priv->fat[clust];
     priv->sect = CLUST2SECT(fs, priv->cclust);
 
-    while ((r_len < len) && (off < fno->size)) {
+    while ((r_len < len) && (cur_off < fno->size)) {
         int r = len - r_len;
         if (r > fs->bps)
             r = fs->bps;
@@ -749,17 +750,18 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
         if ((r == fs->bps) && off > 0)
             r -= off;
 
-        if (off + r > fno->size)
-            r = fno->size - off;
+        if (cur_off + r > fno->size)
+            r = fno->size - cur_off;
 
         /* XXX: use returned value, maybe lower level returned less.. */
         disk_read(fsd, ((uint8_t *)buf + r_len), (priv->sect + sect), off, r);
 
         r_len += r;
         off += r;
-        task_fd_set_off(fno, off);
+        cur_off += r;
+        task_fd_set_off(fno, cur_off);
 
-        if ((r_len < len) && (off == fs->bps) && (off < fno->size)) {
+        if ((r_len < len) && (off == fs->bps) && (cur_off < fno->size)) {
             sect++;
             if ((sect) >= fs->spc) {
                 clust++;
@@ -782,12 +784,14 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
     struct fatfs_disk *fsd = priv->fsd;
     struct fatfs *fs = fsd->fs;
-    uint32_t off;
-    int w_len = 0, sect = 0, clust = 0;
-    off = task_fd_get_off(fno);
+    uint32_t cur_off;
+    int w_len = 0, sect = 0, clust = 0, off = 0;
+    cur_off = task_fd_get_off(fno);
 
     if (priv->flags & O_APPEND) {
         off = fno->size;
+    } else {
+        off = cur_off;
     }
 
     task_fd_set_off(fno, off);
@@ -811,13 +815,14 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
         disk_write(fsd, buf, (priv->sect + sect), off, r);
         w_len += r;
         off += r;
+        cur_off += r;
         task_fd_set_off(fno, off);
         if ((w_len < len) && (off == fs->bps)) {
             sect++;
             if ((sect) >= fs->spc) {
                 clust++;
                 sect = 0;
-                if (off <= fno->size) {
+                if (cur_off <= fno->size) {
                     priv->cclust = priv->fat[clust];
                 } else {
                     uint32_t tempclust = priv->cclust;
@@ -836,8 +841,8 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
         }
         off = 0;
     }
-    if (off > fno->size) {
-        fno->size = off;
+    if (cur_off > fno->size) {
+        fno->size = cur_off;
         disk_read(fsd, fs->win, priv->dirsect, 0, fs->bps);
         st_dword((fs->win + priv->off + DIR_FSIZE), (uint32_t)fno->size);
         disk_write(fsd, fs->win, priv->dirsect, 0, fs->bps);
