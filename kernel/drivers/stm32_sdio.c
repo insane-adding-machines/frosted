@@ -52,67 +52,12 @@
 #include "device.h"
 #include "sdio.h"
 
+#define     MAX_SDIOS   1
+
 /* Frosted device driver hook */
 static struct module mod_sdio;
-struct dev_sd {
-    struct device * dev;
-    SDIO_CARD card;
-};
 
-struct dev_sd SdCard[1]; /* Multiple slots? Make this array bigger */
-
-/*
- * sd_bus
- *
- * Set the bus width and the clock speed for the
- * SDIO bus.
- *
- * Returns 0 on success
- *      -1 illegal bit specification
- *      -2 illegal clock specification
- */
-int
-stm32_sd_bus(int bits, enum SD_CLOCK_DIV freq) {
-    int clkreg = 0;
-
-    switch (bits) {
-        case 1:
-            clkreg |= SDIO_CLKCR_WIDBUS_1;
-            break;
-        case 4:
-            clkreg |= SDIO_CLKCR_WIDBUS_4;
-            break;
-        default:
-            return -1;
-    }
-    switch (freq) {
-        CLOCK_24MHZ:
-            break;
-        CLOCK_16MHZ:
-            clkreg |= 1;
-            break;
-        CLOCK_12MHZ:
-            clkreg |= 2;
-            break;
-        CLOCK_8MHZ:
-            clkreg |= 8;
-            break;
-        CLOCK_4MHZ:
-            clkreg |= 10;
-            break;
-        CLOCK_1MHZ:
-            clkreg |= 46;
-            break;
-        CLOCK_400KHZ:
-            clkreg |= 118;
-            break;
-        default:
-            return -2;
-    }
-    clkreg |= SDIO_CLKCR_CLKEN;
-    SDIO_CLKCR = clkreg;
-    return 0;
-}
+static struct dev_sd *DEV_SD[MAX_SDIOS] = { };
 
 /*
  * Some Global defines, collected here.
@@ -153,7 +98,7 @@ stm32_sd_bus(int bits, enum SD_CLOCK_DIV freq) {
  *      -2 illegal clock specification
  */
 int
-stm32_sdio_bus(int bits, enum SDIO_CLOCK_DIV freq) {
+stm32_sdio_bus(struct dev_sd *sd, int bits, enum SDIO_CLOCK_DIV freq) {
     int clkreg = 0;
 
     switch (bits) {
@@ -191,7 +136,7 @@ stm32_sdio_bus(int bits, enum SDIO_CLOCK_DIV freq) {
             return -2;
     }
     clkreg |= SDIO_CLKCR_CLKEN;
-    SDIO_CLKCR = clkreg;
+    SDIO_CLKCR(sd->base) = clkreg;
     return 0;
 }
 
@@ -208,21 +153,18 @@ stm32_sdio_bus(int bits, enum SDIO_CLOCK_DIV freq) {
  * card have been determined, it can be upgraded.
  */
 void
-stm32_sdio_reset(enum SDIO_POWER_STATE state) {
+stm32_sdio_reset(struct dev_sd *sd, enum SDIO_POWER_STATE state) {
 
     /* Step 1 power off the interface */
-    SDIO_POWER = SDIO_POWER_PWRCTRL_PWROFF;
+    SDIO_POWER(sd->base) = SDIO_POWER_PWRCTRL_PWROFF;
+
     /* reset the SDIO peripheral interface */
-#ifdef STM32F4
-    rcc_peripheral_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDIORST);
-    rcc_peripheral_clear_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDIORST);
-#elif defined STM32F7
-    rcc_peripheral_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDMMC1RST);
-    rcc_peripheral_clear_reset(&RCC_APB2RSTR, RCC_APB2RSTR_SDMMC1RST);
-#endif
+    rcc_peripheral_reset(sd->rcc_rst_reg, sd->rcc_rst);
+    rcc_peripheral_clear_reset(sd->rcc_rst_reg, sd->rcc_rst);
+
     if (state == SDIO_POWER_ON) {
-        SDIO_POWER = SDIO_POWER_PWRCTRL_PWRON;
-        stm32_sdio_bus(1, SDIO_400KHZ); // required by the spec
+        SDIO_POWER(sd->base) = SDIO_POWER_PWRCTRL_PWRON;
+        stm32_sdio_bus(sd, 1, SDIO_400KHZ); // required by the spec
     }
 }
 
@@ -310,12 +252,12 @@ stm32_sdio_bit_slice(uint32_t a[], int bits, int msb, int lsb) {
  *          len - expected length of buffer (in bytes)
  */
 int
-stm32_sdio_command(uint32_t cmd, uint32_t arg)
+stm32_sdio_command(struct dev_sd *sd, uint32_t cmd, uint32_t arg)
 {
     uint32_t    tmp_val;
     int         error = 0;
 
-    tmp_val = SDIO_CMD & ~0x7ff;            // Read pre-existing state
+    tmp_val = SDIO_CMD(sd->base) & ~0x7ff;            // Read pre-existing state
     tmp_val |= (cmd & SDIO_CMD_CMDINDEX_MSK);   // Put the Command in
     tmp_val |= SDIO_CMD_CPSMEN;                 // We'll be running CPSM
 
@@ -333,7 +275,7 @@ stm32_sdio_command(uint32_t cmd, uint32_t arg)
     }
     /* If a data transaction is in progress, wait for it to finish */
 
-    while ((cmd != 12) &  (SDIO_STA & (SDIO_STA_RXACT | SDIO_STA_TXACT)));;
+    while ((cmd != 12) &  (SDIO_STA(sd->base) & (SDIO_STA_RXACT | SDIO_STA_TXACT)));;
 
 
     /*
@@ -344,18 +286,18 @@ stm32_sdio_command(uint32_t cmd, uint32_t arg)
      *    o Enable all interrupts.
      *    o Do the command
      */
-    SDIO_ICR = 0x7ff;           // Reset everything that isn't bolted down.
-    SDIO_ARG = arg;
-    SDIO_CMD = tmp_val;
+    SDIO_ICR(sd->base) = 0x7ff;           // Reset everything that isn't bolted down.
+    SDIO_ARG(sd->base) = arg;
+    SDIO_CMD(sd->base) = tmp_val;
     /*
      * In a polled mode we should be able to just read the status bits
      * directly.
      */
     tmp_val = 0;
     do {
-        tmp_val |= (SDIO_STA & 0x7ff);
-    } while ((SDIO_STA & SDIO_STA_CMDACT) || (! tmp_val));;
-    SDIO_ICR = tmp_val;
+        tmp_val |= (SDIO_STA(sd->base) & 0x7ff);
+    } while ((SDIO_STA(sd->base) & SDIO_STA_CMDACT) || (! tmp_val));;
+    SDIO_ICR(sd->base) = tmp_val;
 
     /*
      * Compute the error here. Which can be one of
@@ -392,10 +334,10 @@ static int data_len;
  * to be 0)
  */
 static int
-sdio_select(int rca) {
+sdio_select(struct dev_sd *sd, int rca) {
     int err;
 
-    err = stm32_sdio_command(7, rca << 16);
+    err = stm32_sdio_command(sd, 7, rca << 16);
     if ((rca == 0) && (err == SDIO_ECTIMEOUT)) {
         return 0;   // "cheat" a timeout selecting 0 is a successful deselect
     }
@@ -416,34 +358,34 @@ sdio_select(int rca) {
  */
 
 static int
-sdio_scr(SDIO_CARD c) {
+sdio_scr(struct dev_sd *sd, SDIO_CARD c) {
     int err;
     uint32_t    tmp_reg;
     int ndx;
 
     /* Select the card */
-    err = sdio_select(c->rca);
+    err = sdio_select(sd, c->rca);
     if (! err) {
         /* Set the Block Size */
-        err = stm32_sdio_command(16, 8);
+        err = stm32_sdio_command(sd, 16, 8);
         if (! err) {
             /* APPCMD (our RCA) */
-            err = stm32_sdio_command(55, c->rca << 16);
+            err = stm32_sdio_command(sd, 55, c->rca << 16);
             if (! err) {
-                SDIO_ICR = 0xFFFFFFFF; /* Clear all status flags */
-                SDIO_DTIMER = 0xffffffff;
-                SDIO_DLEN = 8;
-                SDIO_DCTRL = SDIO_DCTRL_DBLOCKSIZE_3 |
+                SDIO_ICR(sd->base) = 0xFFFFFFFF; /* Clear all status flags */
+                SDIO_DTIMER(sd->base) = 0xffffffff;
+                SDIO_DLEN(sd->base) = 8;
+                SDIO_DCTRL(sd->base) = SDIO_DCTRL_DBLOCKSIZE_3 |
                              SDIO_DCTRL_DTDIR |
                              SDIO_DCTRL_DTEN;
                 /* ACMD51 - Send SCR */
-                err = stm32_sdio_command(51, 0);
+                err = stm32_sdio_command(sd, 51, 0);
                 if (! err) {
                     data_len = 0;
                     do {
-                        tmp_reg = SDIO_STA;
+                        tmp_reg = SDIO_STA(sd->base);
                         if (tmp_reg & SDIO_STA_RXDAVL) {
-                            data_buf[data_len++] = SDIO_FIFO;
+                            data_buf[data_len++] = SDIO_FIFO(sd->base);
                         }
                     } while (tmp_reg & SDIO_STA_RXACT);
                     if ((tmp_reg & SDIO_STA_DBCKEND) == 0) {
@@ -465,7 +407,7 @@ sdio_scr(SDIO_CARD c) {
             }
         }
     }
-    (void) sdio_select(0);
+    (void) sdio_select(sd, 0);
     if (err)
         kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
@@ -489,35 +431,35 @@ int sdio_block_read(struct fnode *fno, void *_buf, uint32_t lba, int offset, int
     uint32_t addr = lba;
     uint8_t *t;
     int ndx, bdx = 0;
-    struct dev_sd *sdio;
+    struct dev_sd *sd;
     SDIO_CARD c;
     uint8_t *buf = _buf;
 
 
-    sdio = (struct dev_sd *)FNO_MOD_PRIV(fno, &mod_sdio);
-    if (!sdio)
+    sd = (struct dev_sd *)FNO_MOD_PRIV(fno, &mod_sdio);
+    if (!sd)
         return -1;
-    c = sdio->card;
+    c = sd->card;
 
     if (! SDIO_CARD_CCS(c)) {
         addr = lba * 512; // non HC cards use byte address
     }
-    err = sdio_select(c->rca);
+    err = sdio_select(sd, c->rca);
     if (! err) {
-        err = stm32_sdio_command(16, 512);
+        err = stm32_sdio_command(sd, 16, 512);
         if (!err) {
-            SDIO_DTIMER = 0xffffffff;
-            SDIO_DLEN = 512;
-            SDIO_DCTRL = SDIO_DCTRL_DBLOCKSIZE_9 |
+            SDIO_DTIMER(sd->base) = 0xffffffff;
+            SDIO_DLEN(sd->base) = 512;
+            SDIO_DCTRL(sd->base) = SDIO_DCTRL_DBLOCKSIZE_9 |
                          SDIO_DCTRL_DTDIR |
                          SDIO_DCTRL_DTEN;
-            err = stm32_sdio_command(17, addr);
+            err = stm32_sdio_command(sd, 17, addr);
             if (! err) {
                 data_len = 0;
                 do {
-                    tmp_reg = SDIO_STA;
+                    tmp_reg = SDIO_STA(sd->base);
                     if (tmp_reg & SDIO_STA_RXDAVL) {
-                        data_buf[data_len] = SDIO_FIFO;
+                        data_buf[data_len] = SDIO_FIFO(sd->base);
                         if (data_len < 128) {
                             ++data_len;
                         }
@@ -542,7 +484,7 @@ int sdio_block_read(struct fnode *fno, void *_buf, uint32_t lba, int offset, int
         }
     }
     // deselect the card
-    (void) sdio_select(0);
+    (void) sdio_select(sd, 0);
     if (err)
         kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
@@ -561,15 +503,15 @@ sdio_block_write(struct fnode *fno, void *_buf, uint32_t lba, int offset, int co
     uint32_t addr = lba;
     uint8_t *t;
     int ndx;
-    struct dev_sd *sdio;
+    struct dev_sd *sd;
     SDIO_CARD c;
     uint8_t *buf = _buf;
 
 
-    sdio = (struct dev_sd *)FNO_MOD_PRIV(fno, &mod_sdio);
-    if (!sdio)
+    sd = (struct dev_sd *)FNO_MOD_PRIV(fno, &mod_sdio);
+    if (!sd)
         return -1;
-    c = sdio->card;
+    c = sd->card;
 
     if (! SDIO_CARD_CCS(c)) {
         addr = lba * 512; // non HC cards use byte address
@@ -587,22 +529,22 @@ sdio_block_write(struct fnode *fno, void *_buf, uint32_t lba, int offset, int co
         buf++;
         t++;
     }
-    err = sdio_select(c->rca);
+    err = sdio_select(sd, c->rca);
     if (! err) {
         /* Set Block Size to 512 */
-        err = stm32_sdio_command(16, 512);
+        err = stm32_sdio_command(sd, 16, 512);
         if (!err) {
-            SDIO_DTIMER = 0xffffffff;
-            SDIO_DLEN = 512;
-            SDIO_DCTRL = SDIO_DCTRL_DBLOCKSIZE_9 |
+            SDIO_DTIMER(sd->base) = 0xffffffff;
+            SDIO_DLEN(sd->base) = 512;
+            SDIO_DCTRL(sd->base) = SDIO_DCTRL_DBLOCKSIZE_9 |
                          SDIO_DCTRL_DTEN;
-            err = stm32_sdio_command(24, addr);
+            err = stm32_sdio_command(sd, 24, addr);
             if (! err) {
                 data_len = 0;
                 do {
-                    tmp_reg = SDIO_STA;
+                    tmp_reg = SDIO_STA(sd->base);
                     if (tmp_reg & SDIO_STA_TXFIFOHE) {
-                        SDIO_FIFO = data_buf[data_len];
+                        SDIO_FIFO(sd->base) = data_buf[data_len];
                         if (data_len < 128) {
                             ++data_len;
                         }
@@ -621,7 +563,7 @@ sdio_block_write(struct fnode *fno, void *_buf, uint32_t lba, int offset, int co
         }
     }
     // deselect the card
-    (void) sdio_select(0);
+    (void) sdio_select(sd, 0);
     if (err)
         kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
@@ -633,6 +575,7 @@ sdio_block_write(struct fnode *fno, void *_buf, uint32_t lba, int offset, int co
  * This function fetches the SD Card Status page and
  * copies it into the CARD structure.
  */
+/*
 int
 sdio_status(SDIO_CARD c) {
     uint32_t tmp_reg;
@@ -649,8 +592,8 @@ sdio_status(SDIO_CARD c) {
                 SDIO_DLEN = 64;
                 SDIO_DCTRL = SDIO_DCTRL_DBLOCKSIZE_6 |
                              SDIO_DCTRL_DTDIR |
-                             SDIO_DCTRL_DTEN;
-                /* ACMD13 - Send Status Reg */
+                             SDIO_DCTRL_DTEN; */
+                /* ACMD13 - Send Status Reg */ /*
                 err = stm32_sdio_command(13, 0);
                 if (! err) {
                     data_len = 0;
@@ -687,6 +630,7 @@ sdio_status(SDIO_CARD c) {
         kprintf("[SDIO] %s\n", stm32_sdio_errmsg(err));
     return err;
 }
+*/
 
 static struct SDIO_CARD_DATA __sdio_card_data;
 #define MAX_RETRIES 5
@@ -702,7 +646,7 @@ static struct SDIO_CARD_DATA __sdio_card_data;
  * look at the last few commands sent.
  */
 SDIO_CARD
-stm32_sdio_open(void) {
+stm32_sdio_open(struct dev_sd *sd) {
     int err;
     int i;
     uint8_t *t;
@@ -714,32 +658,32 @@ stm32_sdio_open(void) {
     for (i = 0; i < (int) sizeof(__sdio_card_data); i++) {
         *t++ = 0;
     }
-    stm32_sdio_reset(SDIO_POWER_ON);
-    err = stm32_sdio_command(0, 0);
+    stm32_sdio_reset(sd, SDIO_POWER_ON);
+    err = stm32_sdio_command(sd, 0, 0);
     if (!err) {
-        err = stm32_sdio_command(8, 0x1aa);
+        err = stm32_sdio_command(sd, 8, 0x1aa);
         if (!err) {
             // Woot! We support CMD8 so we're a v2 card at least */
-            tmp_reg = SDIO_RESP1;
+            tmp_reg = SDIO_RESP1(sd->base);
             __sdio_card_data.props = 1;
             i = 0;
-            err = stm32_sdio_command(5, 0);
+            err = stm32_sdio_command(sd, 5, 0);
             if (! err) {
                 // It is an SDIO card which is unsupported!
                 err = SDIO_EBADCARD;
                 return NULL;
             }
             do {
-                err = stm32_sdio_command(55, 0); // broadcast ACMD
+                err = stm32_sdio_command(sd, 55, 0); // broadcast ACMD
                 if (err) {
                     break;   // try again
                 }
                 // Testing Card Busy, Voltage match, and capacity
-                err = stm32_sdio_command(41, 0xc0100000);
+                err = stm32_sdio_command(sd, 41, 0xc0100000);
                 if (err != -2) {            // Expect CCRCFAIL here
                     break;               // try again
                 }
-                tmp_reg = SDIO_RESP1; // what did the card send?
+                tmp_reg = SDIO_RESP1(sd->base); // what did the card send?
                 if ((tmp_reg & 0x80000000) == 0) {
                     continue;               // still powering up
                 }
@@ -747,15 +691,15 @@ stm32_sdio_open(void) {
                 break;
             } while (++i < MAX_RETRIES);
             if (res->ocr) {
-                err = stm32_sdio_command(2, 0);
+                err = stm32_sdio_command(sd, 2, 0);
                 if (! err) {
-                    res->cid[0] = SDIO_RESP1;
-                    res->cid[1] = SDIO_RESP2;
-                    res->cid[2] = SDIO_RESP3;
-                    res->cid[3] = SDIO_RESP4;
-                    err = stm32_sdio_command(3, 0);   // get the RCA
+                    res->cid[0] = SDIO_RESP1(sd->base);
+                    res->cid[1] = SDIO_RESP2(sd->base);
+                    res->cid[2] = SDIO_RESP3(sd->base);
+                    res->cid[3] = SDIO_RESP4(sd->base);
+                    err = stm32_sdio_command(sd, 3, 0);   // get the RCA
                     if (! err) {
-                        tmp_reg = SDIO_RESP1;
+                        tmp_reg = SDIO_RESP1(sd->base);
                         res->rca = (tmp_reg >> 16) & 0xffff;
                         if (! res->rca) {
                             /*
@@ -765,29 +709,29 @@ stm32_sdio_open(void) {
                              * should be in the ident state if it is
                              * functioning correctly.
                              */
-                            (void) stm32_sdio_command(3, 0); // try again
-                            tmp_reg = SDIO_RESP1;
+                            (void) stm32_sdio_command(sd, 3, 0); // try again
+                            tmp_reg = SDIO_RESP1(sd->base);
                             res->rca = (tmp_reg >> 16) & 0xffff;
                         }
-                        err = stm32_sdio_command(9, res->rca << 16);
+                        err = stm32_sdio_command(sd, 9, res->rca << 16);
                         if (! err) {
-                            res->csd[0] = SDIO_RESP1;
-                            res->csd[1] = SDIO_RESP2;
-                            res->csd[2] = SDIO_RESP3;
-                            res->csd[3] = SDIO_RESP4;
-                            err = sdio_scr(res); // Capture the SCR
+                            res->csd[0] = SDIO_RESP1(sd->base);
+                            res->csd[1] = SDIO_RESP2(sd->base);
+                            res->csd[2] = SDIO_RESP3(sd->base);
+                            res->csd[3] = SDIO_RESP4(sd->base);
+                            err = sdio_scr(sd, res); // Capture the SCR
                             if (! err) {
                                 /* All SD Cards support 4 bit bus and 24Mhz */
-                                err = sdio_select(res->rca);
+                                err = sdio_select(sd, res->rca);
                                 if (! err) {
-                                    err = stm32_sdio_command(55, res->rca << 16);
+                                    err = stm32_sdio_command(sd, 55, res->rca << 16);
                                     if (! err) {
-                                        err = stm32_sdio_command(6, 2);
+                                        err = stm32_sdio_command(sd, 6, 2);
                                         if (! err) {
                                             //XXX stm32_sdio_bus(4, SDIO_24MHZ);
                                             //Seems we have speed issues for now...
-                                            stm32_sdio_bus(4, SDIO_12MHZ);
-                                            (void) sdio_select(0);
+                                            stm32_sdio_bus(sd, 4, SDIO_12MHZ);
+                                            (void) sdio_select(sd, 0);
                                         }
                                     }
                                 }
@@ -832,15 +776,16 @@ stm32_sdio_open(void) {
 
 static void stm32_sdio_card_detect(void *arg)
 {
+    struct dev_sd *sd = DEV_SD[0];
+
     struct fnode *dev = arg;
-    char name[4] = "sd0";
-    memset(&SdCard[0], 0, sizeof(struct dev_sd));
-    SdCard[0].card = stm32_sdio_open();
-    if (!SdCard[0].card) {
+
+    sd->card = stm32_sdio_open(DEV_SD[0]);
+    if (!sd->card) {
         return;
     }
     kprintf("Found SD card in microSD slot.\r\n");
-    SdCard[0].dev = device_fno_init(&mod_sdio, name, dev, FL_BLK, &SdCard[0]);
+
 }
 
 /*
@@ -872,8 +817,23 @@ int sdio_init(struct sdio_config *conf)
     sdio_hw_init(conf);
 
     devfs = fno_search("/dev");
+
     if (!devfs)
         return -ENOENT;
+
+    struct dev_sd *sd;
+    sd = kalloc(sizeof(struct dev_sd));
+    if (!sd)
+        return -ENOMEM;
+
+    char name[4] = "sd0";
+    memset(sd, 0, sizeof (struct dev_sd));
+    sd->base = conf->base;
+    sd->rcc_rst_reg = conf->rcc_rst_reg;
+    sd->rcc_rst = conf->rcc_rst;
+    sd->dev = device_fno_init(&mod_sdio, name, devfs, FL_BLK, sd);
+    DEV_SD[conf->devidx] = sd;
+
     memset(&mod_sdio, 0, sizeof(mod_sdio));
     kprintf("Successfully initialized SDIO module.\r\n");
     strcpy(mod_sdio.name,"sdio");
