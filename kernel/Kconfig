@@ -44,7 +44,7 @@ menu "Platform Selection"
         bool "STM32F7"
         help
             Enable support for ST STM32F7 systems
-        
+
         config ARCH_NRF51
         bool "NRF51"
         help
@@ -494,7 +494,7 @@ menu "Device Drivers"
        endif
 
        config DEVSTM32SDIO
-       bool "STM32F4 SD I/O driver"
+       bool "STM32F4/7 SD I/O driver"
        depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405  || ARCH_STM32F429 || ARCH_STM32F7|| ARCH_STM32F446)
        default n
 
