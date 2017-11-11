@@ -765,10 +765,11 @@ static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
     struct pico_device *dev;
     struct pico_tree_node *index = NULL;
     const char iface_banner[] = "Interface | \r\n";
+    uint32_t cur_off = task_fd_get_off(fno);
     if (mem_lock() < 0)
         return SYS_CALL_AGAIN;
     sysfs_lock();
-    if (fno->off == 0) {
+    if (cur_off == 0) {
         txt = kcalloc(MAX_DEVNET_BUF, 1);
         off = 0;
         if (!txt) {
@@ -785,16 +786,18 @@ static int sysfs_net_dev_read(struct sysfs_fnode *sfs, void *buf, int len)
             txt[off++] = '\n';
         }
     }
-    if (off == fno->off) {
+    cur_off = task_fd_get_off(fno);
+    if (off == cur_off) {
         kfree(txt);
         len = -1;
         goto out;
     }
-    if (len > (off - fno->off)) {
-       len = off - fno->off;
+    if (len > (off - cur_off)) {
+       len = off - cur_off;
     }
-    memcpy(res, txt + fno->off, len);
-    fno->off += len;
+    memcpy(res, txt + cur_off, len);
+    cur_off += len;
+    task_fd_set_off(fno, cur_off);
 out:
     sysfs_unlock();
     mem_unlock();
@@ -815,9 +818,11 @@ int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
     char metric[5];
     static int off;
     int i;
+    uint32_t cur_off = task_fd_get_off(fno);
     if (mem_lock() < 0)
         return SYS_CALL_AGAIN;
-    if (fno->off == 0) {
+
+    if (cur_off == 0) {
         const char route_banner[] = "Kernel IP routing table\r\nDestination     Gateway         Genmask         Flags   Metric  Iface \r\n";
         sysfs_lock();
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
@@ -876,17 +881,19 @@ int sysfs_net_route_list(struct sysfs_fnode *sfs, void *buf, int len)
             mem_txt[off++] = '\n';
         }
     }
-    if (off == fno->off) {
+    cur_off = task_fd_get_off(fno);
+    if (off == cur_off) {
         kfree(mem_txt);
         sysfs_unlock();
         mem_unlock();
         return -1;
     }
-    if (len > (off - fno->off)) {
-       len = off - fno->off;
+    if (len > (off - cur_off)) {
+       len = off - cur_off;
     }
-    memcpy(res, mem_txt + fno->off, len);
-    fno->off += len;
+    memcpy(res, mem_txt + cur_off, len);
+    cur_off += len;
+    task_fd_set_off(fno,cur_off);
     sysfs_unlock();
     mem_unlock();
     return len;

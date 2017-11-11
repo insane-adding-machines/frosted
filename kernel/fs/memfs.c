@@ -29,9 +29,11 @@ struct memfs_fnode {
     uint8_t *content;
 };
 
+
 static int memfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
     struct memfs_fnode *mfno;
+    uint32_t off;
     if (len <= 0)
         return len;
 
@@ -39,14 +41,17 @@ static int memfs_read(struct fnode *fno, void *buf, unsigned int len)
     if (!mfno)
         return -ENOENT;
 
-    if (fno->size <= (fno->off))
+    off = task_fd_get_off(fno);
+
+    if (fno->size <= off)
         return 0;
 
-    if (len > (fno->size - fno->off))
-        len = fno->size - fno->off;
+    if (len > (fno->size - off))
+        len = fno->size - off;
 
-    memcpy(buf, mfno->content + fno->off, len);
-    fno->off += len;
+    memcpy(buf, mfno->content + off, len);
+    off+=len;
+    task_fd_set_off(fno, off);
     return len;
 }
 
@@ -54,6 +59,7 @@ static int memfs_read(struct fnode *fno, void *buf, unsigned int len)
 static int memfs_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     struct memfs_fnode *mfno;
+    uint32_t off;
     if (len <= 0)
         return len;
 
@@ -61,15 +67,18 @@ static int memfs_write(struct fnode *fno, const void *buf, unsigned int len)
     if (!mfno)
         return -ENOENT;
 
-    if (fno->size < (fno->off + len)) {
-        mfno->content = krealloc(mfno->content, fno->off + len);
+    off = task_fd_get_off(fno);
+
+    if (fno->size < (off+len)) {
+        mfno->content = krealloc(mfno->content, off + len);
     }
     if (!mfno->content)
         return -ENOMEM;
-    memcpy(mfno->content + fno->off, buf, len);
-    fno->off += len;
-    if (fno->size < fno->off)
-        fno->size = fno->off;
+    memcpy(mfno->content + off, buf, len);
+    off += len;
+    if (fno->size < off)
+        fno->size = off;
+    task_fd_set_off(fno, off);
     return len;
 }
 
@@ -88,7 +97,7 @@ static int memfs_seek(struct fnode *fno, int off, int whence)
         return -1;
     switch(whence) {
         case SEEK_CUR:
-            new_off = fno->off + off;
+            new_off = task_fd_get_off(fno) + off;
             break;
         case SEEK_SET:
             new_off = off;
@@ -97,7 +106,7 @@ static int memfs_seek(struct fnode *fno, int off, int whence)
             new_off = fno->size + off;
             break;
         default:
-            return -1;
+            return -EINVAL;
     }
 
     if (new_off < 0)
@@ -108,7 +117,7 @@ static int memfs_seek(struct fnode *fno, int off, int whence)
         memset(mfno->content + fno->size, 0, new_off - fno->size);
         fno->size = new_off;
     }
-    fno->off = new_off;
+    task_fd_set_off(fno, new_off);
     return 0;
 }
 
@@ -118,7 +127,6 @@ static int memfs_close(struct fnode *fno)
     mfno = FNO_MOD_PRIV(fno, &mod_memfs);
     if (!mfno)
         return -1;
-    fno->off = 0;
     return 0;
 }
 
@@ -161,6 +169,7 @@ static int memfs_truncate(struct fnode *fno, unsigned int newsize)
         if (newsize == 0) {
             fno->size = 0;
             kfree(mfno->content);
+            mfno->content = NULL;
         } else {
             mfno->content = krealloc(mfno->content, newsize);
             fno->size = newsize;

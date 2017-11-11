@@ -453,7 +453,6 @@ static void fatfs_populate(struct fatfs_disk *f, char *path, uint32_t clust)
         priv->dirsect = dj.dirsect;
 
         newdir->size = dj.fsize;
-        newdir->off = 0;
 
         int i = 0;
         uint32_t nclust = newdir->size / (f->fs->spc * f->fs->bps);
@@ -587,23 +586,25 @@ fail:
 
 int fatfs_open(const char *path, int flags)
 {
+    struct fnode *fno = fno_search(path);
+    struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
+    int ret = task_filedesc_add(fno);
+
     if (!path)
         return -EINVAL;
 
-    struct fnode *fno = fno_search(path);
+    fno = fno_search(path);
     if (!fno)
         return -ENOENT;
 
-    struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
+    priv = (struct fatfs_priv *)fno->priv;
     priv->flags = flags;
-
-    fno->off = 0;
 
     if (flags & O_TRUNC) {
         fatfs_truncate(fno, 0);
     }
 
-    int ret = task_filedesc_add(fno);
+    ret = task_filedesc_add(fno);
 
     return ret;
 }
@@ -714,7 +715,6 @@ int fatfs_creat(struct fnode *fno)
     priv->fat[0] = priv->sclust;
     priv->sect = CLUST2SECT(fs, priv->cclust);
     priv->off = dj.off;
-    fno->off = 0;
     fno->size = 0;
     priv->dirsect = dj.dirsect;
 
@@ -732,7 +732,7 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
 
     int r_len = 0, sect = 0, off = 0, clust = 0;
 
-    off = fno->off;
+    off = task_fd_get_off(fno);
     sect = off / fs->bps;
     off = off & (fs->bps - 1);
     clust = sect / fs->spc;
@@ -741,7 +741,7 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
     priv->cclust = priv->fat[clust];
     priv->sect = CLUST2SECT(fs, priv->cclust);
 
-    while ((r_len < len) && (fno->off < fno->size)) {
+    while ((r_len < len) && (off < fno->size)) {
         int r = len - r_len;
         if (r > fs->bps)
             r = fs->bps;
@@ -749,17 +749,17 @@ int fatfs_read(struct fnode *fno, void *buf, unsigned int len)
         if ((r == fs->bps) && off > 0)
             r -= off;
 
-        if (fno->off + r > fno->size)
-            r = fno->size - fno->off;
+        if (off + r > fno->size)
+            r = fno->size - off;
 
         /* XXX: use returned value, maybe lower level returned less.. */
         disk_read(fsd, ((uint8_t *)buf + r_len), (priv->sect + sect), off, r);
 
         r_len += r;
-        fno->off += r;
         off += r;
+        task_fd_set_off(fno, off);
 
-        if ((r_len < len) && (off == fs->bps) && (fno->off < fno->size)) {
+        if ((r_len < len) && (off == fs->bps) && (off < fno->size)) {
             sect++;
             if ((sect) >= fs->spc) {
                 clust++;
@@ -782,16 +782,15 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
     struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
     struct fatfs_disk *fsd = priv->fsd;
     struct fatfs *fs = fsd->fs;
-
-    int w_len = 0, sect = 0, off = 0, clust = 0;
+    uint32_t off;
+    int w_len = 0, sect = 0, clust = 0;
+    off = task_fd_get_off(fno);
 
     if (priv->flags & O_APPEND) {
         off = fno->size;
-    } else {
-        off = fno->off;
     }
 
-    fno->off = off;
+    task_fd_set_off(fno, off);
 
     sect = off / fs->bps;
     off = off & (fs->bps - 1);
@@ -811,14 +810,14 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
 
         disk_write(fsd, buf, (priv->sect + sect), off, r);
         w_len += r;
-        fno->off += r;
         off += r;
+        task_fd_set_off(fno, off);
         if ((w_len < len) && (off == fs->bps)) {
             sect++;
             if ((sect) >= fs->spc) {
                 clust++;
                 sect = 0;
-                if (fno->off <= fno->size) {
+                if (off <= fno->size) {
                     priv->cclust = priv->fat[clust];
                 } else {
                     uint32_t tempclust = priv->cclust;
@@ -837,27 +836,24 @@ int fatfs_write(struct fnode *fno, const void *buf, unsigned int len)
         }
         off = 0;
     }
-
-    if (fno->off > fno->size) {
-        fno->size = fno->off;
+    if (off > fno->size) {
+        fno->size = off;
         disk_read(fsd, fs->win, priv->dirsect, 0, fs->bps);
         st_dword((fs->win + priv->off + DIR_FSIZE), (uint32_t)fno->size);
         disk_write(fsd, fs->win, priv->dirsect, 0, fs->bps);
     }
-
     return w_len;
 }
 
 int fatfs_seek(struct fnode *fno, int off, int whence)
 {
+    int new_off;
     if (!fno)
         return -EINVAL;
 
-    int new_off;
-
     switch (whence) {
         case SEEK_CUR:
-            new_off = fno->off + off;
+            new_off = task_fd_get_off(fno) + off;
             break;
         case SEEK_SET:
             new_off = off;
@@ -875,9 +871,8 @@ int fatfs_seek(struct fnode *fno, int off, int whence)
     if (new_off > fno->size)
         return -ESPIPE;
 
-    fno->off = new_off;
-
-    return fno->off;
+    task_fd_set_off(fno, new_off);
+    return new_off;
 }
 
 int fatfs_truncate(struct fnode *fno, unsigned int len)
@@ -918,9 +913,6 @@ int fatfs_close(struct fnode *fno)
 {
     if (!fno)
         return -EINVAL;
-
-    fno->off = 0;
-
     return 0;
 }
 

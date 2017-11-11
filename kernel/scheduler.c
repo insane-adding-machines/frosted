@@ -208,7 +208,9 @@ static void *_top_stack;
 
 struct filedesc {
     struct fnode *fno;
+    uint32_t off;
     uint32_t mask;
+    uint32_t flags;
 };
 
 struct filedesc_table {
@@ -659,6 +661,83 @@ uint32_t task_fd_getmask(int fd)
         return 0;
     if (ft->fdesc[fd].fno)
         return ft->fdesc[fd].mask;
+    return 0;
+}
+
+uint32_t task_fd_set_flags(int fd, uint32_t flags)
+{
+    struct filedesc_table *ft;
+    struct fnode *fno;
+
+    ft = _cur_task->tb.filedesc_table;
+
+    if (!ft)
+        return -EINVAL;
+
+    if (fd < 0 || fd > ft->n_files)
+        return -ENOENT;
+
+    fno = ft->fdesc[fd].fno;
+    if (!fno)
+        return -ENOENT;
+
+    ft->fdesc[fd].flags = flags;
+    return 0;
+}
+
+uint32_t task_fd_get_flags(int fd)
+{
+    struct fnode *fno;
+    struct filedesc_table *ft;
+    struct filedesc *fdesc;
+    ft = _cur_task->tb.filedesc_table;
+    if (!ft)
+        return -EINVAL;
+
+    if (fd < 0 || fd > ft->n_files)
+        return -ENOENT;
+
+    fdesc = ft->fdesc[fd].fno;
+    if (!fdesc)
+        return -ENOENT;
+    return fdesc->flags;
+}
+
+uint32_t task_fd_set_off(struct fnode *fno, uint32_t off)
+{
+    struct filedesc_table *ft;
+    struct filedesc *fdesc;
+    int fd;
+    int found = 0;
+    ft = _cur_task->tb.filedesc_table;
+    if (!ft)
+        return 0;
+
+    /* Set offset to all instances of the file in the ft */
+    for (fd = 0; fd < ft->n_files; fd++) {
+        if (ft->fdesc[fd].fno == fno) {
+            ft->fdesc[fd].off = off;
+            found++;
+        } 
+    }
+    if (found)
+        return off;
+    return 0;
+}
+
+uint32_t task_fd_get_off(struct fnode *fno)
+{
+    struct filedesc_table *ft;
+    struct filedesc *fdesc;
+    int fd;
+    ft = _cur_task->tb.filedesc_table;
+    if (!ft)
+        return 0;
+
+    for (fd = 0; fd < ft->n_files; fd++) {
+        if (ft->fdesc[fd].fno == fno)
+            return ft->fdesc[fd].off;
+    }
     return 0;
 }
 

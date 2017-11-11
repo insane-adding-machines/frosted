@@ -41,6 +41,7 @@ struct xipfs_fnode {
 static int xipfs_read(struct fnode *fno, void *buf, unsigned int len)
 {
     struct xipfs_fnode *xfno;
+    uint32_t off = task_fd_get_off(fno);
     if (len <= 0)
         return len;
 
@@ -48,22 +49,24 @@ static int xipfs_read(struct fnode *fno, void *buf, unsigned int len)
     if (!xfno)
         return -1;
 
-    if (fno->size <= (fno->off))
+    if (fno->size <= (off))
         return -1;
 
-    if (len > (fno->size - fno->off))
-        len = fno->size - fno->off;
+    if (len > (fno->size - off))
+        len = fno->size - off;
 
-    memcpy(buf, ((char *)xfno->init) + fno->off, len);
-    fno->off += len;
+    memcpy(buf, ((char *)xfno->init) + off, len);
+    off += len;
+    task_fd_set_off(fno,off);
     return len;
 }
 
 static int xipfs_block_read(struct fnode *fno, void *buf, uint32_t sector, int offset, int count)
 {
-    fno->off = sector * SECTOR_SIZE + offset;
-    if (fno->off > fno->size) {
-        fno->off = 0;
+    uint32_t off = sector * SECTOR_SIZE + offset;
+    task_fd_set_off(fno,off);
+    if (off > fno->size) {
+        task_fd_set_off(fno,0);
         return -1;
     }
     if (xipfs_read(fno, buf, count) == count)

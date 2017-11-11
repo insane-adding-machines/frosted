@@ -56,7 +56,6 @@ static int fb_open(const char *path, int flags)
     struct fnode *f = fno_search(path);
     if (!f)
         return -1;
-    f->off = 0;
     return device_open(path, flags);
 }
 
@@ -64,6 +63,7 @@ static int fb_write(struct fnode *fno, const void *buf, unsigned int len)
 {
     int len_left;
     struct fb_info *fb;
+    uint32_t off;
 
     if (len == 0)
         return len;
@@ -73,7 +73,8 @@ static int fb_write(struct fnode *fno, const void *buf, unsigned int len)
         return -1;
 
     //mutex_lock(fb->dev->mutex);
-    len_left = fno->size - fno->off;
+    off = task_fd_get_off(fno);
+    len_left = fno->size - off;
     if (len > len_left)
         len = len_left;
 
@@ -81,8 +82,9 @@ static int fb_write(struct fnode *fno, const void *buf, unsigned int len)
         return 0;
 
     /* write to framebuffer memory */
-    memcpy((void *)((uint8_t *)fb->screen_buffer + fno->off) , buf, len); 
-    fno->off += len;
+    memcpy((void *)((uint8_t *)fb->screen_buffer + off) , buf, len); 
+    off += len;
+    task_fd_set_off(fno, off);
 
     //mutex_unlock(fb->dev->mutex);
     return len;
@@ -93,11 +95,13 @@ static int fb_read(struct fnode *fno, void *buf, unsigned int len)
 {
     int len_left;
     struct fb_info *fb;
+    uint32_t off;
+    off = task_fd_get_off(fno);
 
     if (len == 0)
         return len;
 
-    len_left = fno->size - fno->off;
+    len_left = fno->size - off;
     if (len > len_left)
         len = len_left;
 
@@ -111,14 +115,14 @@ static int fb_read(struct fnode *fno, void *buf, unsigned int len)
     // mutex_lock(fb->dev->mutex);
 
     //XXX: max len = MAX_FB_SIZE;
-    memcpy(buf, (void *)((uint8_t *)fb->screen_buffer + fno->off), len);
-    fno->off += len;
+    memcpy(buf, (void *)((uint8_t *)fb->screen_buffer + off), len);
+    off += len;
+    task_fd_set_off(fno, off);
 
     //mutex_unlock(fb->dev->mutex);
     return len;
 }
 
-/* TODO: Could probably be made generic ? */
 static int fb_seek(struct fnode *fno, int off, int whence)
 {
     struct fb_info *fb;
@@ -126,7 +130,7 @@ static int fb_seek(struct fnode *fno, int off, int whence)
 
     switch(whence) {
         case SEEK_CUR:
-            new_off = fno->off + off;
+            new_off = task_fd_get_off(fno) + off;
             break;
         case SEEK_SET:
             new_off = off;
@@ -144,10 +148,9 @@ static int fb_seek(struct fnode *fno, int off, int whence)
     if (new_off > fno->size) {
         return -1;
     }
-    fno->off = new_off;
-    return fno->off;
+    task_fd_set_off(fno, new_off);
+    return new_off;
 }
-
 
 static int fb_fno_init(struct fnode *dev, struct fb_info * fb)
 {
@@ -159,7 +162,6 @@ static int fb_fno_init(struct fnode *dev, struct fb_info * fb)
 
     name[2] =  '0' + num_fb++;
     fb->dev = device_fno_init(&mod_devfb, name, dev, FL_TTY, fb);
-    fb->dev->fno->off = 0;
     fb->dev->fno->size = fb->var.yres * fb->var.xres * fb->var.bits_per_pixel;
     return 0;
 }
