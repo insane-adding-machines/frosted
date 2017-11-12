@@ -92,7 +92,6 @@ static int sysfs_close(struct fnode *fno)
     mfno = FNO_MOD_PRIV(fno, &mod_sysfs);
     if (!mfno)
         return -1;
-    fno->off = 0;
     return 0;
 }
 
@@ -168,14 +167,17 @@ int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
 {
     char *res = (char *)buf;
     struct fnode *fno = sfs->fnode;
-    if (fno->off > 0)
+    uint32_t off = task_fd_get_off(fno);
+    if (off > 0)
         return -1;
 
-    fno->off += ul_to_str(jiffies, res);
-    res[fno->off++] = '\r';
-    res[fno->off++] = '\n';
-    res[fno->off] = '\0';
-    return fno->off;
+    off += ul_to_str(jiffies, res);
+
+    res[off++] = '\r';
+    res[off++] = '\n';
+    res[off] = '\0';
+    task_fd_set_off(fno, off);
+    return off;
 }
 
 
@@ -229,7 +231,7 @@ int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
     char *res = (char *)buf;
     struct fnode *fno = sfs->fnode;
     static char *txt;
-    static int off;
+    static uint32_t off;
     int i;
     int stack_used;
     char *name;
@@ -238,13 +240,13 @@ int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
     const char legend[]="Base\tPin\tMode\tDrive\tSpeed\tTrigger\tOwner\r\n";
     struct dev_gpio *g =  Gpio_list;
     uint32_t pin_n = 0;
-    if (fno->off == 0) {
+    uint32_t cur_off = task_fd_get_off(fno);
+    if (cur_off == 0) {
         mutex_lock(sysfs_mutex);
         txt = kalloc((1 + gpio_list_len()) * 80);
         if (!txt)
             return -1;
         off = 0;
-
         strcpy(txt, legend);
         off += strlen(legend);
         while (g) {
@@ -375,16 +377,17 @@ int sysfs_pins_read(struct sysfs_fnode *sfs, void *buf, int len)
         }
         txt[off++] = '\0';
     }
-    if (off == fno->off) {
+    cur_off = task_fd_get_off(fno);
+    if (off == cur_off) {
         kfree(txt);
         mutex_unlock(sysfs_mutex);
         return -1;
     }
-    if (len > (off - fno->off)) {
-       len = off - fno->off;
+    if (len > (off - cur_off)) {
+       len = off - cur_off;
     }
-    memcpy(res, txt + fno->off, len);
-    fno->off += len;
+    memcpy(res, txt + cur_off, len);
+    task_fd_set_off(fno, cur_off + len);
     return len;
 }
 #endif
@@ -394,14 +397,15 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
     char *res = (char *)buf;
     struct fnode *fno = sfs->fnode;
     static char *task_txt;
-    static int off;
+    static uint32_t off;
     int i;
     int stack_used;
     char *name;
     int p_state;
     int nice;
     const char legend[]="pid\tstate\tstack\theap\tnice\tname\r\n";
-    if (fno->off == 0) {
+    uint32_t cur_off = task_fd_get_off(fno);
+    if (cur_off == 0) {
         mutex_lock(sysfs_mutex);
         task_txt = kalloc(MAX_SYSFS_BUFFER);
         if (!task_txt)
@@ -455,16 +459,19 @@ int sysfs_tasks_read(struct sysfs_fnode *sfs, void *buf, int len)
         }
         task_txt[off++] = '\0';
     }
-    if (off == fno->off) {
+
+    cur_off = task_fd_get_off(fno);
+    if (off == cur_off) {
         kfree(task_txt);
         mutex_unlock(sysfs_mutex);
         return -1;
     }
-    if (len > (off - fno->off)) {
-       len = off - fno->off;
+    if (len > (off - cur_off)) {
+       len = off - cur_off;
     }
-    memcpy(res, task_txt + fno->off, len);
-    fno->off += len;
+    memcpy(res, task_txt + cur_off, len);
+    cur_off += len;
+    task_fd_set_off(fno, cur_off);
     return len;
 }
 
@@ -479,7 +486,8 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
     int i;
     int stack_used;
     int p_state;
-    if (fno->off == 0) {
+    uint32_t cur_off = task_fd_get_off(fno);
+    if (cur_off == 0) {
         const char mem_stat_banner[NPOOLS][50] = {"\r\nKernel memory statistics\r\n",
                                           "\r\n\nUser memory statistics\r\n",
                                           "\r\n\nTask space statistics\r\n",
@@ -538,16 +546,18 @@ int sysfs_mem_read(struct sysfs_fnode *sfs, void *buf, int len)
         if (off > 0)
             mem_txt[off++] = '\0';
     }
-    if (off == fno->off) {
+    cur_off = task_fd_get_off(fno);
+    if (off == cur_off) {
         kfree(mem_txt);
         mutex_unlock(sysfs_mutex);
         return -1;
     }
-    if (len > (off - fno->off)) {
-       len = off - fno->off;
+    if (len > (off - cur_off)) {
+       len = off - cur_off;
     }
-    memcpy(res, mem_txt + fno->off, len);
-    fno->off += len;
+    memcpy(res, mem_txt + cur_off, len);
+    cur_off += len;
+    task_fd_set_off(fno, cur_off);
     return len;
 }
 
@@ -561,7 +571,8 @@ int sysfs_modules_read(struct sysfs_fnode *sfs, void *buf, int len)
     int stack_used;
     int p_state;
     struct module *m = MODS;
-    if (fno->off == 0) {
+    uint32_t cur_off = task_fd_get_off(fno);
+    if (cur_off == 0) {
         const char mod_banner[] = "Loaded modules:\r\n";
         mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
@@ -579,16 +590,18 @@ int sysfs_modules_read(struct sysfs_fnode *sfs, void *buf, int len)
             m = m->next;
         }
     }
-    if (off == fno->off) {
+    cur_off = task_fd_get_off(fno);
+    if (off == cur_off) {
         kfree(mem_txt);
         mutex_unlock(sysfs_mutex);
         return -1;
     }
-    if (len > (off - fno->off)) {
-       len = off - fno->off;
+    if (len > (off - cur_off)) {
+       len = off - cur_off;
     }
-    memcpy(res, mem_txt + fno->off, len);
-    fno->off += len;
+    memcpy(res, mem_txt + cur_off, len);
+    cur_off += len;
+    task_fd_set_off(fno,cur_off);
     return len;
 }
 
@@ -603,7 +616,8 @@ int sysfs_mtab_read(struct sysfs_fnode *sfs, void *buf, int len)
     int p_state;
     struct mountpoint *m = MTAB;
     int l = 0;
-    if (fno->off == 0) {
+    uint32_t cur_off = task_fd_get_off(fno);
+    if (cur_off == 0) {
         const char mtab_banner[] = "Mountpoint\tDriver\t\tInfo\r\n--------------------------------------\r\n";
         mutex_lock(sysfs_mutex);
         mem_txt = kalloc(MAX_SYSFS_BUFFER);
@@ -645,16 +659,18 @@ int sysfs_mtab_read(struct sysfs_fnode *sfs, void *buf, int len)
         *(mem_txt + (off++)) = '\r';
         *(mem_txt + (off++)) = '\n';
     }
-    if (off == fno->off) {
+    cur_off = task_fd_get_off(fno);
+    if (off == cur_off) {
         kfree(mem_txt);
         mutex_unlock(sysfs_mutex);
         return -1;
     }
-    if (len > (off - fno->off)) {
-       len = off - fno->off;
+    if (len > (off - cur_off)) {
+       len = off - cur_off;
     }
-    memcpy(res, mem_txt + fno->off, len);
-    fno->off += len;
+    memcpy(res, mem_txt + cur_off, len);
+    cur_off += len;
+    task_fd_set_off(fno,cur_off);
     return len;
 }
 

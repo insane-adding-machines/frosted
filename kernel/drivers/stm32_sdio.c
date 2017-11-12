@@ -538,7 +538,7 @@ sdio_block_write(struct fnode *fno, void *_buf, uint32_t lba, int offset, int co
             SDIO_DLEN(sd->base) = 512;
             SDIO_DCTRL(sd->base) = SDIO_DCTRL_DBLOCKSIZE_9 |
                          SDIO_DCTRL_DTEN;
-            err = stm32_sdio_command(sd, 24, addr);
+            err = stm32_sdio_command(sd, 24, addr + offset);
             if (! err) {
                 data_len = 0;
                 do {

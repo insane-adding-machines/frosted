@@ -505,8 +505,11 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
             return -EPERM;
         ret = f->owner->ops.open(path, flags);
-        if (ret >= 0)
+        if (ret >= 0) {
             task_fd_setmask(ret, flags);
+            task_fd_set_flags(ret, flags);
+            task_fd_set_off(f, 0);
+        }
         return ret;
     }
 
@@ -537,8 +540,11 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
                 if ((O_MODE(flags) != O_RDONLY) && ((f->flags & FL_WRONLY)== 0))
                     return -EPERM;
                 ret = f->owner->ops.open(path, flags);
-                if (ret >= 0)
+                if (ret >= 0) {
                     task_fd_setmask(ret, flags);
+                    task_fd_set_flags(ret, flags);
+                    task_fd_set_off(f, 0);
+                }
                 return ret;
             }
         }
@@ -549,13 +555,12 @@ int sys_open_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, ui
         return -EBUSY;
     if (f->flags & FL_DIR)
         return -EISDIR;
-    if (flags & O_APPEND) {
-        f->off = f->size;
-    } else {
-        f->off = 0;
-    }
     ret = task_filedesc_add(f);
     task_fd_setmask(ret, flags);
+    task_fd_set_flags(ret,flags);
+    task_fd_set_off(f, 0);
+    if (flags & O_APPEND)
+        task_fd_set_off(f, f->size); 
     return ret;
 }
 
@@ -640,7 +645,7 @@ int sys_opendir_hdlr(uint32_t arg1)
         if (fno->flags & FL_INUSE)
             return (int)NULL; /* XXX EBUSY */
         /* Use .off to store current readdir ptr */
-        fno->off = (int)fno->children;
+        fno->dir_ptr = (int)fno->children;
         fno->flags |= FL_INUSE;
         return (int)fno;
     } else {
@@ -659,13 +664,13 @@ int sys_readdir_hdlr(uint32_t arg1, uint32_t arg2)
     if (task_ptr_valid(ep))
        return  -EACCES;
 
-    next = (struct fnode *)fno->off;
+    next = (struct fnode *)fno->dir_ptr;
     if (!fno || !ep)
         return -ENOENT;
     if (!next) {
         return -1;
     }
-    fno->off = (int)next->next;
+    fno->dir_ptr = (int)next->next;
     ep->d_ino = 0; /* TODO: populate with inode? */
     strncpy(ep->d_name, next->fname, 256);
     return 0;
@@ -674,7 +679,7 @@ int sys_readdir_hdlr(uint32_t arg1, uint32_t arg2)
 int sys_closedir_hdlr(uint32_t arg1)
 {
     struct fnode *fno = (struct fnode *)arg1;
-    fno->off = 0;
+    fno->dir_ptr = 0;
     fno->flags &= ~(FL_INUSE);
     return 0;
 }
