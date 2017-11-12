@@ -588,7 +588,7 @@ int fatfs_open(const char *path, int flags)
 {
     struct fnode *fno = fno_search(path);
     struct fatfs_priv *priv = (struct fatfs_priv *)fno->priv;
-    int ret = task_filedesc_add(fno);
+    int ret;
 
     if (!path)
         return -EINVAL;
