@@ -106,17 +106,9 @@ int strncmp(const char *s1, const char *s2, size_t n)
     int diff = 0;
 
     while (n > 0) {
-        if (!s1) {
-            diff = 0 - (int)*s2;
-        } else if (!s2) {
-            diff = (int)*s1;
-        } else {
-            diff = (int)*s1 - (int)*s2;
-        }
-
-        if (diff)
+        diff = (unsigned char)*s1 - (unsigned char)*s2;
+        if (diff || !*s1)
             break;
-
         s1++;
         s2++;
         n--;
