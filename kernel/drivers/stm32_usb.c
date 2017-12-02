@@ -76,9 +76,13 @@ void otg_hs_isr(void)
 static void kthread_usbhost(void *arg)
 {
     (void)arg;
-    kthread_sleep_ms(1000);
+    volatile uint32_t last = jiffies;
+
     while(1) {
-        usbh_poll(_usbh_host, 0);
+        if (last != jiffies) {
+            usbh_poll(_usbh_host, jiffies * 1000);
+            last = jiffies;
+        }
         kthread_yield();
     }
 }

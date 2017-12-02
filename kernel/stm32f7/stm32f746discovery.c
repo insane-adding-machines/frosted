@@ -129,7 +129,7 @@ static const struct uart_config uart_configs[] = {
 */
 struct sdio_config sdio_conf = {
     .devidx = 0,
-    .base = SDIO_BASE,
+    .base = (uint32_t *)SDIO_BASE,
     .rcc_reg = (uint32_t *)&RCC_APB2ENR,
     .rcc_en  = RCC_APB2ENR_SDMMC1EN,
     .rcc_rst_reg = (uint32_t *)&RCC_APB2RSTR,
@@ -412,7 +412,18 @@ int machine_init(void)
     int i = 0;
     rcc_clock_setup_hse_3v3(&rcc_hse_25mhz_3v3);
 
-    /* usb_init(&usb_hs_host); TODO */
+#if 0
+	/* Set GPIO12-15 (in GPIO port D) to 'output push-pull'. */
+	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT,
+			GPIO_PUPD_NONE, GPIO12 | GPIO13 | GPIO14 | GPIO15);
+
+#endif
+	/* Set */
+	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
+	gpio_clear(GPIOC, GPIO0);
+
+
+    usb_init(&usb_hs_host);
 
     gpio_create(NULL, &gpio_led0);
     gpio_create(NULL, &gpio_button);
