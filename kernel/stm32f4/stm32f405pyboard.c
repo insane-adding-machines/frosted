@@ -391,6 +391,13 @@ static const struct uart_config uart_configs[] = {
    PD2 - CMD
 */
 struct sdio_config sdio_conf = {
+    .devidx = 0,
+    .base = SDIO_BASE,
+    .rcc_reg = (uint32_t *)&RCC_APB2ENR,
+    .rcc_en  = RCC_APB2ENR_SDIOEN,
+    .rcc_rst_reg = (uint32_t *)&RCC_APB2RSTR,
+    .rcc_rst  = RCC_APB2RSTR_SDIORST,
+    .card_detect_supported = 1,
     .pio_dat0 = {
         .base=GPIOC,
         .pin=GPIO8,
@@ -446,8 +453,6 @@ struct sdio_config sdio_conf = {
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
-    .card_detect_supported = 1,
-    /* pyboard has an additional card-detect pin on PA8 */
     .pio_cd = {
         .base=GPIOA,
         .pin=GPIO8,
@@ -455,8 +460,6 @@ struct sdio_config sdio_conf = {
         .pullupdown=GPIO_PUPD_PULLUP
     }
 };
-
-
 
 int machine_init(void)
 {
@@ -484,8 +487,6 @@ int machine_init(void)
 
 
     rng_create(1, RCC_RNG);
-    sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
-    sdio_conf.rcc_en  = RCC_APB2ENR_SDIOEN;
     sdio_init(&sdio_conf);
     usb_init(&usb_guest);
     #ifdef CONFIG_DEVMCCOG21

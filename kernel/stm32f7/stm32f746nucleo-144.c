@@ -168,6 +168,13 @@ static const struct uart_config uart_configs[] = {
    PD2 - CMD
 */
 struct sdio_config sdio_conf = {
+    .devidx = 0,
+    .base = SDIO_BASE,
+    .rcc_reg = (uint32_t *)&RCC_APB2ENR,
+    .rcc_en  = RCC_APB2ENR_SDMMC1EN,
+    .rcc_rst_reg = (uint32_t *)&RCC_APB2RSTR,
+    .rcc_rst  = RCC_APB2RSTR_SDMMC1RST,
+    .card_detect_supported = 0,
     .pio_dat0 = {
         .base=GPIOC,
         .pin=GPIO8,
@@ -223,14 +230,6 @@ struct sdio_config sdio_conf = {
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
-    .card_detect_supported = 1,
-    /* STM37 has an additional card-detect pin on PC13 */
-    .pio_cd = {
-        .base=GPIOC,
-        .pin=GPIO13,
-        .mode=GPIO_MODE_INPUT,
-        .pullupdown=GPIO_PUPD_PULLUP
-    }
 };
 
 struct gpio_config stm32eth_mii_pins[] = {

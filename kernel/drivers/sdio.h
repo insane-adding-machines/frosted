@@ -4,11 +4,16 @@
 #include "gpio.h"
 
 struct sdio_config {
+    uint32_t *base;
+    uint32_t devidx;
     uint32_t *rcc_reg;
     uint32_t rcc_en;
+    uint32_t *rcc_rst_reg;
+    uint32_t rcc_rst;
+
     struct gpio_config pio_dat0, pio_dat1, pio_dat2, pio_dat3;
     struct gpio_config pio_clk, pio_cmd;
-    
+
     int card_detect_supported;
     struct gpio_config pio_cd;
 };

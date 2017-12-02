@@ -155,19 +155,20 @@ static const struct uart_config uart_configs[] = {
 };
 #define NUM_UARTS (sizeof(uart_configs) / sizeof(struct uart_config))
 
-
-/* Setup GPIO Pins for SDIO:
-   PC8 - PC11 - DAT0 thru DAT3
-   PC12 - CLK
-   PD2 - CMD
-*/
 struct sdio_config sdio_conf = {
+    .devidx = 0,
+    .base = SDIO2_BASE,
+    .rcc_reg = (uint32_t *)&RCC_APB2ENR,
+    .rcc_en  = RCC_APB2ENR_SDMMC2EN,
+    .rcc_rst_reg = (uint32_t *)&RCC_APB2RSTR,
+    .rcc_rst  = RCC_APB2RSTR_SDMMC2RST,
+    .card_detect_supported = 1,
     .pio_dat0 = {
         .base=GPIOG,
         .pin=GPIO9,
         .mode=GPIO_MODE_AF,
         .speed=GPIO_OSPEED_100MHZ,
-        .af = GPIO_AF12,
+        .af = GPIO_AF11,
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
 
@@ -176,7 +177,7 @@ struct sdio_config sdio_conf = {
         .base=GPIOG,
         .pin=GPIO10,
         .mode=GPIO_MODE_AF,
-        .af = GPIO_AF12,
+        .af = GPIO_AF11,
         .speed=GPIO_OSPEED_100MHZ,
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
@@ -184,7 +185,7 @@ struct sdio_config sdio_conf = {
     .pio_dat2 = {
         .base=GPIOB,
         .pin=GPIO3,
-        .af = GPIO_AF12,
+        .af = GPIO_AF10,
         .mode=GPIO_MODE_AF,
         .speed=GPIO_OSPEED_100MHZ,
         .optype=GPIO_OTYPE_PP,
@@ -193,7 +194,7 @@ struct sdio_config sdio_conf = {
     .pio_dat3 = {
         .base=GPIOB,
         .pin=GPIO4,
-        .af = GPIO_AF12,
+        .af = GPIO_AF10,
         .mode=GPIO_MODE_AF,
         .speed=GPIO_OSPEED_100MHZ,
         .optype=GPIO_OTYPE_PP,
@@ -203,7 +204,7 @@ struct sdio_config sdio_conf = {
         .base=GPIOD,
         .pin=GPIO6,
         .mode=GPIO_MODE_AF,
-        .af = GPIO_AF12,
+        .af = GPIO_AF11,
         .speed=GPIO_OSPEED_100MHZ,
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
@@ -212,19 +213,17 @@ struct sdio_config sdio_conf = {
         .base=GPIOD,
         .pin=GPIO7,
         .mode=GPIO_MODE_AF,
-        .af = GPIO_AF12,
+        .af = GPIO_AF11,
         .speed=GPIO_OSPEED_100MHZ,
         .optype=GPIO_OTYPE_PP,
         .pullupdown=GPIO_PUPD_PULLUP
     },
-    .card_detect_supported = 1,
-    /* STM37 has an additional card-detect pin on PC13 */
     .pio_cd = {
         .base=GPIOI,
         .pin=GPIO15,
         .mode=GPIO_MODE_INPUT,
         .pullupdown=GPIO_PUPD_PULLUP
-    }
+    },
 };
 
 struct gpio_config stm32eth_mii_pins[] = {
@@ -266,8 +265,6 @@ int machine_init(void)
         uart_create(&uart_configs[i]);
     }
     rng_create(1, RCC_RNG);
-    sdio_conf.rcc_reg = (uint32_t *)&RCC_APB2ENR;
-    sdio_conf.rcc_en  = RCC_APB2ENR_SDMMC1EN;
     sdio_init(&sdio_conf);
     //usb_init(&usb_guest);
     ethernet_init(&eth_config);

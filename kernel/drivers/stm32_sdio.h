@@ -33,15 +33,22 @@ typedef struct SDIO_CARD_DATA {
     uint16_t    rca;
 } * SDIO_CARD;
 
+struct dev_sd {
+    struct device *dev;
+    uint32_t base;
+    uint32_t *rcc_rst_reg;
+    uint32_t rcc_rst;
+    SDIO_CARD card;
+};
 
-int stm32_sdio_bus(int bits, enum SDIO_CLOCK_DIV freq);
+int stm32_sdio_bus(struct dev_sd *sd, int bits, enum SDIO_CLOCK_DIV freq);
 int stm32_sdio_init(void);
-void stm32_sdio_reset(enum SDIO_POWER_STATE state);
-SDIO_CARD stm32_sdio_open(void);
-int stm32_sdio_command(uint32_t cmd, uint32_t arg);
+void stm32_sdio_reset(struct dev_sd *sd, enum SDIO_POWER_STATE state);
+SDIO_CARD stm32_sdio_open(struct dev_sd *sd);
+int stm32_sdio_command(struct dev_sd *sd, uint32_t cmd, uint32_t arg);
 int stm32_sdio_readblock(SDIO_CARD, uint32_t lba, uint8_t *buf);
 int stm32_sdio_writeblock(SDIO_CARD, uint32_t lba, uint8_t *buf);
-int stm32_sdio_status(SDIO_CARD);
+//int stm32_sdio_status(SDIO_CARD);
 void stm32_sdio_print_log(int console, int number_of_entries);
 const char *stm32_sdio_errmsg(int err);
 uint32_t stm32_sdio_bit_slice(uint32_t a[], int bits, int msb, int lsb);
@@ -57,4 +64,4 @@ enum SD_CLOCK_DIV {
     CLOCK_400KHZ
 };
 
-int stm32_sd_bus(int bits, enum SD_CLOCK_DIV freq);
+//int stm32_sd_bus(int bits, enum SD_CLOCK_DIV freq);
