@@ -36,6 +36,7 @@ struct usb_pio_config_fs {
     struct gpio_config pio_vbus;
     struct gpio_config pio_dm;
     struct gpio_config pio_dp;
+    struct gpio_config pio_phy;
 };
 
 struct usb_pio_config_hs {

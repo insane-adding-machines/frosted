@@ -80,7 +80,7 @@ static void kthread_usbhost(void *arg)
 
     while(1) {
         if (last != jiffies) {
-            usbh_poll(_usbh_host, jiffies * 1000);
+            usbh_poll(_usbh_host, (jiffies - last) * 1000);
             last = jiffies;
         }
         //kthread_yield();
@@ -386,11 +386,17 @@ int usb_init(struct usb_config *conf)
 
     if (conf->otg_mode == USB_MODE_HOST) {
         mod = &mod_usb_host;
+        if (conf->dev_type == USB_DEV_FS) {
+            gpio_create(mod, &conf->pio.fs->pio_phy);
+            gpio_clear(&conf->pio.fs->pio_phy.base, &conf->pio.fs->pio_phy.pin);
+        }
     }
     if (conf->dev_type == USB_DEV_FS) {
         gpio_create(mod, &conf->pio.fs->pio_vbus);
         gpio_create(mod, &conf->pio.fs->pio_dm);
         gpio_create(mod, &conf->pio.fs->pio_dp);
+        gpio_create(mod, &conf->pio.fs->pio_phy);
+        gpio_clear(&conf->pio.fs->pio_phy, GPIO5);
     } else if (conf->dev_type == USB_DEV_HS) {
         int i = 0;
         gpio_create(mod, &conf->pio.hs->ulpi_clk);

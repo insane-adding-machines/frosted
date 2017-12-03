@@ -239,6 +239,12 @@ static struct usb_pio_config_fs pio_usbfs = {
         .mode=GPIO_MODE_AF,
         .af=GPIO_AF10,
         .pullupdown=GPIO_PUPD_NONE,
+    },
+    .pio_phy = {
+        .base = GPIOD,
+        .pin = GPIO5,
+        .mode=GPIO_MODE_OUTPUT,
+        .pullupdown = GPIO_PUPD_NONE
     }
 };
 
@@ -427,7 +433,7 @@ int machine_init(void)
     rng_create(1, RCC_RNG);
     sdio_init(&sdio_conf);
     /* Initialize USB OTG guest in full-speed mode */
-    usb_init(&usb_fs_guest);
+    //usb_init(&usb_fs_guest);
 
 
     ethernet_init(&eth_config);
