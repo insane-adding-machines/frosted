@@ -436,6 +436,11 @@ menu "Device Drivers"
       bool "Ethernet over USB (CDC-ECM)"
       default n
 
+      config DEV_USBH_KBD
+      depends on (USBHS_HOST || USBFS_HOST)
+      bool "USB Keyboard support"
+      default n
+
       if DEV_USB_ETH
       config USB_DEFAULT_IP
       string "Default (boot-up) address for usb0"

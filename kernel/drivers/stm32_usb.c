@@ -22,6 +22,7 @@
 #include "device.h"
 #include "usb.h"
 #include "gpio.h"
+#include "usb/usbh_drivers.h"
 #include <unicore-mx/cm3/nvic.h>
 #include <unicore-mx/stm32/rcc.h>
 #include <unicore-mx/usbd/usbd.h>
@@ -376,6 +377,7 @@ static void usbhost_start(void)
     usbh_register_connected_callback(_usbh_host, host_dev_connected_callback);
     nvic_enable_irq(NVIC_OTG_HS_IRQ);
 #endif /* CONFIG_USBFSHOST */
+    usbh_drivers_init();
     kthread_create(kthread_usbhost, NULL);
 }
 #endif /* CONFIG_USBHOST */
@@ -388,7 +390,7 @@ int usb_init(struct usb_config *conf)
         mod = &mod_usb_host;
         if (conf->dev_type == USB_DEV_FS) {
             gpio_create(mod, &conf->pio.fs->pio_phy);
-            gpio_clear(&conf->pio.fs->pio_phy.base, &conf->pio.fs->pio_phy.pin);
+            gpio_clear(conf->pio.fs->pio_phy.base, conf->pio.fs->pio_phy.pin);
         }
     }
     if (conf->dev_type == USB_DEV_FS) {
@@ -396,7 +398,6 @@ int usb_init(struct usb_config *conf)
         gpio_create(mod, &conf->pio.fs->pio_dm);
         gpio_create(mod, &conf->pio.fs->pio_dp);
         gpio_create(mod, &conf->pio.fs->pio_phy);
-        gpio_clear(&conf->pio.fs->pio_phy, GPIO5);
     } else if (conf->dev_type == USB_DEV_HS) {
         int i = 0;
         gpio_create(mod, &conf->pio.hs->ulpi_clk);
