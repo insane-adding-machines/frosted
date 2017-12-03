@@ -83,7 +83,7 @@ static void kthread_usbhost(void *arg)
             usbh_poll(_usbh_host, jiffies * 1000);
             last = jiffies;
         }
-        kthread_yield();
+        //kthread_yield();
     }
 }
 

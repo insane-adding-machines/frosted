@@ -412,17 +412,6 @@ int machine_init(void)
     int i = 0;
     rcc_clock_setup_hse_3v3(&rcc_hse_25mhz_3v3);
 
-#if 0
-	/* Set GPIO12-15 (in GPIO port D) to 'output push-pull'. */
-	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT,
-			GPIO_PUPD_NONE, GPIO12 | GPIO13 | GPIO14 | GPIO15);
-
-#endif
-	/* Set */
-	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
-	gpio_clear(GPIOC, GPIO0);
-
-
     usb_init(&usb_hs_host);
 
     gpio_create(NULL, &gpio_led0);
