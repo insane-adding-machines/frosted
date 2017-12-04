@@ -697,7 +697,7 @@ uint32_t task_fd_get_flags(int fd)
     if (fd < 0 || fd > ft->n_files)
         return -ENOENT;
 
-    fdesc = ft->fdesc[fd].fno;
+    fdesc = &ft->fdesc[fd];
     if (!fdesc)
         return -ENOENT;
     return fdesc->flags;
@@ -2296,7 +2296,9 @@ void task_preempt_all(void)
 
 static void task_resume_real(struct task *t, int lock)
 {
-    if ((t) && (t->tb.state == TASK_WAITING)) {
+    if (!t)
+        return;
+    if (t->tb.state == TASK_WAITING) {
         idling_to_running(t);
         t->tb.state = TASK_RUNNABLE;
     }

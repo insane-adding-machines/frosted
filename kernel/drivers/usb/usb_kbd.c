@@ -1,15 +1,63 @@
 #include "frosted.h"
 #include "device.h"
 #include "usb.h"
+#include "cirbuf.h"
+#include "poll.h"
 #include <unicore-mx/usbh/usbh.h>
 #include <unicore-mx/usbh/helper/ctrlreq.h>
 #include <unicore-mx/usbh/class/hid.h>
-
 
 #define CLASS_HID 0x03
 #define SUBCLASS_HID_BOOT 0x01
 #define PROTOCOL_HID_KEYBOARD 0x01
 #define KBD_BUF_SIZE 128
+#define KBD_FIFO_SIZE 16
+
+
+/* Special keys */
+
+#define CAPS_LOCK 0x39
+#define SHIFT_L   0x02
+#define SHIFT_R   0x20
+
+#define ESC       0x1B
+#define BS        0x08
+#define DEL       0x7F
+
+const char map_num[10][2] = {
+    {'1', '!'},
+    {'2', '@'},
+    {'3', '#'},
+    {'4', '$'},
+    {'5', '%'},
+    {'6', '^'},
+    {'7', '&'},
+    {'8', '*'},
+    {'9', '('},
+    {'0', ')'}
+};
+
+const char map_others[17][2] = {
+    {'\n', '\r'},
+    {ESC, ESC},
+    {BS, DEL},
+    {'\t','\t'},
+    {' ', ' '},
+    {'-', '_'},
+    {'=', '+'},
+    {'[', '{'},
+    {']', '}'},
+    {'\\', '|'},
+    {0, 0},
+    {';', ':'},
+    {'\'', '"'},
+    {'`', '~'},
+    {',', '<'},
+    {'.', '>'},
+    {'/', '?'},
+};
+
+
 
 #ifndef FALL_THROUGH
 #define FALL_THROUGH do{}while(0)
@@ -32,19 +80,62 @@ static struct module mod_usbkbd = {
  * claim multiple keyboards.
  */
 
-struct keyboard {
+static struct keyboard {
+    struct device *dev;
     uint8_t iface_num, 
             iface_altset, 
             ep_number, 
             ep_size, 
             ep_interval;
-
     uint8_t buf[KBD_BUF_SIZE];
+    struct  cirbuf *cfifo;
+    int     caps_lock;
 } KBD;
 
 static void kbd_data_in(const uint8_t *data, unsigned len)
 {
+    char mod = 0;
+    int i;
+    char shift;
+    char c;
+    int special = 0;
 
+    if (len <= 0)
+        return;
+    mod = data[0];
+    for (i = 0; i < len -2; i++) {
+        uint8_t u = data[i + 2];
+        c = '\0';
+        if (u == CAPS_LOCK) {
+            KBD.caps_lock = !KBD.caps_lock;
+            continue;
+        }
+        if ((mod & SHIFT_L) || (mod & SHIFT_R)) {
+            shift = (KBD.caps_lock)?'a':'A';
+            special = 1;
+        } else {
+            shift = (KBD.caps_lock)?'A':'a';
+            special = 0;
+        }
+
+        /* Letters */
+        if ((u >= 4) && (u <= 0x1d))
+            c = (u - 4) + shift;
+
+        /* Numbers and co. */
+        else if ((u >= 0x1e) && (u <= 0x27))
+            c = map_num[u - 0x1e][special];
+
+        /* Other printable symbols */
+        else if ((u >= 0x28) && (u <= 0x38))
+            c = map_others[u - 0x28][special];
+        if (c) {
+            mutex_lock(KBD.dev->mutex);
+            cirbuf_writebyte(KBD.cfifo, c);
+            task_resume(KBD.dev->task);
+            mutex_unlock(KBD.dev->mutex);
+        }
+    }
 }
 
 static void endpoint_read_cb (const usbh_transfer *transfer,
@@ -81,6 +172,17 @@ static void read_data_from_keyboard(usbh_device *dev)
 		.callback = endpoint_read_cb,
 	};
 	usbh_transfer_submit(&ep_transfer);
+}
+
+
+
+static void devfile_create(void) 
+{
+    char name[5] = "kbd0";
+    struct fnode *devfs = fno_search("/dev");
+    if (!devfs)
+        return;
+    KBD.dev = device_fno_init(&mod_usbkbd, name, devfs, FL_TTY, &KBD);
 }
 
 static void after_set_idle(const usbh_transfer *transfer,
@@ -201,9 +303,11 @@ static void usb_kbd_probe( struct usbh_device *dev,
         /* Failed to claim interface. */
         return;
     }
-
 	usbh_ctrlreq_set_config(dev, cfg->bConfigurationValue,
 			after_config_set);
+    KBD.cfifo = cirbuf_create(KBD_FIFO_SIZE);
+    devfile_create();
+    
 }
 
 static void usb_kbd_disconnect(struct usbh_device *dev, uint8_t bInterfaceNumber)
@@ -221,10 +325,34 @@ void usb_kbd_init(void)
 
 static int kbd_read(struct fnode *fno, void *buf, unsigned int len) 
 {
-    return -1;
+    int ret = 0;
+    char *cbuf = (char *)buf;
+    if (len == 0)
+        return 0;
+    KBD.dev->task = this_task();
+    mutex_lock(KBD.dev->mutex);
+    if (cirbuf_bytesinuse(KBD.cfifo) > 0) {
+        cirbuf_readbyte(KBD.cfifo, &cbuf[0]);
+        ret = 1;
+    } else {
+        task_suspend();
+        mutex_unlock(KBD.dev->mutex);
+        return SYS_CALL_AGAIN;
+    }
+    mutex_unlock(KBD.dev->mutex);
+    return ret;
 }
 
 static int kbd_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
 {
-    return 0;
+    int ret = 0;
+    KBD.dev->task = this_task();
+    mutex_lock(KBD.dev->mutex);
+    *revents = 0;
+    if ((events == POLLIN) && (cirbuf_bytesinuse(KBD.cfifo) > 0)) {
+        *revents |= POLLIN;
+        ret = 1;
+    }
+    mutex_unlock(KBD.dev->mutex);
+    return ret;
 }
