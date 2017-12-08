@@ -132,8 +132,9 @@ OBJS-$(DEVF7DISCOLTDC) += kernel/drivers/stm32f7_ltdc.o
 CFLAGS-$(DEVF7DISCOLTDC)+=-DCONFIG_DEVF7DISCOLTDC -DCONFIG_LTDC
 
 OBJS-$(DEVFRAMEBUFFER)+= kernel/framebuffer.o
-CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER
-OBJS-$(DEVFBCON)+= kernel/drivers/fbcon.o kernel/fonts/palette_256_xterm.o
+CFLAGS-$(DEVFRAMEBUFFER)+=-DCONFIG_DEVFRAMEBUFFER 
+OBJS-$(DEVFBCON)+= kernel/drivers/fbcon.o kernel/fonts/palette_256_xterm.o kernel/drivers/tty_console.o
+CFLAGS-$(DEVFBCON)+=-DCONFIG_DEVTTY_CONSOLE
 
 # Font Selection
 OBJS-$(FONT_CGA_8X8)+=kernel/fonts/cga_8x8.o

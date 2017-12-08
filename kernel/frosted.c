@@ -38,7 +38,7 @@
 #include "exti.h"
 #include "unicore-mx/cm3/systick.h"
 #include "libopencmsis/core_cm3.h"
-
+#include "tty_console.h"
 
 #ifdef CONFIG_PICOTCP
 # include "pico_stack.h"
@@ -215,6 +215,7 @@ int frosted_init(void)
 
     ltdc_init();
     fbcon_init( 480, 272);
+    tty_console_init();
 
     vfs_mount(NULL, "/tmp", "memfs", 0, NULL);
     xip_mounted = vfs_mount((char *)init, "/bin", "xipfs", 0, NULL);

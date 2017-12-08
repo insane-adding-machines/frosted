@@ -41,6 +41,7 @@
 #include "usb.h"
 #include "eth.h"
 #include "i2c.h"
+#include "tty_console.h"
 
 static const struct gpio_config gpio_led0 = {
     .base=GPIOI,
@@ -445,6 +446,7 @@ int machine_init(void)
     #ifdef CONFIG_DEVFT5336
        ft5336_init(3); /* FT5336 touch screen on I2C-3 */
     #endif
+
     return 0;
 }
 

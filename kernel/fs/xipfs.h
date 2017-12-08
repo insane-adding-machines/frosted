@@ -17,4 +17,6 @@ struct xipfs_fhdr {
     uint32_t len;
     uint8_t  payload[0];
 };
+
+void xipfs_init(void);
 #endif
