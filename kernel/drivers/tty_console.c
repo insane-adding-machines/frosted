@@ -29,12 +29,14 @@
 #define KBD_MOD "usbkbd"
 #define FBCON_MOD "fbcon"
 
+
 static struct tty_console {
     struct device *dev;
     struct fnode *kbd;
     struct fnode *fbcon;
     struct module *mod_kbd;
     struct module *mod_fbcon;
+    uint16_t pid;
 } TTY;
 
 static int tty_read(struct fnode *fno, void *buf, unsigned int len);
@@ -116,5 +118,6 @@ static void tty_attach(struct fnode *fno, int pid)
     if (!TTY.fbcon)
         return;
     TTY.mod_fbcon->ops.tty_attach(TTY.fbcon, pid);
+    TTY.pid = pid;
 }
 

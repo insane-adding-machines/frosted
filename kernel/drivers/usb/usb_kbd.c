@@ -32,12 +32,13 @@
 #define KBD_BUF_SIZE 128
 #define KBD_FIFO_SIZE 16
 
-
 /* Special keys */
 
 #define CAPS_LOCK 0x39
 #define SHIFT_L   0x02
 #define SHIFT_R   0x20
+#define CTRL_L    0x01
+#define CTRL_R    0x10
 
 #define ESC       0x1B
 #define BS        0x08
@@ -76,6 +77,8 @@ const char map_others[17][2] = {
     {'/', '?'},
 };
 
+const char map_arrows[4] = { 'C', 'D', 'B', 'A' };
+
 
 
 #ifndef FALL_THROUGH
@@ -84,6 +87,7 @@ const char map_others[17][2] = {
 
 static int kbd_read(struct fnode *fno, void *buf, unsigned int len);
 static int kbd_poll(struct fnode *fno, uint16_t events, uint16_t *revents);
+static int kbd_ioctl(struct fnode *fno, const uint32_t cmd, void *arg);
 static void usb_kbd_disconnect(struct usbh_device *dev, uint8_t bInterfaceNumber);
 
 static struct module mod_usbkbd = {
@@ -91,6 +95,7 @@ static struct module mod_usbkbd = {
     .name = "usbkbd",
     .ops.open = device_open,
     .ops.read = kbd_read,
+    .ops.ioctl = kbd_ioctl,
     .ops.poll = kbd_poll,
 };
 
@@ -109,7 +114,9 @@ static struct keyboard {
     uint8_t buf[KBD_BUF_SIZE];
     struct  cirbuf *cfifo;
     int     caps_lock;
+    uint8_t     mode;
 } KBD;
+
 
 static void kbd_data_in(const uint8_t *data, unsigned len)
 {
@@ -118,6 +125,12 @@ static void kbd_data_in(const uint8_t *data, unsigned len)
     char shift;
     char c;
     int special = 0;
+    int escape = 0;
+
+    if (KBD.mode == K_RAW) {
+        cirbuf_writebytes(KBD.cfifo, data, len);
+        return;
+    }
 
     if (len <= 0)
         return;
@@ -136,6 +149,13 @@ static void kbd_data_in(const uint8_t *data, unsigned len)
             shift = (KBD.caps_lock)?'A':'a';
             special = 0;
         }
+        
+        /* Intercept CTRL */
+        if ((mod & CTRL_L) || (mod & CTRL_R)) {
+            if (u == 0x06) /* CTRL + C */
+                c = 0x03;
+            continue;
+        }
 
         /* Letters */
         if ((u >= 4) && (u <= 0x1d))
@@ -148,8 +168,20 @@ static void kbd_data_in(const uint8_t *data, unsigned len)
         /* Other printable symbols */
         else if ((u >= 0x28) && (u <= 0x38))
             c = map_others[u - 0x28][special];
+        
+        /* Arrow keys */
+        if ((u >= 0x4f) && (u <= 0x52)) {
+            escape = 1;
+            c = map_arrows[u - 0x4f];
+        }
+
+        /* load result in buffer */
         if (c) {
             mutex_lock(KBD.dev->mutex);
+            if (escape) {
+                cirbuf_writebyte(KBD.cfifo, ESC);
+                cirbuf_writebyte(KBD.cfifo, '[');
+            }
             cirbuf_writebyte(KBD.cfifo, c);
             task_resume(KBD.dev->task);
             mutex_unlock(KBD.dev->mutex);
@@ -335,9 +367,9 @@ static void usb_kbd_disconnect(struct usbh_device *dev, uint8_t bInterfaceNumber
     return; 
 }
 
-
 void usb_kbd_init(void) 
 {
+    KBD.mode = K_XLATE; 
     register_module(&mod_usbkbd);
     usb_host_driver_register(&mod_usbkbd, usb_kbd_probe);
 }
@@ -351,12 +383,10 @@ static int kbd_read(struct fnode *fno, void *buf, unsigned int len)
     KBD.dev->task = this_task();
     mutex_lock(KBD.dev->mutex);
     if (cirbuf_bytesinuse(KBD.cfifo) > 0) {
-        cirbuf_readbyte(KBD.cfifo, &cbuf[0]);
-        ret = 1;
+        ret = cirbuf_readbytes(KBD.cfifo, buf, len);
     } else {
         task_suspend();
-        mutex_unlock(KBD.dev->mutex);
-        return SYS_CALL_AGAIN;
+        ret = SYS_CALL_AGAIN;
     }
     mutex_unlock(KBD.dev->mutex);
     return ret;
@@ -374,4 +404,22 @@ static int kbd_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     }
     mutex_unlock(KBD.dev->mutex);
     return ret;
+}
+
+static int kbd_ioctl(struct fnode *fno, const uint32_t cmd, void *arg)
+{
+    if (cmd == KDSKBMODE) {
+        mutex_lock(KBD.dev->mutex);
+        uint32_t *mode = (uint32_t *)arg;
+        uint8_t newmode = (*mode) | 0xFF;
+        uint8_t c;
+        if (newmode != KBD.mode) {
+            while(cirbuf_bytesinuse(KBD.cfifo) > 0)
+                cirbuf_readbyte(KBD.cfifo, &c);
+            KBD.mode = newmode;
+        }
+        mutex_unlock(KBD.dev->mutex);
+    } else {
+        return -EINVAL; 
+    }
 }

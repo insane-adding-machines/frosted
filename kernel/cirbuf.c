@@ -116,7 +116,7 @@ int cirbuf_readbytes(struct cirbuf *cb, void *bytes, int len)
 }
 
 /* written len on success, 0 on fail */
-int cirbuf_writebytes(struct cirbuf *cb, uint8_t * bytes, int len)
+int cirbuf_writebytes(struct cirbuf *cb, const uint8_t * bytes, int len)
 {
     uint8_t byte;
     int freesize;
