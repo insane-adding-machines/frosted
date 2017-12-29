@@ -39,6 +39,8 @@
 #include "dma.h"
 #include "drivers/lis3dsh.h"
 
+extern int xadow_led_init(uint32_t bus);
+
 #if CONFIG_SYS_CLOCK == 48000000
 #    define STM32_CLOCK RCC_CLOCK_3V3_48MHZ
 #elif CONFIG_SYS_CLOCK == 84000000
@@ -491,6 +493,9 @@ int machine_init(void)
     usb_init(&usb_guest);
     #ifdef CONFIG_DEVMCCOG21
     mccog21_init(1);
+    #endif
+    #ifdef CONFIG_DEVXALED5X7
+    xadow_led_init(1);
     #endif
     return 0;
 }
