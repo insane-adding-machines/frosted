@@ -2519,17 +2519,21 @@ int sys_ualarm_hdlr(uint32_t arg1, uint32_t arg2)
     return ret;
 }
 
-__inl void task_yield(void)
+void task_yield(void)
 {
-    task_preempt();
+    _cur_task->tb.timeslice = 0;
+    schedule();
 }
 
-void kthread_yield(void)
+void __naked kthread_yield(void)
 {
     struct task *t = this_task();
     if (!t || (t->tb.pid != 0) || (t->tb.tid < 2))
         return;
-    task_yield();
+    _cur_task->tb.timeslice = 0;
+    schedule();
+    /* return (function is naked) */
+    asm volatile("bx lr");
 }
 
 int sys_sched_yield_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
