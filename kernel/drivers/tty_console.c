@@ -77,13 +77,28 @@ int tty_console_init(void)
     return 0;
 }
 
+static void tty_send_break(void *arg)
+{
+    int *pid = (int *)(arg);
+    if (pid)
+        task_kill(*pid, 2);
+}
+
 static int tty_read(struct fnode *fno, void *buf, unsigned int len)
 {
+    int ret, i;
     if (!TTY.kbd)
         TTY.kbd = fno_search(KBD_PATH);
     if (!TTY.kbd)
         return 0;
-    return TTY.mod_kbd->ops.read(TTY.kbd, buf, len);
+    ret = TTY.mod_kbd->ops.read(TTY.kbd, buf, len);
+    if (TTY.pid > 1) {
+        for (i = 0; i < ret; i++) {
+            if (((uint8_t *)buf)[i] == 0x03) /* Ctrl + c*/
+                tasklet_add(tty_send_break, &TTY.pid); 
+        }
+    }
+    return ret;
 }
 
 static int tty_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
