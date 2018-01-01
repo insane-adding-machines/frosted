@@ -2543,15 +2543,20 @@ int sys_sched_yield_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3,
     return 0;
 };
 
-int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
+int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, int arg3)
 {
     struct pollfd *pfd = (struct pollfd *)arg1;
     int i, n = (int)arg2;
     uint32_t timeout;
+    int endless = 0;
     int ret = 0;
     struct fnode *f;
     if (task_ptr_valid((void *)arg1))
         return -EACCES;
+
+    if (arg3 < 0) {
+        endless = 1;
+    }
 
     if ((_cur_task->tb.flags & TASK_FLAG_TIMEOUT) != 0) {
         _cur_task->tb.flags &= (~TASK_FLAG_TIMEOUT);
@@ -2563,7 +2568,7 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
     else
         timeout = jiffies;
 
-    while (jiffies <= timeout) {
+    while (endless || (jiffies <= timeout)) {
         for (i = 0; i < n; i++) {
             f = task_filedesc_get(pfd[i].fd);
             if (!f || !f->owner || !f->owner->ops.poll) {
@@ -2580,7 +2585,7 @@ int sys_poll_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3)
             return ret;
         }
 
-        if (this_task()->tb.timer_id < 0) {
+        if (!endless && (this_task()->tb.timer_id < 0)) {
             this_task()->tb.timer_id =
                 ktimer_add(timeout - jiffies, sleepy_task_wakeup, this_task());
         }
