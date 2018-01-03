@@ -411,7 +411,7 @@ static int kbd_ioctl(struct fnode *fno, const uint32_t cmd, void *arg)
     if (cmd == KDSKBMODE) {
         mutex_lock(KBD.dev->mutex);
         uint32_t *mode = (uint32_t *)arg;
-        uint8_t newmode = (*mode) | 0xFF;
+        uint8_t newmode = (*mode) & 0xFF;
         uint8_t c;
         if (newmode != KBD.mode) {
             while(cirbuf_bytesinuse(KBD.cfifo) > 0)
