@@ -73,8 +73,8 @@ static inline uint32_t get_interrupt_source(uint32_t base)
     return UART_IIR(base);
 }
 #endif
-#ifdef NRF51
-#   include "unicore-mx/nrf/51/uart.h"
+#if defined(NRF51) || defined(NRF52)
+#   include "unicore-mx/nrf/uart.h"
 #   define CLOCK_ENABLE(C)               do{} while(0)
 #   define usart_enable                  uart_enable
 #   define usart_set_baudrate            uart_set_baudrate

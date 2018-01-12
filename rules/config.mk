@@ -28,6 +28,9 @@ endif
 ifeq ($(RAM_SIZE_32KB),y)
 	RAM1_SIZE=32
 endif
+ifeq ($(RAM_SIZE_24KB),y)
+	RAM1_SIZE=24
+endif
 ifeq ($(RAM_SIZE_16KB),y)
 	RAM1_SIZE=16
 endif
@@ -70,6 +73,20 @@ ifeq ($(ARCH_NRF51),y)
 	MCPU=cortex-m0
 	CFLAGS+=-DNRF51 -lgcc -DCUSTOM_SYSTICK
 	UNICOREMX_TARGET=nrf/51
+endif
+
+
+ifeq ($(ARCH_NRF52),y)
+	CPU=cortex-m
+	BOARD=nrf52
+	FLASH_ORIGIN=0x00000000
+	RAM1_BASE=0x20000000
+	RAM1_SIZE=64
+	SYS_CLOCK=84000000
+	ARCH=NRF52
+	MCPU=cortex-m4
+	CFLAGS+=-DNRF52
+	UNICOREMX_TARGET=nrf/52
 endif
 
 
@@ -126,6 +143,9 @@ ifeq ($(FLASH_SIZE_384KB),y)
 endif
 ifeq ($(FLASH_SIZE_256KB),y)
 	FLASH_SIZE=256
+endif
+ifeq ($(FLASH_SIZE_192KB),y)
+	FLASH_SIZE=192
 endif
 ifeq ($(FLASH_SIZE_128KB),y)
 	FLASH_SIZE=128

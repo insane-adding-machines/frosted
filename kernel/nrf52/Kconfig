@@ -1,0 +1,24 @@
+if ARCH_NRF52
+
+choice
+    prompt "MCU"
+    default ARCH_NRF52832
+
+config ARCH_NRF52840
+    bool "NRF52840 1MB/512KB"
+    select FLASH_SIZE_1MB
+    select RAM_SIZE_512KB
+    select ARCH_NRF52840
+config ARCH_NRF52832
+    bool "NRF52832 512KB/64KB"
+    select FLASH_SIZE_512KB
+    select RAM_SIZE_64KB
+    select ARCH_NRF52832
+config ARCH_NRF52810
+    bool "NRF52810 192KB/24KB"
+    select FLASH_SIZE_192KB
+    select RAM_SIZE_24KB
+    select ARCH_NRF52810
+endchoice
+
+endif

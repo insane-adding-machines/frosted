@@ -76,7 +76,7 @@ static inline uint32_t ARCH_GPIO_BASE(int x)
 #include <unicore-mx/cm3/nvic.h>
 #endif
 
-#ifdef NRF51
+#if defined(NRF51) || defined(NRF52)
 #include <unicore-mx/nrf/gpio.h>
 
 static inline uint32_t ARCH_GPIO_BASE(int x)
@@ -294,7 +294,7 @@ static struct module mod_devgpio_mx = {
 #endif
 
 /* NRF */
-#ifdef NRF51
+#if defined(NRF51) || defined(NRF52)
 #define GPIO_CLOCK_ENABLE(C)
 #define SET_INPUT(P, D, I)               gpio_mode_setup(P, GPIO_MODE_INPUT, D, I);
 
