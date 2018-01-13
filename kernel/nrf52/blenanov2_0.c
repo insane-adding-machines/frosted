@@ -26,7 +26,7 @@
 
 static const struct gpio_config Led0 = {
     .base=GPIO,
-    .pin=GPIO19,
+    .pin=GPIO11,
     .mode=GPIO_DIR_OUTPUT,
     .name="led0"
 };
@@ -45,13 +45,13 @@ static const struct uart_config uart_configs[] = {
         .flow = 0,
         .pio_tx = {
             .base=GPIO,
-            .pin=GPIO9,
-            .mode=GPIO_MODE_INPUT,
+            .pin=GPIO29,
+            .mode=GPIO_MODE_OUTPUT,
         },
         .pio_rx = {
             .base=GPIO,
-            .pin=GPIO11,
-            .mode=GPIO_MODE_OUTPUT,
+            .pin=GPIO30,
+            .mode=GPIO_MODE_INPUT,
             .pullupdown=GPIO_PUPD_NONE,
         },
     },
@@ -63,6 +63,7 @@ int machine_init(void)
 {
     gpio_create(NULL, &Led0);
     uart_create(&uart_configs[0]);
+
 
     return 0;
 }
