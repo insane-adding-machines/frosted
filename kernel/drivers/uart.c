@@ -429,7 +429,7 @@ int uart_create(const struct uart_config *uart)
 
     gpio_create(&mod_devuart, &uart->pio_rx);
     gpio_create(&mod_devuart, &uart->pio_tx);
-#ifdef NRF51
+#if defined(NRF51) || defined(NRF52)
     if(!uart->flow) {
         uart_set_pins(uart->base, uart->pio_rx.pin, uart->pio_tx.pin,
                                   UART_PSEL_OFF, UART_PSEL_OFF);
