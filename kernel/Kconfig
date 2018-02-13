@@ -167,6 +167,9 @@ menu "Platform Selection"
     config MACH_STM32F405Pyboard
         bool "STM32F405 PyBoard (micropython)"
         depends on (ARCH_STM32F405)
+    config MACH_STM32F411Pyboard
+        bool "STM32F411 PyBoard lite (micropython)"
+        depends on (ARCH_STM32F411)
     config MACH_STM32F4x1Discovery
         bool "STM32F4x1Discovery"
         depends on (   ARCH_STM32F401 ||ARCH_STM32F411)
