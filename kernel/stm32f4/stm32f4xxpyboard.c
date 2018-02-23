@@ -58,25 +58,25 @@ extern int xadow_led_init(uint32_t bus);
 static const struct gpio_config Led[4] = {
     {
         .base=GPIOA,
-        .pin=GPIO4,.mode=GPIO_MODE_OUTPUT,
+        .pin=GPIO13,.mode=GPIO_MODE_OUTPUT,
         .optype=GPIO_OTYPE_PP,
         .name="led0"
     },
     {
         .base=GPIOA,
-        .pin=GPIO13,.mode=GPIO_MODE_OUTPUT,
+        .pin=GPIO14,.mode=GPIO_MODE_OUTPUT,
         .optype=GPIO_OTYPE_PP,
         .name="led1"
     },
     {
         .base=GPIOA,
-        .pin=GPIO14,.mode=GPIO_MODE_OUTPUT,
+        .pin=GPIO15,.mode=GPIO_MODE_OUTPUT,
         .optype=GPIO_OTYPE_PP,
         .name="led2"
     },
     {
-        .base=GPIOA,
-        .pin=GPIO15,.mode=GPIO_MODE_OUTPUT,
+        .base=GPIOB,
+        .pin=GPIO4,.mode=GPIO_MODE_OUTPUT,
         .optype=GPIO_OTYPE_PP,
         .name="led3"
     },
@@ -469,7 +469,14 @@ int machine_init(void)
 {
     int i;
     /* Clock */
+
+#if defined(CONFIG_PYBOARD_1_0) 
     rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[STM32_CLOCK]);
+#elif defined(CONFIG_PYBOARD_1_1)
+    rcc_clock_setup_hse_3v3(&rcc_hse_12mhz_3v3[STM32_CLOCK]);
+#else
+#   error "No clock setup available for this board type."
+#endif
 
     /* Leds */
     for (i = 0; i < 4; i++) {
