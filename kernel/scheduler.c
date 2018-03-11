@@ -27,6 +27,7 @@
 #include "sys/pthread.h"
 #include "fpb.h"
 #include "poll.h"
+#include "lowpower.h"
 
 #include "sys/user.h"
 
@@ -2306,6 +2307,7 @@ static void task_resume_real(struct task *t, int lock)
         forced_task = t;
         task_preempt_all();
     }
+    lowpower_resume();
 }
 
 void task_resume_lock(struct task *t)

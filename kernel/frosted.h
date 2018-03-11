@@ -359,6 +359,8 @@ int pico_trylock_kernel(void);
 void pico_lock(void);
 int pico_trylock(void);
 void pico_unlock(void);
+void frost(uint32_t interval);
+void defrost(void);
 
 #endif /* BSP_INCLUDED_H */
 

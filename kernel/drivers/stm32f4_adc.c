@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include "ioctl.h"
 #include "dma.h"
-#include "stm32f4_adc.h"
+#include "adc.h"
 #ifdef STM32F4
 #include <unicore-mx/cm3/nvic.h>
 #include <unicore-mx/stm32/rcc.h>
@@ -106,46 +106,53 @@ static int devadc_read(struct fnode *fno, void *buf, unsigned int len)
     return len;
 }
 
-static void adc_fno_init(struct fnode *dev, uint32_t n, const struct adc_addr * addr)
+static void adc_fno_init(struct fnode *dev, uint32_t n, const struct adc_config * addr)
 {
     struct dev_adc *a = &DEV_ADC[n];
-    a->dev = device_fno_init(&mod_devadc, addr->name, dev, FL_RDONLY, a);
+    char name[6] = "adc";
+    name[4] = '0' + (char)n;
+    name[5] = '\0';
+    a->dev = device_fno_init(&mod_devadc, name, dev, FL_RDONLY, a);
     a->base = addr->base;
     memcpy(a->channel_array, addr->channel_array, NUM_ADC_CHANNELS);
     a->num_channels = addr->num_channels;
     a->conversion_done = 0;
 }
 
-void adc_init(struct fnode * dev,  const struct adc_addr adc_addrs[], int num_adcs)
+void adc_init(const struct adc_config adc_configs[], int num_adcs)
 {
     int i;
+    struct fnode *dev = fno_search("/dev");
+
+    if (!dev)
+        return;
     for (i = 0; i < num_adcs; i++)
     {
-        if (adc_addrs[i].base == 0)
+        if (adc_configs[i].base == 0)
             continue;
 
-        adc_fno_init(dev, i, &adc_addrs[i]);
-        CLOCK_ENABLE(adc_addrs[i].rcc);
-        CLOCK_ENABLE(adc_addrs[i].dma_rcc);
+        adc_fno_init(dev, i, &adc_configs[i]);
+        CLOCK_ENABLE(adc_configs[i].rcc);
+        CLOCK_ENABLE(adc_configs[i].dma_rcc);
 
-        init_dma(&adc_addrs[i].dma,  (uint32_t) DEV_ADC[i].samples, adc_addrs[i].num_channels);
+        init_dma(&adc_configs[i].dma,  (uint32_t) DEV_ADC[i].samples, adc_configs[i].num_channels);
 
-        dma_enable_circular_mode(adc_addrs[i].dma.base, adc_addrs[i].dma.stream);
+        dma_enable_circular_mode(adc_configs[i].dma.base, adc_configs[i].dma.stream);
 
-        dma_enable_transfer_complete_interrupt(adc_addrs[i].dma.base, adc_addrs[i].dma.stream);
-        nvic_set_priority(adc_addrs[i].dma.irq, 1);
-        nvic_enable_irq(adc_addrs[i].dma.irq);
+        dma_enable_transfer_complete_interrupt(adc_configs[i].dma.base, adc_configs[i].dma.stream);
+        nvic_set_priority(adc_configs[i].dma.irq, 1);
+        nvic_enable_irq(adc_configs[i].dma.irq);
 
-        adc_set_resolution(adc_addrs[i].dma.base, ADC_CR1_RES_12BIT);
-        adc_power_off(adc_addrs[i].base);
-        adc_disable_external_trigger_regular(adc_addrs[i].base);
-        adc_set_sample_time_on_all_channels(adc_addrs[i].base, ADC_SMPR_SMP_480CYC);
-        adc_set_regular_sequence(adc_addrs[i].base, adc_addrs[i].num_channels, adc_addrs[i].channel_array);
-        adc_enable_scan_mode(adc_addrs[i].base);
-        adc_set_single_conversion_mode(adc_addrs[i].base);
-        adc_eoc_after_each(adc_addrs[i].base);
-        adc_set_dma_terminate(adc_addrs[i].base);
-        adc_set_right_aligned(adc_addrs[i].base);
-        adc_power_on(adc_addrs[i].base);
+        adc_set_resolution(adc_configs[i].dma.base, ADC_CR1_RES_12BIT);
+        adc_power_off(adc_configs[i].base);
+        adc_disable_external_trigger_regular(adc_configs[i].base);
+        adc_set_sample_time_on_all_channels(adc_configs[i].base, ADC_SMPR_SMP_480CYC);
+        adc_set_regular_sequence(adc_configs[i].base, adc_configs[i].num_channels, adc_configs[i].channel_array);
+        adc_enable_scan_mode(adc_configs[i].base);
+        adc_set_single_conversion_mode(adc_configs[i].base);
+        adc_eoc_after_each(adc_configs[i].base);
+        adc_set_dma_terminate(adc_configs[i].base);
+        adc_set_right_aligned(adc_configs[i].base);
+        adc_power_on(adc_configs[i].base);
     }
 }

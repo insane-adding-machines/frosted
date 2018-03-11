@@ -31,6 +31,7 @@
 
 #include "uart.h"
 #include "gpio.h"
+#include "adc.h"
 
 
 
@@ -249,7 +250,7 @@ static const struct i2c_addr i2c_addrs[] = {
 
 
 #ifdef CONFIG_DEVADC
-static const struct adc_addr adc_addrs[] = { 
+static const struct adc_config adc_configs[] = { 
         {
             .base = ADC1, 
             .irq = NVIC_ADC_IRQ, 
@@ -272,7 +273,7 @@ static const struct adc_addr adc_addrs[] = {
             .dma_rcc = RCC_DMA2,
         }
 };
-#define NUM_ADC (sizeof(adc_addrs)/sizeof(struct adc_addr))
+#define NUM_ADC (sizeof(adc_configs)/sizeof(struct adc_config))
 #endif
 
 #ifdef CONFIG_DEVLSM303DLHC
@@ -341,7 +342,7 @@ int machine_init(void)
 #endif
 
 #ifdef CONFIG_DEVADC
-    adc_init(dev, adc_addrs, NUM_ADC);
+    adc_init(adc_configs, NUM_ADC);
 #endif
 
 #ifdef CONFIG_DEVLSM303DLHC

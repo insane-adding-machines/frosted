@@ -293,7 +293,8 @@ void frosted_kernel(int xipfs_mounted)
             pico_unlock();
         }
 #endif
-        __WFI();
+        asm volatile ("wfe");
+        //__WFI();
     }
 }
 

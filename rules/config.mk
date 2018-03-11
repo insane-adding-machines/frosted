@@ -185,6 +185,9 @@ endif
 ifeq ($(USART_3),y)
     CFLAGS+=-DCONFIG_USART_3
 endif
+ifeq ($(USART_4),y)
+    CFLAGS+=-DCONFIG_USART_4
+endif
 ifeq ($(USART_6),y)
     CFLAGS+=-DCONFIG_USART_6
 endif
@@ -247,19 +250,11 @@ ifeq ($(I2C3),y)
     CFLAGS+=-DCONFIG_I2C3
 endif
 
-#RNG
-ifeq ($(DEVTIM),y)
-    CFLAGS+=-DCONFIG_TIM
-endif
 
 #LOWPOWER
 ifeq ($(LOWPOWER),y)
   CFLAGS+=-DCONFIG_LOWPOWER
 endif
-ifeq ($(TICKLESS),y)
-  CFLAGS+=-DCONFIG_TICKLESS
-endif
-
 #PICOTCP
 ifeq ($(PICOTCP),y)
   CFLAGS+=-DCONFIG_PICOTCP

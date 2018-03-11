@@ -19,8 +19,11 @@
  */
 #include "frosted.h"
 #include "heap.h"
+#include "lowpower.h"
 #include "unicore-mx/cm3/nvic.h"
 #include "unicore-mx/cm3/systick.h"
+#include "unicore-mx/cm3/scb.h"
+
 #ifdef NRF51
 #include "unicore-mx/nrf/51/ostick.h"
 #endif
@@ -28,7 +31,7 @@
 volatile unsigned int jiffies = 0u;
 volatile unsigned int _n_int = 0u;
 volatile int ktimer_check_pending = 0;
-int clock_interval = 1;
+volatile int sleep_mode = 0;
 static int _sched_active = 0;
 
 void frosted_scheduler_on(void)
@@ -41,6 +44,7 @@ void frosted_scheduler_on(void)
 #else
     nvic_set_priority(NVIC_SYSTICK_IRQ, 0);
     nvic_enable_irq(NVIC_SYSTICK_IRQ);
+    systick_counter_enable();
     systick_interrupt_enable();
 #endif
     _sched_active = 1;
@@ -108,6 +112,7 @@ static inline int ktimer_expired(void)
             (t = heap_first(ktimer_list)) && (t->expire_time < jiffies));
 }
 
+
 /* Tasklet that checks expired timers */
 static void ktimers_check_tasklet(void *arg)
 {
@@ -138,27 +143,9 @@ static void ktimers_check_tasklet(void *arg)
     ktimer_check_pending = 0;
 
 #ifdef CONFIG_LOWPOWER
-    if (next_t < 0 || next_t > 1000) {
-        next_t = 1000; /* Wake up every second if timer is too long, or if no
-                          timers */
+    if (scheduler_can_sleep()) {
+        lowpower_sleep(next_t);
     }
-
-    /* Checking deep sleep */
-    if (next_t >= 1000 && scheduler_can_sleep()) {
-        systick_interrupt_disable();
-        cputimer_start(next_t);
-        return;
-    }
-#ifdef CONFIG_TICKLESS
-    this_timeslice = task_timeslice();
-    if (_sched_active && (this_timeslice == 0) && (!task_running())) {
-        schedule();
-    } else {
-        systick_interrupt_disable();
-        cputimer_start(this_timeslice);
-    }
-    return;
-#endif
 #endif
 }
 
@@ -168,7 +155,7 @@ void sys_tick_handler(void)
     volatile uint32_t reload = systick_get_reload();
     uint32_t this_timeslice;
     SysTick_Hook();
-    jiffies += clock_interval;
+    jiffies ++;
     _n_int++;
 
     if (ktimer_expired()) {
@@ -184,4 +171,5 @@ void sys_tick_handler(void)
         schedule();
         (void)next_timer;
     }
+    tasklet_add(ktimers_check_tasklet, NULL);
 }

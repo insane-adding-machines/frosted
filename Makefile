@@ -162,11 +162,10 @@ CFLAGS-$(USBHS_HOST)+=-DCONFIG_USBHOST -DCONFIG_USBHSHOST
 OBJS-$(DEVSTM32SDIO)+=kernel/drivers/stm32_sdio.o
 CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_SDIO
 
-OBJS-$(DEVADC)+=kernel/drivers/stm32f4_adc.o
-CFLAGS-$(DEVADC)+=-DCONFIG_DEVSTM32F4ADC
+OBJS-$(LOWPOWER)+=kernel/drivers/stm32_lowpower.o
 
-OBJS-$(DEVTIM)+=kernel/drivers/stm32f4_tim.o
-CFLAGS-$(DEVTIM)+=-DCONFIG_DEVSTM32F4TIM
+OBJS-$(DEVADC)+=kernel/drivers/stm32f4_adc.o
+CFLAGS-$(DEVADC)+=-DCONFIG_DEVADC
 
 OBJS-$(DEVRNG)+=kernel/drivers/stm32_rng.o
 CFLAGS-$(DEVRNG)+=-DCONFIG_RNG
