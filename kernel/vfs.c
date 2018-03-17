@@ -568,6 +568,9 @@ int sys_close_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, u
 {
     struct fnode *f = task_filedesc_get(arg1);
     if (f != NULL) {
+        if (f->owner->ops.close) {
+            f->owner->ops.close(f);
+        }
         task_filedesc_del(arg1);
         return 0;
     }
