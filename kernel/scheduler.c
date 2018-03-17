@@ -2529,7 +2529,7 @@ void task_yield(void)
 
 void __naked kthread_yield(void)
 {
-    struct task *t = this_task();
+    struct task *t = _cur_task;
     if (!t || (t->tb.pid != 0) || (t->tb.tid < 2))
         return;
     _cur_task->tb.timeslice = 0;
