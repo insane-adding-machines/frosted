@@ -23,6 +23,7 @@
 #include "unicore-mx/cm3/nvic.h"
 #include "unicore-mx/cm3/systick.h"
 #include "unicore-mx/cm3/scb.h"
+#define SEV() asm volatile ("sev")
 
 #ifdef NRF51
 #include "unicore-mx/nrf/51/ostick.h"
@@ -172,4 +173,5 @@ void sys_tick_handler(void)
         (void)next_timer;
     }
     tasklet_add(ktimers_check_tasklet, NULL);
+    SEV();
 }
