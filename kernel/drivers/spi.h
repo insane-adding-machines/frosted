@@ -26,6 +26,7 @@ struct spi_config {
     struct gpio_config pio_sck;
     struct gpio_config pio_miso;
     struct gpio_config pio_mosi;
+    struct gpio_config pio_nss;
 };
 
 struct spi_slave {
