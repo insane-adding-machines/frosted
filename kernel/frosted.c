@@ -228,7 +228,6 @@ int frosted_init(void)
     socket_un_init();
 #endif
 
-    frosted_scheduler_on();
     return xip_mounted;
 }
 
@@ -284,6 +283,7 @@ void frosted_kernel(int xipfs_mounted)
     pico_eth_start();
 #endif
 
+    frosted_scheduler_on();
 
     while(1) {
         check_tasklets();
