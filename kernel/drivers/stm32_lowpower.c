@@ -26,7 +26,7 @@ int lowpower_sleep(uint32_t interval)
     if (interval > 10000)
         interval = 10000;
     psc = 1;
-    clock = interval * (CONFIG_SYS_CLOCK / 1000);
+    clock = interval * (CONFIG_SYS_CLOCK / 2000);
     if (sleeping)
         return 0;
     while (psc < 65535) {
@@ -59,7 +59,7 @@ int lowpower_sleep(uint32_t interval)
     timer_set_prescaler(TIM2, psc);
     timer_set_period(TIM2, val);
     timer_set_counter(TIM2,1);
-    timer_one_shot_mode(TIM2);
+    //timer_one_shot_mode(TIM2);
 
     timer_enable_counter(TIM2);
     timer_enable_irq(TIM2, TIM_DIER_UIE);
@@ -74,7 +74,7 @@ int lowpower_sleep(uint32_t interval)
 static void do_lowpower_resume(int from_timer)
 {
     uint32_t elapsed = timer_get_counter(TIM2);
-    uint32_t elapsed_ms = (psc * elapsed) / (system_clock / 1000);
+    uint32_t elapsed_ms = (psc * elapsed) / (system_clock / 2000);
 
     if (!sleeping) {
         return;
