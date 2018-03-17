@@ -379,7 +379,7 @@ menu "Device Drivers"
             config USART_3
             bool "USART 3"
             depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_STM32F746 || ARCH_STM32F769 )
-            
+
             config USART_4
             bool "USART 4"
             depends on (ARCH_STM32F405)
@@ -555,7 +555,7 @@ menu "Device Drivers"
            tristate "MCCOG21 driver (2-lines B/W display)"
            depends on (DEVSTM32I2C)
            default n
-           
+
            config DEVXALED5X7
            tristate "Xadow LED Matrix 5X7 driver"
            depends on (DEVSTM32I2C)
@@ -582,6 +582,9 @@ menu "Device Drivers"
            if DEVSPI
                 config SPI_1
                 bool "SPI 1"
+
+                config SPI_3
+                bool "SPI 3"
 
                 config SPI_5
                 bool "SPI 5"
