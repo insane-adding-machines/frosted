@@ -43,6 +43,8 @@ struct dev_matrix {
     int update;
 } Matrix;
 
+static struct task *kt = NULL;
+
 
 
 /* Module description */
@@ -68,18 +70,11 @@ static int xadow_led_write(struct fnode *fno, const void *buf, unsigned int len)
     return len;
 }
 
-static struct module mod_devmatrix = {
-    .family = FAMILY_FILE,
-    .name = "matrix",
-    .ops.open = device_open,
-    .ops.read = xadow_led_read,
-    .ops.write = xadow_led_write
-};
-
 static void xadow_led_task(void *arg)
 {
     (void)arg;
     int r;
+    Matrix.update = 0;
     while(1<2) {
         if (Matrix.update) {
             r = i2c_kthread_write(&Matrix.i2c, DISP_STRING, Matrix.buf, Matrix.update);
@@ -88,6 +83,34 @@ static void xadow_led_task(void *arg)
         kthread_yield();
     }
 }
+
+static int xadow_led_open(const char *path, int flags)
+{
+    struct fnode *f = fno_search(path);
+    if (!f)
+        return -1;
+    kt = kthread_create(xadow_led_task, NULL);
+    return task_filedesc_add(f);
+}
+
+static int xadow_led_close(struct fnode *f)
+{
+    if (kt) {
+        kthread_cancel(kt);
+        kt = NULL;
+    }
+    return 0;
+}
+
+static struct module mod_devmatrix = {
+    .family = FAMILY_FILE,
+    .name = "matrix",
+    .ops.open = xadow_led_open,
+    .ops.read = xadow_led_read,
+    .ops.write = xadow_led_write,
+    .ops.close = xadow_led_close
+};
+
 
 int xadow_led_init(uint32_t bus)
 {
@@ -102,7 +125,6 @@ int xadow_led_init(uint32_t bus)
     /* Populate i2c_slave struct */
     Matrix.i2c.bus = bus;
     Matrix.i2c.address = XADOW_LED_I2C_ADDR;
-    kthread_create(xadow_led_task, NULL);
-    xadow_led_write(NULL, "Frosted", 7);
+    //kthread_create(xadow_led_task, NULL);
     return 0;
 }
