@@ -190,7 +190,7 @@ static const struct i2c_config i2c_configs[] = {
         .dma_rcc = RCC_DMA1,
         .pio_scl = {
             .base=GPIOB,
-            .pin=GPIO8,
+            .pin=GPIO6,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF4,
             .speed=GPIO_OSPEED_50MHZ,
@@ -271,6 +271,78 @@ static const struct spi_config spi_configs[] = {
             .pin=GPIO7,
             .mode=GPIO_MODE_AF,
             .af=GPIO_AF5,
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
+        },
+    },
+#endif
+#ifdef CONFIG_SPI_3
+    {
+        .idx  = 3,
+        .base = SPI1,
+        .irq = NVIC_SPI3_IRQ,
+        .rcc = RCC_SPI3,
+        .baudrate = 0, /* TODO: SPI baudrate */
+        .polarity = 1,
+        .phase = 1,
+        .rx_only = 0,
+        .bidir_mode = 0,
+        .dff_16 = 0,
+        .enable_software_slave_management = 1,
+        .send_msb_first = 1,
+
+        .tx_dma = {
+            .base = DMA1,
+            .stream = DMA_STREAM5,
+            .channel = DMA_SxCR_CHSEL_0,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_MEM_TO_PERIPHERAL,
+            .prio = DMA_SxCR_PL_MEDIUM,
+            .paddr =  (uint32_t) &SPI_DR(SPI3),
+            .irq = 0,
+        },
+        .rx_dma = {
+            .base = DMA1,
+            .stream = DMA_STREAM0,
+            .channel = DMA_SxCR_CHSEL_0,
+            .psize =  DMA_SxCR_PSIZE_8BIT,
+            .msize = DMA_SxCR_MSIZE_8BIT,
+            .dirn = DMA_SxCR_DIR_PERIPHERAL_TO_MEM,
+            .prio = DMA_SxCR_PL_VERY_HIGH,
+            .paddr =  (uint32_t) &SPI_DR(SPI3),
+            .irq = NVIC_DMA1_STREAM0_IRQ,
+        },
+        .dma_rcc = RCC_DMA1,
+        .pio_sck = {
+            .base=GPIOC,
+            .pin=GPIO7,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF6,
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
+        },
+        .pio_mosi = {
+            .base=GPIOC,
+            .pin=GPIO12,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF6,
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
+        },
+        .pio_miso = {
+            .base=GPIOC,
+            .pin=GPIO11,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF6,
+            .optype=GPIO_OTYPE_PP,
+            .speed=GPIO_OSPEED_100MHZ,
+        },
+        .pio_nss = {
+            .base=GPIOA,
+            .pin=GPIO4,
+            .mode=GPIO_MODE_AF,
+            .af=GPIO_AF6,
             .optype=GPIO_OTYPE_PP,
             .speed=GPIO_OSPEED_100MHZ,
         },
@@ -476,6 +548,7 @@ struct gpio_config lis3dsh_pio = {
     .pullupdown=GPIO_PUPD_PULLUP
 };
 
+
 int machine_init(void)
 {
     int i;
@@ -520,5 +593,10 @@ int machine_init(void)
     #ifdef CONFIG_DEVXALED5X7
     xadow_led_init(1);
     #endif
+
+    #ifdef CONFIG_DEVCS43L22
+    cs43l22_init(1);
+    #endif
+
     return 0;
 }
