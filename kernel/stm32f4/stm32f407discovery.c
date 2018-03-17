@@ -158,7 +158,7 @@ static const struct i2c_config i2c_configs[] = {
         .ev_irq = NVIC_I2C1_EV_IRQ,
         .er_irq = NVIC_I2C1_ER_IRQ,
         .rcc = RCC_I2C1,
-        .dma_rcc = RCC_DMA2,
+        .dma_rcc = RCC_DMA1,
 
         .clock_f = I2C_CR2_FREQ_36MHZ,
         .fast_mode = 1,

@@ -173,9 +173,9 @@ void i2c1_er_isr(void)
 {
     i2c_er(DEV_I2C[1]);
 }
-void dma1_stream0_isr()
+void dma1_stream5_isr()
 {
-    dma_clear_interrupt_flags(DMA1, DMA_STREAM0, DMA_LISR_TCIF0);
+    dma_clear_interrupt_flags(DMA1, DMA_STREAM5, DMA_LISR_TCIF0);
     i2c_rx_dma_complete(DEV_I2C[1]);
 }
 void dma1_stream6_isr()
