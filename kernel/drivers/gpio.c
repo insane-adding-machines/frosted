@@ -342,7 +342,8 @@ void eint3_isr(void)
 static void gpio_isr(void *arg)
 {
     struct dev_gpio *gpio = arg;
-    exti_enable(gpio->exti_idx, 0);
+    if (gpio->trigger)
+        exti_enable(gpio->exti_idx, 0);
     if (gpio->dev->task != NULL) {
         task_resume(gpio->dev->task);
     }
@@ -361,7 +362,10 @@ static int gpio_set_trigger(struct dev_gpio *gpio, uint32_t trigger)
     } else {
         SET_TRIGGER_WAITING(gpio, trigger);
     }
-    return exti_register(gpio->base, gpio->pin, gpio->trigger, gpio_isr, gpio);
+    if (trigger) 
+        return exti_register(gpio->base, gpio->pin, gpio->trigger, gpio_isr, gpio);
+    else
+        return 0;
 }
 
 static int devgpiomx_ioctl(struct fnode * fno, const uint32_t cmd, void *arg)
@@ -514,17 +518,28 @@ static int devgpio_poll(struct fnode * fno, uint16_t events, uint16_t *revents)
     struct dev_gpio *gpio = (struct dev_gpio *)FNO_MOD_PRIV(fno, &mod_devgpio);
     if(!gpio)
         return -EEXIST;
-    *revents = 0;
     if (events & POLLOUT) {
         *revents |= POLLOUT;
         ret = 1;
     }
     if (events == POLLIN) {
         uint8_t val;
-        val = gpio_get(gpio->base, gpio->pin);
-        if ((gpio->trigger == GPIO_TRIGGER_NONE)  || (val && (gpio->trigger == GPIO_TRIGGER_RAISE)) || (!val && (gpio->trigger == GPIO_TRIGGER_FALL))) {
-            *revents |= POLLIN;
+        if (gpio->trigger) {
+            if ((gpio->dev->task) && (gpio->dev->task != this_task())) {
+                return -EBUSY;
+            }
+            gpio->dev->task = this_task();
+            val = gpio_get(gpio->base, gpio->pin);
+            if ((val && (gpio->trigger == GPIO_TRIGGER_RAISE)) || (!val && (gpio->trigger == GPIO_TRIGGER_FALL))) {
+                ret = 1;
+                *revents |= POLLIN;
+            } else if ((gpio->trigger == GPIO_TRIGGER_TOGGLE) && (TRIGGER_WAITING(gpio) == val)) {
+                ret = 1;
+                *revents |= POLLIN;
+            }
+        } else {
             ret = 1;
+            *revents |= POLLIN;
         }
     }
     return ret;
