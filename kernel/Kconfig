@@ -270,6 +270,9 @@ config SOCK_UNIX
 bool "UNIX Sockets for IPC"
 default n
 
+config PTY_UNIX
+bool "UNIX98 scheme pseudo-tty devices (/dev/pts/X)"
+default n
 
 endmenu
 

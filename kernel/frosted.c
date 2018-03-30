@@ -36,6 +36,7 @@
 #include "usb.h"
 #include "eth.h"
 #include "exti.h"
+#include "pty.h"
 #include "unicore-mx/cm3/systick.h"
 #include "libopencmsis/core_cm3.h"
 #include "tty_console.h"
@@ -178,6 +179,7 @@ static void hw_init(void)
     gpio_init();
     exti_init();
     uart_init();
+    ptmx_init();
     rng_init();
     sdram_init();
     machine_init();
