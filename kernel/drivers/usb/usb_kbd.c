@@ -397,7 +397,6 @@ static int kbd_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     int ret = 0;
     KBD.dev->task = this_task();
     mutex_lock(KBD.dev->mutex);
-    *revents = 0;
     if ((events == POLLIN) && (cirbuf_bytesinuse(KBD.cfifo) > 0)) {
         *revents |= POLLIN;
         ret = 1;

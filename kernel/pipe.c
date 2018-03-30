@@ -105,7 +105,6 @@ fail_rd:
 static int pipe_poll(struct fnode *f, uint16_t events, uint16_t *revents)
 {
     struct pipe_priv *pp;
-    *revents = 0;
     if (f->owner != &mod_pipe)
         return -EINVAL;
     pp = (struct pipe_priv *)f->priv;

@@ -383,7 +383,6 @@ static int devuart_poll(struct fnode *fno, uint16_t events, uint16_t *revents)
     uart->dev->task = this_task();
     mutex_lock(uart->dev->mutex);
     usart_disable_rx_interrupt(uart->base);
-    *revents = 0;
     if ((events & POLLOUT) && (cirbuf_bytesfree(uart->outbuf) > 0)) {
         *revents |= POLLOUT;
         ret = 1;
