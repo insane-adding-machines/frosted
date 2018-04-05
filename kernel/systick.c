@@ -160,18 +160,18 @@ void sys_tick_handler(void)
     _n_int++;
 
     if (ktimer_expired()) {
-        if (!ktimer_check_pending) {
-            ktimer_check_pending++;
-            tasklet_add(ktimers_check_tasklet, NULL);
-        }
         task_preempt_all();
-        return;
+        goto end;
     }
 
     if (_sched_active && ((task_timeslice() == 0) || (!task_running()))) {
         schedule();
         (void)next_timer;
     }
-    tasklet_add(ktimers_check_tasklet, NULL);
+end:
+    if (!ktimer_check_pending) {
+        ktimer_check_pending++;
+        tasklet_add(ktimers_check_tasklet, NULL);
+    }
     SEV();
 }

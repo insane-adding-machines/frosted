@@ -49,6 +49,7 @@ int lowpower_sleep(uint32_t interval)
     sleeping = 1;
     /* Enable TIM2 clock. */
     rcc_periph_clock_enable(RCC_TIM2);
+    rcc_periph_clock_enable(RCC_PWR);
 
     /* Enable TIM2 interrupt. */
     nvic_enable_irq(NVIC_TIM2_IRQ);

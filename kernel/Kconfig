@@ -128,13 +128,13 @@ menu "Platform Selection"
             depends on (ARCH_NRF51)
         config CLK_48MHZ
             bool "48MHz"
-            depends on (ARCH_STM32F401  || ARCH_STM32F411 || ARCH_STM32F429)
+            depends on (ARCH_STM32F401  || ARCH_STM32F411 || ARCH_STM32F429) || ARCH_STM32F407 || ARCH_STM32F405
         config CLK_84MHZ
             bool "84MHz"
-            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429 || ARCH_NRF52)
+            depends on (ARCH_STM32F401 ||ARCH_STM32F411 || ARCH_STM32F429 || ARCH_NRF52) || ARCH_STM32F407 || ARCH_STM32F405
         config CLK_100MHZ
             bool "100MHz"
-            depends on ARCH_LPC17XX || ARCH_STM32F411
+            depends on ARCH_LPC17XX || ARCH_STM32F411 || ARCH_STM32F407 || ARCH_STM32F405
         config CLK_120MHZ
             bool "120MHz"
             depends on (ARCH_STM32F407 || ARCH_STM32F405 || ARCH_LPC1769)
