@@ -656,6 +656,6 @@ endmenu
 
 menu "Power Management"
     config LOWPOWER
-    bool "Enable sleep mode while idle"
+    bool "Enable suspend() and standby() syscalls"
     default n
 endmenu

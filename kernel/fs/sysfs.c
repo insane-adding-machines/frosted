@@ -22,6 +22,7 @@
 #include "string.h"
 #include "scheduler.h"
 #include "gpio.h"
+#include "lowpower.h"
 
 #define MAX_SYSFS_BUFFER 1024
 
@@ -70,7 +71,7 @@ static int sysfs_write(struct fnode *fno, const void *buf, unsigned int len)
         return len;
 
     mfno = FNO_MOD_PRIV(fno, &mod_sysfs);
-    if (mfno)
+    if (!mfno)
         return -1;
 
     if (mfno->do_write) {
@@ -178,6 +179,28 @@ int sysfs_time_read(struct sysfs_fnode *sfs, void *buf, int len)
     res[off] = '\0';
     task_fd_set_off(fno, off);
     return off;
+}
+
+static uint32_t strtou32(const char *ptr) {
+    long long val = 0;
+
+    while(*ptr) {
+        int v = *ptr;
+        if ('0' <= v && v <= '9')
+            v -= '0';
+
+        val = val * 10 + v;
+        ptr++;
+    }
+    return val;
+}
+
+static int sysfs_freeze_write(struct sysfs_fnode *sfs, const void *buf, int len)
+{
+    uint32_t interval = strtou32(buf);
+    if (len >= 1 && interval >= 1)
+        lowpower_sleep(1, interval);
+    return len;
 }
 
 
@@ -679,6 +702,11 @@ int sysfs_no_write(struct sysfs_fnode *sfs, const void *buf, int len)
     return -1;
 }
 
+int sysfs_no_read(struct sysfs_fnode *sfs, void *buf, int len)
+{
+    return 0;
+}
+
 
 int sysfs_register(char *name, char *dir,
         int (*do_read)(struct sysfs_fnode *sfs, void *buf, int len),
@@ -732,8 +760,12 @@ static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
 #if defined(STM32F4) || defined(STM32F7)
     sysfs_register("pins", "/sys", sysfs_pins_read, sysfs_no_write);
 #endif
+#ifdef CONFIG_LOWPOWER
+    sysfs_register("freeze","/sys", sysfs_no_read, sysfs_freeze_write);
+#endif
     return 0;
 }
+
 
 void sysfs_init(void)
 {

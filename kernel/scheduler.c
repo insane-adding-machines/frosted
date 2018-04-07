@@ -2307,7 +2307,6 @@ static void task_resume_real(struct task *t, int lock)
         forced_task = t;
         task_preempt_all();
     }
-    lowpower_resume();
 }
 
 void task_resume_lock(struct task *t)

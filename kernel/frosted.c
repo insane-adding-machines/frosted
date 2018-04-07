@@ -37,6 +37,7 @@
 #include "eth.h"
 #include "exti.h"
 #include "pty.h"
+#include "lowpower.h"
 #include "unicore-mx/cm3/systick.h"
 #include "libopencmsis/core_cm3.h"
 #include "tty_console.h"
@@ -183,6 +184,7 @@ static void hw_init(void)
     rng_init();
     sdram_init();
     machine_init();
+    lowpower_init();
     SysTick_Config(CONFIG_SYS_CLOCK / 1000);
 }
 

@@ -470,12 +470,10 @@ int machine_init(void)
     int i;
     /* Clock */
 
-#if defined(CONFIG_PYBOARD_1_0) 
-    rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[STM32_CLOCK]);
-#elif defined(CONFIG_PYBOARD_1_1)
+#ifdef CLOCK_12MHZ
     rcc_clock_setup_hse_3v3(&rcc_hse_12mhz_3v3[STM32_CLOCK]);
 #else
-#   error "No clock setup available for this board type."
+    rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[STM32_CLOCK]);
 #endif
 
     /* Leds */

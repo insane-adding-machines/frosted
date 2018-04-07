@@ -227,7 +227,6 @@ void exti_unregister(int idx)
 
 int exti_enable(int idx, int enable)
 {
-
     if (DEV_EXTI[idx]) {
         if(enable)
             exti_enable_request(exti_base(idx));

@@ -3,10 +3,10 @@
 #include <stdint.h>
 
 #ifndef CONFIG_LOWPOWER
-#   define lowpower_sleep(x) (-1)
-#   define lowpower_resume() do{}while(0)
+#   define lowpower_init() (-1)
+#   define lowpower_sleep(x,y) (-1)
 #else
-    int lowpower_sleep(uint32_t interval);
-    void lowpower_resume(void);
+    int lowpower_init(void);
+    int lowpower_sleep(int stdby, uint32_t interval);
 #endif
 #endif

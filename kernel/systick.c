@@ -142,12 +142,6 @@ static void ktimers_check_tasklet(void *arg)
     }
 
     ktimer_check_pending = 0;
-
-#ifdef CONFIG_LOWPOWER
-    if (scheduler_can_sleep()) {
-        lowpower_sleep(next_t);
-    }
-#endif
 }
 
 void sys_tick_handler(void)
@@ -173,5 +167,4 @@ end:
         ktimer_check_pending++;
         tasklet_add(ktimers_check_tasklet, NULL);
     }
-    SEV();
 }

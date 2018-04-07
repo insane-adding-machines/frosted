@@ -20,6 +20,7 @@
 
 #include "frosted.h"
 #include "sys/frosted.h"
+#include "lowpower.h"
 #include <time.h>
 #include <unicore-mx/cm3/scb.h>
 
@@ -36,8 +37,18 @@ struct timeval_kernel
 
 int sys_suspend_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
-    /* Deprecated. */
-    return -1;
+    if (arg1 > 0) {
+        lowpower_sleep(0, arg1);
+    }
+    return 0;
+}
+
+int sys_standby_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    if (arg1 > 0) {
+        lowpower_sleep(1, arg1);
+    }
+    return 0;
 }
 
 int sys_test_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
