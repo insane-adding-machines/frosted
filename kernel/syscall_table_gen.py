@@ -110,6 +110,7 @@ syscalls = [
     ["alarm", 1, "sys_alarm_hdlr"],
     ["ualarm", 2, "sys_ualarm_hdlr"],
     ["standby", 1, "sys_standby_hdlr"],
+    ["ptsname", 3, "sys_ptsname_hdlr"]
 ]
 
    #

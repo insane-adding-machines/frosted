@@ -398,3 +398,30 @@ static void pts_tty_attach(struct fnode *fno, int pid)
     }
 }
 
+int sys_ptsname_hdlr(int fd, char *buf, size_t buflen)
+{
+    struct devpty *pty = NULL;
+    struct devpts *pts = NULL;
+    struct fnode *fno = task_filedesc_get(fd);
+    size_t pathlen = strlen("/dev/pts/");
+    if (fd < 0 || !buf)
+        return -EINVAL;
+
+    if (task_ptr_valid(buf))
+        return -EACCES;
+
+    if (buflen < pathlen + 3)
+        return -EINVAL;
+    pty = (struct devpty *)FNO_MOD_PRIV(fno, &mod_devpty);
+    if (!pty)
+        return -ENOTTY;
+
+    strcpy(buf, "/dev/pts/");
+    if (pty->idx > 9) {
+        buf[pathlen++] = pty->idx / 10;
+    }
+    buf[pathlen++] = pty->idx % 10;
+    buf[pathlen] = '\0';
+    return 0;
+}
+

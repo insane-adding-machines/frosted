@@ -35,6 +35,7 @@ struct timeval_kernel
     long tv_usec;
 };
 
+#ifdef CONFIG_LOWPOWER
 int sys_suspend_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {
     if (arg1 > 0) {
@@ -50,6 +51,24 @@ int sys_standby_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4,
     }
     return 0;
 }
+#else 
+int sys_suspend_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    return -ENOSYS;
+}
+
+int sys_standby_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    return -ENOSYS;
+}
+#endif
+
+#ifndef CONFIG_PTY_UNIX
+int sys_ptsname_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
+{
+    return -ENOSYS;
+}
+#endif
 
 int sys_test_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5)
 {

@@ -195,7 +195,15 @@ static uint32_t strtou32(const char *ptr) {
     return val;
 }
 
-static int sysfs_freeze_write(struct sysfs_fnode *sfs, const void *buf, int len)
+static int sysfs_suspend_write(struct sysfs_fnode *sfs, const void *buf, int len)
+{
+    uint32_t interval = strtou32(buf);
+    if (len >= 1 && interval >= 1)
+        lowpower_sleep(0, interval);
+    return len;
+}
+
+static int sysfs_standby_write(struct sysfs_fnode *sfs, const void *buf, int len)
 {
     uint32_t interval = strtou32(buf);
     if (len >= 1 && interval >= 1)
@@ -761,7 +769,8 @@ static int sysfs_mount(char *source, char *tgt, uint32_t flags, void *args)
     sysfs_register("pins", "/sys", sysfs_pins_read, sysfs_no_write);
 #endif
 #ifdef CONFIG_LOWPOWER
-    sysfs_register("freeze","/sys", sysfs_no_read, sysfs_freeze_write);
+    sysfs_register("suspend","/sys/power", sysfs_no_read, sysfs_suspend_write);
+    sysfs_register("standby","/sys/power", sysfs_no_read, sysfs_standby_write);
 #endif
     return 0;
 }
@@ -780,7 +789,8 @@ void sysfs_init(void)
     mod_sysfs.ops.close = sysfs_close;
 
     sysfs = fno_search("/sys");
-    register_module(&mod_sysfs);
     fno_mkdir(&mod_sysfs, "net", sysfs);
+    fno_mkdir(&mod_sysfs, "power", sysfs);
+    register_module(&mod_sysfs);
     sysfs_mutex = mutex_init();
 }
