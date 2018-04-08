@@ -182,6 +182,9 @@ menu "Platform Selection"
     config MACH_STM32F446Nucleo
         bool "STM32F446 Nucleo"
         depends on (ARCH_STM32F446)
+    config MACH_STM32F411Nucleo
+        bool "STM32F411 Nucleo"
+        depends on (ARCH_STM32F411)
 
     config MACH_LPC1768MBED
         bool "LPC1768MBED"
@@ -657,5 +660,9 @@ endmenu
 menu "Power Management"
     config LOWPOWER
     bool "Enable suspend() and standby() syscalls"
+    default n
+    config LSE32K
+    depends on LOWPOWER
+    bool "Use external low-speed oscillator (LSE) at 32kHz to feed the RTC"
     default n
 endmenu

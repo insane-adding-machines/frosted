@@ -166,6 +166,7 @@ OBJS-$(DEVSTM32SDIO)+=kernel/drivers/stm32_sdio.o
 CFLAGS-$(DEVSTM32SDIO)+=-DCONFIG_SDIO
 
 OBJS-$(LOWPOWER)+=kernel/drivers/stm32_lowpower.o
+CFLAGS-$(LSE32K)+=-DCONFIG_LSE32K
 
 OBJS-$(DEVADC)+=kernel/drivers/stm32f4_adc.o
 CFLAGS-$(DEVADC)+=-DCONFIG_DEVADC
@@ -215,6 +216,7 @@ CFLAGS-$(MACH_STM32F411Pyboard11lite)+=-DCONFIG_PYBOARD_1_1 -DCLOCK_12MHZ
 OBJS-$(MACH_STM32F405Pyboard10)+=kernel/$(BOARD)/stm32f4xxpyboard.o
 OBJS-$(MACH_STM32F405Pyboard11)+=kernel/$(BOARD)/stm32f4xxpyboard.o
 OBJS-$(MACH_STM32F411Pyboard11lite)+=kernel/$(BOARD)/stm32f4xxpyboard.o
+OBJS-$(MACH_STM32F411Nucleo)+=kernel/$(BOARD)/stm32f411nucleo.o
 OBJS-$(MACH_STM32F4x1Discovery)+=kernel/$(BOARD)/stm32f4x1discovery.o
 OBJS-$(MACH_STM32F429Discovery)+=kernel/$(BOARD)/stm32f429discovery.o
 OBJS-$(MACH_STM32F446Nucleo)+=kernel/$(BOARD)/stm32f446nucleo.o

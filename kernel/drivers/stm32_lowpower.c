@@ -65,6 +65,8 @@ int lowpower_sleep(int stdby, uint32_t interval)
     /* Enable RTC */
     RCC_BDCR |= RCC_BDCR_RTCEN;
 
+
+#ifndef CONFIG_LSE32K
     /* Enable LSI */
     rcc_osc_on(RCC_LSI);
     rcc_wait_for_osc_ready(RCC_LSI);
@@ -72,6 +74,16 @@ int lowpower_sleep(int stdby, uint32_t interval)
     /* Select LSI as RTC clock source */
     RCC_BDCR &= ~RCC_BDCR_RTCSEL_MASK << RCC_BDCR_RTCSEL_SHIFT;
     RCC_BDCR |= RCC_BDCR_RTCSEL_LSI << RCC_BDCR_RTCSEL_SHIFT;
+#else
+    /* Enable LSE */
+    rcc_osc_bypass_disable(RCC_LSE);
+    rcc_osc_on(RCC_LSE);
+    rcc_wait_for_osc_ready(RCC_LSE);
+
+    /* Select LSE as RTC clock source */
+    RCC_BDCR &= ~RCC_BDCR_RTCSEL_MASK << RCC_BDCR_RTCSEL_SHIFT;
+    RCC_BDCR |= RCC_BDCR_RTCSEL_LSE << RCC_BDCR_RTCSEL_SHIFT;
+#endif
 
     /* Enable the EXTI 22 event */
     exti_set_trigger(EXTI22, EXTI_TRIGGER_RISING);
