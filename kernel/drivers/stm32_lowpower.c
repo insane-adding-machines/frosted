@@ -48,23 +48,23 @@ int lowpower_init(void)
 
 int lowpower_sleep(int stdby, uint32_t interval)
 {
-
     uint32_t rtc_wup;
     uint32_t err;
+
     if (interval < 1)
         return -1;
+
     rtc_wup = (interval * 2048) - 1;
+
     irq_off();
     rcc_periph_clock_enable(RCC_PWR);
     rcc_periph_clock_enable(RCC_RTC);
-    nvic_enable_irq(NVIC_RTC_WKUP_IRQ);
 
     /* Disable write protection in the backup range */
-    PWR_CR |= PWR_CR_DBP;
+    pwr_disable_backup_domain_write_protect();
 
     /* Enable RTC */
     RCC_BDCR |= RCC_BDCR_RTCEN;
-
 
 #ifndef CONFIG_LSE32K
     /* Enable LSI */
@@ -85,37 +85,43 @@ int lowpower_sleep(int stdby, uint32_t interval)
     RCC_BDCR |= RCC_BDCR_RTCSEL_LSE << RCC_BDCR_RTCSEL_SHIFT;
 #endif
 
-    /* Enable the EXTI 22 event */
-    exti_set_trigger(EXTI22, EXTI_TRIGGER_RISING);
-    exti_enable_request(EXTI22);
-
     /* Set up watchdog timer */
     rtc_unlock();
-    RTC_CR &= ~RTC_CR_WUTE;
-    while (!(RTC_ISR & RTC_ISR_WUTWF));
-    RTC_WUTR = interval - 1;
-    RTC_CR |= RTC_CR_OSEL_WAKEUP << RTC_CR_OSEL_SHIFT;
-    RTC_CR |= RTC_CR_WUCLKSEL_SPRE;
-    RTC_CR |= RTC_CR_WUTE | RTC_CR_WUTIE;
+    rtc_enable_wakeup_timer();
+
+    rtc_set_wakeup_time((interval - 1), RTC_CR_WUCLKSEL_SPRE);
+
     rtc_lock();
     systick_counter_disable();
     systick_interrupt_disable();
+
     SCB_SCR |= SCB_SCR_SEVEONPEND;
     SCB_SCR |= SCB_SCR_SLEEPDEEP;
-    if (stdby)
-        PWR_CR |= PWR_CR_CWUF | PWR_CR_CSBF | PWR_CR_PDDS;
-    else
-        PWR_CR |= PWR_CR_CWUF | PWR_CR_LPDS | PWR_CR_FPDS;
+
+    if (stdby) {
+        pwr_clear_wakeup_flag();
+        pwr_clear_standby_flag();
+        pwr_set_standby_mode();
+    } else {
+        pwr_clear_wakeup_flag();
+        pwr_voltage_regulator_low_power_in_stop();
+        PWR_CR |= PWR_CR_FPDS;
+    }
+
     irq_on();
+
     WFE();
     WFE();
+
     SCB_SCR &= ~SCB_SCR_SLEEPDEEP;
-    PWR_CR |= PWR_CR_CWUF;
+    pwr_clear_wakeup_flag();
+
 #ifdef CLOCK_12MHZ
     rcc_clock_setup_hse_3v3(&rcc_hse_12mhz_3v3[STM32_CLOCK]);
 #else
     rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[STM32_CLOCK]);
 #endif
+
     systick_interrupt_enable();
     systick_counter_enable();
     rcc_periph_clock_enable(RCC_PWR);
@@ -123,16 +129,18 @@ int lowpower_sleep(int stdby, uint32_t interval)
     nvic_enable_irq(NVIC_RTC_WKUP_IRQ);
 
     /* Disable write protection in the backup range */
-    PWR_CR |= PWR_CR_DBP;
+    pwr_disable_backup_domain_write_protect();
+
     /* Disable RTC */
     RCC_BDCR &= ~RCC_BDCR_RTCEN;
+
     jiffies += interval * 1000;
+
     return 0;
 }
 
 void rtc_wkup_isr(void)
 {
-
     /* Enable RTC */
     RCC_BDCR |= RCC_BDCR_RTCEN;
     rtc_unlock();
