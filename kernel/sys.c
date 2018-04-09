@@ -20,6 +20,8 @@
 
 #include "frosted.h"
 #include "sys/frosted.h"
+#include "sys/frosted-io.h"
+#include "sys/reboot.h"
 #include "lowpower.h"
 #include <time.h>
 #include <unicore-mx/cm3/scb.h>
@@ -123,9 +125,24 @@ int sys_clock_settime_hdlr(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t
     return 0;
 }
 
-int sys_reboot_hdlr(void)
+int sys_reboot_hdlr(uint32_t fadeoff, int cmd, uint32_t interval)
 {
-    scb_reset_system(); /* Never returns. */
+    if (fadeoff != SYS_FROSTED_FADEOFF)
+        return -EINVAL;
+    switch(cmd) {
+        case RB_REBOOT:
+            scb_reset_system(); /* Never returns. */
+            break;
+        case RB_STANDBY:
+            lowpower_sleep(1, interval);
+            break;
+        case RB_SUSPEND:
+            lowpower_sleep(0, interval);
+            return 0;
+        default:
+            return -ENOENT;
+    }
+    return -EFAULT;
 }
 
 

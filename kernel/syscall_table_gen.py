@@ -12,7 +12,7 @@
 
 syscalls = [
     ["sleep", 2, "sys_sleep_hdlr"],
-    ["suspend", 1, "sys_suspend_hdlr"],
+    ["ptsname", 3, "sys_ptsname_hdlr"],
     ["getpid", 0, "sys_getpid_hdlr"],
     ["getppid", 0, "sys_getppid_hdlr"],
     ["open", 3, "sys_open_hdlr"],
@@ -83,7 +83,7 @@ syscalls = [
     ["fcntl", 3, "sys_fcntl_hdlr"],
     ["setsid", 0, "sys_setsid_hdlr"],
     ["ptrace", 4, "sys_ptrace_hdlr"],
-    ["reboot", 0, "sys_reboot_hdlr"],
+    ["reboot", 3, "sys_reboot_hdlr"],
     ["getpriority", 2, "sys_getpriority_hdlr"],
     ["setpriority", 3, "sys_setpriority_hdlr"],
     ["ftruncate", 2, "sys_ftruncate_hdlr"],
@@ -109,8 +109,6 @@ syscalls = [
     ["pthread_getspecific", 2, "sys_pthread_getspecific_hdlr"],
     ["alarm", 1, "sys_alarm_hdlr"],
     ["ualarm", 2, "sys_ualarm_hdlr"],
-    ["standby", 1, "sys_standby_hdlr"],
-    ["ptsname", 3, "sys_ptsname_hdlr"]
 ]
 
    #
