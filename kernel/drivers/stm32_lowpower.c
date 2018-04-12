@@ -72,8 +72,7 @@ int lowpower_sleep(int stdby, uint32_t interval)
     rcc_wait_for_osc_ready(RCC_LSI);
 
     /* Select LSI as RTC clock source */
-    RCC_BDCR &= ~RCC_BDCR_RTCSEL_MASK << RCC_BDCR_RTCSEL_SHIFT;
-    RCC_BDCR |= RCC_BDCR_RTCSEL_LSI << RCC_BDCR_RTCSEL_SHIFT;
+    rcc_rtc_select_clock(RCC_BDCR_RTCSEL_LSI);
 #else
     /* Enable LSE */
     rcc_osc_bypass_disable(RCC_LSE);
@@ -81,8 +80,7 @@ int lowpower_sleep(int stdby, uint32_t interval)
     rcc_wait_for_osc_ready(RCC_LSE);
 
     /* Select LSE as RTC clock source */
-    RCC_BDCR &= ~RCC_BDCR_RTCSEL_MASK << RCC_BDCR_RTCSEL_SHIFT;
-    RCC_BDCR |= RCC_BDCR_RTCSEL_LSE << RCC_BDCR_RTCSEL_SHIFT;
+    rcc_rtc_select_clock(RCC_BDCR_RTCSEL_LSE);
 #endif
 
     /* Set up watchdog timer */
