@@ -230,6 +230,7 @@ OBJS-$(MACH_LM3S6965EVB)+=kernel/$(BOARD)/lm3s6965evb.o
 OBJS-$(MACH_LM3SVIRT)+=kernel/$(BOARD)/lm3s6965evb.o
 OBJS-$(MACH_BLENANOV1_5)+=kernel/$(BOARD)/blenanov1_5.o
 OBJS-$(MACH_BLENANOV2_0)+=kernel/$(BOARD)/blenanov2_0.o
+OBJS-$(MACH_STM32F407Diymore)+=kernel/$(BOARD)/stm32f407diymore.o
 
 
 LIB-y:=

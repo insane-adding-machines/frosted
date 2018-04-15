@@ -185,7 +185,9 @@ menu "Platform Selection"
     config MACH_STM32F411Nucleo
         bool "STM32F411 Nucleo"
         depends on (ARCH_STM32F411)
-
+    config MACH_STM32F407Diymore
+        bool "STM32F407 based Diymore from dyimore.cc"
+        depends on (ARCH_STM32F407)
     config MACH_LPC1768MBED
         bool "LPC1768MBED"
         depends on ARCH_LPC1768
