@@ -336,6 +336,7 @@ struct fnode *fno_search(const char *_path)
             path[i] = '\0';
         else
             break;
+        --i;
     }
     if (strlen(path) > 0) {
         fno = _fno_search(path, &FNO_ROOT, 1);
