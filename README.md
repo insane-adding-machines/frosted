@@ -1,5 +1,7 @@
 # Frosted :snowman:
 
+### THIS PROJECT AS WELL AS THE ORGANIZATION MOVED ENTIRELY TO GITLAB!!!
+
 ### Introduction
 frosted is an acronym that means "Free Operating Systems for Tiny Embedded Devices"
 
